@@ -1,0 +1,253 @@
+import { api } from '../api/apiClient';
+import { LocationData } from '../../types/home';
+
+export interface LocationFilters {
+  familyId?: string;
+  userId?: string;
+  type?: LocationData['type'];
+  isOnline?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface LocationUpdate {
+  userId: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  type?: LocationData['type'];
+  accuracy?: number;
+  timestamp: string;
+  batteryLevel?: number;
+  isOnline?: boolean;
+}
+
+export interface LocationHistory {
+  id: string;
+  userId: string;
+  latitude: number;
+  longitude: number;
+  address?: string;
+  timestamp: string;
+  accuracy?: number;
+}
+
+export interface LocationStats {
+  totalLocations: number;
+  onlineUsers: number;
+  offlineUsers: number;
+  byType: Record<string, number>;
+  lastUpdated: string;
+}
+
+class LocationDataService {
+  private baseUrl = '/locations';
+
+  async getLocations(filters?: LocationFilters): Promise<LocationData[]> {
+    try {
+      const params = new URLSearchParams();
+      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.userId) params.append('userId', filters.userId);
+      if (filters?.type) params.append('type', filters.type);
+      if (filters?.isOnline !== undefined) params.append('isOnline', filters.isOnline.toString());
+      if (filters?.limit) params.append('limit', filters.limit.toString());
+      if (filters?.offset) params.append('offset', filters.offset.toString());
+
+      const response = await api.get(`${this.baseUrl}?${params.toString()}`);
+      return response.data.locations || [];
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      return [];
+    }
+  }
+
+  async getLocationById(locationId: string): Promise<LocationData | null> {
+    try {
+      const response = await api.get(`${this.baseUrl}/${locationId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching location:', error);
+      return null;
+    }
+  }
+
+  async updateLocation(locationUpdate: LocationUpdate): Promise<LocationData> {
+    try {
+      const response = await api.post(`${this.baseUrl}/update`, locationUpdate);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating location:', error);
+      throw error;
+    }
+  }
+
+  async getFamilyLocations(familyId: string): Promise<LocationData[]> {
+    try {
+      const response = await api.get(`${this.baseUrl}/families/${familyId}`);
+      return response.data.locations || [];
+    } catch (error) {
+      console.error('Error fetching family locations:', error);
+      return [];
+    }
+  }
+
+  async getUserLocationHistory(userId: string, days: number = 7): Promise<LocationHistory[]> {
+    try {
+      const response = await api.get(`${this.baseUrl}/users/${userId}/history?days=${days}`);
+      return response.data.history || [];
+    } catch (error) {
+      console.error('Error fetching user location history:', error);
+      return [];
+    }
+  }
+
+  async getLocationStats(familyId?: string): Promise<LocationStats> {
+    try {
+      const params = familyId ? `?familyId=${familyId}` : '';
+      const response = await api.get(`${this.baseUrl}/stats${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching location stats:', error);
+      return {
+        totalLocations: 0,
+        onlineUsers: 0,
+        offlineUsers: 0,
+        byType: {},
+        lastUpdated: new Date().toISOString()
+      };
+    }
+  }
+
+  async getNearbyLocations(latitude: number, longitude: number, radius: number = 1000): Promise<LocationData[]> {
+    try {
+      const response = await api.get(`${this.baseUrl}/nearby`, {
+        params: {
+          latitude,
+          longitude,
+          radius
+        }
+      });
+      return response.data.locations || [];
+    } catch (error) {
+      console.error('Error fetching nearby locations:', error);
+      return [];
+    }
+  }
+
+  async setLocationType(userId: string, type: LocationData['type']): Promise<void> {
+    try {
+      await api.patch(`${this.baseUrl}/users/${userId}/type`, { type });
+    } catch (error) {
+      console.error('Error setting location type:', error);
+      throw error;
+    }
+  }
+
+  async setOnlineStatus(userId: string, isOnline: boolean): Promise<void> {
+    try {
+      await api.patch(`${this.baseUrl}/users/${userId}/status`, { isOnline });
+    } catch (error) {
+      console.error('Error setting online status:', error);
+      throw error;
+    }
+  }
+
+  async getLocationTypes(): Promise<string[]> {
+    try {
+      const response = await api.get(`${this.baseUrl}/types`);
+      return response.data.types || [];
+    } catch (error) {
+      console.error('Error fetching location types:', error);
+      return ['home', 'work', 'school', 'other'];
+    }
+  }
+
+  async subscribeToLocationUpdates(familyId: string, callback: (data: any) => void): Promise<() => void> {
+    // This would typically use WebSocket or Server-Sent Events
+    // For now, we'll implement a polling mechanism
+    const interval = setInterval(async () => {
+      try {
+        const locations = await this.getFamilyLocations(familyId);
+        callback({ type: 'locations_update', data: locations });
+      } catch (error) {
+        console.error('Error in location updates subscription:', error);
+      }
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(interval);
+  }
+
+  async getGeofenceAlerts(familyId: string): Promise<Array<{
+    id: string;
+    userId: string;
+    userName: string;
+    geofenceName: string;
+    action: 'enter' | 'exit';
+    timestamp: string;
+    location: {
+      latitude: number;
+      longitude: number;
+      address?: string;
+    };
+  }>> {
+    try {
+      const response = await api.get(`${this.baseUrl}/families/${familyId}/geofence-alerts`);
+      return response.data.alerts || [];
+    } catch (error) {
+      console.error('Error fetching geofence alerts:', error);
+      return [];
+    }
+  }
+
+  async createGeofence(geofenceData: {
+    name: string;
+    latitude: number;
+    longitude: number;
+    radius: number;
+    familyId: string;
+    notifications: {
+      enter: boolean;
+      exit: boolean;
+    };
+  }): Promise<void> {
+    try {
+      await api.post(`${this.baseUrl}/geofences`, geofenceData);
+    } catch (error) {
+      console.error('Error creating geofence:', error);
+      throw error;
+    }
+  }
+
+  async getGeofences(familyId: string): Promise<Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    radius: number;
+    notifications: {
+      enter: boolean;
+      exit: boolean;
+    };
+    isActive: boolean;
+    createdAt: string;
+  }>> {
+    try {
+      const response = await api.get(`${this.baseUrl}/families/${familyId}/geofences`);
+      return response.data.geofences || [];
+    } catch (error) {
+      console.error('Error fetching geofences:', error);
+      return [];
+    }
+  }
+
+  async deleteGeofence(geofenceId: string): Promise<void> {
+    try {
+      await api.delete(`${this.baseUrl}/geofences/${geofenceId}`);
+    } catch (error) {
+      console.error('Error deleting geofence:', error);
+      throw error;
+    }
+  }
+}
+
+export const locationDataService = new LocationDataService();

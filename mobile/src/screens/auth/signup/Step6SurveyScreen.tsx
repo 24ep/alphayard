@@ -1,0 +1,689 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
+import { FONT_STYLES } from '../../../utils/fontUtils';
+import { useAuth } from '../../../contexts/AuthContext';
+
+interface Step6SurveyScreenProps {
+  navigation: any;
+  route: any;
+}
+
+const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route }) => {
+  const { signup } = useAuth();
+  const [interests, setInterests] = useState<string[]>([]);
+  const [personalityTraits, setPersonalityTraits] = useState<string[]>([]);
+  const [expectations, setExpectations] = useState<string[]>([]);
+  const [howDidYouHear, setHowDidYouHear] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const interestOptions = [
+    { id: 'family_activities', label: 'hourse Activities', icon: 'account-group' },
+    { id: 'health_wellness', label: 'Health & Wellness', icon: 'heart-pulse' },
+    { id: 'safety_security', label: 'Safety & Security', icon: 'shield-check' },
+    { id: 'financial_planning', label: 'Financial Planning', icon: 'chart-line' },
+    { id: 'education', label: 'Education', icon: 'school' },
+    { id: 'travel', label: 'Travel', icon: 'airplane' },
+    { id: 'technology', label: 'Technology', icon: 'laptop' },
+    { id: 'cooking', label: 'Cooking', icon: 'chef-hat' },
+    { id: 'sports', label: 'Sports', icon: 'soccer' },
+    { id: 'entertainment', label: 'Entertainment', icon: 'movie' },
+  ];
+
+  const personalityOptions = [
+    { id: 'outgoing', label: 'Outgoing & Social', icon: 'account-group' },
+    { id: 'analytical', label: 'Analytical & Detail-oriented', icon: 'chart-line' },
+    { id: 'creative', label: 'Creative & Artistic', icon: 'palette' },
+    { id: 'organized', label: 'Organized & Structured', icon: 'calendar-check' },
+    { id: 'adventurous', label: 'Adventurous & Spontaneous', icon: 'compass' },
+    { id: 'caring', label: 'Caring & Empathetic', icon: 'heart' },
+    { id: 'practical', label: 'Practical & Down-to-earth', icon: 'tools' },
+    { id: 'ambitious', label: 'Ambitious & Goal-oriented', icon: 'target' },
+  ];
+
+  const expectationOptions = [
+    { id: 'family_connection', label: 'Better hourse Connection', icon: 'heart-pulse' },
+    { id: 'safety_peace', label: 'Safety & Peace of Mind', icon: 'shield-check' },
+    { id: 'organization', label: 'Better Organization', icon: 'calendar-check' },
+    { id: 'communication', label: 'Improved Communication', icon: 'message-text' },
+    { id: 'coordination', label: 'hourse Coordination', icon: 'account-group' },
+    { id: 'emergency_support', label: 'Emergency Support', icon: 'phone-alert' },
+    { id: 'memory_sharing', label: 'Memory & Photo Sharing', icon: 'camera' },
+    { id: 'schedule_management', label: 'Schedule Management', icon: 'clock' },
+  ];
+
+  const howDidYouHearOptions = [
+    { id: 'social_media', label: 'Social Media', icon: 'share-variant' },
+    { id: 'friend_family', label: 'Friend or hourse', icon: 'account-heart' },
+    { id: 'app_store', label: 'App Store Search', icon: 'store' },
+    { id: 'google_search', label: 'Google Search', icon: 'google' },
+    { id: 'advertisement', label: 'Advertisement', icon: 'bullhorn' },
+    { id: 'blog_article', label: 'Blog or Article', icon: 'newspaper' },
+    { id: 'podcast', label: 'Podcast', icon: 'podcast' },
+    { id: 'other', label: 'Other', icon: 'dots-horizontal' },
+  ];
+
+
+  const toggleInterest = (interestId: string) => {
+    setInterests(prev => 
+      prev.includes(interestId) 
+        ? prev.filter(i => i !== interestId)
+        : [...prev, interestId]
+    );
+  };
+
+  const togglePersonalityTrait = (traitId: string) => {
+    setPersonalityTraits(prev => 
+      prev.includes(traitId) 
+        ? prev.filter(t => t !== traitId)
+        : [...prev, traitId]
+    );
+  };
+
+  const toggleExpectation = (expectationId: string) => {
+    setExpectations(prev => 
+      prev.includes(expectationId) 
+        ? prev.filter(e => e !== expectationId)
+        : [...prev, expectationId]
+    );
+  };
+
+  const selectHowDidYouHear = (sourceId: string) => {
+    setHowDidYouHear(sourceId);
+  };
+
+
+  const handleComplete = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare signup data
+      const signupData = {
+        email: route.params.email,
+        password: route.params.password,
+        firstName: route.params.firstName || '',
+        lastName: route.params.lastName || '',
+        phone: route.params.phoneNumber || '',
+        dateOfBirth: route.params.dateOfBirth || '',
+        userType: route.params.userType || 'hourse',
+        familyOption: route.params.familyOption,
+        familyCode: route.params.familyCode || '',
+        familyName: route.params.familyName || '',
+        familyType: route.params.familyType || '',
+        inviteEmails: route.params.inviteEmails || [],
+        interests,
+        personalityTraits,
+        expectations,
+        howDidYouHear,
+      };
+
+      await signup(signupData);
+      
+      // Navigate to welcome screen
+      navigation.navigate('Welcome');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Signup Failed',
+        error.message || 'Failed to create account. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      setIsSubmitting(true);
+      
+      // Prepare signup data with default values
+      const signupData = {
+        email: route.params.email,
+        password: route.params.password,
+        firstName: route.params.firstName || '',
+        lastName: route.params.lastName || '',
+        phone: route.params.phoneNumber || '',
+        dateOfBirth: route.params.dateOfBirth || '',
+        userType: route.params.userType || 'hourse',
+        familyOption: route.params.familyOption,
+        familyCode: route.params.familyCode || '',
+        familyName: route.params.familyName || '',
+        familyType: route.params.familyType || '',
+        inviteEmails: route.params.inviteEmails || [],
+        interests: [],
+        personalityTraits: [],
+        expectations: [],
+        howDidYouHear: '',
+      };
+
+      await signup(signupData);
+      
+      // Navigate to welcome screen
+      navigation.navigate('Welcome');
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Signup Failed',
+        error.message || 'Failed to create account. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleBack = () => {
+    navigation.goBack();
+  };
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#FA7272', '#FFBBB4']}
+        style={styles.gradient}
+      >
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <Icon name="arrow-left" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <View style={styles.stepIndicator}>
+              <Text style={styles.stepText}>Step 6 of 6</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: '100%' }]} />
+              </View>
+            </View>
+          </View>
+
+          {/* Title */}
+          <View style={styles.titleContainer}>
+            <View style={styles.titleIconContainer}>
+              <Icon name="chart-line" size={32} color="#FFFFFF" />
+            </View>
+            <Text style={styles.title}>Almost Done!</Text>
+            <Text style={styles.subtitle}>Help us personalize your experience with a quick survey</Text>
+          </View>
+
+          {/* Survey Form */}
+          <View style={styles.form}>
+            {/* Interests Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>What are you interested in?</Text>
+              <Text style={styles.sectionDescription}>Select topics that interest you (optional)</Text>
+              
+              <View style={styles.interestsGrid}>
+                {interestOptions.map((interest) => (
+                  <TouchableOpacity
+                    key={interest.id}
+                    style={[
+                      styles.interestChip,
+                      interests.includes(interest.id) && styles.interestChipSelected
+                    ]}
+                    onPress={() => toggleInterest(interest.id)}
+                  >
+                    <Icon 
+                      name={interest.icon} 
+                      size={16} 
+                      color={interests.includes(interest.id) ? '#bf4342' : 'rgba(255, 255, 255, 0.8)'} 
+                    />
+                    <Text style={[
+                      styles.interestChipText,
+                      interests.includes(interest.id) && styles.interestChipTextSelected
+                    ]}>
+                      {interest.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Personality Traits Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>What describes you best?</Text>
+              <Text style={styles.sectionDescription}>Select personality traits that resonate with you (optional)</Text>
+              
+              <View style={styles.personalityGrid}>
+                {personalityOptions.map((trait) => (
+                  <TouchableOpacity
+                    key={trait.id}
+                    style={[
+                      styles.personalityChip,
+                      personalityTraits.includes(trait.id) && styles.personalityChipSelected
+                    ]}
+                    onPress={() => togglePersonalityTrait(trait.id)}
+                  >
+                    <Icon 
+                      name={trait.icon} 
+                      size={20} 
+                      color={personalityTraits.includes(trait.id) ? '#bf4342' : '#FFFFFF'} 
+                    />
+                    <Text style={[
+                      styles.personalityChipText,
+                      personalityTraits.includes(trait.id) && styles.personalityChipTextSelected
+                    ]}>
+                      {trait.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Expectations Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>What do you expect from this app?</Text>
+              <Text style={styles.sectionDescription}>Select what you hope to achieve (optional)</Text>
+              
+              <View style={styles.expectationGrid}>
+                {expectationOptions.map((expectation) => (
+                  <TouchableOpacity
+                    key={expectation.id}
+                    style={[
+                      styles.expectationChip,
+                      expectations.includes(expectation.id) && styles.expectationChipSelected
+                    ]}
+                    onPress={() => toggleExpectation(expectation.id)}
+                  >
+                    <Icon 
+                      name={expectation.icon} 
+                      size={20} 
+                      color={expectations.includes(expectation.id) ? '#bf4342' : '#FFFFFF'} 
+                    />
+                    <Text style={[
+                      styles.expectationChipText,
+                      expectations.includes(expectation.id) && styles.expectationChipTextSelected
+                    ]}>
+                      {expectation.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* How Did You Hear Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>How did you hear about us?</Text>
+              <Text style={styles.sectionDescription}>Help us understand how you discovered our app (optional)</Text>
+              
+              <View style={styles.howDidYouHearContainer}>
+                {howDidYouHearOptions.map((option) => (
+                  <TouchableOpacity
+                    key={option.id}
+                    style={[
+                      styles.howDidYouHearOption,
+                      howDidYouHear === option.id && styles.howDidYouHearOptionSelected
+                    ]}
+                    onPress={() => selectHowDidYouHear(option.id)}
+                  >
+                    <Icon 
+                      name={option.icon} 
+                      size={20} 
+                      color={howDidYouHear === option.id ? '#bf4342' : '#FFFFFF'} 
+                    />
+                    <Text style={[
+                      styles.howDidYouHearText,
+                      howDidYouHear === option.id && styles.howDidYouHearTextSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                    <View style={[
+                      styles.radioButton,
+                      howDidYouHear === option.id && styles.radioButtonSelected
+                    ]}>
+                      {howDidYouHear === option.id && (
+                        <Icon name="check" size={16} color="#FFFFFF" />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={styles.skipButton} 
+              onPress={handleSkip}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.skipButtonText}>Skip & Complete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.completeButton, isSubmitting && styles.completeButtonDisabled]} 
+              onPress={handleComplete}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <Text style={styles.completeButtonText}>Creating Account...</Text>
+              ) : (
+                <>
+                  <Text style={styles.completeButtonText}>Complete Signup</Text>
+                  <Icon name="check" size={20} color="#FFFFFF" />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 16,
+  },
+  stepIndicator: {
+    flex: 1,
+  },
+  stepText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  titleContainer: {
+    marginBottom: 40,
+    alignItems: 'flex-start',
+  },
+  titleIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    fontFamily: FONT_STYLES.englishHeading,
+    textAlign: 'left',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontFamily: FONT_STYLES.englishBody,
+    textAlign: 'left',
+  },
+  form: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 8,
+    fontFamily: FONT_STYLES.englishSemiBold,
+  },
+  sectionDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 16,
+    fontFamily: FONT_STYLES.englishBody,
+  },
+  interestsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  interestChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  interestChipSelected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#bf4342',
+  },
+  interestChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: FONT_STYLES.englishMedium,
+  },
+  interestChipTextSelected: {
+    color: '#bf4342',
+  },
+  notificationsContainer: {
+    gap: 12,
+  },
+  notificationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  notificationInfo: {
+    flex: 1,
+  },
+  notificationTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+    fontFamily: FONT_STYLES.englishSemiBold,
+  },
+  notificationDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+    lineHeight: 18,
+    fontFamily: FONT_STYLES.englishBody,
+  },
+  toggle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleActive: {
+    backgroundColor: '#bf4342',
+    borderColor: '#bf4342',
+  },
+  actionButtons: {
+    gap: 12,
+    marginBottom: 20,
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONT_STYLES.englishSemiBold,
+  },
+  completeButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  completeButtonDisabled: {
+    backgroundColor: '#CCCCCC',
+  },
+  completeButtonText: {
+    color: '#bf4342',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FONT_STYLES.englishSemiBold,
+  },
+  // Personality Traits Styles
+  personalityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  personalityChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: '45%',
+  },
+  personalityChipSelected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#bf4342',
+  },
+  personalityChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: FONT_STYLES.englishMedium,
+    flex: 1,
+  },
+  personalityChipTextSelected: {
+    color: '#bf4342',
+  },
+  // Expectation Styles
+  expectationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  expectationChip: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minWidth: '45%',
+  },
+  expectationChipSelected: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#bf4342',
+  },
+  expectationChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: FONT_STYLES.englishMedium,
+    flex: 1,
+  },
+  expectationChipTextSelected: {
+    color: '#bf4342',
+  },
+  // How Did You Hear Styles
+  howDidYouHearContainer: {
+    gap: 12,
+  },
+  howDidYouHearOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  howDidYouHearOptionSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: '#FFFFFF',
+  },
+  howDidYouHearText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontFamily: FONT_STYLES.englishMedium,
+    flex: 1,
+  },
+  howDidYouHearTextSelected: {
+    color: '#FFFFFF',
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    backgroundColor: '#bf4342',
+    borderColor: '#bf4342',
+  },
+});
+
+export default Step6SurveyScreen;
