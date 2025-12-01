@@ -21,6 +21,7 @@ import { Button } from './ui/Button'
 import { Badge } from './ui/Badge'
 import { LoadingSpinner } from './ui/LoadingSpinner'
 import { Table } from './ui/Table'
+import { adminService } from '../services/adminService'
 
 interface FamilyMember {
   id: string
@@ -161,74 +162,77 @@ function FamilySidebar({ familyId, activeSection, setActiveSection }: FamilySide
 }
 
 interface FamilyDetailProps {
+  familyId?: string
   onBackToFamilies?: () => void
 }
 
-export function FamilyDetail({ onBackToFamilies }: FamilyDetailProps) {
+export function FamilyDetail({ familyId, onBackToFamilies }: FamilyDetailProps) {
   const [family, setFamily] = useState<FamilyDetail | null>(null)
   const [activeSection, setActiveSection] = useState('overview')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadFamilyData()
-  }, [])
+    if (familyId) {
+      loadFamilyData()
+    }
+  }, [familyId])
 
   const loadFamilyData = async () => {
+    if (!familyId) {
+      setError('No family ID provided')
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
+    setError(null)
     try {
-      // Mock data - replace with actual API call
-      const mockFamily: FamilyDetail = {
-        id: '1',
-        name: 'Johnson Family',
-        description: 'The Johnson family from California',
-        memberCount: 8,
-        createdAt: '2024-01-15T10:30:00Z',
-        lastActive: '2024-01-20T14:22:00Z',
-        status: 'active',
-        owner: {
-          id: 'user1',
-          name: 'John Johnson',
-          email: 'john@johnsonfamily.com'
+      // Load family data and members
+      const [familyData, membersData] = await Promise.all([
+        adminService.getFamily(familyId),
+        adminService.getFamilyMembers(familyId)
+      ])
+
+      // Transform API data to match FamilyDetail interface
+      const transformedFamily: FamilyDetail = {
+        id: familyData.id,
+        name: familyData.name,
+        description: familyData.description || '',
+        memberCount: familyData.member_count || membersData.length,
+        createdAt: familyData.created_at,
+        lastActive: familyData.updated_at || familyData.created_at,
+        status: familyData.is_active ? 'active' : 'inactive',
+        owner: familyData.owner ? {
+          id: familyData.owner.id,
+          name: `${familyData.owner.first_name} ${familyData.owner.last_name}`,
+          email: familyData.owner.email
+        } : {
+          id: familyData.owner_id,
+          name: 'Unknown',
+          email: ''
         },
         settings: {
-          privacy: 'family-only',
+          privacy: 'family-only', // Default, could be enhanced
           notifications: true,
           moderation: true
         },
-        members: [
-          {
-            id: 'member1',
-            name: 'John Johnson',
-            email: 'john@johnsonfamily.com',
-            role: 'owner',
-            joinedAt: '2024-01-15T10:30:00Z',
-            lastActive: '2024-01-20T14:22:00Z',
-            status: 'active'
-          },
-          {
-            id: 'member2',
-            name: 'Sarah Johnson',
-            email: 'sarah@johnsonfamily.com',
-            role: 'admin',
-            joinedAt: '2024-01-15T11:00:00Z',
-            lastActive: '2024-01-20T12:15:00Z',
-            status: 'active'
-          },
-          {
-            id: 'member3',
-            name: 'Mike Johnson',
-            email: 'mike@johnsonfamily.com',
-            role: 'member',
-            joinedAt: '2024-01-16T09:30:00Z',
-            lastActive: '2024-01-19T16:45:00Z',
-            status: 'active'
-          }
-        ]
+        members: membersData.map(member => ({
+          id: member.user_id,
+          name: member.user ? `${member.user.first_name} ${member.user.last_name}` : 'Unknown',
+          email: member.user?.email || '',
+          role: member.role,
+          avatar: member.user?.avatar_url,
+          joinedAt: member.joined_at,
+          lastActive: member.user?.created_at || member.joined_at, // Approximate
+          status: 'active' // Could be enhanced with actual status
+        }))
       }
 
-      setFamily(mockFamily)
-    } catch (error) {
+      setFamily(transformedFamily)
+    } catch (error: any) {
       console.error('Error loading family data:', error)
+      setError(error?.message || 'Failed to load family data')
     } finally {
       setLoading(false)
     }
@@ -492,6 +496,31 @@ export function FamilyDetail({ onBackToFamilies }: FamilyDetailProps) {
     return (
       <div className="flex items-center justify-center h-64" role="status" aria-label="Loading">
         <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <LoadingSpinner />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <UsersIcon className="h-12 w-12 text-red-400 mx-auto mb-4" aria-hidden="true" />
+        <p className="text-red-600 font-semibold mb-2">Error loading family</p>
+        <p className="text-gray-500">{error}</p>
+        <Button 
+          variant="primary"
+          onClick={loadFamilyData}
+          className="mt-4"
+        >
+          Retry
+        </Button>
       </div>
     )
   }

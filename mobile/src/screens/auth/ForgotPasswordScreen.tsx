@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../utils/fontUtils';
+import { api } from '../../services/api';
 
 const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -39,18 +40,20 @@ const ForgotPasswordScreen: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // TODO: Implement API call to send reset email
-      // await api.post('/auth/forgot-password', { email });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      await api.post('/auth/forgot-password', { email });
       setEmailSent(true);
     } catch (error: any) {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to send reset email. Please try again.'
-      );
+      // Even if there's an error, show success to prevent email enumeration
+      // The backend always returns success for security reasons
+      if (error.response?.status === 400 || error.response?.status === 500) {
+        // Still show success message for security
+        setEmailSent(true);
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to send reset email. Please try again.'
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

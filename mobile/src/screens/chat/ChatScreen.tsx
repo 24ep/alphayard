@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, KeyboardAvoidingView, Platform, FlatList, Alert, TouchableOpacity } from 'react-native';
+import { View, KeyboardAvoidingView, Platform, FlatList, Alert, TouchableOpacity, Image, Linking } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {
   Box,
@@ -26,6 +26,9 @@ import {
 } from 'native-base';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import * as DocumentPicker from 'expo-document-picker';
+import { imagePickerService } from '../../services/imagePicker/ImagePickerService';
+import { Audio } from 'expo-av';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';
 import { chatApi, type Chat, type Message } from '../../services/api';
@@ -56,7 +59,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     leaveChat, 
     sendMessage, 
     startTyping, 
-    stopTyping, 
+    stopTyping,
+    initiateCall,
     on, 
     off 
   } = useSocket();
@@ -75,6 +79,9 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<any>(null);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
@@ -89,11 +96,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     // Load chat history
     loadChatHistory();
     
-    // Setup socket listeners
-    on('new_message', handleNewMessage);
-    on('user_typing', handleTypingStatus);
-    on('joined_chat', handleJoinedChat);
-    on('left_chat', handleLeftChat);
+    // Setup socket listeners (aligned with backend socket event names)
+    on('new-message', handleNewMessage as any);
+    on('chat:typing', handleTypingStatus as any);
+    on('chat-joined', handleJoinedChat as any);
+    on('chat-left', handleLeftChat as any);
     
     // Join chat room when connected
     if (isConnected && chat?.id) {
@@ -101,16 +108,24 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     }
     
     return () => {
-      off('new_message', handleNewMessage);
-      off('user_typing', handleTypingStatus);
-      off('joined_chat', handleJoinedChat);
-      off('left_chat', handleLeftChat);
+      off('new-message', handleNewMessage as any);
+      off('chat:typing', handleTypingStatus as any);
+      off('chat-joined', handleJoinedChat as any);
+      off('chat-left', handleLeftChat as any);
       
       if (chat?.id) {
         leaveChat(chat.id);
       }
+
+      // Cleanup recording
+      if (recording) {
+        recording.stopAndUnloadAsync().catch(console.error);
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
     };
-  }, [familyId, isConnected, chat?.id]);
+  }, [familyId, isConnected, chat?.id, recording]);
 
   const loadChatHistory = async () => {
     try {
@@ -180,9 +195,91 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     console.log('Left chat:', data);
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user || !chat) return;
+  // Send message with attachment
+  const sendMessageWithAttachment = async (file: any, image: any, audioUri: string | null) => {
+    if (!chat || !user) return;
 
+    try {
+      setIsSending(true);
+      
+      let messageType: 'text' | 'image' | 'video' | 'audio' | 'location' | 'file' = 'text';
+      let content = newMessage.trim() || '';
+      let metadata: any = {};
+
+      // Determine message type and prepare content
+      if (audioUri) {
+        messageType = 'audio';
+        content = content || 'Voice message';
+        metadata = { audioUri, duration: recordingTime };
+        setRecordingUri(null);
+        setRecordingTime(0);
+      } else if (image) {
+        messageType = 'image';
+        content = content || '📷 Image';
+        metadata = { 
+          imageUri: image.uri,
+          width: image.width,
+          height: image.height 
+        };
+        setSelectedImage(null);
+      } else if (file) {
+        messageType = 'file';
+        content = content || `📎 ${file.name}`;
+        metadata = {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          fileUri: file.uri
+        };
+        setSelectedFile(null);
+      }
+
+      // Send message via Socket.io for real-time delivery
+      if (isConnected) {
+        sendMessage(chat.id, content, messageType);
+      } else {
+        // Fallback to API if socket not connected
+        const response = await chatApi.sendMessage(chat.id, {
+          content,
+          type: messageType,
+          metadata,
+        });
+        
+        if (response.success) {
+          setMessages(prev => [...prev, response.data]);
+        }
+      }
+      
+      // Clear input and attachments
+      setNewMessage('');
+      setSelectedFile(null);
+      setSelectedImage(null);
+      
+      // Stop typing indicator
+      setIsTyping(false);
+      stopTyping(chat.id);
+      
+      // Scroll to bottom
+      scrollToBottom();
+    } catch (error) {
+      console.error('Failed to send message with attachment:', error);
+      Alert.alert('Error', 'Failed to send message');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() && !selectedFile && !selectedImage && !recordingUri) return;
+    if (!user || !chat) return;
+
+    // If there's an attachment, use the attachment handler
+    if (selectedFile || selectedImage || recordingUri) {
+      await sendMessageWithAttachment(selectedFile, selectedImage, recordingUri);
+      return;
+    }
+
+    // Otherwise send text message
     try {
       setIsSending(true);
       
@@ -268,39 +365,160 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   };
 
   // Handle file selection
-  const handleFileSelect = () => {
-    // TODO: Implement file picker
-    Alert.alert('File Selection', 'File picker will be implemented');
-    setShowAttachmentMenu(false);
+  const handleFileSelect = async () => {
+    try {
+      setShowAttachmentMenu(false);
+      
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        setSelectedFile({
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType || 'application/octet-stream',
+          size: file.size,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error picking file:', error);
+      Alert.alert('Error', 'Failed to select file. Please try again.');
+    }
   };
 
   // Handle image selection
-  const handleImageSelect = () => {
-    // TODO: Implement image picker
-    Alert.alert('Image Selection', 'Image picker will be implemented');
-    setShowAttachmentMenu(false);
+  const handleImageSelect = async () => {
+    try {
+      setShowAttachmentMenu(false);
+      
+      // Request permissions
+      const permissionResult = await imagePickerService.requestMediaLibraryPermissionsAsync();
+      if (permissionResult.status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant access to your photo library.');
+        return;
+      }
+
+      const result = await imagePickerService.launchImageLibraryAsync({
+        mediaTypes: 'Images',
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const image = result.assets[0];
+        setSelectedImage({
+          uri: image.uri,
+          type: 'image/jpeg',
+          width: image.width,
+          height: image.height,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
   };
 
   // Handle camera capture
-  const handleCameraCapture = () => {
-    // TODO: Implement camera capture
-    Alert.alert('Camera', 'Camera capture will be implemented');
-    setShowAttachmentMenu(false);
+  const handleCameraCapture = async () => {
+    try {
+      setShowAttachmentMenu(false);
+      
+      // Request camera permissions
+      const permissionResult = await imagePickerService.requestCameraPermissionsAsync();
+      if (permissionResult.status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant camera access.');
+        return;
+      }
+
+      const result = await imagePickerService.launchCameraAsync({
+        mediaTypes: 'Images',
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const image = result.assets[0];
+        setSelectedImage({
+          uri: image.uri,
+          type: 'image/jpeg',
+          width: image.width,
+          height: image.height,
+        });
+      }
+    } catch (error: any) {
+      console.error('Error capturing image:', error);
+      Alert.alert('Error', 'Failed to capture image. Please try again.');
+    }
   };
 
   // Handle voice recording start
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    // TODO: Implement actual voice recording
-    Alert.alert('Voice Recording', 'Voice recording started');
+  const handleStartRecording = async () => {
+    try {
+      // Request audio permissions
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant microphone access.');
+        return;
+      }
+
+      // Configure audio mode
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      // Start recording
+      const { recording: newRecording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      setRecording(newRecording);
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch (error: any) {
+      console.error('Error starting recording:', error);
+      Alert.alert('Error', 'Failed to start recording. Please try again.');
+    }
   };
 
   // Handle voice recording stop
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    // TODO: Implement actual voice recording stop and send
-    Alert.alert('Voice Recording', 'Voice recording stopped and sent');
+  const handleStopRecording = async () => {
+    try {
+      if (!recording) return;
+
+      // Stop timer
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+
+      // Stop recording
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      
+      setIsRecording(false);
+      setRecording(null);
+      
+      if (uri) {
+        setRecordingUri(uri);
+        // Auto-send the recording (or you can show a preview first)
+        await sendMessageWithAttachment(null, null, uri);
+      }
+    } catch (error: any) {
+      console.error('Error stopping recording:', error);
+      Alert.alert('Error', 'Failed to stop recording.');
+      setIsRecording(false);
+      setRecording(null);
+    }
   };
 
   // Handle attachment menu toggle
@@ -423,7 +641,57 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                   >
                     📍 Location shared
                   </Text>
-                  {/* TODO: Add location component */}
+                  <Pressable
+                    onPress={() => {
+                      const location = item.metadata?.location;
+                      if (location?.latitude && location?.longitude) {
+                        const url = Platform.select({
+                          ios: `maps://maps.apple.com/?ll=${location.latitude},${location.longitude}&q=${location.address || 'Location'}`,
+                          android: `geo:${location.latitude},${location.longitude}?q=${location.address || 'Location'}`,
+                        });
+                        if (url) {
+                          Linking.openURL(url).catch(err => {
+                            console.error('Failed to open maps:', err);
+                            Alert.alert('Error', 'Could not open maps app');
+                          });
+                        }
+                      }
+                    }}
+                    bg={isOwnMessage ? 'rgba(255, 255, 255, 0.2)' : colors.gray[100]}
+                    borderRadius={8}
+                    p={3}
+                    mb={2}
+                  >
+                    <HStack space={2} alignItems="center">
+                      <Icon as={IconMC} name="map-marker" size={5} color={isOwnMessage ? colors.white[500] : colors.primary[500]} />
+                      <VStack flex={1}>
+                        {location.address && (
+                          <Text
+                            style={textStyles.body}
+                            color={isOwnMessage ? colors.white[500] : colors.gray[800]}
+                            fontWeight="600"
+                          >
+                            {location.address}
+                          </Text>
+                        )}
+                        <Text
+                          style={textStyles.caption}
+                          color={isOwnMessage ? colors.white[400] : colors.gray[600]}
+                        >
+                          {location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)}
+                        </Text>
+                        {location.accuracy && (
+                          <Text
+                            style={textStyles.caption}
+                            color={isOwnMessage ? colors.white[400] : colors.gray[500]}
+                          >
+                            Accuracy: {Math.round(location.accuracy)}m
+                          </Text>
+                        )}
+                      </VStack>
+                      <Icon as={IconMC} name="open-in-new" size={4} color={isOwnMessage ? colors.white[400] : colors.gray[500]} />
+                    </HStack>
+                  </Pressable>
                 </Box>
               )}
               
@@ -711,19 +979,39 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
           
           <IconButton
             icon={<Icon as={IconMC} name="phone" size={6} />}
-            onPress={() => {/* TODO: Initiate voice call */}}
+            onPress={() => {
+              const participantIds = participants.map(p => p.id);
+              initiateCall(participantIds, 'voice');
+              Alert.alert('Call Initiated', 'Starting voice call...');
+            }}
             variant="ghost"
           />
           
           <IconButton
             icon={<Icon as={IconMC} name="video" size={6} />}
-            onPress={() => {/* TODO: Initiate video call */}}
+            onPress={() => {
+              const participantIds = participants.map(p => p.id);
+              initiateCall(participantIds, 'video');
+              Alert.alert('Call Initiated', 'Starting video call...');
+            }}
             variant="ghost"
           />
           
           <IconButton
             icon={<Icon as={IconMC} name="dots-vertical" size={6} />}
-            onPress={() => {/* TODO: Open chat options */}}
+            onPress={() => {
+              Alert.alert(
+                'Chat Options',
+                'Select an option',
+                [
+                  { text: 'View Members', onPress: () => {} },
+                  { text: 'Mute Notifications', onPress: () => {} },
+                  { text: 'Clear Chat', onPress: () => {} },
+                  { text: 'Leave Chat', onPress: () => {}, style: 'destructive' },
+                  { text: 'Cancel', style: 'cancel' }
+                ]
+              );
+            }}
             variant="ghost"
           />
         </HStack>
@@ -801,7 +1089,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                   <HStack space={1} mr={2}>
                     <IconButton
                       icon={<Icon as={IconMC} name="camera" size={5} />}
-                      onPress={() => {/* TODO: Take photo */}}
+                      onPress={handleCameraCapture}
+                      variant="ghost"
+                      size="sm"
+                    />
+                    <IconButton
+                      icon={<Icon as={IconMC} name="paperclip" size={5} />}
+                      onPress={toggleAttachmentMenu}
                       variant="ghost"
                       size="sm"
                     />
@@ -831,12 +1125,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                   <Icon as={IconMC} name="send" size={5} />
                 )
               }
-              onPress={sendMessage}
+              onPress={handleSendMessage}
               bg={colors.primary[500]}
               _pressed={{ bg: colors.primary[600] }}
               borderRadius="full"
               size="sm"
-              isDisabled={!newMessage.trim() || isSending}
+              isDisabled={(!newMessage.trim() && !selectedFile && !selectedImage && !recordingUri) || isSending}
             />
           </HStack>
         </Box>

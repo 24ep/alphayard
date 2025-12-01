@@ -1,9 +1,8 @@
 import { Response } from 'express';
-import { AuthenticatedRequest } from '../middleware/auth';
 import { getSupabaseClient } from '../services/supabaseService';
 
 export class TodosController {
-  static async list(req: AuthenticatedRequest, res: Response) {
+  static async list(req: any, res: Response) {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
@@ -24,7 +23,7 @@ export class TodosController {
     }
   }
 
-  static async create(req: AuthenticatedRequest, res: Response) {
+  static async create(req: any, res: Response) {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
@@ -69,7 +68,7 @@ export class TodosController {
     }
   }
 
-  static async update(req: AuthenticatedRequest, res: Response) {
+  static async update(req: any, res: Response) {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
@@ -107,7 +106,7 @@ export class TodosController {
     }
   }
 
-  static async remove(req: AuthenticatedRequest, res: Response) {
+  static async remove(req: any, res: Response) {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
@@ -137,7 +136,7 @@ export class TodosController {
     }
   }
 
-  static async reorder(req: AuthenticatedRequest, res: Response) {
+  static async reorder(req: any, res: Response) {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;

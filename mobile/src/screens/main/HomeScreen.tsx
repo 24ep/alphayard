@@ -32,14 +32,14 @@ import { useHomeScreen } from '../../hooks/home/useHomeScreen';
 import { emotionService, EmotionRecord } from '../../services/emotionService';
 
 // API Services
-import { familyApi, safetyApi, locationApi } from '../../services/api';
+import { api, familyApi, safetyApi, locationApi } from '../../services/api';
 import { locationService, FamilyLocation } from '../../services/location/locationService';
 
 // Constants and Styles
 import { ATTENTION_APPS } from '../../constants/home';
 import { homeStyles } from '../../styles/homeStyles';
 // Inline API base to fetch settings without additional imports
-const API_BASE_URL_MOBILE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL_MOBILE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081/api/v1';
 
 const HomeScreen: React.FC = () => {
   const { user } = useAuth();
@@ -143,13 +143,55 @@ const HomeScreen: React.FC = () => {
   // Backend integration functions
   const loadFamilies = async () => {
     try {
-      const response = await familyApi.getFamilies();
-      if (response.success) {
-        setFamilies(response.families);
+      // Prefer the dedicated "my hourse" endpoint so the home screen always has
+      // at least the current family with members and stats.
+      const response: any = await api.get('/families/my-hourse');
+      const hourse = response?.hourse;
+
+      if (hourse) {
+        const members = (hourse.members || []).map((member: any) => ({
+          id: member.id,
+          name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
+          userName: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
+          role: member.role,
+          notifications: typeof member.notifications === 'number' ? member.notifications : 0,
+          // Used by location service as a fallback for timestamps
+          lastLocationUpdate: member.joinedAt,
+          address: member.address,
+          placeLabel: member.placeLabel,
+          isOnline: !!member.isOnline,
+        }));
+
+        const familyForState = {
+          id: hourse.id,
+          name: hourse.name,
+          type: hourse.type,
+          description: hourse.description,
+          inviteCode: hourse.invite_code,
+          createdAt: hourse.created_at,
+          ownerId: hourse.owner_id,
+          avatar_url: hourse.avatar || null,
+          members,
+          stats: hourse.stats || {
+            totalMessages: 0,
+            totalLocations: 0,
+            totalMembers: members.length,
+          },
+        };
+
+        setFamilies([familyForState]);
+      } else {
+        setFamilies([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // 404 is expected for new users without families - don't show error
+      if (error?.code === 'NOT_FOUND' || error?.response?.status === 404) {
+        setFamilies([]);
+        return;
+      }
+      // Only log/show errors for unexpected failures
       console.error('Error loading families:', error);
-      Alert.alert('Error', 'Failed to load families');
+      setFamilies([]);
     }
   };
 
@@ -159,7 +201,12 @@ const HomeScreen: React.FC = () => {
       if (response.success) {
         setSafetyStats(response.stats);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // 404 is expected for new users without stats - silently handle
+      if (error?.code === 'NOT_FOUND' || error?.response?.status === 404) {
+        return;
+      }
+      // Only log unexpected errors
       console.error('Error loading safety stats:', error);
     }
   };
@@ -170,7 +217,12 @@ const HomeScreen: React.FC = () => {
       if (response.success) {
         setLocationStats(response.stats);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // 404 is expected for new users without stats - silently handle
+      if (error?.code === 'NOT_FOUND' || error?.response?.status === 404) {
+        return;
+      }
+      // Only log unexpected errors
       console.error('Error loading location stats:', error);
     }
   };
@@ -316,17 +368,27 @@ const HomeScreen: React.FC = () => {
     }, [animateToHome])
   );
 
-  // Transform hourse data from API
-  const familyMembers = families.map(hourse => ({
-    id: hourse.id,
-    name: hourse.name,
-    notifications: 0,
-    isComposite: false,
-    type: 'hourse',
-    familyId: hourse.id,
-    avatarUrl: hourse.avatar_url || null,
-  }));
-  
+  // Transform hourse data from API into live-status friendly members
+  const familyMembersForStatus = (families || []).flatMap((hourse: any) =>
+    (hourse.members || []).map((member: any) => ({
+      id: member.id,
+      name: member.name || `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
+      avatar: member.avatar || member.avatarUrl || '',
+      status: member.isOnline ? ('online' as const) : ('offline' as const),
+      lastActive: member.lastActive ? new Date(member.lastActive) : new Date(member.joinedAt || Date.now()),
+      heartRate: member.heartRate ?? 0,
+      heartRateHistory: member.heartRateHistory || [],
+      steps: member.steps ?? 0,
+      sleepHours: member.sleepHours ?? 0,
+      location: member.location || 'Not Available',
+      batteryLevel: member.batteryLevel ?? 0,
+      isEmergency: !!member.isEmergency,
+      mood: member.mood,
+      activity: member.activity,
+      temperature: member.temperature,
+    }))
+  );
+
   // Always include the current user in hourse status
   const currentUserMember = {
     id: user?.id || 'current-user',
@@ -347,7 +409,7 @@ const HomeScreen: React.FC = () => {
   };
 
   // Combine current user with hourse members
-  const familyStatusMembers = [currentUserMember, ...families];
+  const familyStatusMembers = [currentUserMember, ...familyMembersForStatus];
 
   // hourse locations from API (including current user)
   // hourse locations are now managed by the real-time location service

@@ -104,7 +104,7 @@ export const authenticateToken = async (
 
 export const optionalAuth = async (
   req: AuthenticatedRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ) => {
   try {
@@ -144,7 +144,7 @@ export const optionalAuth = async (
 
 // Role-based access control middleware
 export const requireRole = (requiredRole: string) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return (req: any, res: Response, next: NextFunction) => {
     try {
       // Extract role from a trusted source. Prefer upstream assignment (e.g., gateway),
       // fallback to JWT claim parsed earlier into req as needed by your stack.
@@ -178,7 +178,7 @@ export const requireFamilyMember = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const supabase = getSupabaseClient();
     
@@ -189,10 +189,11 @@ export const requireFamilyMember = async (
       .single();
 
     if (!familyMember) {
-      return res.status(403).json({
+      res.status(403).json({
         error: 'Access denied',
         message: 'You must be a member of a hourse to access this resource'
       });
+      return;
     }
 
     // Add hourse info to request
@@ -202,10 +203,11 @@ export const requireFamilyMember = async (
     next();
   } catch (error) {
     console.error('hourse member check error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to verify hourse membership'
     });
+    return;
   }
 };
 
@@ -213,7 +215,7 @@ export const requireFamilyOwner = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const supabase = getSupabaseClient();
     
@@ -225,10 +227,11 @@ export const requireFamilyOwner = async (
       .single();
 
     if (!familyMember) {
-      return res.status(403).json({
+      res.status(403).json({
         error: 'Access denied',
         message: 'You must be a hourse owner to access this resource'
       });
+      return;
     }
 
     req.familyId = familyMember.family_id;
@@ -237,9 +240,10 @@ export const requireFamilyOwner = async (
     next();
   } catch (error) {
     console.error('hourse owner check error:', error);
-    return res.status(500).json({
+    res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to verify hourse ownership'
     });
+    return;
   }
 };

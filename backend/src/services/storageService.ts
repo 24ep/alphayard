@@ -1,11 +1,29 @@
 import multer from 'multer';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
 import { getSupabaseClient } from './supabaseService';
+
+// Optional AWS SDK imports - only used if AWS credentials are configured
+let S3Client: any;
+let PutObjectCommand: any;
+let GetObjectCommand: any;
+let DeleteObjectCommand: any;
+let getSignedUrl: any;
+
+try {
+  const s3Client = require('@aws-sdk/client-s3');
+  S3Client = s3Client.S3Client;
+  PutObjectCommand = s3Client.PutObjectCommand;
+  GetObjectCommand = s3Client.GetObjectCommand;
+  DeleteObjectCommand = s3Client.DeleteObjectCommand;
+  const presigner = require('@aws-sdk/s3-request-presigner');
+  getSignedUrl = presigner.getSignedUrl;
+} catch (e) {
+  // AWS SDK not installed - will use local storage only
+  console.warn('⚠️ AWS SDK not installed - using local storage only');
+}
 
 interface FileUploadOptions {
   maxSize?: number;
@@ -28,7 +46,7 @@ interface UploadedFile {
 }
 
 class StorageService {
-  private s3Client: S3Client | null = null;
+  private s3Client: any = null;
   private bucketName: string;
   private uploadPath: string;
 
@@ -39,15 +57,19 @@ class StorageService {
   }
 
   private initializeS3() {
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
-      this.s3Client = new S3Client({
-        region: process.env.AWS_REGION || 'us-east-1',
-        credentials: {
-          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-        },
-      });
-      console.log('✅ AWS S3 client initialized');
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && S3Client) {
+      try {
+        this.s3Client = new S3Client({
+          region: process.env.AWS_REGION || 'us-east-1',
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+          },
+        });
+        console.log('✅ AWS S3 client initialized');
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize AWS S3 - using local storage:', error);
+      }
     } else {
       console.warn('⚠️ AWS S3 not configured - using local storage');
     }
@@ -149,7 +171,7 @@ class StorageService {
   }
 
   private async uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<void> {
-    if (!this.s3Client) throw new Error('S3 client not initialized');
+    if (!this.s3Client || !PutObjectCommand) throw new Error('S3 client not initialized');
 
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
@@ -176,7 +198,7 @@ class StorageService {
   }
 
   private async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    if (!this.s3Client) {
+    if (!this.s3Client || !getSignedUrl || !GetObjectCommand) {
       return `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/${key}`;
     }
 
@@ -279,7 +301,7 @@ class StorageService {
       .select('*', { count: 'exact' })
       .eq('uploaded_by', userId)
       .order('uploaded_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      .range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
     if (familyId) {
       query = query.eq('family_id', familyId);
@@ -370,7 +392,7 @@ class StorageService {
   }
 
   private async deleteFromS3(key: string): Promise<void> {
-    if (!this.s3Client) return;
+    if (!this.s3Client || !DeleteObjectCommand) return;
 
     const command = new DeleteObjectCommand({
       Bucket: this.bucketName,
@@ -416,7 +438,7 @@ class StorageService {
 
   // Health check
   async isHealthy(): Promise<boolean> {
-    if (this.s3Client) {
+    if (this.s3Client && GetObjectCommand) {
       try {
         // Test S3 connection
         const command = new GetObjectCommand({

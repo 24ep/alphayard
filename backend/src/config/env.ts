@@ -1,4 +1,12 @@
+import dotenv from 'dotenv';
+import path from 'path';
 import { z } from 'zod';
+
+// Load environment variables before validating
+// 1) Backend-local .env
+dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+// 2) Fallback to default .env resolution (e.g. project root)
+dotenv.config();
 
 /**
  * Environment Variable Validation
@@ -60,10 +68,10 @@ export function getEnv(): Env {
   if (!env) {
     try {
       env = envSchema.parse(process.env);
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof z.ZodError) {
         console.error('❌ Environment variable validation failed:');
-        error.errors.forEach((err) => {
+        error.errors.forEach((err: z.ZodIssue) => {
           console.error(`  - ${err.path.join('.')}: ${err.message}`);
         });
         process.exit(1);
@@ -81,10 +89,10 @@ export function validateEnv(): { isValid: boolean; errors: string[] } {
   try {
     envSchema.parse(process.env);
     return { isValid: true, errors: [] };
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       const errors = error.errors.map(
-        (err) => `${err.path.join('.')}: ${err.message}`
+        (err: z.ZodIssue) => `${err.path.join('.')}: ${err.message}`
       );
       return { isValid: false, errors };
     }

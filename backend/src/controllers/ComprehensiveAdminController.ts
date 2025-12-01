@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { supabase } from '../config/supabase';
+import supabaseService from '../services/supabaseService';
 
 export interface AdminRole {
   id: string;
@@ -94,9 +95,9 @@ export interface ApplicationSetting {
 
 export class ComprehensiveAdminController {
   // Dashboard Statistics
-  async getDashboardStats(req: Request, res: Response) {
+  async getDashboardStats(req: any, res: Response) {
     try {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_stats');
+      const { data, error } = await supabaseService.getSupabaseClient().rpc('get_admin_dashboard_stats');
 
       if (error) {
         return res.status(400).json({ error: error.message });
@@ -110,7 +111,7 @@ export class ComprehensiveAdminController {
   }
 
   // Admin Users Management
-  async getAdminUsers(req: Request, res: Response) {
+  async getAdminUsers(req: any, res: Response) {
     try {
       const { role_id, is_active, search } = req.query;
       
@@ -146,7 +147,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async createAdminUser(req: Request, res: Response) {
+  async createAdminUser(req: any, res: Response) {
     try {
       const adminUserData = req.body;
 
@@ -171,7 +172,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async updateAdminUser(req: Request, res: Response) {
+  async updateAdminUser(req: any, res: Response) {
     try {
       const { adminUserId } = req.params;
       const adminUserData = req.body;
@@ -199,7 +200,7 @@ export class ComprehensiveAdminController {
   }
 
   // House Management
-  async getHouses(req: Request, res: Response) {
+  async getHouses(req: any, res: Response) {
     try {
       const { family_id, house_status, house_type, search, city, state } = req.query;
       
@@ -245,7 +246,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async createHouse(req: Request, res: Response) {
+  async createHouse(req: any, res: Response) {
     try {
       const houseData = req.body;
 
@@ -269,7 +270,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async updateHouse(req: Request, res: Response) {
+  async updateHouse(req: any, res: Response) {
     try {
       const { houseId } = req.params;
       const houseData = req.body;
@@ -296,7 +297,7 @@ export class ComprehensiveAdminController {
   }
 
   // Social Media Management
-  async getSocialAccounts(req: Request, res: Response) {
+  async getSocialAccounts(req: any, res: Response) {
     try {
       const { family_id, platform, connection_status, search } = req.query;
       
@@ -334,7 +335,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async getSocialPosts(req: Request, res: Response) {
+  async getSocialPosts(req: any, res: Response) {
     try {
       const { family_id, platform, post_type, start_date, end_date, search } = req.query;
       
@@ -380,7 +381,7 @@ export class ComprehensiveAdminController {
   }
 
   // Application Settings
-  async getApplicationSettings(req: Request, res: Response) {
+  async getApplicationSettings(req: any, res: Response) {
     try {
       const { category, is_public, is_editable } = req.query;
       
@@ -413,7 +414,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async createOrUpsertApplicationSetting(req: Request, res: Response) {
+  async createOrUpsertApplicationSetting(req: any, res: Response) {
     try {
       const {
         setting_key,
@@ -467,7 +468,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async updateApplicationSetting(req: Request, res: Response) {
+  async updateApplicationSetting(req: any, res: Response) {
     try {
       const { settingKey } = req.params;
       const { setting_value, updated_by } = req.body;
@@ -495,7 +496,7 @@ export class ComprehensiveAdminController {
   }
 
   // System Notifications
-  async getSystemNotifications(req: Request, res: Response) {
+  async getSystemNotifications(req: any, res: Response) {
     try {
       const { is_active, notification_type, priority, is_global } = req.query;
       
@@ -533,7 +534,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async createSystemNotification(req: Request, res: Response) {
+  async createSystemNotification(req: any, res: Response) {
     try {
       const notificationData = req.body;
 
@@ -558,7 +559,7 @@ export class ComprehensiveAdminController {
   }
 
   // Admin Activity Log
-  async getAdminActivityLog(req: Request, res: Response) {
+  async getAdminActivityLog(req: any, res: Response) {
     try {
       const { admin_user_id, resource_type, action, start_date, end_date } = req.query;
       
@@ -591,7 +592,7 @@ export class ComprehensiveAdminController {
       // Apply pagination
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
-      query = query.range(offset, offset + limit - 1);
+      query = query.range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       const { data, error } = await query;
 
@@ -607,7 +608,7 @@ export class ComprehensiveAdminController {
   }
 
   // User Management
-  async getUsers(req: Request, res: Response) {
+  async getUsers(req: any, res: Response) {
     try {
       const { is_active, user_type, family_id, search, created_after, created_before } = req.query;
       
@@ -642,7 +643,7 @@ export class ComprehensiveAdminController {
       // Apply pagination
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
-      query = query.range(offset, offset + limit - 1);
+      query = query.range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       const { data, error } = await query;
 
@@ -657,7 +658,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async updateUser(req: Request, res: Response) {
+  async updateUser(req: any, res: Response) {
     try {
       const { userId } = req.params;
       const userData = req.body;
@@ -684,7 +685,7 @@ export class ComprehensiveAdminController {
   }
 
   // Family Management
-  async getFamilies(req: Request, res: Response) {
+  async getFamilies(req: any, res: Response) {
     try {
       const { is_active, search, created_after, created_before } = req.query;
       
@@ -725,7 +726,7 @@ export class ComprehensiveAdminController {
     }
   }
 
-  async updateFamily(req: Request, res: Response) {
+  async updateFamily(req: any, res: Response) {
     try {
       const { familyId } = req.params;
       const familyData = req.body;

@@ -71,8 +71,13 @@ class ApiClient {
       },
       async (error) => {
         const originalRequest = error.config;
+        
+        // Don't try to refresh token for auth endpoints (login, register)
+        const isAuthEndpoint = originalRequest?.url?.includes('/auth/login') || 
+                               originalRequest?.url?.includes('/auth/register') ||
+                               originalRequest?.url?.includes('/auth/sso');
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           if (this.isRefreshing) {
             return new Promise((resolve, reject) => {
               this.failedQueue.push({ resolve, reject });
@@ -171,14 +176,19 @@ class ApiClient {
       switch (status) {
         case 400:
           return {
-            code: 'VALIDATION_ERROR',
-            message: data?.message || 'Invalid request data',
+            code: data?.code || 'VALIDATION_ERROR',
+            message: data?.message || data?.error || 'Invalid request data',
             details: data?.details,
           };
         case 401:
+          // Backend returns { error: 'Invalid credentials', message: 'Email or password is incorrect' }
+          // Try both message and error fields
+          const errorMessage = data?.message || data?.error || 'Authentication required';
+          const errorCode = data?.code || 'UNAUTHORIZED';
           return {
-            code: 'UNAUTHORIZED',
-            message: 'Authentication required',
+            code: errorCode,
+            message: errorMessage,
+            details: data?.details,
           };
         case 403:
           return {

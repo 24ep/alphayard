@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 interface SocketContextType {
   isConnected: boolean;
   socketId: string | undefined;
+  onlineUserIds: string[];
   joinChat: (chatId: string) => void;
   leaveChat: (chatId: string) => void;
   sendMessage: (chatId: string, content: string, messageType?: string, attachments?: any[]) => void;
@@ -16,6 +17,10 @@ interface SocketContextType {
   sendEmergencyAlert: (message: string, location?: string, type?: string) => void;
   acknowledgeAlert: (alertId: string) => void;
   updateStatus: (status: string, message?: string) => void;
+  initiateCall: (participants: string[], callType?: 'voice' | 'video') => void;
+  answerCall: (callerId: string, answer: boolean) => void;
+  endCall: (participants: string[]) => void;
+  sendCallSignal: (targetId: string, signal: any) => void;
   on: <K extends keyof SocketEvents>(event: K, callback: SocketEvents[K]) => void;
   off: <K extends keyof SocketEvents>(event: K, callback?: SocketEvents[K]) => void;
 }
@@ -30,6 +35,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [socketId, setSocketId] = useState<string | undefined>();
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -69,11 +75,22 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   };
 
   const setupGlobalEventListeners = () => {
+    // Presence listeners
+    socketService.on('user:online', (data) => {
+      if (!data?.userId) return;
+      setOnlineUserIds((prev) => (prev.includes(data.userId) ? prev : [...prev, data.userId]));
+    });
+
+    socketService.on('user:offline', (data) => {
+      if (!data?.userId) return;
+      setOnlineUserIds((prev) => prev.filter((id) => id !== data.userId));
+    });
+
     // Emergency alert listener
-    socketService.on('emergency_alert', (data) => {
+    socketService.on('safety:alert', (data) => {
       Alert.alert(
         '🚨 Emergency Alert',
-        `${data.alert.user.first_name} ${data.alert.user.last_name} has sent an emergency alert: ${data.alert.message}`,
+        data.message || 'A family member has sent an emergency alert.',
         [
           {
             text: 'Acknowledge',
@@ -185,6 +202,26 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   };
 
   // =============================================
+  // CALL METHODS
+  // =============================================
+
+  const initiateCall = (participants: string[], callType: 'voice' | 'video' = 'voice') => {
+    socketService.initiateCall(participants, callType);
+  };
+
+  const answerCall = (callerId: string, answer: boolean) => {
+    socketService.answerCall(callerId, answer);
+  };
+
+  const endCall = (participants: string[]) => {
+    socketService.endCall(participants);
+  };
+
+  const sendCallSignal = (targetId: string, signal: any) => {
+    socketService.sendCallSignal(targetId, signal);
+  };
+
+  // =============================================
   // EVENT LISTENER METHODS
   // =============================================
 
@@ -199,6 +236,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const contextValue: SocketContextType = {
     isConnected,
     socketId,
+    onlineUserIds,
     joinChat,
     leaveChat,
     sendMessage,
@@ -209,6 +247,10 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     sendEmergencyAlert,
     acknowledgeAlert,
     updateStatus,
+    initiateCall,
+    answerCall,
+    endCall,
+    sendCallSignal,
     on,
     off,
   };

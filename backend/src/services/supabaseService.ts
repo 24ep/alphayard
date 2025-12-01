@@ -1,12 +1,10 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { env, assertRequiredEnv } from '../config/env';
+import { config as env } from '../config/env';
 
 let supabase: SupabaseClient | null = null;
 
 export const initializeSupabase = async (): Promise<SupabaseClient> => {
   if (supabase) return supabase;
-
-  assertRequiredEnv();
 
   supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {

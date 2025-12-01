@@ -45,7 +45,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your_supabase_anon_key_here',
     
     // API Configuration
-    apiUrl: process.env.EXPO_PUBLIC_API_URL || (isDevelopment ? 'http://localhost:3000' : 'https://your-api-domain.com'),
+    apiUrl: process.env.EXPO_PUBLIC_API_URL || (isDevelopment ? 'http://localhost:3000/api/v1' : 'https://your-api-domain.com'),
     
     // Application Configuration
     appName: process.env.EXPO_PUBLIC_APP_NAME || 'Bondarys',

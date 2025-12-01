@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (data.session.refresh_token) {
           localStorage.setItem('refreshToken', data.session.refresh_token)
         }
-        router.push('/dashboard')
+        router.push('/')
       }
     } catch (error: any) {
       console.error('Login error:', error)
@@ -121,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           apiClient.setAuthToken(data.session.access_token)
           localStorage.setItem('accessToken', data.session.access_token)
         }
-        router.push('/dashboard')
+        router.push('/')
       } else {
         // Email confirmation required
         router.push('/auth/verify-email')

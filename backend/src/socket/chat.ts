@@ -10,9 +10,9 @@ import { Server, Socket } from 'socket.io';
 import { ChatDatabaseService } from '../services/chatDatabaseService';
 import { messageRateLimiter, reactionRateLimiter, typingRateLimiter } from '../middleware/chatRateLimiter';
 
-interface SocketData {
-  userId: string;
-}
+// interface SocketData { // Not used
+//   userId: string;
+// }
 
 export const setupChatHandlers = (io: Server, socket: Socket & { userId?: string }) => {
   // Join chat room

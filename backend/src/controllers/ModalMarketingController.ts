@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { supabase } from '../config/supabase';
+import supabaseService from '../services/supabaseService';
 
 export interface ModalMarketingContent {
   id: string;
@@ -38,7 +39,7 @@ export interface ModalAnalytics {
 
 export class ModalMarketingController {
   // Get active modals for a user/family
-  async getActiveModals(req: Request, res: Response) {
+  async getActiveModals(req: any, res: Response) {
     try {
       const { userId, familyId } = req.query;
       const now = new Date().toISOString();
@@ -102,7 +103,7 @@ export class ModalMarketingController {
   }
 
   // Get all modal content (admin)
-  async getModalContent(req: Request, res: Response) {
+  async getModalContent(req: any, res: Response) {
     try {
       const query = req.query;
       
@@ -128,7 +129,7 @@ export class ModalMarketingController {
       // Apply pagination
       const limit = parseInt(query.limit as string) || 20;
       const offset = parseInt(query.offset as string) || 0;
-      supabaseQuery = supabaseQuery.range(offset, offset + limit - 1);
+      supabaseQuery = supabaseQuery.range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       const { data, error } = await supabaseQuery;
 
@@ -144,7 +145,7 @@ export class ModalMarketingController {
   }
 
   // Get modal content by ID
-  async getModalContentById(req: Request, res: Response) {
+  async getModalContentById(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -170,7 +171,7 @@ export class ModalMarketingController {
   }
 
   // Create modal content
-  async createModalContent(req: Request, res: Response) {
+  async createModalContent(req: any, res: Response) {
     try {
       const contentData = req.body;
 
@@ -192,7 +193,7 @@ export class ModalMarketingController {
   }
 
   // Update modal content
-  async updateModalContent(req: Request, res: Response) {
+  async updateModalContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const contentData = req.body;
@@ -216,7 +217,7 @@ export class ModalMarketingController {
   }
 
   // Delete modal content
-  async deleteModalContent(req: Request, res: Response) {
+  async deleteModalContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -237,7 +238,7 @@ export class ModalMarketingController {
   }
 
   // Track modal interaction
-  async trackModalInteraction(req: Request, res: Response) {
+  async trackModalInteraction(req: any, res: Response) {
     try {
       const { modalId } = req.params;
       const { userId, familyId, actionType, actionData, deviceInfo, locationData } = req.body;
@@ -284,7 +285,7 @@ export class ModalMarketingController {
 
       // Update view count
       if (actionType === 'view') {
-        await supabase.rpc('increment_modal_views', { modal_id: modalId });
+        await supabaseService.getSupabaseClient().rpc('increment_modal_views', { modal_id: modalId });
       }
 
       res.json({ success: true });
@@ -295,7 +296,7 @@ export class ModalMarketingController {
   }
 
   // Get modal analytics
-  async getModalAnalytics(req: Request, res: Response) {
+  async getModalAnalytics(req: any, res: Response) {
     try {
       const { modalId } = req.params;
       const { startDate, endDate } = req.query;
@@ -346,7 +347,7 @@ export class ModalMarketingController {
   }
 
   // Get modal performance dashboard
-  async getModalDashboard(req: Request, res: Response) {
+  async getModalDashboard(req: any, res: Response) {
     try {
       const { startDate, endDate } = req.query;
 

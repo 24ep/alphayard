@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import XLSX from 'xlsx';
 import { Pool } from 'pg';
+import supabaseService from '../services/supabaseService';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -50,7 +51,7 @@ export interface Translation {
 
 export class LocalizationController {
   // Get all languages
-  async getLanguages(req: Request, res: Response) {
+  async getLanguages(req: any, res: Response) {
     try {
       const { active_only } = req.query as { active_only?: string };
       const params: any[] = [];
@@ -68,7 +69,7 @@ export class LocalizationController {
   }
 
   // Get language by code
-  async getLanguageByCode(req: Request, res: Response) {
+  async getLanguageByCode(req: any, res: Response) {
     try {
       const { code } = req.params;
       const { rows } = await pool.query(`SELECT * FROM languages WHERE code = $1 LIMIT 1`, [code]);
@@ -81,7 +82,7 @@ export class LocalizationController {
   }
 
   // Create language
-  async createLanguage(req: Request, res: Response) {
+  async createLanguage(req: any, res: Response) {
     try {
       const languageData = req.body;
       const fields = ['code','name','native_name','direction','is_active','is_default','flag_emoji'];
@@ -99,7 +100,7 @@ export class LocalizationController {
   }
 
   // Update language
-  async updateLanguage(req: Request, res: Response) {
+  async updateLanguage(req: any, res: Response) {
     try {
       const { languageId } = req.params;
       const languageData = req.body;
@@ -119,7 +120,7 @@ export class LocalizationController {
   }
 
   // Delete language
-  async deleteLanguage(req: Request, res: Response) {
+  async deleteLanguage(req: any, res: Response) {
     try {
       const { languageId } = req.params;
       await pool.query(`DELETE FROM languages WHERE id = $1`, [languageId]);
@@ -131,7 +132,7 @@ export class LocalizationController {
   }
 
   // Get translation keys
-  async getTranslationKeys(req: Request, res: Response) {
+  async getTranslationKeys(req: any, res: Response) {
     try {
       const { category, search, active_only } = req.query as any;
       const where: string[] = [];
@@ -153,7 +154,7 @@ export class LocalizationController {
   }
 
   // Create translation key
-  async createTranslationKey(req: Request, res: Response) {
+  async createTranslationKey(req: any, res: Response) {
     try {
       const keyData = req.body;
       const fields = ['key','category','description','context','is_active'];
@@ -171,7 +172,7 @@ export class LocalizationController {
   }
 
   // Get translations for a language
-  async getTranslationsForLanguage(req: Request, res: Response) {
+  async getTranslationsForLanguage(req: any, res: Response) {
     try {
       const { languageCode } = req.params;
       const { category, approved_only } = req.query as any;
@@ -197,7 +198,7 @@ export class LocalizationController {
   }
 
   // Get all translations with filters
-  async getTranslations(req: Request, res: Response) {
+  async getTranslations(req: any, res: Response) {
     try {
       const { language_id, key_id, approved_only, search } = req.query as any;
       const params: any[] = [];
@@ -226,7 +227,7 @@ export class LocalizationController {
   }
 
   // Create or update translation
-  async upsertTranslation(req: Request, res: Response) {
+  async upsertTranslation(req: any, res: Response) {
     try {
       const { keyId, languageId } = req.params;
       const translationData = req.body;
@@ -249,7 +250,7 @@ export class LocalizationController {
   }
 
   // Approve translation
-  async approveTranslation(req: Request, res: Response) {
+  async approveTranslation(req: any, res: Response) {
     try {
       const { translationId } = req.params;
       const { approved_by } = req.body;
@@ -265,9 +266,9 @@ export class LocalizationController {
   }
 
   // Get translation completion statistics
-  async getTranslationStats(req: Request, res: Response) {
+  async getTranslationStats(req: any, res: Response) {
     try {
-      const { data, error } = await supabase.rpc('get_translation_completion');
+      const { data, error } = await supabaseService.getSupabaseClient().rpc('get_translation_completion');
 
       if (error) {
         return res.status(400).json({ error: error.message });
@@ -281,29 +282,29 @@ export class LocalizationController {
   }
 
   // Get translation dashboard
-  async getTranslationDashboard(req: Request, res: Response) {
+  async getTranslationDashboard(req: any, res: Response) {
     try {
       // Get total counts
-      const { data: keyCount } = await supabase
+      const { data: keyCount } = await supabaseService.getSupabaseClient()
         .from('translation_keys')
         .select('id', { count: 'exact' })
         .eq('is_active', true);
 
-      const { data: languageCount } = await supabase
+      const { data: languageCount } = await supabaseService.getSupabaseClient()
         .from('languages')
         .select('id', { count: 'exact' })
         .eq('is_active', true);
 
-      const { data: translationCount } = await supabase
+      const { data: translationCount } = await supabaseService.getSupabaseClient()
         .from('translations')
         .select('id', { count: 'exact' })
         .eq('is_approved', true);
 
       // Get completion stats
-      const { data: completionStats } = await supabase.rpc('get_translation_completion');
+      const { data: completionStats } = await supabaseService.getSupabaseClient().rpc('get_translation_completion');
 
       // Get recent translations
-      const { data: recentTranslations } = await supabase
+      const { data: recentTranslations } = await supabaseService.getSupabaseClient()
         .from('translations')
         .select(`
           *,
@@ -329,7 +330,7 @@ export class LocalizationController {
   }
 
   // Export translations for a language
-  async exportTranslations(req: Request, res: Response) {
+  async exportTranslations(req: any, res: Response) {
     try {
       const { languageCode } = req.params;
       const { format = 'json' } = req.query;
@@ -367,7 +368,7 @@ export class LocalizationController {
   }
 
   // Import translations
-  async importTranslations(req: Request, res: Response) {
+  async importTranslations(req: any, res: Response) {
     try {
       const { languageCode } = req.params;
       const { translations, overwrite = false } = req.body;
@@ -401,7 +402,7 @@ export class LocalizationController {
   }
 
   // Export translations as Excel (.xlsx)
-  async exportTranslationsExcel(req: Request, res: Response) {
+  async exportTranslationsExcel(req: any, res: Response) {
     try {
       const { languageCode } = req.params;
       const { rows } = await pool.query(
@@ -430,7 +431,7 @@ export class LocalizationController {
   }
 
   // Import translations from Excel (.xlsx)
-  async importTranslationsExcel(req: Request, res: Response) {
+  async importTranslationsExcel(req: any, res: Response) {
     try {
       const { languageCode } = req.params;
       const overwrite = String(req.query.overwrite || 'false') === 'true';

@@ -453,7 +453,7 @@ export class SocialMediaService {
         .from('social_posts')
         .update({
           is_reported: true,
-          report_count: this.supabase.raw('report_count + 1'),
+          report_count: (await this.supabase.from('social_posts').select('report_count').eq('id', reportData.post_id).single()).data?.report_count + 1 || 1,
           last_reported_at: new Date().toISOString()
         })
         .eq('id', reportData.post_id);

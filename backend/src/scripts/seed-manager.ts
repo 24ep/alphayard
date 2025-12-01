@@ -42,7 +42,7 @@ async function runSeed() {
     process.exit(1);
   }
 
-  const seedSQL = fs.readFileSync(SEED_FILE, 'utf8');
+  // const seedSQL = fs.readFileSync(SEED_FILE, 'utf8'); // Not used
 
   try {
     // Execute seed SQL

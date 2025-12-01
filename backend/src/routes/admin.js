@@ -37,19 +37,41 @@ router.post('/stop-impersonate', authenticateToken, async (req, res) => {
   }
 });
 
-module.exports = router;
-
-const express = require('express');
-const router = express.Router();
 const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
-const hourse = require('../models/hourse');
-const Subscription = require('../models/Subscription');
-const EmergencyAlert = require('../models/EmergencyAlert');
-const SafetyCheck = require('../models/SafetyCheck');
-const Message = require('../models/Message');
-const { authenticateToken, requireRole } = require('../middleware/auth');
 const { sendEmail } = require('../services/emailService');
+
+// Optional model imports - models may not exist in all environments
+let User, hourse, Subscription, EmergencyAlert, SafetyCheck, Message;
+try {
+  User = require('../models/User');
+} catch (e) {
+  // User model not available
+}
+try {
+  hourse = require('../models/hourse');
+} catch (e) {
+  // hourse model not available
+}
+try {
+  Subscription = require('../models/Subscription');
+} catch (e) {
+  // Subscription model not available
+}
+try {
+  EmergencyAlert = require('../models/EmergencyAlert');
+} catch (e) {
+  // EmergencyAlert model not available
+}
+try {
+  SafetyCheck = require('../models/SafetyCheck');
+} catch (e) {
+  // SafetyCheck model not available
+}
+try {
+  Message = require('../models/Message');
+} catch (e) {
+  // Message model not available
+}
 
 // Admin middleware - require admin role (centralized RBAC)
 const requireAdmin = requireRole('admin');

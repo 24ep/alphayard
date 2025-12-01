@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 import { FONT_STYLES } from '../../utils/fontUtils';
 import marketingService, { MarketingSlide } from '../../services/marketingService';
 
@@ -26,6 +27,37 @@ interface MarketingScreenProps {
 
 const MarketingScreen: React.FC<MarketingScreenProps> = () => {
   const navigation = useNavigation();
+  const { isAuthenticated, user } = useAuth();
+  
+  // CRITICAL: Try to navigate away if authenticated
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      console.error('[MarketingScreen] ⚠️ BLOCKED: Authenticated user tried to access Marketing screen');
+      console.error('[MarketingScreen] User:', user.email);
+      console.error('[MarketingScreen] This should NEVER happen - RootNavigator should prevent this');
+      
+      try {
+        // Try to get to the root navigator and reset
+        const rootNavigation = navigation.getParent() || navigation;
+        if (rootNavigation && rootNavigation.reset) {
+          console.log('[MarketingScreen] Attempting to navigate away from Marketing screen');
+          rootNavigation.reset({
+            index: 0,
+            routes: [{ name: 'App' }],
+          });
+        }
+      } catch (error) {
+        console.error('[MarketingScreen] Error navigating away:', error);
+      }
+    }
+  }, [isAuthenticated, user, navigation]);
+  
+  // CRITICAL: Don't render if authenticated - this is a safety measure
+  // Check this FIRST before any other logic
+  if (isAuthenticated && user) {
+    // Return null immediately - don't render anything
+    return null;
+  }
   const [currentSlide, setCurrentSlide] = useState(0);
   const [marketingSlides, setMarketingSlides] = useState<MarketingSlide[]>([]);
   const [loading, setLoading] = useState(true);

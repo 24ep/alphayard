@@ -66,17 +66,49 @@ async function run() {
 	if (branding.mobileAppName) {
 		app.expo.name = branding.mobileAppName
 	}
+	// Update or clean up icon configuration
 	if (iconPath) {
-		app.expo.icon = iconPath
-		app.expo.android = app.expo.android || {}
-		app.expo.android.adaptiveIcon = app.expo.android.adaptiveIcon || {}
-		app.expo.android.adaptiveIcon.foregroundImage = iconPath
+		// Only set if the downloaded file actually exists
+		const absoluteIconPath = path.join(PROJECT_ROOT, iconPath.replace(/^\.\//, ''))
+		if (fs.existsSync(absoluteIconPath)) {
+			app.expo.icon = iconPath
+			app.expo.android = app.expo.android || {}
+			app.expo.android.adaptiveIcon = app.expo.android.adaptiveIcon || {}
+			app.expo.android.adaptiveIcon.foregroundImage = iconPath
+		}
+	} else {
+		// No icon from branding – remove stale icon paths that point to missing files
+		if (typeof app.expo.icon === 'string') {
+			const existingIconPath = path.join(PROJECT_ROOT, app.expo.icon.replace(/^\.\//, ''))
+			if (!fs.existsSync(existingIconPath)) {
+				delete app.expo.icon
+			}
+		}
+		if (app.expo.android?.adaptiveIcon?.foregroundImage) {
+			const fg = app.expo.android.adaptiveIcon.foregroundImage
+			if (typeof fg === 'string') {
+				const existingFgPath = path.join(PROJECT_ROOT, fg.replace(/^\.\//, ''))
+				if (!fs.existsSync(existingFgPath)) {
+					delete app.expo.android.adaptiveIcon.foregroundImage
+				}
+			}
+		}
 	}
+
+	// Update or clean up splash configuration
 	if (splashPath) {
-		app.expo.splash = app.expo.splash || {}
-		app.expo.splash.image = splashPath
-		app.expo.splash.resizeMode = app.expo.splash.resizeMode || 'contain'
-		app.expo.splash.backgroundColor = app.expo.splash.backgroundColor || '#ffffff'
+		const absoluteSplashPath = path.join(PROJECT_ROOT, splashPath.replace(/^\.\//, ''))
+		if (fs.existsSync(absoluteSplashPath)) {
+			app.expo.splash = app.expo.splash || {}
+			app.expo.splash.image = splashPath
+			app.expo.splash.resizeMode = app.expo.splash.resizeMode || 'contain'
+			app.expo.splash.backgroundColor = app.expo.splash.backgroundColor || '#ffffff'
+		}
+	} else if (app.expo.splash?.image) {
+		const existingSplashPath = path.join(PROJECT_ROOT, app.expo.splash.image.replace(/^\.\//, ''))
+		if (!fs.existsSync(existingSplashPath)) {
+			delete app.expo.splash.image
+		}
 	}
 
 	fs.writeFileSync(appJsonPath, JSON.stringify(app, null, 2))

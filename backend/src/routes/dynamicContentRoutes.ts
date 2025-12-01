@@ -7,7 +7,7 @@ import { authenticateAdmin } from '../middleware/adminAuth';
 const router = Router();
 
 // Content Pages CRUD
-router.get('/pages', authenticateToken, async (req, res) => {
+router.get('/pages', authenticateToken as any, async (req, res) => {
   try {
     const { type, status, page = 1, page_size = 20, search } = req.query;
     const supabase = getSupabaseClient();
@@ -54,7 +54,7 @@ router.get('/pages', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/pages/:id', authenticateToken, async (req, res) => {
+router.get('/pages/:id', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabaseClient();
@@ -110,8 +110,8 @@ router.post('/pages', authenticateAdmin, async (req, res) => {
           status,
           components,
           mobile_display,
-          created_by: req.admin?.id || 'admin',
-          updated_by: req.admin?.id || 'admin'
+          created_by: (req as any).admin?.id || (req as any).user?.id || 'admin',
+          updated_by: (req as any).admin?.id || (req as any).user?.id || 'admin'
         })
         .select()
         .single();
@@ -132,8 +132,8 @@ router.post('/pages', authenticateAdmin, async (req, res) => {
         status,
         components,
         mobile_display,
-        created_by: req.admin?.id || 'admin',
-        updated_by: req.admin?.id || 'admin'
+        created_by: (req as any).admin?.id || (req as any).user?.id || 'admin',
+        updated_by: (req as any).admin?.id || (req as any).user?.id || 'admin'
       });
 
       res.status(201).json({ page });
@@ -144,7 +144,7 @@ router.post('/pages', authenticateAdmin, async (req, res) => {
   }
 });
 
-router.put('/pages/:id', authenticateToken, async (req, res) => {
+router.put('/pages/:id', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -159,7 +159,7 @@ router.put('/pages/:id', authenticateToken, async (req, res) => {
     const supabase = getSupabaseClient();
     
     const updateData: any = {
-      updated_by: req.user?.id,
+      updated_by: (req as any).user?.id,
       updated_at: new Date().toISOString()
     };
 
@@ -187,7 +187,7 @@ router.put('/pages/:id', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/pages/:id', authenticateToken, async (req, res) => {
+router.delete('/pages/:id', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabaseClient();
@@ -398,7 +398,7 @@ router.get('/mobile/content', async (req, res) => {
 });
 
 // Content Analytics
-router.get('/pages/:id/analytics', authenticateToken, async (req, res) => {
+router.get('/pages/:id/analytics', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
     const supabase = getSupabaseClient();
@@ -429,7 +429,7 @@ router.get('/pages/:id/analytics', authenticateToken, async (req, res) => {
 router.post('/pages/:id/view', async (req, res) => {
   try {
     const { id } = req.params;
-    const { userId, timestamp } = req.body;
+    const { timestamp } = req.body;
     const supabase = getSupabaseClient();
     
     // Upsert analytics record
@@ -458,7 +458,7 @@ router.post('/pages/:id/view', async (req, res) => {
 });
 
 // Content Templates
-router.get('/templates', authenticateToken, async (req, res) => {
+router.get('/templates', authenticateToken as any, async (req, res) => {
   try {
     const supabase = getSupabaseClient();
     
@@ -478,10 +478,10 @@ router.get('/templates', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/templates/:id/create', authenticateToken, async (req, res) => {
+router.post('/templates/:id/create', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, slug, customizations = {} } = req.body;
+    const { title, slug } = req.body;
     const supabase = getSupabaseClient();
     
     // Get template
@@ -505,31 +505,9 @@ router.post('/templates/:id/create', authenticateToken, async (req, res) => {
         status: 'draft',
         components: template.components,
         mobile_display: template.mobile_display || {},
-        created_by: req.user?.id,
-        updated_by: req.user?.id
+        created_by: (req as any).user?.id,
+        updated_by: (req as any).user?.id
       })
-
-// Resolve content by mobile route name
-router.get('/by-route/:route', async (req, res) => {
-  const route = req.params.route
-  try {
-    const supabase = getSupabaseClient();
-    const { data: pages, error } = await supabase
-      .from('content_pages')
-      .select('*')
-      .eq('route', route)
-      .order('updated_at', { ascending: false })
-      .limit(1)
-
-    if (error) {
-      return res.status(500).json({ error: error.message })
-    }
-
-    res.json({ page: pages?.[0] || null })
-  } catch (e: any) {
-    res.status(500).json({ error: e.message })
-  }
-})
       .select()
       .single();
 
@@ -540,6 +518,28 @@ router.get('/by-route/:route', async (req, res) => {
     res.status(201).json({ page });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Resolve content by mobile route name
+router.get('/by-route/:route', async (req, res) => {
+  const route = req.params.route;
+  try {
+    const supabase = getSupabaseClient();
+    const { data: pages, error } = await supabase
+      .from('content_pages')
+      .select('*')
+      .eq('route', route)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ page: pages?.[0] || null });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
   }
 });
 

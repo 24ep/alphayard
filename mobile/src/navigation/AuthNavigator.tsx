@@ -1,5 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import { View, Text } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 import MarketingScreen from '../screens/auth/MarketingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignupScreen from '../screens/auth/SignupScreen';
@@ -70,6 +72,20 @@ export type AuthStackParamList = {
 const Stack = createStackNavigator<AuthStackParamList>();
 
 const AuthNavigator: React.FC = () => {
+  const { isAuthenticated, user } = useAuth();
+  
+  // CRITICAL: If somehow this navigator is rendered when authenticated, show error
+  if (isAuthenticated && user) {
+    console.error('[AuthNavigator] ⚠️ CRITICAL ERROR: AuthNavigator rendered when user is authenticated!');
+    console.error('[AuthNavigator] User:', user.email);
+    console.error('[AuthNavigator] This should NEVER happen - RootNavigator should prevent this');
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FF0000' }}>
+        <Text style={{ color: 'white', fontSize: 18 }}>Navigation Error: Should be in AppNavigator</Text>
+      </View>
+    );
+  }
+  
   return (
     <Stack.Navigator
       initialRouteName="Marketing"

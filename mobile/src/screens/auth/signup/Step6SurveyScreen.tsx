@@ -26,6 +26,7 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
   const [expectations, setExpectations] = useState<string[]>([]);
   const [howDidYouHear, setHowDidYouHear] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const interestOptions = [
     { id: 'family_activities', label: 'hourse Activities', icon: 'account-group' },
@@ -106,6 +107,7 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
   const handleComplete = async () => {
     try {
       setIsSubmitting(true);
+      setApiError(null);
       
       // Prepare signup data
       const signupData = {
@@ -133,11 +135,21 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
       navigation.navigate('Welcome');
     } catch (error: any) {
       console.error('Signup error:', error);
-      Alert.alert(
-        'Signup Failed',
-        error.message || 'Failed to create account. Please try again.',
-        [{ text: 'OK' }]
-      );
+      const errorMessage = error.message || 'Failed to create account. Please try again.';
+      setApiError(errorMessage);
+      
+      // If account already exists, suggest logging in
+      if (errorMessage.toLowerCase().includes('already exists') || 
+          errorMessage.toLowerCase().includes('account with this email')) {
+        // Keep error message but don't show alert
+      } else {
+        // For other errors, still show alert as fallback
+        Alert.alert(
+          'Signup Failed',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -173,11 +185,21 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
       navigation.navigate('Welcome');
     } catch (error: any) {
       console.error('Signup error:', error);
-      Alert.alert(
-        'Signup Failed',
-        error.message || 'Failed to create account. Please try again.',
-        [{ text: 'OK' }]
-      );
+      const errorMessage = error.message || 'Failed to create account. Please try again.';
+      setApiError(errorMessage);
+      
+      // If account already exists, suggest logging in
+      if (errorMessage.toLowerCase().includes('already exists') || 
+          errorMessage.toLowerCase().includes('account with this email')) {
+        // Keep error message but don't show alert
+      } else {
+        // For other errors, still show alert as fallback
+        Alert.alert(
+          'Signup Failed',
+          errorMessage,
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -215,6 +237,25 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
             <Text style={styles.title}>Almost Done!</Text>
             <Text style={styles.subtitle}>Help us personalize your experience with a quick survey</Text>
           </View>
+
+          {/* API Error Banner */}
+          {apiError && (
+            <View style={styles.apiErrorBanner}>
+              <Icon name="alert-circle" size={20} color="#FFFFFF" style={styles.apiErrorIcon} />
+              <View style={styles.apiErrorContent}>
+                <Text style={styles.apiErrorText}>{apiError}</Text>
+                {(apiError.toLowerCase().includes('already exists') || 
+                  apiError.toLowerCase().includes('account with this email')) && (
+                  <TouchableOpacity 
+                    style={styles.loginLinkButton}
+                    onPress={() => navigation.navigate('Login')}
+                  >
+                    <Text style={styles.loginLinkText}>Go to Login →</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* Survey Form */}
           <View style={styles.form}>
@@ -683,6 +724,42 @@ const styles = StyleSheet.create({
   radioButtonSelected: {
     backgroundColor: '#bf4342',
     borderColor: '#bf4342',
+  },
+  // API Error Banner Styles
+  apiErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  apiErrorIcon: {
+    marginRight: 12,
+    marginTop: 2,
+  },
+  apiErrorContent: {
+    flex: 1,
+  },
+  apiErrorText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+    fontFamily: FONT_STYLES.englishMedium,
+    marginBottom: 8,
+  },
+  loginLinkButton: {
+    marginTop: 4,
+  },
+  loginLinkText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontFamily: FONT_STYLES.englishSemiBold,
+    textDecorationLine: 'underline',
   },
 });
 

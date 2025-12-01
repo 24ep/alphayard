@@ -161,7 +161,7 @@ export default function Home() {
 
     // Handle family detail navigation
     if (selectedFamilyId) {
-      return <FamilyDetail onBackToFamilies={handleBackToFamilies} />
+      return <FamilyDetail familyId={selectedFamilyId} onBackToFamilies={handleBackToFamilies} />
     }
 
     switch (activeModule) {

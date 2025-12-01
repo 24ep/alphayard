@@ -4,8 +4,8 @@ import { TodosController } from '../controllers/TodosController';
 
 const router = express.Router();
 
-router.use(authenticateToken);
-router.use(requireFamilyMember);
+router.use(authenticateToken as any);
+router.use(requireFamilyMember as any);
 
 router.get('/', TodosController.list);
 router.post('/', TodosController.create);

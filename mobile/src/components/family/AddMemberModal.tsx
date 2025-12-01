@@ -8,13 +8,15 @@ import {
   TextInput,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import IconIon from 'react-native-vector-icons/Ionicons';
+import { familyApi } from '../../services/api';
 
 interface AddMemberModalProps {
   visible: boolean;
   onClose: () => void;
-  onAddMember: (memberData: { name: string; email: string; role: string }) => void;
+  onAddMember?: (memberData: { name: string; email: string; role: string }) => void;
 }
 
 const AddMemberModal: React.FC<AddMemberModalProps> = ({
@@ -26,14 +28,11 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
     name: '',
     email: '',
     role: 'member',
+    message: '',
   });
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
-    if (!formData.name?.trim()) {
-      Alert.alert('Error', 'Name is required');
-      return;
-    }
-
+  const handleSave = async () => {
     if (!formData.email?.trim()) {
       Alert.alert('Error', 'Email is required');
       return;
@@ -46,12 +45,39 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
       return;
     }
 
-    onAddMember(formData);
-    setFormData({ name: '', email: '', role: 'member' });
+    try {
+      setSaving(true);
+      const response = await familyApi.inviteMember(
+        formData.email.trim(),
+        formData.message.trim() || undefined
+      );
+      
+      Alert.alert('Success', response.message || 'Invitation sent successfully', [
+        {
+          text: 'OK',
+          onPress: () => {
+            setFormData({ name: '', email: '', role: 'member', message: '' });
+            onClose();
+            // Call callback if provided
+            if (onAddMember) {
+              onAddMember({ name: formData.name, email: formData.email, role: formData.role });
+            }
+          }
+        }
+      ]);
+    } catch (error: any) {
+      console.error('Error sending invitation:', error);
+      Alert.alert(
+        'Error',
+        error?.response?.data?.message || error?.response?.data?.error || 'Failed to send invitation'
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCancel = () => {
-    setFormData({ name: '', email: '', role: 'member' });
+    setFormData({ name: '', email: '', role: 'member', message: '' });
     onClose();
   };
 
@@ -75,8 +101,16 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add hourse Member</Text>
-          <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
-            <Text style={styles.saveText}>Add</Text>
+          <TouchableOpacity 
+            onPress={handleSave} 
+            style={styles.saveButton}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#0078d4" />
+            ) : (
+              <Text style={styles.saveText}>Send Invite</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -95,7 +129,7 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
           {/* Member Email */}
           <View style={styles.inputSection}>
-            <Text style={styles.inputLabel}>Email Address</Text>
+            <Text style={styles.inputLabel}>Email Address *</Text>
             <TextInput
               style={styles.textInput}
               value={formData.email}
@@ -104,6 +138,23 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
               placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!saving}
+            />
+          </View>
+
+          {/* Optional Message */}
+          <View style={styles.inputSection}>
+            <Text style={styles.inputLabel}>Message (Optional)</Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              value={formData.message}
+              onChangeText={(text) => setFormData(prev => ({ ...prev, message: text }))}
+              placeholder="Add a personal message to the invitation"
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+              editable={!saving}
             />
           </View>
 
@@ -229,6 +280,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1a1a1a',
     backgroundColor: '#ffffff',
+  },
+  textArea: {
+    minHeight: 100,
+    paddingTop: 12,
   },
   roleOptions: {
     gap: 12,

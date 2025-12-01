@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 
-export const requestIdMiddleware = (req: Request, res: Response, next: NextFunction) => {
+export const requestIdMiddleware = (req: any, res: Response, next: NextFunction) => {
   const headerName = 'X-Request-Id';
   const existing = req.header(headerName);
   const requestId = existing && existing.trim().length > 0 ? existing : randomUUID();

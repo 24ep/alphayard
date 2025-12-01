@@ -1,9 +1,35 @@
-const User = require('../models/User');
-const hourse = require('../models/hourse');
-const EmergencyAlert = require('../models/EmergencyAlert');
-const SafetyCheck = require('../models/SafetyCheck');
-const Message = require('../models/Message');
-const Subscription = require('../models/Subscription');
+// Optional model imports - models may not exist in all environments
+let User, hourse, EmergencyAlert, SafetyCheck, Message, Subscription;
+try {
+  User = require('../models/User');
+} catch (e) {
+  // User model not available
+}
+try {
+  hourse = require('../models/hourse');
+} catch (e) {
+  // hourse model not available
+}
+try {
+  EmergencyAlert = require('../models/EmergencyAlert');
+} catch (e) {
+  // EmergencyAlert model not available
+}
+try {
+  SafetyCheck = require('../models/SafetyCheck');
+} catch (e) {
+  // SafetyCheck model not available
+}
+try {
+  Message = require('../models/Message');
+} catch (e) {
+  // Message model not available
+}
+try {
+  Subscription = require('../models/Subscription');
+} catch (e) {
+  // Subscription model not available
+}
 
 class AuditService {
   constructor() {

@@ -1,7 +1,7 @@
 import express from 'express';
 import { body } from 'express-validator';
 import { getSupabaseClient } from '../services/supabaseService';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 
 const router = express.Router();
@@ -10,7 +10,7 @@ const router = express.Router();
 router.use(authenticateToken as any);
 
 // List users (for admin console/mobile users management)
-router.get('/', async (req: AuthenticatedRequest, res: any) => {
+router.get('/', async (_req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
 
@@ -79,7 +79,7 @@ router.get('/', async (req: AuthenticatedRequest, res: any) => {
 });
 
 // Get user profile
-router.get('/profile', async (req: AuthenticatedRequest, res: any) => {
+router.get('/profile', async (req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
 
@@ -158,7 +158,7 @@ router.put('/profile', [
   body('lastName').optional().trim().isLength({ min: 1 }),
   body('phone').optional().trim(),
   body('dateOfBirth').optional().isISO8601()
-], validateRequest, async (req: AuthenticatedRequest, res: any) => {
+], validateRequest, async (req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
     const { firstName, lastName, phone, dateOfBirth } = req.body;

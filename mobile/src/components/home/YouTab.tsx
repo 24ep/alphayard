@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import CoolIcon from '../common/CoolIcon';
 import IconIon from 'react-native-vector-icons/Ionicons';
@@ -19,6 +19,7 @@ import { newsService, NewsArticle } from '../../services/news/NewsService';
 import EmotionHeatMap from '../EmotionHeatMap';
 import { EmotionRecord } from '../../services/emotionService';
 import { EmptyState } from '../common/EmptyState';
+import { useSocket } from '../../contexts/SocketContext';
 
 interface YouTabProps {
   showAttentionDrawer: boolean;
@@ -38,6 +39,7 @@ export const YouTab: React.FC<YouTabProps> = ({
   selectedFamily,
 }) => {
   const navigation = useNavigation<any>();
+  const { onlineUserIds } = useSocket();
   const [showCalendarDrawer, setShowCalendarDrawer] = useState(false);
   const [showShoppingDrawer, setShowShoppingDrawer] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,20 +71,52 @@ export const YouTab: React.FC<YouTabProps> = ({
       }
 
       // Load appointments (using events as appointments)
-      const eventsResponse = await familyApi.getEvents(selectedFamily.id);
-      if (eventsResponse.success) {
-        const todayEvents = eventsResponse.events.filter(event => {
-          const eventDate = new Date(event.startTime);
+      try {
+        const eventsResponse = await familyApi.getEvents(selectedFamily.id);
+        if (eventsResponse.success && eventsResponse.events) {
           const today = new Date();
-          return eventDate.toDateString() === today.toDateString();
-        });
-        setAppointments(todayEvents);
-      } else {
+          today.setHours(0, 0, 0, 0);
+          
+          const todayEvents = eventsResponse.events
+            .filter((event: any) => {
+              const eventDate = new Date(event.start_date || event.startTime || event.startDate);
+              eventDate.setHours(0, 0, 0, 0);
+              return eventDate.getTime() === today.getTime();
+            })
+            .map((event: any) => ({
+              id: event.id,
+              title: event.title,
+              time: event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', { 
+                hour: 'numeric', 
+                minute: '2-digit',
+                hour12: true 
+              }) : 'All Day',
+              location: event.location || 'No location',
+              type: event.event_type || 'general'
+            }));
+          setAppointments(todayEvents);
+        } else {
+          setAppointments([]);
+        }
+      } catch (error) {
+        console.error('Error loading appointments:', error);
         setAppointments([]);
       }
 
-      // For now, set empty shopping items since getTasks doesn't exist in the API
-      setShoppingItems([]);
+      // Load shopping list items
+      try {
+        const shoppingResponse = await familyApi.getShoppingList();
+        if (shoppingResponse.items) {
+          // Filter out completed items for the widget (or show all)
+          const activeItems = shoppingResponse.items.filter((item: any) => !item.completed);
+          setShoppingItems(activeItems);
+        } else {
+          setShoppingItems([]);
+        }
+      } catch (error) {
+        console.error('Error loading shopping list:', error);
+        setShoppingItems([]);
+      }
 
       // Load news content: hourse-read first, then suggestions
       try {
@@ -260,7 +294,10 @@ export const YouTab: React.FC<YouTabProps> = ({
         </View>
         {familyStatusMembers && familyStatusMembers.length > 0 ? (
           <FamilyStatusCards 
-            members={familyStatusMembers}
+            members={familyStatusMembers.map((m: any) => ({
+              ...m,
+              status: onlineUserIds.includes(m.id) ? 'online' : m.status,
+            }))}
             onMemberPress={(m) => { setSelectedMember(m); setDrawerVisible(true); }}
           />
         ) : (
@@ -370,10 +407,32 @@ export const YouTab: React.FC<YouTabProps> = ({
       <ShoppingDrawer
         visible={showShoppingDrawer}
         onClose={() => setShowShoppingDrawer(false)}
-        onAddItem={(item) => {
-          // Add the new item to the shopping list
-          setShoppingItems(prev => [...prev, item]);
-          setShowShoppingDrawer(false);
+        onAddItem={async (item) => {
+          try {
+            if (!selectedFamily?.id) {
+              Alert.alert('Error', 'No family selected');
+              return;
+            }
+            
+            await familyApi.createShoppingItem({
+              item: item.item,
+              quantity: item.quantity,
+              category: item.category,
+              list: item.location || 'Groceries'
+            });
+            
+            // Reload shopping list
+            const shoppingResponse = await familyApi.getShoppingList();
+            if (shoppingResponse.items) {
+              const activeItems = shoppingResponse.items.filter((i: any) => !i.completed);
+              setShoppingItems(activeItems);
+            }
+            
+            setShowShoppingDrawer(false);
+          } catch (error: any) {
+            console.error('Error adding shopping item:', error);
+            Alert.alert('Error', error?.response?.data?.message || 'Failed to add shopping item');
+          }
         }}
       />
     </ScrollView>

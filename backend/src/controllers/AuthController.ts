@@ -1,17 +1,19 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { UserModel } from '../models/UserModel';
-import { logger } from '../utils/logger';
-import { sendEmail } from '../services/emailService';
-import { generateVerificationCode } from '../utils/authUtils';
+// import { logger } from '../utils/logger';
+ // TODO: Fix missing module: ../utils/logger
+import emailService from '../services/emailService';
+// import { generateVerificationCode } from '../utils/authUtils';
+ // TODO: Fix missing module: ../utils/authUtils
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export class AuthController {
   // Register new user
-  async register(req: Request, res: Response) {
+  async register(req: any, res: Response) {
     try {
       const {
         email,
@@ -37,7 +39,7 @@ export class AuthController {
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
       // Create verification code
-      const verificationCode = generateVerificationCode();
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
       const verificationExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       // Create user
@@ -69,7 +71,7 @@ export class AuthController {
 
       // Send verification email
       try {
-        await sendEmail({
+        await emailService.sendEmail({
           to: email,
           subject: 'Welcome to Bondarys - Verify Your Email',
           template: 'email-verification',
@@ -80,7 +82,7 @@ export class AuthController {
           },
         });
       } catch (emailError) {
-        logger.error('Failed to send verification email:', emailError);
+        console.error('Failed to send verification email:', emailError);
       }
 
       // Generate tokens
@@ -94,7 +96,7 @@ export class AuthController {
       // Remove sensitive data
       const userResponse = this.sanitizeUser(user);
 
-      logger.info(`New user registered: ${email}`);
+      console.info(`New user registered: ${email}`);
 
       res.status(201).json({
         success: true,
@@ -104,7 +106,7 @@ export class AuthController {
         refreshToken,
       });
     } catch (error) {
-      logger.error('Registration failed:', error);
+      console.error('Registration failed:', error);
       res.status(500).json({
         success: false,
         message: 'Registration failed',
@@ -113,7 +115,7 @@ export class AuthController {
   }
 
   // Login user
-  async login(req: Request, res: Response) {
+  async login(req: any, res: Response) {
     try {
       const { email, password } = req.body;
 
@@ -155,7 +157,7 @@ export class AuthController {
       // Remove sensitive data
       const userResponse = this.sanitizeUser(user);
 
-      logger.info(`User logged in: ${email}`);
+      console.info(`User logged in: ${email}`);
 
       res.json({
         success: true,
@@ -165,7 +167,7 @@ export class AuthController {
         refreshToken,
       });
     } catch (error) {
-      logger.error('Login failed:', error);
+      console.error('Login failed:', error);
       res.status(500).json({
         success: false,
         message: 'Login failed',
@@ -174,7 +176,7 @@ export class AuthController {
   }
 
   // SSO Login
-  async ssoLogin(req: Request, res: Response) {
+  async ssoLogin(req: any, res: Response) {
     try {
       const { provider, ...ssoData } = req.body;
 
@@ -225,7 +227,7 @@ export class AuthController {
         });
 
         await user.save();
-        logger.info(`New SSO user created: ${userData.email} via ${provider}`);
+        console.info(`New SSO user created: ${userData.email} via ${provider}`);
       } else {
         // Update existing user's SSO info
         user.ssoProvider = provider;
@@ -245,7 +247,7 @@ export class AuthController {
       // Remove sensitive data
       const userResponse = this.sanitizeUser(user);
 
-      logger.info(`SSO login successful: ${userData.email} via ${provider}`);
+      console.info(`SSO login successful: ${userData.email} via ${provider}`);
 
       res.json({
         success: true,
@@ -255,7 +257,7 @@ export class AuthController {
         refreshToken,
       });
     } catch (error) {
-      logger.error('SSO login failed:', error);
+      console.error('SSO login failed:', error);
       res.status(500).json({
         success: false,
         message: 'SSO login failed',
@@ -284,7 +286,7 @@ export class AuthController {
         avatar: payload.picture,
       };
     } catch (error) {
-      logger.error('Google token verification failed:', error);
+      console.error('Google token verification failed:', error);
       throw new Error('Invalid Google token');
     }
   }
@@ -297,18 +299,18 @@ export class AuthController {
       );
       const data = await response.json();
 
-      if (data.error) {
+      if ((data as any).error) {
         throw new Error('Invalid Facebook token');
       }
 
       return {
-        id: data.id,
-        email: data.email,
-        name: data.name,
-        avatar: data.picture?.data?.url,
+        id: (data as any).id,
+        email: (data as any).email,
+        name: (data as any).name,
+        avatar: (data as any).picture?.data?.url,
       };
     } catch (error) {
-      logger.error('Facebook token verification failed:', error);
+      console.error('Facebook token verification failed:', error);
       throw new Error('Invalid Facebook token');
     }
   }
@@ -331,13 +333,13 @@ export class AuthController {
         lastName: decoded.lastName,
       };
     } catch (error) {
-      logger.error('Apple token verification failed:', error);
+      console.error('Apple token verification failed:', error);
       throw new Error('Invalid Apple token');
     }
   }
 
   // Get current user
-  async getCurrentUser(req: Request, res: Response) {
+  async getCurrentUser(req: any, res: Response) {
     try {
       const userId = req.user?.id;
       
@@ -356,7 +358,7 @@ export class AuthController {
         user: userResponse,
       });
     } catch (error) {
-      logger.error('Get current user failed:', error);
+      console.error('Get current user failed:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to get user data',
@@ -365,7 +367,7 @@ export class AuthController {
   }
 
   // Refresh token
-  async refreshToken(req: Request, res: Response) {
+  async refreshToken(req: any, res: Response) {
     try {
       const { refreshToken } = req.body;
 
@@ -400,7 +402,7 @@ export class AuthController {
       const newRefreshToken = this.generateRefreshToken(user._id);
 
       // Update refresh tokens
-      user.refreshTokens = user.refreshTokens.filter(token => token !== refreshToken);
+      user.refreshTokens = user.refreshTokens.filter((token: any) => token !== refreshToken);
       user.refreshTokens.push(newRefreshToken);
       await user.save();
 
@@ -410,7 +412,7 @@ export class AuthController {
         refreshToken: newRefreshToken,
       });
     } catch (error) {
-      logger.error('Token refresh failed:', error);
+      console.error('Token refresh failed:', error);
       res.status(401).json({
         success: false,
         message: 'Invalid refresh token',
@@ -419,7 +421,7 @@ export class AuthController {
   }
 
   // Logout
-  async logout(req: Request, res: Response) {
+  async logout(req: any, res: Response) {
     try {
       const { refreshToken } = req.body;
       const userId = req.user?.id;
@@ -431,14 +433,14 @@ export class AuthController {
         });
       }
 
-      logger.info(`User logged out: ${userId}`);
+      console.info(`User logged out: ${userId}`);
 
       res.json({
         success: true,
         message: 'Logout successful',
       });
     } catch (error) {
-      logger.error('Logout failed:', error);
+      console.error('Logout failed:', error);
       res.status(500).json({
         success: false,
         message: 'Logout failed',
@@ -447,7 +449,7 @@ export class AuthController {
   }
 
   // Verify email
-  async verifyEmail(req: Request, res: Response) {
+  async verifyEmail(req: any, res: Response) {
     try {
       const { email, code } = req.body;
 
@@ -486,14 +488,14 @@ export class AuthController {
       user.emailVerificationExpiry = undefined;
       await user.save();
 
-      logger.info(`Email verified: ${email}`);
+      console.info(`Email verified: ${email}`);
 
       res.json({
         success: true,
         message: 'Email verified successfully',
       });
     } catch (error) {
-      logger.error('Email verification failed:', error);
+      console.error('Email verification failed:', error);
       res.status(500).json({
         success: false,
         message: 'Email verification failed',
@@ -502,7 +504,7 @@ export class AuthController {
   }
 
   // Resend verification email
-  async resendVerification(req: Request, res: Response) {
+  async resendVerification(req: any, res: Response) {
     try {
       const { email } = req.body;
 
@@ -522,7 +524,7 @@ export class AuthController {
       }
 
       // Generate new verification code
-      const verificationCode = generateVerificationCode();
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
       const verificationExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       user.emailVerificationCode = verificationCode;
@@ -530,7 +532,7 @@ export class AuthController {
       await user.save();
 
       // Send verification email
-      await sendEmail({
+      await emailService.sendEmail({
         to: email,
         subject: 'Bondarys - Verify Your Email',
         template: 'email-verification',
@@ -541,14 +543,14 @@ export class AuthController {
         },
       });
 
-      logger.info(`Verification email resent: ${email}`);
+      console.info(`Verification email resent: ${email}`);
 
       res.json({
         success: true,
         message: 'Verification email sent successfully',
       });
     } catch (error) {
-      logger.error('Resend verification failed:', error);
+      console.error('Resend verification failed:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to send verification email',
@@ -557,7 +559,7 @@ export class AuthController {
   }
 
   // Complete onboarding
-  async completeOnboarding(req: Request, res: Response) {
+  async completeOnboarding(req: any, res: Response) {
     try {
       const userId = req.user?.id;
 
@@ -576,7 +578,7 @@ export class AuthController {
 
       const userResponse = this.sanitizeUser(user);
 
-      logger.info(`Onboarding completed: ${user.email}`);
+      console.info(`Onboarding completed: ${user.email}`);
 
       res.json({
         success: true,
@@ -584,7 +586,7 @@ export class AuthController {
         user: userResponse,
       });
     } catch (error) {
-      logger.error('Onboarding completion failed:', error);
+      console.error('Onboarding completion failed:', error);
       res.status(500).json({
         success: false,
         message: 'Failed to complete onboarding',

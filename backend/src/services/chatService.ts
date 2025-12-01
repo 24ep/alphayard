@@ -1,4 +1,6 @@
-import { supabaseService } from './supabaseService';
+// Lightweight wrapper around Supabase client for chat-related operations.
+// Uses the shared Supabase client from supabaseService.
+import supabaseService from './supabaseService';
 
 export class ChatService {
   /**
@@ -10,11 +12,11 @@ export class ChatService {
       
       // Generate unique filename
       const timestamp = Date.now();
-      const fileExtension = originalname.split('.').pop();
+      // const fileExtension = originalname.split('.').pop(); // Not used
       const fileName = `${timestamp}_${originalname}`;
       
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabaseService.getClient()
+      const { error: uploadError } = await supabaseService.getSupabaseClient()
         .storage
         .from('chat-attachments')
         .upload(fileName, buffer, {
@@ -27,14 +29,13 @@ export class ChatService {
       }
 
       // Get public URL
-      const { data: urlData } = supabaseService.getClient()
+      const { data: urlData } = supabaseService.getSupabaseClient()
         .storage
         .from('chat-attachments')
         .getPublicUrl(fileName);
 
       // Save attachment record to database
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
+      const { data, error } = await supabaseService.getSupabaseClient()
           .from('message_attachments')
           .insert({
             message_id: messageId,
@@ -50,7 +51,6 @@ export class ChatService {
           })
           .select()
           .single();
-      });
 
       if (error) {
         throw new Error(`Failed to save attachment record: ${error.message}`);
@@ -82,13 +82,11 @@ export class ChatService {
   static async deleteAttachment(attachmentId: string, userId: string) {
     try {
       // Get attachment details
-      const { data: attachment, error: fetchError } = await supabaseService.executeQuery(async (client) => {
-        return await client
+      const { data: attachment, error: fetchError } = await supabaseService.getSupabaseClient()
           .from('message_attachments')
           .select('*')
           .eq('id', attachmentId)
           .single();
-      });
 
       if (fetchError || !attachment) {
         throw new Error('Attachment not found');
@@ -97,7 +95,7 @@ export class ChatService {
       // Delete from storage
       const fileName = attachment.file_url.split('/').pop();
       if (fileName) {
-        const { error: deleteError } = await supabaseService.getClient()
+      const { error: deleteError } = await supabaseService.getSupabaseClient()
           .storage
           .from('chat-attachments')
           .remove([fileName]);
@@ -108,12 +106,10 @@ export class ChatService {
       }
 
       // Delete from database
-      const { error: dbError } = await supabaseService.executeQuery(async (client) => {
-        return await client
+      const { error: dbError } = await supabaseService.getSupabaseClient()
           .from('message_attachments')
           .delete()
           .eq('id', attachmentId);
-      });
 
       if (dbError) {
         throw new Error(`Failed to delete attachment record: ${dbError.message}`);
@@ -130,13 +126,11 @@ export class ChatService {
    */
   static async getAttachment(attachmentId: string) {
     try {
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
+      const { data, error } = await supabaseService.getSupabaseClient()
           .from('message_attachments')
           .select('*')
           .eq('id', attachmentId)
           .single();
-      });
 
       if (error) {
         throw new Error(`Failed to get attachment: ${error.message}`);
@@ -153,8 +147,7 @@ export class ChatService {
    */
   static async createDefaultFamilyChat(familyId: string, createdBy: string) {
     try {
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
+      const { data, error } = await supabaseService.getSupabaseClient()
           .from('chat_rooms')
           .insert({
             family_id: familyId,
@@ -174,7 +167,6 @@ export class ChatService {
           })
           .select()
           .single();
-      });
 
       if (error) {
         throw new Error(`Failed to create hourse chat: ${error.message}`);
@@ -191,23 +183,21 @@ export class ChatService {
    */
   static async getChatStats(familyId: string) {
     try {
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('chat_rooms')
-          .select(`
+      const { data, error } = await supabaseService.getSupabaseClient()
+        .from('chat_rooms')
+        .select(`
+          id,
+          name,
+          type,
+          created_at,
+          messages (
             id,
-            name,
-            type,
             created_at,
-            messages (
-              id,
-              created_at,
-              type
-            )
-          `)
-          .eq('family_id', familyId)
-          .eq('is_active', true);
-      });
+            type
+          )
+        `)
+        .eq('family_id', familyId)
+        .eq('is_active', true);
 
       if (error) {
         throw new Error(`Failed to get chat stats: ${error.message}`);
@@ -236,38 +226,34 @@ export class ChatService {
   static async searchMessages(chatId: string, query: string, userId: string) {
     try {
       // First check if user is participant
-      const { data: participant, error: participantError } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('chat_participants')
-          .select('id')
-          .eq('chat_room_id', chatId)
-          .eq('user_id', userId)
-          .single();
-      });
+      const { data: participant, error: participantError } = await supabaseService.getSupabaseClient()
+        .from('chat_participants')
+        .select('id')
+        .eq('chat_room_id', chatId)
+        .eq('user_id', userId)
+        .single();
 
       if (participantError || !participant) {
         throw new Error('Access denied: Not a participant in this chat');
       }
 
       // Search messages
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('messages')
-          .select(`
-            *,
-            sender:users!messages_sender_id_fkey (
-              id,
-              first_name,
-              last_name,
-              avatar_url
-            )
-          `)
-          .eq('chat_room_id', chatId)
-          .ilike('content', `%${query}%`)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-          .limit(50);
-      });
+      const { data, error } = await supabaseService.getSupabaseClient()
+        .from('messages')
+        .select(`
+          *,
+          sender:users!messages_sender_id_fkey (
+            id,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('chat_room_id', chatId)
+        .ilike('content', `%${query}%`)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       if (error) {
         throw new Error(`Failed to search messages: ${error.message}`);
@@ -284,15 +270,13 @@ export class ChatService {
    */
   static async markMessagesAsRead(chatId: string, userId: string, lastReadMessageId?: string) {
     try {
-      const { error } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('chat_participants')
-          .update({
-            last_read_at: new Date().toISOString()
-          })
-          .eq('chat_room_id', chatId)
-          .eq('user_id', userId);
-      });
+      const { error } = await supabaseService.getSupabaseClient()
+        .from('chat_participants')
+        .update({
+          last_read_at: new Date().toISOString()
+        })
+        .eq('chat_room_id', chatId)
+        .eq('user_id', userId);
 
       if (error) {
         throw new Error(`Failed to mark messages as read: ${error.message}`);
@@ -309,25 +293,23 @@ export class ChatService {
    */
   static async getUnreadCount(userId: string) {
     try {
-      const { data, error } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('chat_participants')
-          .select(`
-            chat_room_id,
-            last_read_at,
-            chat_rooms!inner (
+      const { data, error } = await supabaseService.getSupabaseClient()
+        .from('chat_participants')
+        .select(`
+          chat_room_id,
+          last_read_at,
+          chat_rooms!inner (
+            id,
+            name,
+            messages (
               id,
-              name,
-              messages (
-                id,
-                created_at,
-                sender_id
-              )
+              created_at,
+              sender_id
             )
-          `)
-          .eq('user_id', userId)
-          .eq('is_archived', false);
-      });
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('is_archived', false);
 
       if (error) {
         throw new Error(`Failed to get unread count: ${error.message}`);

@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, query } from 'express-validator';
 import { getSupabaseClient } from '../services/supabaseService';
-import { authenticateToken, requireFamilyMember, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requireFamilyMember } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 
 const router = express.Router();
@@ -28,7 +28,7 @@ if ((process.env.NODE_ENV || 'development') !== 'production') {
 }
 
 // All other routes require auth
-router.use(authenticateToken);
+router.use(authenticateToken as any);
 
 // Get events for current user's hourse (or specified familyId if provided and user is a member)
 router.get(
@@ -41,7 +41,7 @@ router.get(
     query('createdBy').optional().isUUID(),
   ],
   validateRequest,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: any, res: any) => {
     try {
       const supabase = getSupabaseClient();
       const { startDate, endDate, type, familyId: queryFamilyId, createdBy } = req.query as Record<string, string>;
@@ -104,7 +104,7 @@ router.get(
 router.post(
   '/events',
   [
-    requireFamilyMember,
+    requireFamilyMember as any,
     body('title').isString().isLength({ min: 1 }),
     body('startDate').isISO8601(),
     body('endDate').optional().isISO8601(),
@@ -119,7 +119,7 @@ router.post(
     body('description').optional().isString(),
   ],
   validateRequest,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: any, res: any) => {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId as string;
@@ -179,7 +179,7 @@ router.post(
 router.put(
   '/events/:eventId',
   [
-    requireFamilyMember,
+    requireFamilyMember as any,
     body('title').optional().isString().isLength({ min: 1 }),
     body('startDate').optional().isISO8601(),
     body('endDate').optional().isISO8601(),
@@ -194,7 +194,7 @@ router.put(
     body('description').optional().isString(),
   ],
   validateRequest,
-  async (req: AuthenticatedRequest, res) => {
+  async (req: any, res: any) => {
     try {
       const supabase = getSupabaseClient();
       const familyId = (req as any).familyId as string;
@@ -254,7 +254,7 @@ router.put(
 );
 
 // Delete event
-router.delete('/events/:eventId', requireFamilyMember, async (req: AuthenticatedRequest, res) => {
+router.delete('/events/:eventId', requireFamilyMember as any, async (req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
     const familyId = (req as any).familyId as string;

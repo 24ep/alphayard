@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { getSupabaseClient } from '../services/supabaseService';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticateToken as any);
 
 /**
  * GET /api/social/nearby
@@ -15,7 +15,7 @@ router.use(authenticateToken);
  * - workplace, hometown, school, university: optional string filters
  * - limit: number (default 50)
  */
-router.get('/nearby', async (req: AuthenticatedRequest, res) => {
+router.get('/nearby', async (req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
 
@@ -65,7 +65,7 @@ router.get('/nearby', async (req: AuthenticatedRequest, res) => {
  * GET /api/social/profile-filters
  * Returns filter options from existing users (distinct workplace, hometown, school/university)
  */
-router.get('/profile-filters', async (_req: AuthenticatedRequest, res) => {
+router.get('/profile-filters', async (_req: any, res: any) => {
   try {
     const supabase = getSupabaseClient();
 

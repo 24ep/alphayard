@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { locationService, LocationData } from '../services/location/locationService';
+import { api } from '../services/api';
+import { useAuth } from './AuthContext';
 
 interface Location {
   id: string;
@@ -42,6 +44,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
@@ -59,6 +62,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             accuracy: loc.accuracy,
           });
         }
+        // Fetch family locations if authenticated
+        if (isMounted && isAuthenticated) {
+          await refreshFamilyLocations();
+        }
       } catch (e) {
         if (isMounted) setError(e instanceof Error ? e.message : 'Failed to initialize location');
       } finally {
@@ -70,7 +77,16 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
       isMounted = false;
       locationService.stopLocationTracking();
     };
-  }, []);
+  }, [isAuthenticated]);
+
+  // Refresh family locations when authentication state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshFamilyLocations();
+    } else {
+      setFamilyLocations([]);
+    }
+  }, [isAuthenticated]);
 
   const updateLocation = async (latitude: number, longitude: number) => {
     try {
@@ -103,11 +119,32 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     try {
       setIsLoading(true);
       setError(null);
-      // TODO: replace with API call to fetch hourse member locations
-      // Placeholder: keep current state without mock
-      setFamilyLocations(prev => prev);
+      
+      if (!isAuthenticated) {
+        setFamilyLocations([]);
+        return;
+      }
+
+      const response = await api.get('/location');
+      const { locations } = response.data;
+
+      // Transform API response to FamilyLocation format
+      const transformedLocations: FamilyLocation[] = locations.map((loc: any) => ({
+        id: loc.userId || loc.id,
+        userId: loc.userId,
+        userName: loc.user ? `${loc.user.firstName || ''} ${loc.user.lastName || ''}`.trim() : 'Unknown',
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        address: loc.address || '',
+        timestamp: loc.timestamp || loc.created_at,
+        isOnline: true, // Could be enhanced with presence data
+      }));
+
+      setFamilyLocations(transformedLocations);
     } catch (err) {
+      console.error('Failed to refresh family locations:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh hourse locations');
+      // Keep previous locations on error
     } finally {
       setIsLoading(false);
     }

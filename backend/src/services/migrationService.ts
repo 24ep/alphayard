@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+
 
 interface Migration {
   id: string;
@@ -37,7 +37,7 @@ class MigrationService {
   async initializeMigrationsTable(): Promise<void> {
     try {
       // Check if migrations table exists
-      const { data, error } = await this.supabase
+      const { error } = await this.supabase
         .from('migrations')
         .select('id')
         .limit(1);

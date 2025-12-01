@@ -404,7 +404,7 @@ export class ChatDatabaseService {
         user_id: fm.user_id,
         role: fm.role || 'member',
         joined_at: fm.joined_at || new Date().toISOString(),
-        last_read_at: null,
+        last_read_at: undefined,
         is_muted: false,
         is_archived: false,
       }));
@@ -428,7 +428,7 @@ export class ChatDatabaseService {
   ): Promise<{ messages: ChatMessage[]; hasMore: boolean; total?: number }> {
     try {
       const supabase = getSupabaseClient();
-      const { limit = 50, offset = 0, before, after } = options;
+      const { limit = 50, before, after } = options;
 
       let query = supabase
         .from('chat_messages')
@@ -510,7 +510,7 @@ export class ChatDatabaseService {
         .is('deleted_at', null)
         .ilike('content', `%${searchQuery}%`)
         .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
+        .range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       if (error) {
         console.error('Error searching messages:', error);

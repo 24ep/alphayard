@@ -1,13 +1,13 @@
 import express from 'express';
-import { authenticateToken, requireFamilyMember, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken, requireFamilyMember } from '../middleware/auth';
 import { storageService } from '../services/storageService';
 import StorageController from '../controllers/StorageController';
 
 const router = express.Router();
 
 // All routes require authentication and hourse membership
-router.use(authenticateToken);
-router.use(requireFamilyMember);
+router.use(authenticateToken as any);
+router.use(requireFamilyMember as any);
 
 // Get files
 router.get('/files', StorageController.getFiles);

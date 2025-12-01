@@ -5,7 +5,7 @@ import { authenticateToken } from '../middleware/auth';
 const router = Router();
 
 // Get all versions for a content page
-router.get('/pages/:pageId/versions', authenticateToken, async (req, res) => {
+router.get('/pages/:pageId/versions', authenticateToken as any, async (req, res) => {
   try {
     const { pageId } = req.params;
     const { page = 1, page_size = 20 } = req.query;
@@ -40,7 +40,7 @@ router.get('/pages/:pageId/versions', authenticateToken, async (req, res) => {
 });
 
 // Get a specific version
-router.get('/pages/:pageId/versions/:versionId', authenticateToken, async (req, res) => {
+router.get('/pages/:pageId/versions/:versionId', authenticateToken as any, async (req, res) => {
   try {
     const { pageId, versionId } = req.params;
     const supabase = getSupabaseClient();
@@ -70,7 +70,7 @@ router.get('/pages/:pageId/versions/:versionId', authenticateToken, async (req, 
 });
 
 // Create a new version
-router.post('/pages/:pageId/versions', authenticateToken, async (req, res) => {
+router.post('/pages/:pageId/versions', authenticateToken as any, async (req, res) => {
   try {
     const { pageId } = req.params;
     const { 
@@ -107,7 +107,7 @@ router.post('/pages/:pageId/versions', authenticateToken, async (req, res) => {
         content,
         change_description: change_description || null,
         is_auto_save,
-        created_by: req.user?.id,
+        created_by: (req as any).user?.id,
         size_bytes: JSON.stringify(content).length
       })
       .select(`
@@ -131,7 +131,7 @@ router.post('/pages/:pageId/versions', authenticateToken, async (req, res) => {
 });
 
 // Restore a version (creates a new version with restored content)
-router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken, async (req, res) => {
+router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken as any, async (req, res) => {
   try {
     const { pageId, versionId } = req.params;
     const { restore_description } = req.body;
@@ -171,7 +171,7 @@ router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken, asy
         content: versionToRestore.content,
         change_description: restore_description || `Restored from version ${versionToRestore.version_number}: ${versionToRestore.title}`,
         is_auto_save: false,
-        created_by: req.user?.id,
+        created_by: (req as any).user?.id,
         size_bytes: versionToRestore.size_bytes
       })
       .select(`
@@ -194,7 +194,7 @@ router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken, asy
       .update({
         components: versionToRestore.content.components,
         updated_at: new Date().toISOString(),
-        updated_by: req.user?.id
+        updated_by: (req as any).user?.id
       })
       .eq('id', pageId);
 
@@ -212,7 +212,7 @@ router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken, asy
 });
 
 // Delete a version
-router.delete('/pages/:pageId/versions/:versionId', authenticateToken, async (req, res) => {
+router.delete('/pages/:pageId/versions/:versionId', authenticateToken as any, async (req, res) => {
   try {
     const { pageId, versionId } = req.params;
     const supabase = getSupabaseClient();
@@ -244,7 +244,7 @@ router.delete('/pages/:pageId/versions/:versionId', authenticateToken, async (re
 });
 
 // Compare two versions
-router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', authenticateToken, async (req, res) => {
+router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', authenticateToken as any, async (req, res) => {
   try {
     const { pageId, versionId1, versionId2 } = req.params;
     const supabase = getSupabaseClient();
@@ -293,7 +293,7 @@ router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', authentica
 });
 
 // Auto-save functionality
-router.post('/pages/:pageId/auto-save', authenticateToken, async (req, res) => {
+router.post('/pages/:pageId/auto-save', authenticateToken as any, async (req, res) => {
   try {
     const { pageId } = req.params;
     const { content } = req.body;
@@ -357,7 +357,7 @@ router.post('/pages/:pageId/auto-save', authenticateToken, async (req, res) => {
         content,
         change_description: 'Auto-saved changes',
         is_auto_save: true,
-        created_by: req.user?.id,
+        created_by: (req as any).user?.id,
         size_bytes: JSON.stringify(content).length
       })
       .select()

@@ -29,7 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081/api/v1';
 
 interface FileItem {
   id: string;

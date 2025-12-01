@@ -1,13 +1,12 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { supabase } from '../config/supabase';
-import { Content, CreateContentRequest, UpdateContentRequest, ContentQuery } from '../models/Content';
-import { Category, CreateCategoryRequest, UpdateCategoryRequest } from '../models/Category';
-import { ContentType } from '../models/ContentType';
-import { ContentInteraction, ContentComment, ContentAnalytics } from '../models/Content';
+import supabaseService from '../services/supabaseService';
+import { CreateContentRequest, UpdateContentRequest } from '../models/Content';
+import { CreateCategoryRequest } from '../models/Category';
 
 export class CMSController {
   // Marketing Content Management
-  async getMarketingContent(req: Request, res: Response) {
+  async getMarketingContent(req: any, res: Response) {
     try {
       const query = req.query;
 
@@ -46,14 +45,14 @@ export class CMSController {
       }
 
       // Apply sorting
-      const sortBy = query.sortBy || 'created_at';
-      const sortOrder = query.sortOrder || 'desc';
-      supabaseQuery = supabaseQuery.order(sortBy, { ascending: sortOrder === 'asc' });
+      const sortBy = String(query.sortBy || 'created_at');
+      const sortOrder = String(query.sortOrder || 'desc');
+      supabaseQuery = supabaseQuery.order(String(sortBy), { ascending: sortOrder === 'asc' });
 
       // Apply pagination
-      const limit = query.limit || 20;
-      const offset = query.offset || 0;
-      supabaseQuery = supabaseQuery.range(offset, offset + limit - 1);
+      const limit = parseInt(String(query.limit || 20), 10);
+      const offset = parseInt(String(query.offset || 0), 10);
+      supabaseQuery = supabaseQuery.range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       const { data, error } = await supabaseQuery;
 
@@ -68,7 +67,7 @@ export class CMSController {
     }
   }
 
-  async getMarketingContentById(req: Request, res: Response) {
+  async getMarketingContentById(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -96,7 +95,7 @@ export class CMSController {
     }
   }
 
-  async createMarketingContent(req: Request, res: Response) {
+  async createMarketingContent(req: any, res: Response) {
     try {
       const contentData = req.body;
 
@@ -122,7 +121,7 @@ export class CMSController {
     }
   }
 
-  async updateMarketingContent(req: Request, res: Response) {
+  async updateMarketingContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const contentData = req.body;
@@ -150,7 +149,7 @@ export class CMSController {
     }
   }
 
-  async deleteMarketingContent(req: Request, res: Response) {
+  async deleteMarketingContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -170,7 +169,7 @@ export class CMSController {
     }
   }
 
-  async getMarketingSlides(req: Request, res: Response) {
+  async getMarketingSlides(req: any, res: Response) {
     try {
       const { data, error } = await supabase
         .from('marketing_content')
@@ -201,10 +200,10 @@ export class CMSController {
   }
 
   // Content Management
-  async getContent(req: Request, res: Response) {
+  async getContent(req: any, res: Response) {
     try {
       const { familyId } = req.params;
-      const query: ContentQuery = {
+      const query: any = {
         familyId,
         ...req.query
       };
@@ -247,21 +246,23 @@ export class CMSController {
         supabaseQuery = supabaseQuery.eq('created_by', query.authorId);
       }
       if (query.dateFrom) {
-        supabaseQuery = supabaseQuery.gte('created_at', query.dateFrom.toISOString());
+        const dateFrom = query.dateFrom instanceof Date ? query.dateFrom : new Date(query.dateFrom);
+        supabaseQuery = supabaseQuery.gte('created_at', dateFrom.toISOString());
       }
       if (query.dateTo) {
-        supabaseQuery = supabaseQuery.lte('created_at', query.dateTo.toISOString());
+        const dateTo = query.dateTo instanceof Date ? query.dateTo : new Date(query.dateTo);
+        supabaseQuery = supabaseQuery.lte('created_at', dateTo.toISOString());
       }
 
       // Apply sorting
-      const sortBy = query.sortBy || 'createdAt';
-      const sortOrder = query.sortOrder || 'desc';
-      supabaseQuery = supabaseQuery.order(sortBy, { ascending: sortOrder === 'asc' });
+      const sortBy = String(query.sortBy || 'createdAt');
+      const sortOrder = String(query.sortOrder || 'desc');
+      supabaseQuery = supabaseQuery.order(String(sortBy), { ascending: sortOrder === 'asc' });
 
       // Apply pagination
-      const limit = query.limit || 20;
-      const offset = query.offset || 0;
-      supabaseQuery = supabaseQuery.range(offset, offset + limit - 1);
+      const limit = parseInt(String(query.limit || 20), 10);
+      const offset = parseInt(String(query.offset || 0), 10);
+      supabaseQuery = supabaseQuery.range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
 
       const { data, error } = await supabaseQuery;
 
@@ -276,7 +277,7 @@ export class CMSController {
     }
   }
 
-  async getContentById(req: Request, res: Response) {
+  async getContentById(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -307,7 +308,7 @@ export class CMSController {
     }
   }
 
-  async createContent(req: Request, res: Response) {
+  async createContent(req: any, res: Response) {
     try {
       const contentData: CreateContentRequest = req.body;
       const userId = req.user?.id;
@@ -356,7 +357,7 @@ export class CMSController {
           meta_value: value
         }));
 
-        await supabase.from('content_meta').insert(metaEntries);
+        await supabaseService.getSupabaseClient().from('content_meta').insert(metaEntries);
       }
 
       // Add tags if provided
@@ -366,7 +367,7 @@ export class CMSController {
           tag
         }));
 
-        await supabase.from('content_tags').insert(tagEntries);
+        await supabaseService.getSupabaseClient().from('content_tags').insert(tagEntries);
       }
 
       res.status(201).json({ content: data });
@@ -376,7 +377,7 @@ export class CMSController {
     }
   }
 
-  async updateContent(req: Request, res: Response) {
+  async updateContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const updateData: UpdateContentRequest = req.body;
@@ -413,7 +414,7 @@ export class CMSController {
       // Update meta data if provided
       if (updateData.meta) {
         // Delete existing meta
-        await supabase.from('content_meta').delete().eq('content_id', contentId);
+        await supabaseService.getSupabaseClient().from('content_meta').delete().eq('content_id', contentId);
 
         // Insert new meta
         const metaEntries = Object.entries(updateData.meta).map(([key, value]) => ({
@@ -422,13 +423,13 @@ export class CMSController {
           meta_value: value
         }));
 
-        await supabase.from('content_meta').insert(metaEntries);
+        await supabaseService.getSupabaseClient().from('content_meta').insert(metaEntries);
       }
 
       // Update tags if provided
       if (updateData.tags) {
         // Delete existing tags
-        await supabase.from('content_tags').delete().eq('content_id', contentId);
+        await supabaseService.getSupabaseClient().from('content_tags').delete().eq('content_id', contentId);
 
         // Insert new tags
         if (updateData.tags.length > 0) {
@@ -437,7 +438,7 @@ export class CMSController {
             tag
           }));
 
-          await supabase.from('content_tags').insert(tagEntries);
+          await supabaseService.getSupabaseClient().from('content_tags').insert(tagEntries);
         }
       }
 
@@ -448,7 +449,7 @@ export class CMSController {
     }
   }
 
-  async deleteContent(req: Request, res: Response) {
+  async deleteContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -469,7 +470,7 @@ export class CMSController {
   }
 
   // Content Interactions
-  async likeContent(req: Request, res: Response) {
+  async likeContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const userId = req.user?.id;
@@ -515,7 +516,7 @@ export class CMSController {
     }
   }
 
-  async viewContent(req: Request, res: Response) {
+  async viewContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const userId = req.user?.id;
@@ -540,7 +541,7 @@ export class CMSController {
     }
   }
 
-  async shareContent(req: Request, res: Response) {
+  async shareContent(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const { platform, url } = req.body;
@@ -568,7 +569,7 @@ export class CMSController {
   }
 
   // Comments
-  async getComments(req: Request, res: Response) {
+  async getComments(req: any, res: Response) {
     try {
       const { contentId } = req.params;
 
@@ -593,7 +594,7 @@ export class CMSController {
     }
   }
 
-  async createComment(req: Request, res: Response) {
+  async createComment(req: any, res: Response) {
     try {
       const { contentId } = req.params;
       const { comment, parentId } = req.body;
@@ -626,7 +627,7 @@ export class CMSController {
   }
 
   // Categories
-  async getCategories(req: Request, res: Response) {
+  async getCategories(req: any, res: Response) {
     try {
       const { familyId } = req.params;
 
@@ -648,7 +649,7 @@ export class CMSController {
     }
   }
 
-  async createCategory(req: Request, res: Response) {
+  async createCategory(req: any, res: Response) {
     try {
       const categoryData: CreateCategoryRequest = req.body;
 
@@ -670,7 +671,7 @@ export class CMSController {
   }
 
   // Analytics
-  async getContentAnalytics(req: Request, res: Response) {
+  async getContentAnalytics(req: any, res: Response) {
     try {
       const { familyId } = req.params;
       const { dateFrom, dateTo } = req.query;
@@ -703,7 +704,7 @@ export class CMSController {
     }
   }
 
-  async getPopularContent(req: Request, res: Response) {
+  async getPopularContent(req: any, res: Response) {
     try {
       const { familyId } = req.params;
       const { limit = 10 } = req.query;

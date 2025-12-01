@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateToken, AuthenticatedRequest } from '../middleware/auth';
+import { authenticateToken } from '../middleware/auth';
 import { socialMediaService } from '../services/socialMediaService';
 
 const router = express.Router();
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticateToken as any);
 
 // =============================================
 // FAMILIES
@@ -15,7 +15,7 @@ router.use(authenticateToken);
  * GET /api/social-media/families
  * Get all families for the authenticated user
  */
-router.get('/families', async (req: AuthenticatedRequest, res) => {
+router.get('/families', async (req: any, res: any) => {
   try {
     const families = await socialMediaService.getFamilies();
     res.json({ success: true, data: families });
@@ -40,7 +40,7 @@ router.get('/families', async (req: AuthenticatedRequest, res) => {
  * - limit: number (optional, default 50)
  * - offset: number (optional, default 0)
  */
-router.get('/posts', async (req: AuthenticatedRequest, res) => {
+router.get('/posts', async (req: any, res: any) => {
   try {
     const {
       familyId,
@@ -73,7 +73,7 @@ router.get('/posts', async (req: AuthenticatedRequest, res) => {
  * GET /api/social-media/posts/:id
  * Get a specific post by ID
  */
-router.get('/posts/:id', async (req: AuthenticatedRequest, res) => {
+router.get('/posts/:id', async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const post = await socialMediaService.getPostById(id);
@@ -93,7 +93,7 @@ router.get('/posts/:id', async (req: AuthenticatedRequest, res) => {
  * POST /api/social-media/posts
  * Create a new post
  */
-router.post('/posts', async (req: AuthenticatedRequest, res) => {
+router.post('/posts', async (req: any, res: any) => {
   try {
     const postData = {
       ...req.body,
@@ -112,7 +112,7 @@ router.post('/posts', async (req: AuthenticatedRequest, res) => {
  * PUT /api/social-media/posts/:id
  * Update a post
  */
-router.put('/posts/:id', async (req: AuthenticatedRequest, res) => {
+router.put('/posts/:id', async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const post = await socialMediaService.updatePost(id, req.body);
@@ -127,7 +127,7 @@ router.put('/posts/:id', async (req: AuthenticatedRequest, res) => {
  * DELETE /api/social-media/posts/:id
  * Delete a post
  */
-router.delete('/posts/:id', async (req: AuthenticatedRequest, res) => {
+router.delete('/posts/:id', async (req: any, res: any) => {
   try {
     const { id } = req.params;
     await socialMediaService.deletePost(id);
@@ -146,7 +146,7 @@ router.delete('/posts/:id', async (req: AuthenticatedRequest, res) => {
  * GET /api/social-media/posts/:postId/comments
  * Get comments for a specific post
  */
-router.get('/posts/:postId/comments', async (req: AuthenticatedRequest, res) => {
+router.get('/posts/:postId/comments', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const comments = await socialMediaService.getComments(postId);
@@ -161,7 +161,7 @@ router.get('/posts/:postId/comments', async (req: AuthenticatedRequest, res) => 
  * POST /api/social-media/posts/:postId/comments
  * Create a new comment
  */
-router.post('/posts/:postId/comments', async (req: AuthenticatedRequest, res) => {
+router.post('/posts/:postId/comments', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const commentData = {
@@ -182,7 +182,7 @@ router.post('/posts/:postId/comments', async (req: AuthenticatedRequest, res) =>
  * DELETE /api/social-media/comments/:id
  * Delete a comment
  */
-router.delete('/comments/:id', async (req: AuthenticatedRequest, res) => {
+router.delete('/comments/:id', async (req: any, res: any) => {
   try {
     const { id } = req.params;
     await socialMediaService.deleteComment(id);
@@ -201,7 +201,7 @@ router.delete('/comments/:id', async (req: AuthenticatedRequest, res) => {
  * GET /api/social-media/reports
  * Get all reports (optionally filtered by postId)
  */
-router.get('/reports', async (req: AuthenticatedRequest, res) => {
+router.get('/reports', async (req: any, res: any) => {
   try {
     const { postId } = req.query;
     const reports = await socialMediaService.getReports(postId as string);
@@ -216,7 +216,7 @@ router.get('/reports', async (req: AuthenticatedRequest, res) => {
  * POST /api/social-media/reports
  * Create a new report
  */
-router.post('/reports', async (req: AuthenticatedRequest, res) => {
+router.post('/reports', async (req: any, res: any) => {
   try {
     const reportData = {
       ...req.body,
@@ -235,7 +235,7 @@ router.post('/reports', async (req: AuthenticatedRequest, res) => {
  * PUT /api/social-media/reports/:id/status
  * Update report status
  */
-router.put('/reports/:id/status', async (req: AuthenticatedRequest, res) => {
+router.put('/reports/:id/status', async (req: any, res: any) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -256,7 +256,7 @@ router.put('/reports/:id/status', async (req: AuthenticatedRequest, res) => {
  * GET /api/social-media/posts/:postId/activities
  * Get activities for a specific post
  */
-router.get('/posts/:postId/activities', async (req: AuthenticatedRequest, res) => {
+router.get('/posts/:postId/activities', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const activities = await socialMediaService.getActivities(postId);
@@ -271,7 +271,7 @@ router.get('/posts/:postId/activities', async (req: AuthenticatedRequest, res) =
  * POST /api/social-media/posts/:postId/activities
  * Create a new activity
  */
-router.post('/posts/:postId/activities', async (req: AuthenticatedRequest, res) => {
+router.post('/posts/:postId/activities', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const activityData = {
@@ -297,7 +297,7 @@ router.post('/posts/:postId/activities', async (req: AuthenticatedRequest, res) 
  * POST /api/social-media/posts/:postId/like
  * Like a post
  */
-router.post('/posts/:postId/like', async (req: AuthenticatedRequest, res) => {
+router.post('/posts/:postId/like', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     await socialMediaService.likePost(postId, req.user.id);
@@ -312,7 +312,7 @@ router.post('/posts/:postId/like', async (req: AuthenticatedRequest, res) => {
  * DELETE /api/social-media/posts/:postId/like
  * Unlike a post
  */
-router.delete('/posts/:postId/like', async (req: AuthenticatedRequest, res) => {
+router.delete('/posts/:postId/like', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     await socialMediaService.unlikePost(postId, req.user.id);
@@ -327,7 +327,7 @@ router.delete('/posts/:postId/like', async (req: AuthenticatedRequest, res) => {
  * POST /api/social-media/comments/:commentId/like
  * Like a comment
  */
-router.post('/comments/:commentId/like', async (req: AuthenticatedRequest, res) => {
+router.post('/comments/:commentId/like', async (req: any, res: any) => {
   try {
     const { commentId } = req.params;
     await socialMediaService.likeComment(commentId, req.user.id);
@@ -342,7 +342,7 @@ router.post('/comments/:commentId/like', async (req: AuthenticatedRequest, res) 
  * DELETE /api/social-media/comments/:commentId/like
  * Unlike a comment
  */
-router.delete('/comments/:commentId/like', async (req: AuthenticatedRequest, res) => {
+router.delete('/comments/:commentId/like', async (req: any, res: any) => {
   try {
     const { commentId } = req.params;
     await socialMediaService.unlikeComment(commentId, req.user.id);
@@ -361,7 +361,7 @@ router.delete('/comments/:commentId/like', async (req: AuthenticatedRequest, res
  * GET /api/social-media/posts/:postId/analytics
  * Get analytics for a specific post
  */
-router.get('/posts/:postId/analytics', async (req: AuthenticatedRequest, res) => {
+router.get('/posts/:postId/analytics', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const analytics = await socialMediaService.getPostAnalytics(postId);
@@ -376,7 +376,7 @@ router.get('/posts/:postId/analytics', async (req: AuthenticatedRequest, res) =>
  * GET /api/social-media/families/:familyId/analytics
  * Get analytics for a family
  */
-router.get('/families/:familyId/analytics', async (req: AuthenticatedRequest, res) => {
+router.get('/families/:familyId/analytics', async (req: any, res: any) => {
   try {
     const { familyId } = req.params;
     const analytics = await socialMediaService.getFamilyAnalytics(familyId);

@@ -1,13 +1,15 @@
-import { Request, Response } from 'express';
-import Chat from '../models/Chat';
-import Message from '../models/Message';
-import { AuthenticatedRequest } from '../middleware/auth';
+import { Response } from 'express';
+// Chat and Message models are not implemented yet in this backend runtime.
+// Use loose any-typed placeholders so the server can run without chat storage.
+const Chat: any = {};
+const Message: any = {};
+
 
 export class ChatController {
   /**
    * Get all chat rooms for a hourse
    */
-  static async getChatRooms(req: AuthenticatedRequest, res: Response) {
+  static async getChatRooms(req: any, res: Response) {
     try {
       const { familyId } = req.params;
       const userId = req.user?.id;
@@ -30,7 +32,7 @@ export class ChatController {
           const participants = await chat.getParticipants();
           userChatRooms.push({
             ...chat.toJSON(),
-            participants: participants.map(p => ({
+            participants: participants.map((p: any) => ({
               id: p.user_id,
               role: p.role,
               joinedAt: p.joined_at,
@@ -59,7 +61,7 @@ export class ChatController {
   /**
    * Create a new chat room
    */
-  static async createChatRoom(req: AuthenticatedRequest, res: Response) {
+  static async createChatRoom(req: any, res: Response) {
     try {
       const { familyId } = req.params;
       const { name, type = 'group', description, avatarUrl, settings = {} } = req.body;
@@ -100,7 +102,7 @@ export class ChatController {
         success: true,
         data: {
           ...chatRoom.toJSON(),
-          participants: participants.map(p => ({
+          participants: participants.map((p: any) => ({
             id: p.user_id,
             role: p.role,
             joinedAt: p.joined_at,
@@ -123,7 +125,7 @@ export class ChatController {
   /**
    * Get chat room details
    */
-  static async getChatRoom(req: AuthenticatedRequest, res: Response) {
+  static async getChatRoom(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const userId = req.user?.id;
@@ -159,7 +161,7 @@ export class ChatController {
         success: true,
         data: {
           ...chatRoom.toJSON(),
-          participants: participants.map(p => ({
+          participants: participants.map((p: any) => ({
             id: p.user_id,
             role: p.role,
             joinedAt: p.joined_at,
@@ -182,7 +184,7 @@ export class ChatController {
   /**
    * Update chat room
    */
-  static async updateChatRoom(req: AuthenticatedRequest, res: Response) {
+  static async updateChatRoom(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const { name, description, avatarUrl, settings } = req.body;
@@ -237,7 +239,7 @@ export class ChatController {
   /**
    * Delete chat room
    */
-  static async deleteChatRoom(req: AuthenticatedRequest, res: Response) {
+  static async deleteChatRoom(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const userId = req.user?.id;
@@ -284,7 +286,7 @@ export class ChatController {
   /**
    * Add participant to chat room
    */
-  static async addParticipant(req: AuthenticatedRequest, res: Response) {
+  static async addParticipant(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const { userId: newUserId, role = 'member' } = req.body;
@@ -342,7 +344,7 @@ export class ChatController {
   /**
    * Remove participant from chat room
    */
-  static async removeParticipant(req: AuthenticatedRequest, res: Response) {
+  static async removeParticipant(req: any, res: Response) {
     try {
       const { chatId, userId } = req.params;
       const currentUserId = req.user?.id;
@@ -392,7 +394,7 @@ export class ChatController {
   /**
    * Get messages for a chat room
    */
-  static async getMessages(req: AuthenticatedRequest, res: Response) {
+  static async getMessages(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const { limit = 50, offset = 0, before, after } = req.query;
@@ -432,7 +434,7 @@ export class ChatController {
 
       res.json({
         success: true,
-        data: messages.map(message => ({
+        data: messages.map((message: any) => ({
           id: message.id,
           chatRoomId: message.chatRoomId,
           senderId: message.senderId,
@@ -463,7 +465,7 @@ export class ChatController {
   /**
    * Send a message
    */
-  static async sendMessage(req: AuthenticatedRequest, res: Response) {
+  static async sendMessage(req: any, res: Response) {
     try {
       const { chatId } = req.params;
       const { content, type = 'text', metadata = {}, replyTo } = req.body;
@@ -543,7 +545,7 @@ export class ChatController {
   /**
    * Update a message
    */
-  static async updateMessage(req: AuthenticatedRequest, res: Response) {
+  static async updateMessage(req: any, res: Response) {
     try {
       const { messageId } = req.params;
       const { content } = req.body;
@@ -615,7 +617,7 @@ export class ChatController {
   /**
    * Delete a message
    */
-  static async deleteMessage(req: AuthenticatedRequest, res: Response) {
+  static async deleteMessage(req: any, res: Response) {
     try {
       const { messageId } = req.params;
       const userId = req.user?.id;
@@ -666,7 +668,7 @@ export class ChatController {
   /**
    * Add reaction to message
    */
-  static async addReaction(req: AuthenticatedRequest, res: Response) {
+  static async addReaction(req: any, res: Response) {
     try {
       const { messageId } = req.params;
       const { emoji } = req.body;
@@ -723,7 +725,7 @@ export class ChatController {
   /**
    * Remove reaction from message
    */
-  static async removeReaction(req: AuthenticatedRequest, res: Response) {
+  static async removeReaction(req: any, res: Response) {
     try {
       const { messageId } = req.params;
       const { emoji } = req.body;

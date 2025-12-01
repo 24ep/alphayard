@@ -166,8 +166,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   // Check for existing session on app start
+  // Only run once on mount, and don't run if user is already set
+  const hasCheckedAuthRef = useRef(false);
   useEffect(() => {
-    checkAuthState();
+    if (!hasCheckedAuthRef.current && !user) {
+      hasCheckedAuthRef.current = true;
+      checkAuthState();
+    }
   }, []);
 
   const checkAuthState = async () => {
@@ -179,6 +184,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const accessToken = await AsyncStorage.getItem('accessToken');
       console.log('[AUTH] Existing token found:', !!accessToken);
       
+      // CRITICAL: If user is already set, don't clear it - just validate token
+      if (user && accessToken) {
+        console.log('[AUTH] User already set, skipping checkAuthState to prevent clearing');
+        setIsLoading(false);
+        return;
+      }
+      
       if (accessToken && !__DEV__) {
         // In production, try to validate token
         console.log('[AUTH] Production mode - validating token');
@@ -189,27 +201,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (accessToken) {
         try {
           // Try to validate the token by making a request to get user profile
-          const response = await api.get('/auth/me');
-          if (response.data && response.data.user) {
+          // Note: This endpoint might not exist, so we'll handle the error gracefully
+          const response = await api.get('/auth/me').catch(() => null);
+          if (response && response.data && response.data.user) {
             setUser(response.data.user);
             setIsOnboardingComplete(response.data.user.isOnboardingComplete || false);
             console.log('[AUTH] Valid token found - user authenticated');
           } else {
-            // Invalid token, clear it
-            await AsyncStorage.removeItem('accessToken');
-            await AsyncStorage.removeItem('refreshToken');
-            console.log('[AUTH] Invalid token - cleared and staying logged out');
+            // If /auth/me doesn't exist or returns no user, don't clear tokens
+            // Just log and keep the existing state
+            console.log('[AUTH] /auth/me endpoint not available or no user data - keeping existing state');
+            // Don't clear tokens - user might have just logged in
           }
-        } catch (error) {
-          // Token validation failed, clear tokens
-          console.log('[AUTH] Token validation failed:', error);
-          try {
-            await AsyncStorage.removeItem('accessToken');
-            await AsyncStorage.removeItem('refreshToken');
-          } catch (clearError) {
-            console.error('Failed to clear tokens:', clearError);
+        } catch (error: any) {
+          // Token validation failed - but don't clear if it's just a 404
+          console.log('[AUTH] Token validation failed:', error?.response?.status || error?.message);
+          
+          // Only clear tokens if it's an authentication error (401), not if endpoint doesn't exist (404)
+          if (error?.response?.status === 401) {
+            try {
+              await AsyncStorage.removeItem('accessToken');
+              await AsyncStorage.removeItem('refreshToken');
+              setUser(null);
+              console.log('[AUTH] 401 Unauthorized - cleared tokens and user');
+            } catch (clearError) {
+              console.error('Failed to clear tokens:', clearError);
+            }
+          } else {
+            console.log('[AUTH] Non-auth error (likely endpoint missing) - keeping tokens');
           }
-          console.log('[AUTH] Token validation failed - cleared and staying logged out');
         }
       } else {
         console.log('[AUTH] No token found - staying logged out');
@@ -244,7 +264,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ]);
       
       // Set token in API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${resolvedAccessToken}`;
+      api.setAuthToken(resolvedAccessToken);
       
       // Transform user data to match our interface
       const transformedUser: User = {
@@ -273,15 +293,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         updatedAt: userData.updatedAt ? new Date(userData.updatedAt) : new Date(),
       };
       
+      // CRITICAL: Mark that we've logged in to prevent checkAuthState from interfering
+      hasCheckedAuthRef.current = true;
+      
+      // CRITICAL: Set user state FIRST - this will make isAuthenticated true
+      // Use a callback to ensure state is set synchronously
       setUser(transformedUser);
-      setIsOnboardingComplete(userData.isOnboardingComplete);
+      setIsOnboardingComplete(userData.isOnboardingComplete ?? true);
+      
+      // Immediately force a re-render to ensure RootNavigator sees the change
+      setForceUpdate(prev => {
+        const newValue = prev + 1;
+        console.log('[AUTH] Force update #1 (immediate):', newValue);
+        return newValue;
+      });
+      
+      console.log('[AUTH] ✅ Login successful - user set:', transformedUser.email);
+      console.log('[AUTH] ✅ isAuthenticated should now be: true');
+      console.log('[AUTH] ✅ User object:', JSON.stringify(transformedUser, null, 2));
+      console.log('[AUTH] ✅ User ID:', transformedUser.id);
+      console.log('[AUTH] ✅ User email:', transformedUser.email);
       
       logger.info('User logged in successfully:', userData.email);
-    } catch (error) {
+      
+      // CRITICAL: Ensure all state updates are processed before allowing navigation
+      // Use multiple setTimeout calls to ensure React has processed all updates
+      setTimeout(() => {
+        console.log('[AUTH] First timeout - checking state:', { 
+          user: !!transformedUser, 
+          isAuthenticated: !!transformedUser,
+          email: transformedUser.email 
+        });
+        
+        // Force another state update to ensure RootNavigator sees the change
+        setForceUpdate(prev => {
+          const newValue = prev + 1;
+          console.log('[AUTH] Force update #2:', newValue);
+          return newValue;
+        });
+        
+        setTimeout(() => {
+          // Final check before setting loading to false
+          console.log('[AUTH] Second timeout - final state check');
+          setIsLoading(false);
+          console.log('[AUTH] ✅✅✅ Loading set to false, navigation should switch to AppNavigator');
+          console.log('[AUTH] ✅✅✅ Final state check:', { 
+            user: !!transformedUser, 
+            isAuthenticated: !!transformedUser,
+            email: transformedUser.email 
+          });
+          
+          // One more force update after loading is false
+          setForceUpdate(prev => {
+            const newValue = prev + 1;
+            console.log('[AUTH] Force update #3 (after loading=false):', newValue);
+            return newValue;
+          });
+        }, 200);
+      }, 100);
+    } catch (error: any) {
+      console.log('🔧 Login error caught:', error);
+      console.log('🔧 Error type:', typeof error);
+      console.log('🔧 Error response:', error?.response);
+      console.log('🔧 Error response data:', error?.response?.data);
+      console.log('🔧 Error message:', error?.message);
       logger.error('Login failed:', error);
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw error;
     }
   };
 
@@ -395,7 +473,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ]);
       
       // Set token in API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      api.setAuthToken(accessToken);
       
       setUser(userData);
       setIsOnboardingComplete(userData.isOnboardingComplete);
@@ -509,9 +587,47 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('🔧 Signup data being sent:', JSON.stringify(backendData, null, 2));
       
-      const response = await api.post('/auth/register', backendData);
+      try {
+        // API client returns response.data directly, not the full response object
+        const responseData = await api.post('/auth/register', backendData);
+        
+        console.log('🔧 Signup response:', typeof responseData === 'string' ? responseData.substring(0, 200) : JSON.stringify(responseData, null, 2));
+        console.log('🔧 Response type:', typeof responseData);
+        
+        // Check if response is HTML (Metro bundler or wrong endpoint)
+        if (typeof responseData === 'string' && (responseData.trim().startsWith('<!DOCTYPE') || responseData.trim().startsWith('<html'))) {
+          console.error('🔧 ERROR: Received HTML instead of JSON!');
+          console.error('🔧 This means the backend is not running or using wrong port');
+          const apiBaseURL = (api as any)?.defaults?.baseURL || (api as any)?.baseURL || 'unknown';
+          console.error('🔧 Current API URL:', apiBaseURL);
+          throw new Error('Backend server not found. Received HTML response instead of JSON. Please check if backend is running on port 3000.');
+        }
+        
+        // Check if responseData exists
+        if (!responseData) {
+          console.error('🔧 ResponseData is falsy:', responseData);
+          throw new Error('Invalid response from server: response is undefined or null');
+        }
+        
+        // Check if responseData is an object (JSON)
+        if (typeof responseData !== 'object' || Array.isArray(responseData)) {
+          console.error('🔧 ResponseData is not an object:', typeof responseData, responseData);
+          throw new Error('Invalid response format: expected JSON object');
+        }
       
-      const { user: newUser, accessToken, refreshToken } = response.data;
+      // Handle different response structures
+      const newUser = responseData.user || responseData.data?.user;
+      const accessToken = responseData.accessToken || responseData.token;
+      const refreshToken = responseData.refreshToken;
+      
+      if (!newUser) {
+        console.error('🔧 Response data structure:', JSON.stringify(responseData, null, 2));
+        throw new Error('User data not found in response');
+      }
+      
+      if (!accessToken) {
+        throw new Error('Access token not found in response');
+      }
       
       // Store tokens
       await AsyncStorage.multiSet([
@@ -520,7 +636,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ]);
       
       // Set token in API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+      api.setAuthToken(accessToken);
       
       // Transform user data to match our interface
       const transformedUser: User = {
@@ -552,9 +668,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(transformedUser);
       setIsOnboardingComplete(newUser.isOnboardingComplete);
       
-      logger.info('User signed up successfully:', newUser.email);
+        logger.info('User signed up successfully:', newUser.email);
+      } catch (innerError: any) {
+        console.error('🔧 Inner signup error:', innerError);
+        throw innerError;
+      }
     } catch (error: any) {
-      console.error('🔧 Signup error details:', error.response?.data || error.message);
+      console.error('🔧 Signup error details:', error);
+      console.error('🔧 Error type:', typeof error);
+      console.error('🔧 Error message:', error?.message);
+      console.error('🔧 Error response:', error?.response);
+      console.error('🔧 Error response data:', error?.response?.data);
       logger.error('Signup failed:', error);
       throw error;
     } finally {
@@ -571,7 +695,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       // Clear local data
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
-      api.defaults.headers.common['Authorization'] = '';
+      api.removeAuthToken();
       
       setUser(null);
       setIsOnboardingComplete(false);
@@ -601,7 +725,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       ]);
       
       // Update API headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+      api.setAuthToken(newAccessToken);
       
       logger.info('Token refreshed successfully');
     } catch (error) {
@@ -687,4 +811,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 }; 
+
 

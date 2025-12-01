@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import winston from 'winston';
 
 // Create logger instance
@@ -27,7 +27,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Request logging middleware
-export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
+export const requestLogger = (req: any, res: Response, next: NextFunction) => {
   const start = Date.now();
   
   // Log request
@@ -41,8 +41,8 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
   });
 
   // Override res.end to log response
-  const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any) {
+  const originalEnd = res.end.bind(res);
+  res.end = function(chunk?: any, encoding?: any, cb?: any): any {
     const duration = Date.now() - start;
     
     logger.info('Request completed', {
@@ -55,7 +55,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction) =
       timestamp: new Date().toISOString()
     });
 
-    originalEnd.call(this, chunk, encoding);
+    return originalEnd(chunk, encoding, cb);
   };
 
   next();

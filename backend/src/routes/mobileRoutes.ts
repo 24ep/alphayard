@@ -2,8 +2,6 @@ import { Router } from 'express'
 import { getSupabaseClient } from '../services/supabaseService'
 import path from 'path'
 import fs from 'fs'
-import fs from 'fs'
-import path from 'path'
 
 const router = Router()
 

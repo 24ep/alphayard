@@ -85,7 +85,7 @@ router.get('/branding', async (req, res) => {
   return res.json({ branding: fromFile || {} });
 });
 
-router.put('/branding', authenticateToken, async (req: any, res) => {
+router.put('/branding', authenticateToken as any, async (req: any, res) => {
   const body = req.body as Partial<BrandingSettings>;
   const existing = (await readFromSupabaseBranding()) || readFromFile() || {};
   const updated: BrandingSettings = {
@@ -138,7 +138,7 @@ async function writeIntegrations(value: IntegrationsSettings): Promise<boolean> 
 
 function isAdmin(req: any): boolean {
   try {
-    const authHeader = req.headers['authorization'] as string | undefined
+    // const authHeader = req.headers['authorization'] as string | undefined // Not used
     const role = (req as any).userRole || (req as any).user?.role || undefined
     // Prefer explicit role attached upstream; fallback to JWT claim parsed by gateway if present
     // In our system, we will treat lack of role as non-admin
@@ -146,13 +146,13 @@ function isAdmin(req: any): boolean {
   } catch { return false }
 }
 
-router.get('/integrations', authenticateToken, async (req, res) => {
+router.get('/integrations', authenticateToken as any, async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'FORBIDDEN' })
   const existing = await readIntegrations();
   return res.json({ integrations: existing || {} });
 });
 
-router.put('/integrations', authenticateToken, async (req: any, res) => {
+router.put('/integrations', authenticateToken as any, async (req: any, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: 'FORBIDDEN' })
   const body = (req.body || {}) as IntegrationsSettings;
   const merged = { ...(await readIntegrations()), ...body, updatedAt: new Date().toISOString(), updatedBy: req.user?.id || 'system' };
@@ -166,7 +166,7 @@ export default router;
 // Upload branding logo
 router.post(
   '/branding/logo',
-  authenticateToken,
+  authenticateToken as any,
   storageService.getMulterConfig({
     allowedTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
     generateThumbnails: false,
@@ -185,7 +185,7 @@ router.post(
 )
 
 // Trigger mobile branding asset generation (executes mobile script server-side)
-router.post('/branding/generate-mobile-assets', authenticateToken, async (req: any, res) => {
+router.post('/branding/generate-mobile-assets', authenticateToken as any, async (req: any, res) => {
   try {
     const repoRoot = path.resolve(__dirname, '../../..')
     const mobileDir = path.join(repoRoot, 'mobile')
@@ -207,7 +207,7 @@ router.post('/branding/generate-mobile-assets', authenticateToken, async (req: a
 // Upload branding icon
 router.post(
   '/branding/icon',
-  authenticateToken,
+  authenticateToken as any,
   storageService.getMulterConfig({
     allowedTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
     generateThumbnails: false,

@@ -3,28 +3,33 @@ import { config } from '../../config/environment';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface SocketEvents {
-  // Connection events
+  // Connection events (custom server events)
   connected: (data: { message: string; userId: string; timestamp: string }) => void;
   error: (data: { message: string }) => void;
-  
-  // Chat events
-  joined_chat: (data: { chatId: string; message: string }) => void;
-  left_chat: (data: { chatId: string; message: string }) => void;
-  user_joined_chat: (data: { chatId: string; userId: string; userName: string }) => void;
-  user_left_chat: (data: { chatId: string; userId: string; userName: string }) => void;
-  new_message: (data: { message: any }) => void;
-  user_typing: (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => void;
-  
+
+  // Chat events (aligned with backend socket/chat.ts)
+  'chat-joined': (data: { chatId: string }) => void;
+  'chat-left': (data: { chatId: string }) => void;
+  'user-joined': (data: { chatId: string; userId: string; timestamp: string }) => void;
+  'user-left': (data: { chatId: string; userId: string; timestamp: string }) => void;
+  'new-message': (data: { message: any }) => void;
+  'chat:typing': (data: { chatId: string; userId: string; isTyping: boolean }) => void;
+
   // Location events
-  location_updated: (data: { userId: string; userName: string; location: any }) => void;
-  location_request: (data: { fromUserId: string; fromUserName: string; timestamp: string }) => void;
-  
+  'location:update': (data: { userId: string; latitude: number; longitude: number; accuracy?: number; address?: string; timestamp: string }) => void;
+
   // Safety events
-  emergency_alert: (data: { alert: any }) => void;
-  alert_acknowledged: (data: { alertId: string; acknowledgedBy: string; acknowledgedByName: string; timestamp: string }) => void;
-  
-  // hourse events
-  member_status_updated: (data: { userId: string; userName: string; status: string; message: string; timestamp: string }) => void;
+  'safety:alert': (data: { id: string; type: string; message: string; location?: any; userId: string; familyId: string; timestamp: string; status: string }) => void;
+
+  // Presence events
+  'user:online': (data: { userId: string; timestamp: string }) => void;
+  'user:offline': (data: { userId: string; timestamp: string }) => void;
+
+  // Call events
+  'incoming-call': (data: { callerId: string; callType: 'voice' | 'video'; participants: string[] }) => void;
+  'call-answered': (data: { answererId: string; answer: boolean }) => void;
+  'call-ended': (data: { endedBy: string }) => void;
+  'call-signal': (data: { fromId: string; signal: any }) => void;
 }
 
 class SocketService {
@@ -36,7 +41,8 @@ class SocketService {
 
   async connect(): Promise<void> {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      // Prefer accessToken used by the REST API, but fall back to legacy authToken if present
+      const token = (await AsyncStorage.getItem('accessToken')) || (await AsyncStorage.getItem('authToken'));
       
       if (!token) {
         console.log('No authentication token found, skipping socket connection');
@@ -120,36 +126,39 @@ class SocketService {
 
   joinChat(chatId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('join_chat', { chatId });
+      // Backend expects simple chatId with event name "join-chat"
+      this.socket.emit('join-chat', chatId);
     }
   }
 
   leaveChat(chatId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('leave_chat', { chatId });
+      this.socket.emit('leave-chat', chatId);
     }
   }
 
   sendMessage(chatId: string, content: string, messageType: string = 'text', attachments: any[] = []): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('send_message', {
+      this.socket.emit('send-message', {
         chatId,
         content,
-        messageType,
-        attachments
+        type: messageType,
+        metadata: {
+          attachments,
+        },
       });
     }
   }
 
   startTyping(chatId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('typing_start', { chatId });
+      this.socket.emit('chat:typing', { chatId, isTyping: true });
     }
   }
 
   stopTyping(chatId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('typing_stop', { chatId });
+      this.socket.emit('chat:typing', { chatId, isTyping: false });
     }
   }
 
@@ -159,7 +168,7 @@ class SocketService {
 
   updateLocation(latitude: number, longitude: number, address?: string, accuracy?: number): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('update_location', {
+      this.socket.emit('location:update', {
         latitude,
         longitude,
         address,
@@ -170,7 +179,7 @@ class SocketService {
 
   requestLocation(targetUserId: string): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('request_location', { targetUserId });
+      this.socket.emit('location:request', { targetUserId });
     }
   }
 
@@ -180,7 +189,7 @@ class SocketService {
 
   sendEmergencyAlert(message: string, location?: string, type: string = 'panic'): void {
     if (this.socket && this.isConnected) {
-      this.socket.emit('emergency_alert', {
+      this.socket.emit('safety:alert', {
         message,
         location,
         type
@@ -249,6 +258,45 @@ class SocketService {
     await AsyncStorage.setItem('authToken', token);
     this.disconnect();
     await this.connect();
+  }
+
+  // =============================================
+  // CALL METHODS
+  // =============================================
+
+  initiateCall(participants: string[], callType: 'voice' | 'video' = 'voice'): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('initiate-call', {
+        participants,
+        callType
+      });
+    }
+  }
+
+  answerCall(callerId: string, answer: boolean): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('answer-call', {
+        callerId,
+        answer
+      });
+    }
+  }
+
+  endCall(participants: string[]): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('end-call', {
+        participants
+      });
+    }
+  }
+
+  sendCallSignal(targetId: string, signal: any): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('call-signal', {
+        targetId,
+        signal
+      });
+    }
   }
 }
 

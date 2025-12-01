@@ -7,7 +7,7 @@
  * and moves them to supabase/migrations/
  * 
  * Usage:
- *   ts-node src/scripts/migrate-to-supabase.ts
+ *   ts-node src/scripts/migrate-to-supabaseService.getSupabaseClient().ts
  */
 
 import fs from 'fs';
@@ -71,7 +71,7 @@ function readMigrations(): MigrationFile[] {
   files.forEach((file, index) => {
     const filePath = path.join(BACKEND_MIGRATIONS_DIR, file);
     const content = fs.readFileSync(filePath, 'utf8');
-    const description = extractDescription(file);
+    // const description = extractDescription(file); // Not used
     const timestamp = generateTimestamp(index); // Stagger timestamps
     
     migrations.push({

@@ -1,10 +1,10 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { supabase } from '../config/supabase';
 import { storageService } from '../services/storageService';
 
 export class StorageController {
   // Get files with filtering and pagination
-  async getFiles(req: Request, res: Response) {
+  async getFiles(req: any, res: Response) {
     try {
       const { limit = 50, offset = 0, type, shared, favorite, search } = req.query;
       const userId = req.user.id;
@@ -61,10 +61,9 @@ export class StorageController {
   }
 
   // Get file by ID
-  async getFileById(req: Request, res: Response) {
+  async getFileById(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
       const familyId = req.user.familyId;
 
       const { data: file, error } = await supabase
@@ -95,7 +94,7 @@ export class StorageController {
   }
 
   // Upload file
-  async uploadFile(req: Request, res: Response) {
+  async uploadFile(req: any, res: Response) {
     try {
       if (!req.file) {
         return res.status(400).json({
@@ -146,10 +145,9 @@ export class StorageController {
   }
 
   // Update file
-  async updateFile(req: Request, res: Response) {
+  async updateFile(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
       const familyId = req.user.familyId;
       const updates = req.body;
 
@@ -199,7 +197,7 @@ export class StorageController {
   }
 
   // Delete file
-  async deleteFile(req: Request, res: Response) {
+  async deleteFile(req: any, res: Response) {
     try {
       const { id } = req.params;
       const userId = req.user.id;
@@ -227,7 +225,7 @@ export class StorageController {
   }
 
   // Get storage statistics
-  async getStorageStats(req: Request, res: Response) {
+  async getStorageStats(req: any, res: Response) {
     try {
       const userId = req.user.id;
       const familyId = req.user.familyId;
@@ -248,7 +246,7 @@ export class StorageController {
   }
 
   // Create folder
-  async createFolder(req: Request, res: Response) {
+  async createFolder(req: any, res: Response) {
     try {
       const { name, parentId, description } = req.body;
       const userId = req.user.id;
@@ -296,10 +294,9 @@ export class StorageController {
   }
 
   // Toggle file favorite status
-  async toggleFavorite(req: Request, res: Response) {
+  async toggleFavorite(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
       const familyId = req.user.familyId;
 
       const { data: file, error: fetchError } = await supabase
@@ -346,10 +343,9 @@ export class StorageController {
   }
 
   // Toggle file shared status
-  async toggleShared(req: Request, res: Response) {
+  async toggleShared(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
       const familyId = req.user.familyId;
 
       const { data: file, error: fetchError } = await supabase

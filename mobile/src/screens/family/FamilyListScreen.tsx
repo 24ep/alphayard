@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, RefreshControl } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, RefreshControl, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import CoolIcon from '../../components/common/CoolIcon';
+import { api } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface FamilyItem {
   id: string;
@@ -11,35 +13,48 @@ interface FamilyItem {
   membersCount: number;
 }
 
-const mockFamilies: FamilyItem[] = [
-  {
-    id: 'fam-1',
-    name: 'The Johnson Family',
-    description: '5 members • Private',
-    avatar: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop',
-    membersCount: 5,
-  },
-  {
-    id: 'fam-2',
-    name: 'The Smith Family',
-    description: '4 members • Invite-only',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop',
-    membersCount: 4,
-  },
-];
-
 const FamilyListScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const [families, setFamilies] = useState<FamilyItem[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    loadFamilies();
-  }, []);
+    if (isAuthenticated) {
+      loadFamilies();
+    }
+  }, [isAuthenticated]);
 
   const loadFamilies = async () => {
-    // TODO: Replace with API fetch
-    setFamilies(mockFamilies);
+    try {
+      setLoading(true);
+      const response = await api.get('/families');
+      const { families: apiFamilies } = response.data;
+
+      const transformedFamilies: FamilyItem[] = apiFamilies.map((family: any) => ({
+        id: family.id,
+        name: family.name,
+        description: family.description || `${family.membersCount} members • ${family.type || 'Private'}`,
+        avatar: undefined, // Could be enhanced with family avatar
+        membersCount: family.membersCount || 0,
+      }));
+
+      setFamilies(transformedFamilies);
+    } catch (error: any) {
+      console.error('Failed to load families:', error);
+      if (error.response?.status !== 401) {
+        Alert.alert(
+          'Error',
+          'Failed to load families. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+      // On error, keep empty array or show empty state
+      setFamilies([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onRefresh = async () => {
