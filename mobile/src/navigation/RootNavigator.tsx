@@ -1,10 +1,9 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { usePin } from '../contexts/PinContext';
-import { EmotionCheckProvider } from '../contexts/EmotionCheckContext';
 import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
 import PinSetupScreen from '../screens/auth/PinSetupScreen';
@@ -20,7 +19,7 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated, isLoading, setNavigationRef, user, forceUpdate } = useAuth();
+  const { isAuthenticated, isLoading, setNavigationRef, user } = useAuth();
   const { hasPin, isPinLocked, isLoading: isPinLoading } = usePin();
   const navigationRef = useRef<any>(null);
 
@@ -34,6 +33,17 @@ const RootNavigator: React.FC = () => {
   // Simple conditional: if authenticated with valid user, show App; otherwise show Auth
   const showApp = isAuthenticated && user && user.id && user.email;
 
+  useEffect(() => {
+    console.log('[NAV] RootNavigator - State Update:', {
+      isAuthenticated,
+      hasUser: !!user,
+      isLoading,
+      isPinLoading,
+      showApp,
+      hasNavigationRef: !!navigationRef.current
+    });
+  }, [isAuthenticated, user, isLoading, isPinLoading, showApp]);
+
   // Show loading screen while checking authentication or PIN status
   if (isLoading || isPinLoading) {
     return (
@@ -43,56 +53,6 @@ const RootNavigator: React.FC = () => {
     );
   }
 
-  // User is authenticated
-  if (showApp) {
-    // Check if PIN is locked (session timed out)
-    if (hasPin && isPinLocked) {
-      return (
-        <NavigationContainer
-          ref={navigationRef}
-          onReady={() => {
-            if (setNavigationRef && navigationRef.current) {
-              setNavigationRef(navigationRef.current);
-            }
-          }}
-        >
-          <PinUnlockScreen />
-        </NavigationContainer>
-      );
-    }
-
-    // Check if user needs to set up PIN (first login)
-    if (!hasPin) {
-      return (
-        <NavigationContainer
-          ref={navigationRef}
-          onReady={() => {
-            if (setNavigationRef && navigationRef.current) {
-              setNavigationRef(navigationRef.current);
-            }
-          }}
-        >
-          <PinSetupScreen />
-        </NavigationContainer>
-      );
-    }
-
-    // All good - show the app
-    return (
-      <NavigationContainer
-        ref={navigationRef}
-        onReady={() => {
-          if (setNavigationRef && navigationRef.current) {
-            setNavigationRef(navigationRef.current);
-          }
-        }}
-      >
-        <AppNavigator />
-      </NavigationContainer>
-    );
-  }
-
-  // Not authenticated - show auth flow
   return (
     <NavigationContainer
       ref={navigationRef}
@@ -102,7 +62,31 @@ const RootNavigator: React.FC = () => {
         }
       }}
     >
-      <AuthNavigator />
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: false,
+          animationEnabled: false,
+        }}
+      >
+        {showApp ? (
+          // User is authenticated - show app screens
+          <>
+            {hasPin && isPinLocked ? (
+              // PIN is locked - show unlock screen
+              <Stack.Screen name="PinUnlock" component={PinUnlockScreen} />
+            ) : !hasPin ? (
+              // No PIN set up yet - show PIN setup
+              <Stack.Screen name="PinSetup" component={PinSetupScreen} />
+            ) : (
+              // All good - show the main app
+              <Stack.Screen name="App" component={AppNavigator} />
+            )}
+          </>
+        ) : (
+          // Not authenticated - show auth flow
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        )}
+      </Stack.Navigator>
     </NavigationContainer>
   );
 };

@@ -75,7 +75,7 @@ export class UserModel {
 
   static async findById(id: string): Promise<UserModel | null> {
     const res = await query(`
-      SELECT u.id, u.email, u.encrypted_password as password, u.created_at,
+      SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at,
              p.full_name, p.avatar_url, p.phone,
              (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids,
              u.raw_user_meta_data as metadata
@@ -95,7 +95,7 @@ export class UserModel {
   static async findOne(criteria: any): Promise<UserModel | null> {
     // Basic support for finding by email or id
     let sql = `
-      SELECT u.id, u.email, u.encrypted_password as password, u.created_at,
+      SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at,
              p.full_name, p.avatar_url, p.phone,
              (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids,
              u.raw_user_meta_data as metadata

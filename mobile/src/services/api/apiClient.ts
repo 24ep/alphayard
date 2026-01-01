@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -28,11 +28,22 @@ class ApiClient {
     resolve: (value?: any) => void;
     reject: (error?: any) => void;
   }> = [];
+  private logoutCallback: (() => void) | null = null;
 
   constructor() {
-    // Hardcoded default URL for web compatibility - avoids require() issues
     // Backend runs on port 3000
-    this.baseURL = 'http://127.0.0.1:3000/api/v1';
+    // Android emulator uses 10.0.2.2 to access localhost of the host machine
+    console.log('[API] Initializing ApiClient...');
+
+    // In React Native, we need to be careful with Platform imports
+    // I will use a more robust way to detect environment or just default to common emulator IP
+    this.baseURL = 'http://10.0.2.2:3000/api/v1';
+
+    if (Platform.OS === 'ios') {
+      this.baseURL = 'http://127.0.0.1:3000/api/v1';
+    }
+
+    console.log('[API] Base URL set to:', this.baseURL);
 
     this.instance = axios.create({
       baseURL: this.baseURL,
@@ -42,105 +53,15 @@ class ApiClient {
       },
     });
 
-    // Use mock adapter in DEV mode to bypass broken backend
-    /*
-    if (__DEV__) {
-      this.instance.defaults.adapter = this.mockAdapter;
-    }
-    */
-
     this.setupInterceptors();
   }
 
-  private mockAdapter = async (config: AxiosRequestConfig): Promise<AxiosResponse> => {
-    console.log('[Mock API]', config.method?.toUpperCase(), config.url);
-
-    const mockUser = {
-      id: 'dev-user-123',
-      email: 'dev@bondarys.com',
-      firstName: 'Developer',
-      lastName: 'User',
-      avatar: 'https://via.placeholder.com/150',
-      phone: '+1234567890',
-      userType: 'hourse',
-      subscriptionTier: 'premium',
-      familyIds: ['dev-hourse-123'],
-      isOnboardingComplete: true,
-      preferences: {
-        notifications: true,
-        locationSharing: true,
-        popupSettings: { enabled: true, frequency: 'daily', maxPerDay: 5, categories: ['news'] },
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const mockFamily = {
-      id: 'dev-hourse-123',
-      name: 'Developer Family',
-      members: [mockUser],
-      admins: [mockUser.id],
-      settings: {},
-    };
-
-    const url = config.url || '';
-
-    // Helper to return success response
-    const success = (data: any) => ({
-      data: { success: true, data },
-      status: 200,
-      statusText: 'OK',
-      headers: {} as any,
-      config,
-      request: {},
-    } as any);
-
-    // Helper to return error response
-    const error = (status: number, message: string) => {
-      const err: any = new Error(`Request failed with status code ${status}`);
-      err.response = {
-        data: { success: false, message, error: { code: 'MOCK_ERROR', message } },
-        status,
-        statusText: 'ERROR',
-        headers: {} as any,
-        config,
-      } as any;
-      throw err;
-    };
-
-    // Simulate network delay
-    await new Promise(r => setTimeout(r, 500));
-
-    // Auth Routes
-    if (url.includes('/auth/login')) return success({ user: mockUser, accessToken: 'mock-access', refreshToken: 'mock-refresh' });
-    if (url.includes('/auth/register')) return success({ user: mockUser, accessToken: 'mock-access', refreshToken: 'mock-refresh' });
-    if (url.includes('/auth/me')) return success({ user: mockUser });
-    if (url.includes('/auth/refresh')) return success({ accessToken: 'mock-access-new', refreshToken: 'mock-refresh-new' });
-    if (url.includes('/auth/logout')) return success({ message: 'Logged out' });
-
-    // Family Routes
-    if (url.includes('/families') || url.includes('/hourse')) {
-      // Return list or single family
-      if (config.method === 'get') {
-        if (url.endsWith('/families')) return success([mockFamily]); // List
-        return success(mockFamily); // Single
-      }
-    }
-
-    // Default Fallback for other GETs (return empty object or list to prevent crashes)
-    if (config.method === 'get') {
-      console.warn('[Mock API] Unhandled GET endpoint, returning empty object:', url);
-      return success({});
-    }
-
-    console.warn('[Mock API] Unhandled endpoint:', url);
-    return error(404, 'Mock endpoint not found');
-  };
 
   private setupInterceptors() {
     // Request interceptor
     this.instance.interceptors.request.use(
       async (config) => {
+        console.log(`[API] Requesting ${config.method?.toUpperCase()} ${config.url}`);
         try {
           const token = await this.getAccessToken();
           if (token) {
@@ -160,6 +81,7 @@ class ApiClient {
     // Response interceptor
     this.instance.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
+        console.log(`[API] Response from ${response.config.url}:`, response.status);
         return response;
       },
       async (error) => {
@@ -273,9 +195,13 @@ class ApiClient {
 
   private async handleLogout(): Promise<void> {
     try {
+      console.log('[API] 🛑 Unauthorized access detected - triggering logout');
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
-      // Navigate to login screen
-      // You can use navigation service or event emitter here
+
+      if (this.logoutCallback) {
+        console.log('[API] Calling logout callback');
+        this.logoutCallback();
+      }
     } catch (error) {
       console.error('Error during logout:', error);
     }
@@ -485,6 +411,10 @@ class ApiClient {
     } catch (error) {
       return false;
     }
+  }
+
+  setOnLogout(callback: () => void) {
+    this.logoutCallback = callback;
   }
 }
 

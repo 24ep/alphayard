@@ -52,6 +52,11 @@ const generateRefreshToken = (userId: string) => {
   );
 };
 
+// OPTIONS handler for CORS preflight
+router.options('/register', (_req, res) => {
+  res.status(204).end();
+});
+
 // Register endpoint
 router.post('/register', registerValidation, async (req: any, res: any) => {
   const errors = validationResult(req);
@@ -59,6 +64,11 @@ router.post('/register', registerValidation, async (req: any, res: any) => {
     return res.status(400).json({ error: 'Validation failed', details: errors.array() });
   }
   return authController.register(req, res);
+});
+
+// OPTIONS handler for CORS preflight - must come before POST
+router.options('/login', (_req, res) => {
+  res.status(204).end();
 });
 
 // Login endpoint

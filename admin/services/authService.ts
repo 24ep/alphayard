@@ -40,8 +40,11 @@ class AuthService {
       }
 
       return await response.json()
-    } catch (error) {
+    } catch (error: any) {
       console.error('API request failed:', error)
+      if (error.message.includes('Failed to fetch')) {
+        throw new Error('Unable to connect to server. Please ensure the backend is running.')
+      }
       throw error
     }
   }
@@ -102,7 +105,7 @@ class AuthService {
       throw new Error('No authentication token found')
     }
 
-    return this.request<AuthUser>('/auth/me', {
+    return this.request<AuthUser>('/admin/auth/me', {
       headers: {
         Authorization: `Bearer ${token}`,
       },

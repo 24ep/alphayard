@@ -22,7 +22,7 @@ export const API_ENDPOINTS = {
     RESET_PASSWORD: '/auth/reset-password',
     VERIFY_EMAIL: '/auth/verify-email',
   },
-  
+
   // User Management
   USER: {
     PROFILE: '/user/profile',
@@ -30,7 +30,7 @@ export const API_ENDPOINTS = {
     DELETE_ACCOUNT: '/user/delete',
     CHANGE_PASSWORD: '/user/change-password',
   },
-  
+
   // Family Management
   FAMILY: {
     LIST: '/hourse',
@@ -42,7 +42,7 @@ export const API_ENDPOINTS = {
     INVITE: (id: string) => `/hourse/${id}/invite`,
     REMOVE_MEMBER: (id: string, memberId: string) => `/hourse/${id}/members/${memberId}`,
   },
-  
+
   // Social
   SOCIAL: {
     POSTS: '/social/posts',
@@ -50,8 +50,9 @@ export const API_ENDPOINTS = {
     POST: (id: string) => `/social/posts/${id}`,
     COMMENTS: (postId: string) => `/social/posts/${postId}/comments`,
     LIKE: (postId: string) => `/social/posts/${postId}/like`,
+    FAMILIES: '/social/families',
   },
-  
+
   // Calendar
   CALENDAR: {
     EVENTS: '/calendar/events',
@@ -60,7 +61,7 @@ export const API_ENDPOINTS = {
     UPDATE_EVENT: (id: string) => `/calendar/events/${id}`,
     DELETE_EVENT: (id: string) => `/calendar/events/${id}`,
   },
-  
+
   // Tasks
   TASKS: {
     LIST: '/todos',
@@ -69,7 +70,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/todos/${id}`,
     DELETE: (id: string) => `/todos/${id}`,
   },
-  
+
   // Gallery
   GALLERY: {
     PHOTOS: '/gallery/photos',
@@ -77,7 +78,7 @@ export const API_ENDPOINTS = {
     PHOTO: (id: string) => `/gallery/photos/${id}`,
     DELETE: (id: string) => `/gallery/photos/${id}`,
   },
-  
+
   // Notes
   NOTES: {
     LIST: '/notes',
@@ -86,14 +87,14 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `/notes/${id}`,
     DELETE: (id: string) => `/notes/${id}`,
   },
-  
+
   // Chat
   CHAT: {
     CONVERSATIONS: '/chat/conversations',
     MESSAGES: (conversationId: string) => `/chat/conversations/${conversationId}/messages`,
     SEND_MESSAGE: (conversationId: string) => `/chat/conversations/${conversationId}/messages`,
   },
-  
+
   // Safety
   SAFETY: {
     LOCATIONS: '/location',
@@ -101,7 +102,7 @@ export const API_ENDPOINTS = {
     EMERGENCY_CONTACTS: '/safety/contacts',
     GEOFENCES: '/safety/geofences',
   },
-  
+
   // Storage
   STORAGE: {
     FILES: '/storage/files',

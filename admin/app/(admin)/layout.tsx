@@ -123,8 +123,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     key={item.id}
                                     onClick={() => router.push(item.href)}
                                     className={`w-full flex items-center px-4 py-2.5 text-sm transition-colors ${isActive(item.href)
-                                            ? 'bg-blue-600 text-white'
-                                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
                                     <Icon name={item.icon} className="w-5 h-5 flex-shrink-0" />

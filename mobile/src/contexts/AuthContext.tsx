@@ -90,6 +90,8 @@ interface AuthContextType {
   _devSetOnboarding?: (complete: boolean) => void;
   // Navigation reference for forced navigation
   setNavigationRef?: (ref: any) => void;
+  loginError: string | null;
+  clearLoginError: () => void;
 }
 
 interface SignupData {
@@ -127,6 +129,8 @@ export const useAuth = () => {
         _devSetUser: undefined,
         _devSetOnboarding: undefined,
         setNavigationRef: undefined,
+        loginError: null,
+        clearLoginError: () => { },
       };
     }
     return context;
@@ -150,6 +154,8 @@ export const useAuth = () => {
       _devSetUser: undefined,
       _devSetOnboarding: undefined,
       setNavigationRef: undefined,
+      loginError: null,
+      clearLoginError: () => { },
     };
   }
 };
@@ -164,12 +170,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const navigationRef = useRef<any>(null);
+
+  const clearLoginError = () => setLoginError(null);
 
   console.log('🔧 AuthProvider - Initial state:', { user: !!user, isLoading, isOnboardingComplete, forceUpdate });
 
   // Initialize Google Sign-In only if available
   useEffect(() => {
+    // Register unauthorized callback with apiClient
+    if (apiClient.setOnLogout) {
+      apiClient.setOnLogout(() => {
+        console.log('[AUTH] 🛑 Received logout signal from API client');
+        setUser(null);
+      });
+    }
+
     if (GoogleSignin) {
       try {
         GoogleSignin.configure({
@@ -291,7 +308,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
+      setLoginError(null); // Clear any previous error
 
+      console.log('[AUTH] Starting login for:', email);
       const response = await api.post('/auth/login', {
         email,
         password,
@@ -392,11 +411,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (error: any) {
       console.log('🔧 Login error caught:', error);
       console.log('🔧 Error type:', typeof error);
-      console.log('🔧 Error response:', error?.response);
-      console.log('🔧 Error response data:', error?.response?.data);
-      console.log('🔧 Error message:', error?.message);
-      logger.error('Login failed:', error);
+
+      // CRITICAL: Set loading to false FIRST to ensure spinner stops immediately
       setIsLoading(false);
+
+      // Wrap error formatting in try-catch to prevent secondary errors
+      try {
+        console.log('🔧 Error response:', error?.response);
+        console.log('🔧 Error response data:', error?.response?.data);
+        console.log('🔧 Error message:', error?.message);
+      } catch (formatError) {
+        console.error('🔧 Error formatting login error:', formatError);
+      }
+      logger.error('Login failed:', error);
+
+      // Extract user-friendly error message
+      const errorMessage = error.message || error.error || 'Login failed. Please check your credentials.';
+      setLoginError(errorMessage);
+
       throw error;
     }
   };
@@ -623,13 +655,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       try {
         // API client returns response.data directly, not the full response object
-        const responseData = await api.post('/auth/register', backendData);
+        const responseData = await api.post('/auth/register', backendData) as any;
 
-        console.log('🔧 Signup response:', typeof responseData === 'string' ? responseData.substring(0, 200) : JSON.stringify(responseData, null, 2));
+        console.log('🔧 Signup response:', typeof responseData === 'string' ? (responseData as string).substring(0, 200) : JSON.stringify(responseData, null, 2));
         console.log('🔧 Response type:', typeof responseData);
 
         // Check if response is HTML (Metro bundler or wrong endpoint)
-        if (typeof responseData === 'string' && (responseData.trim().startsWith('<!DOCTYPE') || responseData.trim().startsWith('<html'))) {
+        if (typeof responseData === 'string' && ((responseData as string).trim().startsWith('<!DOCTYPE') || (responseData as string).trim().startsWith('<html'))) {
           console.error('🔧 ERROR: Received HTML instead of JSON!');
           console.error('🔧 This means the backend is not running or using wrong port');
           const apiBaseURL = (api as any)?.defaults?.baseURL || (api as any)?.baseURL || 'unknown';
@@ -870,6 +902,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       navigationRef.current = ref;
       console.log('🔧 Navigation ref set to:', !!navigationRef.current);
     },
+    loginError,
+    clearLoginError,
   };
 
   // Simple auth state logging

@@ -9,9 +9,15 @@ import { useDataServiceWithRefresh } from '../../hooks/useDataService';
 interface SocialTabProps {
   onCommentPress: (postId: string) => void;
   familyId?: string;
+  refreshKey?: number;
 }
 
-export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }) => {
+export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId, refreshKey }) => {
+  const fetchPosts = React.useCallback(() => socialService.getPosts({
+    familyId,
+    limit: 20
+  }), [familyId]);
+
   const {
     data: posts = [],
     error,
@@ -20,13 +26,9 @@ export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }
     onRefresh,
     clearError
   } = useDataServiceWithRefresh(
-    () => socialService.getPosts({
-      familyId,
-      limit: 20
-    }),
+    fetchPosts,
     {
-      dependencies: [familyId],
-      fallbackData: []
+      dependencies: [familyId, refreshKey]
     }
   );
 
@@ -44,9 +46,12 @@ export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }
     }
   }, [error, onRefresh, clearError]);
 
+  // Ensure posts is an array
+  const safePosts = Array.isArray(posts) ? posts : [];
+
   if (loading && !refreshing) {
     return (
-      <View style={homeStyles.tabContent}>
+      <View style={{ flex: 1, backgroundColor: 'transparent' }}>
         <View style={homeStyles.section}>
           <View style={homeStyles.sectionHeader}>
             <Text style={homeStyles.sectionTitle}>hourse Posts</Text>
@@ -61,8 +66,8 @@ export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }
   }
 
   return (
-    <ScrollView 
-      style={homeStyles.tabContent}
+    <ScrollView
+      style={{ flex: 1 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
@@ -72,7 +77,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>hourse Posts</Text>
         </View>
-        {posts.length === 0 ? (
+        {safePosts.length === 0 ? (
           <View style={{ padding: 20, alignItems: 'center' }}>
             <IconMC name="chat-outline" size={48} color="#9CA3AF" />
             <Text style={{ marginTop: 10, color: '#666', textAlign: 'center' }}>
@@ -80,80 +85,80 @@ export const SocialTab: React.FC<SocialTabProps> = ({ onCommentPress, familyId }
             </Text>
           </View>
         ) : (
-          posts.map((post, index) => (
-          <View key={post.id} style={homeStyles.socialPostListItem}>
-            {/* Post Header */}
-            <View style={homeStyles.socialPostHeader}>
-              <View style={homeStyles.socialPostAuthor}>
-                <View style={homeStyles.socialPostAvatar}>
-                  <Text style={homeStyles.socialPostAvatarText}>
-                    {post.author.name.charAt(0)}
-                  </Text>
-                </View>
-                <View style={homeStyles.socialPostAuthorInfo}>
-                  <View style={homeStyles.socialPostAuthorNameRow}>
-                    <Text style={homeStyles.socialPostAuthorName}>{post.author.name}</Text>
-                    {post.author.isVerified && (
-                      <IconMC name="check-circle" size={16} color="#3B82F6" />
-                    )}
+          safePosts.map((post, index) => (
+            <View key={post.id} style={homeStyles.socialPostListItem}>
+              {/* Post Header */}
+              <View style={homeStyles.socialPostHeader}>
+                <View style={homeStyles.socialPostAuthor}>
+                  <View style={homeStyles.socialPostAvatar}>
+                    <Text style={homeStyles.socialPostAvatarText}>
+                      {post.author.name.charAt(0)}
+                    </Text>
                   </View>
-                  <Text style={homeStyles.socialPostTimestamp}>{post.timestamp}</Text>
+                  <View style={homeStyles.socialPostAuthorInfo}>
+                    <View style={homeStyles.socialPostAuthorNameRow}>
+                      <Text style={homeStyles.socialPostAuthorName}>{post.author.name}</Text>
+                      {post.author.isVerified && (
+                        <IconMC name="check-circle" size={16} color="#3B82F6" />
+                      )}
+                    </View>
+                    <Text style={homeStyles.socialPostTimestamp}>{post.timestamp}</Text>
+                  </View>
                 </View>
+                <TouchableOpacity style={homeStyles.socialPostMoreButton}>
+                  <IconMC name="dots-vertical" size={20} color="#6B7280" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={homeStyles.socialPostMoreButton}>
-                <IconMC name="dots-vertical" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
 
-            {/* Post Content */}
-            <Text style={homeStyles.socialPostContent}>{post.content}</Text>
+              {/* Post Content */}
+              <Text style={homeStyles.socialPostContent}>{post.content}</Text>
 
-            {/* Post Media */}
-            {post.media && (
-              <View style={homeStyles.socialPostMedia}>
-                <View style={homeStyles.socialPostMediaPlaceholder}>
+              {/* Post Media */}
+              {post.media && (
+                <View style={homeStyles.socialPostMedia}>
+                  <View style={homeStyles.socialPostMediaPlaceholder}>
+                    <IconMC
+                      name={post.media.type === 'image' ? 'image' : 'play-circle'}
+                      size={40}
+                      color="#9CA3AF"
+                    />
+                    <Text style={homeStyles.socialPostMediaText}>
+                      {post.media.type === 'image' ? 'Image' : 'Video'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Post Actions */}
+              <View style={homeStyles.socialPostActions}>
+                <TouchableOpacity style={homeStyles.socialPostAction}>
                   <IconMC
-                    name={post.media.type === 'image' ? 'image' : 'play-circle'}
-                    size={40}
-                    color="#9CA3AF"
+                    name={post.isLiked ? "heart" : "heart-outline"}
+                    size={20}
+                    color={post.isLiked ? "#EF4444" : "#6B7280"}
                   />
-                  <Text style={homeStyles.socialPostMediaText}>
-                    {post.media.type === 'image' ? 'Image' : 'Video'}
-                  </Text>
-                </View>
+                  <Text style={homeStyles.socialPostActionText}>{post.likes}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={homeStyles.socialPostAction}
+                  onPress={() => onCommentPress(post.id)}
+                >
+                  <IconMC name="comment-outline" size={20} color="#6B7280" />
+                  <Text style={homeStyles.socialPostActionText}>{post.comments}</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={homeStyles.socialPostAction}>
+                  <IconMC name="share-outline" size={20} color="#6B7280" />
+                  <Text style={homeStyles.socialPostActionText}>{post.shares}</Text>
+                </TouchableOpacity>
               </View>
-            )}
 
-            {/* Post Actions */}
-            <View style={homeStyles.socialPostActions}>
-              <TouchableOpacity style={homeStyles.socialPostAction}>
-                <IconMC
-                  name={post.isLiked ? "heart" : "heart-outline"}
-                  size={20}
-                  color={post.isLiked ? "#EF4444" : "#6B7280"}
-                />
-                <Text style={homeStyles.socialPostActionText}>{post.likes}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={homeStyles.socialPostAction}
-                onPress={() => onCommentPress(post.id)}
-              >
-                <IconMC name="comment-outline" size={20} color="#6B7280" />
-                <Text style={homeStyles.socialPostActionText}>{post.comments}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={homeStyles.socialPostAction}>
-                <IconMC name="share-outline" size={20} color="#6B7280" />
-                <Text style={homeStyles.socialPostActionText}>{post.shares}</Text>
-              </TouchableOpacity>
+              {/* Divider (except for last item) */}
+              {index < safePosts.length - 1 && (
+                <View style={homeStyles.socialPostDivider} />
+              )}
             </View>
-
-            {/* Divider (except for last item) */}
-            {index < posts.length - 1 && (
-              <View style={homeStyles.socialPostDivider} />
-            )}
-          </View>
           ))
         )}
       </View>

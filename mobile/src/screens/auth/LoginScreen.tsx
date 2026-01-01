@@ -35,11 +35,12 @@ interface LoginFormData {
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { login, loginWithSSO, isLoading, isAuthenticated, user } = useAuth();
+  const { login, loginWithSSO, isLoading, isAuthenticated, user, loginError, clearLoginError } = useAuth();
 
   // Get dynamic background from CMS
   const { background, loading: backgroundLoading } = useLoginBackground();
 
+  // Form state
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: '',
@@ -50,7 +51,6 @@ const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
 
   // Animation values
@@ -94,8 +94,11 @@ const LoginScreen: React.FC = () => {
     if (errors.email) {
       setErrors(prev => ({ ...prev, email: undefined }));
     }
-    if (apiError) {
-      setApiError(null);
+    // Clear error when email/password is changed
+    if (loginError) {
+      if (clearLoginError) {
+        clearLoginError();
+      }
     }
   };
 
@@ -104,8 +107,11 @@ const LoginScreen: React.FC = () => {
     if (errors.password) {
       setErrors(prev => ({ ...prev, password: undefined }));
     }
-    if (apiError) {
-      setApiError(null);
+    // Clear error when email/password is changed
+    if (loginError) {
+      if (clearLoginError) {
+        clearLoginError();
+      }
     }
   };
 
@@ -129,48 +135,32 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     if (!validateForm()) return;
 
+    setIsSubmitting(true);
+    setErrors({}); // Clear previous field errors
+    if (clearLoginError) {
+      clearLoginError(); // Clear any previous general login error
+    }
+
     try {
-      setIsSubmitting(true);
-      setApiError(null);
-      setErrors({}); // Clear previous errors
+      console.log('[LoginScreen] Attempting login...');
       await login(formData.email, formData.password);
+
+      console.log('[LoginScreen] Login succeeded');
+      // No need to manually navigate here usually, RootNavigator handles it based on isAuthenticated
+      // But we can check if we want to show a success state
     } catch (error: any) {
-      console.error('Login error:', error);
+      setIsSubmitting(false); // Only set false on error, keep true on success to prevent UI flash
+      console.log('[LoginScreen] Login failed:', error);
 
-      // Extract error message from ApiError object or fallback to default
-      let errorMessage = 'Invalid email or password. Please try again.';
-
-      // Handle ApiError structure (from apiClient)
-      if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      }
-
-      // Always display error in UI - show both banner and field-specific errors
-      setApiError(errorMessage);
-
-      // Set specific field errors based on error message
+      // Error is usually handled by AuthContext but we can catch local mapping constraints here
+      const errorMessage = error.message || error.error || 'Login failed';
       const lowerMessage = errorMessage.toLowerCase();
-      if (lowerMessage.includes('password') || lowerMessage.includes('incorrect password') || lowerMessage.includes('incorrect')) {
+
+      if (lowerMessage.includes('password') || lowerMessage.includes('incorrect') || lowerMessage.includes('credential')) {
         setErrors(prev => ({ ...prev, password: errorMessage }));
-      }
-      if (lowerMessage.includes('email') || lowerMessage.includes('user not found') || lowerMessage.includes('incorrect')) {
+      } else if (lowerMessage.includes('email') || lowerMessage.includes('user not found')) {
         setErrors(prev => ({ ...prev, email: errorMessage }));
       }
-
-      // If it's a general authentication error, show it on both fields
-      if (error?.code === 'UNAUTHORIZED' || lowerMessage.includes('incorrect')) {
-        setErrors(prev => ({
-          ...prev,
-          email: errorMessage,
-          password: errorMessage,
-        }));
-      }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -254,11 +244,11 @@ const LoginScreen: React.FC = () => {
                       <View style={styles.backButtonPlaceholder} />
                     </View>
 
-                    {/* General API Error Banner */}
-                    {apiError && (
+                    {/* Error Banner */}
+                    {loginError && (
                       <View style={styles.apiErrorBanner}>
                         <Icon name="alert-circle" size={20} color="#FF4757" style={styles.apiErrorIcon} />
-                        <Text style={styles.apiErrorText}>{apiError}</Text>
+                        <Text style={styles.apiErrorText}>{loginError}</Text>
                       </View>
                     )}
 

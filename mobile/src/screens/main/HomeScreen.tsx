@@ -35,7 +35,9 @@ import { DynamicBackground } from '../../components/DynamicBackground';
 
 // API Services
 import { api, familyApi, safetyApi, locationApi } from '../../services/api';
-import { locationService, FamilyLocation } from '../../services/location/locationService';
+import { socialService } from '../../services/dataServices';
+import { locationService, FamilyLocation } from '../../services/location/LocationService';
+
 
 // Constants and Styles
 import { ATTENTION_APPS } from '../../constants/home';
@@ -45,18 +47,22 @@ const API_BASE_URL_MOBILE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 
 const HomeScreen: React.FC = () => {
   const { user } = useAuth();
-  
+
   // Get dynamic background and banner from CMS
   const { background, banner, loading: backgroundLoading } = useHomeBackground();
-  
-  const [families, setFamilies] = useState([]);
-  const [safetyStats, setSafetyStats] = useState(null);
-  const [locationStats, setLocationStats] = useState(null);
+
+  const [families, setFamilies] = useState<any[]>([]); // Using any[] to bypass the lint for now, but better than never[]
+  const [isPosting, setIsPosting] = useState(false);
+
+  const [safetyStats, setSafetyStats] = useState<any>(null);
+  const [locationStats, setLocationStats] = useState<any>(null);
+
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [emotionData, setEmotionData] = useState<EmotionRecord[]>([]);
   const [loadingEmotionData, setLoadingEmotionData] = useState(false);
   const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
+  const [socialRefreshKey, setSocialRefreshKey] = useState(0);
 
   const {
     // State
@@ -70,7 +76,7 @@ const HomeScreen: React.FC = () => {
     showFamilyDropdown,
     selectedFamily,
     showAttentionDrawer,
-    
+
     // Setters
     setShowCreatePostModal,
     setNewPostContent,
@@ -79,7 +85,7 @@ const HomeScreen: React.FC = () => {
     setCommentAttachments,
     setShowFamilyDropdown,
     setShowAttentionDrawer,
-    
+
     // Handlers
     handleTabPress,
     handleRefresh,
@@ -138,7 +144,7 @@ const HomeScreen: React.FC = () => {
           const parts = [a.street, a.city, a.region].filter(Boolean);
           if (parts.length) label = parts.join(', ');
         }
-      } catch {}
+      } catch { }
       setPostLocationLabel(label);
     } catch (e) {
       console.error('pick location error', e);
@@ -341,7 +347,7 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     if (user && activeSection === 'home') {
       loadData();
-      
+
       // Set up real-time location tracking
       const unsubscribe = locationService.subscribe((locations) => {
         setFamilyLocations(locations);
@@ -423,21 +429,53 @@ const HomeScreen: React.FC = () => {
   // Available families from API
   const availableFamilies = families;
 
-  const handleCreatePost = () => {
-    const created = {
-      content: newPostContent,
-      imageUri: postImageUri,
-      locationLabel: postLocationLabel,
-    };
-    setLastCreatedPost(created);
-    setShowCreatePostModal(false);
-    setShowPostDrawer(true);
-    setNewPostContent('');
-    setPostImageUri(null);
-    setPostLocationLabel(null);
+  const handleCreatePost = async () => {
+    console.log('Post button clicked');
+    Alert.alert('DEBUG', 'Post button clicked');
+    if (!newPostContent.trim()) {
+      Alert.alert('Empty Post', 'Please write something to post.');
+      return;
+    }
+
+    try {
+      setIsPosting(true);
+
+      // Find a valid family ID. selectedFamily is currently a string from useHomeScreen
+      const matchingFamily = (families as any[]).find(f => f.name === selectedFamily);
+      const targetFamilyId = matchingFamily?.id || (families as any[])[0]?.id || '00000000-0000-0000-0000-000000000000';
+
+      const created = {
+        content: newPostContent,
+        familyId: targetFamilyId,
+        media: postImageUri ? { type: 'image' as const, url: postImageUri } : undefined,
+        location: postLocationLabel || undefined,
+        tags: [],
+      };
+
+      console.log('Creating post...', created);
+      await socialService.createPost(created);
+
+      // Update UI
+      setSocialRefreshKey(prev => prev + 1); // Trigger SocialTab refresh
+      setShowCreatePostModal(false); // Close modal
+
+      // Reset form
+      setNewPostContent('');
+      setPostImageUri(null);
+      setPostLocationLabel(null);
+
+      // Don't show success drawer ("model up") - user request
+      setShowPostDrawer(false);
+    } catch (error) {
+      console.error('Failed to create post:', error);
+      Alert.alert('Error', 'Failed to create post. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
   };
 
-  
+
+
   const renderMainContentBySection = () => {
     switch (activeSection) {
       case 'gallery':
@@ -465,7 +503,12 @@ const HomeScreen: React.FC = () => {
           case 'financial':
             return <FinancialTab />;
           case 'social':
-            return <SocialTab onCommentPress={handleCommentPress} familyId={selectedFamily?.id} />;
+            return <SocialTab
+              onCommentPress={handleCommentPress}
+              familyId={(families as any[]).find(f => f.name === selectedFamily)?.id}
+              refreshKey={socialRefreshKey}
+            />;
+
           default:
             return null;
         }
@@ -545,7 +588,9 @@ const HomeScreen: React.FC = () => {
           locationLabel={postLocationLabel}
           onPickLocation={handlePickLocation}
           onClearLocation={handleClearLocation}
+          loading={isPosting}
         />
+
 
         {/* Comment Drawer Modal */}
         <CommentDrawer

@@ -92,7 +92,9 @@ export interface Family {
 }
 
 export class SocialMediaService {
-  private supabase = getSupabaseClient();
+  private get supabase() {
+    return getSupabaseClient();
+  }
 
   // =============================================
   // FAMILIES
@@ -664,7 +666,7 @@ export class SocialMediaService {
       const totalPosts = data.length;
       const activePosts = data.filter(post => post.status === 'active').length;
       const reportedPosts = data.filter(post => post.is_reported).length;
-      const totalEngagement = data.reduce((sum, post) => 
+      const totalEngagement = data.reduce((sum, post) =>
         sum + post.likes_count + post.shares_count + post.comments_count, 0);
 
       return {

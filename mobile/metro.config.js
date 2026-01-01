@@ -52,6 +52,7 @@ config.transformer = {
   }),
 };
 
+/*
 // Patch resolver to ensure PlatformConstants polyfill loads first
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
@@ -63,5 +64,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     ? originalResolveRequest(context, moduleName, platform)
     : context.resolveRequest(context, moduleName, platform);
 };
+*/
 
 module.exports = config;

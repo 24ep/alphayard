@@ -598,7 +598,7 @@ export class AuthController {
   private generateAccessToken(userId: string): string {
     return jwt.sign(
       { id: userId },
-      process.env.JWT_SECRET!,
+      process.env.JWT_SECRET || 'bondarys-dev-secret-key',
       { expiresIn: '15m' }
     );
   }
@@ -607,7 +607,7 @@ export class AuthController {
   private generateRefreshToken(userId: string): string {
     return jwt.sign(
       { id: userId },
-      process.env.JWT_REFRESH_SECRET!,
+      process.env.JWT_REFRESH_SECRET || 'bondarys-refresh-secret-key',
       { expiresIn: '7d' }
     );
   }

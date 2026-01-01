@@ -73,5 +73,5 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
         </div>
       </Dialog>
     </Transition>
-)
-
+  )
+}
