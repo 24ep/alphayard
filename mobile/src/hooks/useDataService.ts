@@ -15,6 +15,7 @@ export interface UseDataServiceReturn<T> {
   loading: boolean;
   refetch: () => Promise<void>;
   clearError: () => void;
+  setData: React.Dispatch<React.SetStateAction<T | null>>;
 }
 
 export function useDataService<T>(
@@ -63,7 +64,8 @@ export function useDataService<T>(
     error,
     loading,
     refetch: fetchData,
-    clearError
+    clearError,
+    setData
   };
 }
 
@@ -106,7 +108,7 @@ export function useDataServiceWithPagination<T>(
 
   const loadMore = useCallback(async () => {
     if (!hasMore || service.loading) return;
-    
+
     setPage(prev => prev + 1);
   }, [hasMore, service.loading]);
 

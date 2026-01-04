@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 
 interface Step4InviteFamilyScreenProps {
@@ -22,7 +20,7 @@ interface Step4InviteFamilyScreenProps {
 }
 
 const Step4InviteFamilyScreen: React.FC<Step4InviteFamilyScreenProps> = ({ navigation, route }) => {
-  const { email, password, familyName, familyDescription } = route.params;
+  const { email, phone, password, familyName, familyDescription } = route.params;
   const [inviteEmails, setInviteEmails] = useState<string[]>(['']);
   const [errors, setErrors] = useState<{ emails?: string }>({});
 
@@ -51,9 +49,10 @@ const Step4InviteFamilyScreen: React.FC<Step4InviteFamilyScreenProps> = ({ navig
   };
 
   const handleSkip = () => {
-    navigation.navigate('Step4Name', { 
-      email, 
-      password, 
+    navigation.navigate('Step4Name', {
+      email,
+      phone,
+      password,
       familyOption: 'create',
       familyName,
       familyDescription,
@@ -71,9 +70,10 @@ const Step4InviteFamilyScreen: React.FC<Step4InviteFamilyScreenProps> = ({ navig
     }
 
     setErrors({});
-    navigation.navigate('Step4Name', { 
-      email, 
-      password, 
+    navigation.navigate('Step4Name', {
+      email,
+      phone,
+      password,
       familyOption: 'create',
       familyName,
       familyDescription,
@@ -102,9 +102,9 @@ const Step4InviteFamilyScreen: React.FC<Step4InviteFamilyScreenProps> = ({ navig
                 <Icon name="arrow-left" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <View style={styles.stepIndicator}>
-                <Text style={styles.stepText}>Step 4 of 6</Text>
+                <Text style={styles.stepText}>Step 1 of 4</Text>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '66.67%' }]} />
+                  <View style={[styles.progressFill, { width: '35%' }]} />
                 </View>
               </View>
             </View>

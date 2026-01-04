@@ -14,29 +14,32 @@ import { errorHandler } from './middleware/errorHandler';
 
 // Import routes
 // import healthRoutes from './routes/healthRoutes';
- // TODO: Fix missing module: ./routes/healthRoutes
-// import authRoutes from './routes/authRoutes';
- // TODO: Fix missing module: ./routes/authRoutes
+// TODO: Fix missing module: ./routes/healthRoutes
+import authRoutes from './routes/auth';
+// TODO: Fix missing module: ./routes/authRoutes
 // import familyRoutes from './routes/familyRoutes';
- // TODO: Fix missing module: ./routes/familyRoutes
+// TODO: Fix missing module: ./routes/familyRoutes
 // import locationRoutes from './routes/locationRoutes';
- // TODO: Fix missing module: ./routes/locationRoutes
-// import socialRoutes from './routes/socialRoutes';
- // TODO: Fix missing module: ./routes/socialRoutes
+// TODO: Fix missing module: ./routes/locationRoutes
+// import socialRoutes from './routes/social.mock';
+import socialRoutes from './routes/social';
 // import storageRoutes from './routes/storageRoutes';
- // TODO: Fix missing module: ./routes/storageRoutes
+// TODO: Fix missing module: ./routes/storageRoutes
 import popupRoutes from './routes/popupRoutes';
+import userLocationsRoutes from './routes/userLocations';
+import miscRoutes from './routes/misc';
 
 // Import services
 // import { initializeSentry } from './services/sentryService';
- // TODO: Fix missing module: ./services/sentryService
+// TODO: Fix missing module: ./services/sentryService
 // import { connectDatabase } from './services/databaseService';
- // TODO: Fix missing module: ./services/databaseService
+// TODO: Fix missing module: ./services/databaseService
 // import { connectRedis } from './services/redisService';
- // TODO: Fix missing module: ./services/redisService
+// TODO: Fix missing module: ./services/redisService
 import { initializeSocket } from './socket/socketService';
+import { initializeSupabase } from './services/supabaseService';
 // import { logger } from './utils/logger';
- // TODO: Fix missing module: ./utils/logger
+// TODO: Fix missing module: ./utils/logger
 
 // Stub missing functions
 const initializeSentry = () => { /* TODO: Implement */ };
@@ -57,12 +60,16 @@ const io = new Server(server, {
     credentials: true
   }
 });
+app.set('io', io);
 
 // Initialize services
 initializeSentry();
 connectDatabase();
 connectRedis();
 initializeSocket(io);
+initializeSupabase().catch(err => {
+  logger.error('Failed to initialize Supabase:', err);
+});
 
 // Middleware
 app.use(helmet());
@@ -73,10 +80,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(compression());
-app.use(morgan('combined', { 
-  stream: { 
-    write: (message: any) => logger.info(message.trim()) 
-  } 
+app.use(morgan('combined', {
+  stream: {
+    write: (message: any) => logger.info(message.trim())
+  }
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -86,12 +93,26 @@ app.use(rateLimiter);
 // app.use('/api/health', healthRoutes); // TODO: Implement healthRoutes
 
 // API routes
-// app.use('/api/auth', authRoutes); // TODO: Implement authRoutes
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/v1/auth', authRoutes);
 // app.use('/api/hourse', authMiddleware, familyRoutes); // TODO: Implement routes
 // app.use('/api/location', authMiddleware, locationRoutes); // TODO: Implement routes
-// app.use('/api/social', authMiddleware, socialRoutes); // TODO: Implement routes
-// app.use('/api/storage', authMiddleware, storageRoutes); // TODO: Implement routes
+app.use('/api/social', socialRoutes);
+app.use('/api/v1/social', socialRoutes);
+app.use('/api/v1/user/locations', userLocationsRoutes);
+app.use('/api/v1/misc', miscRoutes);
 app.use('/api/popups', popupRoutes);
+
+// Chat Routes
+import chatRoutes from './routes/chat';
+import chatAttachmentRoutes from './routes/chatAttachments';
+app.use('/api/v1/chat', chatRoutes); // /api/v1/chat/families/:id/rooms
+app.use('/api/v1', chatAttachmentRoutes); // /api/v1/messages/... and /api/v1/attachments/...
+
+// Static uploads serving
+import path from 'path';
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Error handling middleware
 app.use(errorHandler);

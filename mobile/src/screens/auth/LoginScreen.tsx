@@ -13,154 +13,115 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { styles } from './LoginScreen.styles';
 import { DynamicBackground } from '../../components/DynamicBackground';
 import { DynamicLogo } from '../../components/DynamicImage';
 import { useLoginBackground } from '../../hooks/useAppConfig';
+import { CountryPickerModal } from '../../components/CountryPickerModal';
+import { Country } from '../../services/api/config';
 
-// Import colors for inline styles
+
 const colors = {
   primary: '#FA7272',
   inputPlaceholder: '#999999',
   textSecondary: '#666666',
 };
 
-interface LoginFormData {
-  email: string;
-  password: string;
-}
-
 const LoginScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const { login, loginWithSSO, isLoading, isAuthenticated, user, loginError, clearLoginError } = useAuth();
-
-  // Get dynamic background from CMS
+  const navigation = useNavigation<any>();
+  const {
+    checkUserExists,
+    requestOtp,
+    loginWithSSO,
+    isLoading,
+    clearLoginError
+  } = useAuth();
   const { background, loading: backgroundLoading } = useLoginBackground();
 
-  // Form state
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
+  // State
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
+
+  // Separate states for persistence when switching
+  const [emailInput, setEmailInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<Country>({
+    code: 'US', name: 'United States', dial_code: '+1', flag: '🇺🇸'
   });
 
-  const [errors, setErrors] = useState<Partial<LoginFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [error, setError] = useState('');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
 
   // Animation values
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const slideAnim = React.useRef(new Animated.Value(30)).current;
   const cardScaleAnim = React.useRef(new Animated.Value(0.95)).current;
 
-  // Monitor authentication state changes
-  useEffect(() => {
-    console.log('[LoginScreen] Auth state changed - isAuthenticated:', isAuthenticated, 'user:', !!user);
-    if (isAuthenticated && user) {
-      console.log('[LoginScreen] User is authenticated, should navigate to main app');
-    }
-  }, [isAuthenticated, user]);
-
-  // Entrance animations
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(cardScaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+      Animated.spring(cardScaleAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
     ]).start();
   }, []);
 
-  const handleEmailChange = (text: string) => {
-    console.log('Email input changed:', text);
-    setFormData(prev => ({ ...prev, email: text }));
-    if (errors.email) {
-      setErrors(prev => ({ ...prev, email: undefined }));
-    }
-    // Clear error when email/password is changed
-    if (loginError) {
-      if (clearLoginError) {
-        clearLoginError();
+  const handleNext = async () => {
+    let finalIdentifier = '';
+
+    if (loginMethod === 'email') {
+      if (!emailInput.trim()) {
+        setError('Please enter your email address');
+        return;
       }
-    }
-  };
-
-  const handlePasswordChange = (text: string) => {
-    setFormData(prev => ({ ...prev, password: text }));
-    if (errors.password) {
-      setErrors(prev => ({ ...prev, password: undefined }));
-    }
-    // Clear error when email/password is changed
-    if (loginError) {
-      if (clearLoginError) {
-        clearLoginError();
+      finalIdentifier = emailInput.trim();
+    } else {
+      if (!phoneInput.trim()) {
+        setError('Please enter your phone number');
+        return;
       }
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Partial<LoginFormData> = {};
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email';
+      // Combine dial code and phone number (strip leading 0 if present usually, but basic concat for now)
+      finalIdentifier = `${selectedCountry.dial_code}${phoneInput.trim()}`;
     }
 
-    if (!formData.password.trim()) {
-      newErrors.password = 'Password is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async () => {
-    if (!validateForm()) return;
-
+    setError('');
     setIsSubmitting(true);
-    setErrors({}); // Clear previous field errors
-    if (clearLoginError) {
-      clearLoginError(); // Clear any previous general login error
-    }
+    if (clearLoginError) clearLoginError();
 
     try {
-      console.log('[LoginScreen] Attempting login...');
-      await login(formData.email, formData.password);
+      // 1. Check if user exists
+      console.log('[LOGIN] Checking existence for:', finalIdentifier);
+      const exists = await checkUserExists(finalIdentifier);
+      console.log('[LOGIN] User exists:', exists);
 
-      console.log('[LoginScreen] Login succeeded');
-      // No need to manually navigate here usually, RootNavigator handles it based on isAuthenticated
-      // But we can check if we want to show a success state
-    } catch (error: any) {
-      setIsSubmitting(false); // Only set false on error, keep true on success to prevent UI flash
-      console.log('[LoginScreen] Login failed:', error);
-
-      // Error is usually handled by AuthContext but we can catch local mapping constraints here
-      const errorMessage = error.message || error.error || 'Login failed';
-      const lowerMessage = errorMessage.toLowerCase();
-
-      if (lowerMessage.includes('password') || lowerMessage.includes('incorrect') || lowerMessage.includes('credential')) {
-        setErrors(prev => ({ ...prev, password: errorMessage }));
-      } else if (lowerMessage.includes('email') || lowerMessage.includes('user not found')) {
-        setErrors(prev => ({ ...prev, email: errorMessage }));
+      if (exists) {
+        // 2. If exists, Request OTP and Navigate to Verification
+        console.log('[LOGIN] Existing user detected. Requesting OTP...');
+        try {
+          await requestOtp(finalIdentifier);
+          navigation.navigate('OtpVerification', { identifier: finalIdentifier, mode: 'login' });
+        } catch (otpErr: any) {
+          console.error('[LOGIN] OTP request failed:', otpErr);
+          Alert.alert('Error', 'Failed to send verification code. Please try again.');
+        }
+      } else {
+        // 3. If new, Navigate directly to Family Setup (Signup flow)
+        console.log('[LOGIN] New user detected. Transitioning to signup...');
+        navigation.navigate('Step3Family', {
+          email: loginMethod === 'email' ? finalIdentifier : '',
+          phone: loginMethod === 'phone' ? finalIdentifier : '',
+          password: 'temp_password_123'
+        });
       }
+    } catch (err: any) {
+      console.error('Login flow error:', err);
+      // Determine if it's a "User not found" (which shouldn't happen here as checkUserExists should return false)
+      // or a real connection error
+      Alert.alert('Connection Issue', 'Unable to reach the server. Please check your internet connection.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -169,252 +130,149 @@ const LoginScreen: React.FC = () => {
       await loginWithSSO(provider);
     } catch (error: any) {
       console.error(`${provider} login error:`, error);
-      Alert.alert(
-        'Login Failed',
-        error.message || `Failed to login with ${provider}. Please try again.`,
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Login Failed', error.message || `Failed to login with ${provider}.`);
     }
-  };
-
-  const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
-  };
-
-  const handleSignup = () => {
-    navigation.navigate('Signup');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <DynamicBackground
-        background={background}
-        loading={backgroundLoading}
-        style={styles.background}
-      >
-        {/* Subtle overlay for depth - only if image background */}
+      <DynamicBackground background={background} loading={backgroundLoading} style={styles.background}>
         {background?.type === 'image' && background?.overlay_opacity === undefined && (
           <View style={styles.backgroundOverlay} />
         )}
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidingView}
-        >
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <Animated.View
-              style={[
-                styles.content,
-                {
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
-                },
-              ]}
-            >
-              {/* App Logo and Name - Outside Card */}
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Animated.View style={[styles.content, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+
               <View style={styles.logoHeader}>
                 <View style={styles.logoContainer}>
-                  <DynamicLogo
-                    logoType="white"
-                    width={48}
-                    height={48}
-                    style={styles.logoIconWrapper}
-                  />
+                  <DynamicLogo logoType="white" width={48} height={48} style={styles.logoIconWrapper} />
                   <Text style={styles.logoText}>Bondarys</Text>
                 </View>
               </View>
 
-              {/* Login Form */}
               <View style={styles.formContainer}>
                 <View style={styles.formCard}>
                   <View style={styles.formCardInner}>
-                    {/* Header with Back Button */}
-                    <View style={styles.formHeader}>
-                      <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <Icon name="arrow-left" size={24} color={colors.primary} />
-                      </TouchableOpacity>
-                      <View style={styles.backButtonPlaceholder} />
+
+                    <View style={styles.headerContainer}>
+                      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 8, color: '#333' }}>Welcome</Text>
+                      <Text style={{ fontSize: 14, color: '#666', marginBottom: 24 }}>Enter your email or phone to continue</Text>
                     </View>
 
-                    {/* Error Banner */}
-                    {loginError && (
-                      <View style={styles.apiErrorBanner}>
-                        <Icon name="alert-circle" size={20} color="#FF4757" style={styles.apiErrorIcon} />
-                        <Text style={styles.apiErrorText}>{loginError}</Text>
-                      </View>
-                    )}
 
-                    {/* Email Input */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Email</Text>
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          emailFocused && styles.inputWrapperFocused,
-                          errors.email && styles.inputError
-                        ]}
-                      >
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Enter Email"
-                          placeholderTextColor={colors.inputPlaceholder}
-                          value={formData.email}
-                          onChangeText={handleEmailChange}
-                          onFocus={() => setEmailFocused(true)}
-                          onBlur={() => setEmailFocused(false)}
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          autoComplete="email"
-                          underlineColorAndroid="transparent"
-                          testID="email-input"
-                        />
-                      </View>
-                      {errors.email && (
-                        <View style={styles.errorContainer}>
-                          <Text style={styles.errorText}>{errors.email}</Text>
-                        </View>
-                      )}
-                    </View>
-
-                    {/* Password Input */}
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Password</Text>
-                      <View
-                        style={[
-                          styles.inputWrapper,
-                          passwordFocused && styles.inputWrapperFocused,
-                          errors.password && styles.inputError
-                        ]}
-                      >
-                        <TextInput
-                          style={styles.textInput}
-                          placeholder="Enter Password"
-                          placeholderTextColor={colors.inputPlaceholder}
-                          value={formData.password}
-                          onChangeText={handlePasswordChange}
-                          onFocus={() => setPasswordFocused(true)}
-                          onBlur={() => setPasswordFocused(false)}
-                          secureTextEntry={!showPassword}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          underlineColorAndroid="transparent"
-                        />
+                    {/* Identifier Input Section */}
+                    <View style={[styles.inputContainer, { position: 'relative' }]}>
+                      {/* Label and Toggle */}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={styles.inputLabel}>
+                          {loginMethod === 'email' ? 'Email Address' : 'Phone Number'}
+                        </Text>
                         <TouchableOpacity
-                          style={styles.eyeIcon}
-                          onPress={() => setShowPassword(!showPassword)}
+                          onPress={() => setLoginMethod(prev => prev === 'email' ? 'phone' : 'email')}
+                          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}
                           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                          <Icon
-                            name={showPassword ? "eye-off" : "eye"}
-                            size={20}
-                            color={colors.textSecondary}
-                          />
+                          <Text style={{ fontSize: 12, color: '#666', fontWeight: '500' }}>
+                            Switch to {loginMethod === 'email' ? 'Phone' : 'Email'}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                            <Icon
+                              name={loginMethod === 'email' ? 'cellphone' : 'email-outline'}
+                              size={16}
+                              color="#666"
+                            />
+                            <Icon name="swap-horizontal" size={16} color="#999" />
+                          </View>
                         </TouchableOpacity>
                       </View>
-                      {errors.password && (
-                        <View style={styles.errorContainer}>
-                          <Text style={styles.errorText}>{errors.password}</Text>
+
+                      {/* Inputs */}
+                      {loginMethod === 'phone' ? (
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                          {/* Country Code Selection */}
+                          <TouchableOpacity
+                            style={[
+                              styles.inputWrapper,
+                              { width: 90, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 6, paddingHorizontal: 8 }
+                            ]}
+                            onPress={() => setShowCountryPicker(true)}
+                          >
+                            <Text style={{ fontSize: 20 }}>{selectedCountry.flag}</Text>
+                            <Text style={{ fontSize: 16, color: '#333', fontWeight: '500' }}>{selectedCountry.dial_code}</Text>
+                            <Icon name="chevron-down" size={16} color="#999" />
+                          </TouchableOpacity>
+
+                          {/* Phone Input */}
+                          <View style={[styles.inputWrapper, { flex: 1 }, inputFocused && styles.inputWrapperFocused, error && styles.inputError ? { borderColor: 'red' } : {}]}>
+                            <TextInput
+                              style={styles.textInput}
+                              placeholder="Phone Number"
+                              placeholderTextColor={colors.inputPlaceholder}
+                              value={phoneInput}
+                              onChangeText={setPhoneInput}
+                              onFocus={() => setInputFocused(true)}
+                              onBlur={() => setInputFocused(false)}
+                              autoCapitalize="none"
+                              autoCorrect={false}
+                              keyboardType="phone-pad"
+                            />
+                          </View>
+                        </View>
+                      ) : (
+                        /* Email Input */
+                        <View style={[styles.inputWrapper, inputFocused && styles.inputWrapperFocused, error && styles.inputError ? { borderColor: 'red' } : {}]}>
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="name@example.com"
+                            placeholderTextColor={colors.inputPlaceholder}
+                            value={emailInput}
+                            onChangeText={setEmailInput}
+                            onFocus={() => setInputFocused(true)}
+                            onBlur={() => setInputFocused(false)}
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                            keyboardType="email-address"
+                          />
                         </View>
                       )}
+
+                      {error ? <Text style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{error}</Text> : null}
                     </View>
 
-                    {/* Remember Me and Forgot Password */}
-                    <View style={styles.rememberForgotContainer}>
-                      <TouchableOpacity
-                        style={styles.rememberMeContainer}
-                        onPress={() => setRememberMe(!rememberMe)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                          {rememberMe && (
-                            <Icon name="check" size={16} color="#FFFFFF" />
-                          )}
-                        </View>
-                        <Text style={styles.rememberMeText}>Remember me</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={handleForgotPassword}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Login Button */}
+                    {/* Next Button */}
                     <TouchableOpacity
-                      style={[
-                        styles.loginButton,
-                        (isLoading || isSubmitting) && styles.loginButtonDisabled
-                      ]}
-                      onPress={handleLogin}
+                      style={[styles.loginButton, (isLoading || isSubmitting) && styles.loginButtonDisabled, { marginTop: 24 }]}
+                      onPress={handleNext}
                       disabled={isLoading || isSubmitting}
-                      activeOpacity={0.8}
                     >
                       {isLoading || isSubmitting ? (
                         <ActivityIndicator color="#FFFFFF" size="small" />
                       ) : (
-                        <Text style={styles.loginButtonText}>Sign in</Text>
+                        <Text style={styles.loginButtonText}>Continue</Text>
                       )}
                     </TouchableOpacity>
 
                     {/* Social Login Section */}
                     <View style={styles.socialSection}>
-                      <Text style={styles.socialSectionText}>Sign in with</Text>
+                      <Text style={styles.socialSectionText}>Or continue with</Text>
                       <View style={styles.socialButtons}>
-                        <TouchableOpacity
-                          style={[styles.socialButton, styles.facebookButton]}
-                          onPress={() => handleSSOLogin('facebook')}
-                          disabled={isLoading}
-                          activeOpacity={0.7}
-                        >
+                        <TouchableOpacity style={[styles.socialButton, styles.facebookButton]} onPress={() => handleSSOLogin('facebook')}>
                           <Icon name="facebook" size={24} color="#1877F2" />
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.socialButton, styles.twitterButton]}
-                          onPress={() => handleSSOLogin('google')}
-                          disabled={isLoading}
-                          activeOpacity={0.7}
-                        >
+                        <TouchableOpacity style={[styles.socialButton, styles.twitterButton]} onPress={() => handleSSOLogin('google')}>
                           <Icon name="twitter" size={24} color="#1DA1F2" />
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.socialButton, styles.googleButton]}
-                          onPress={() => handleSSOLogin('google')}
-                          disabled={isLoading}
-                          activeOpacity={0.7}
-                        >
+                        <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => handleSSOLogin('google')}>
                           <Icon name="google" size={24} color="#DB4437" />
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[styles.socialButton, styles.appleButton]}
-                          onPress={() => handleSSOLogin('apple')}
-                          disabled={isLoading}
-                          activeOpacity={0.7}
-                        >
+                        <TouchableOpacity style={[styles.socialButton, styles.appleButton]} onPress={() => handleSSOLogin('apple')}>
                           <Icon name="apple" size={24} color="#000000" />
                         </TouchableOpacity>
                       </View>
                     </View>
 
-                    {/* Sign Up Link */}
-                    <View style={styles.signupContainer}>
-                      <Text style={styles.signupText}>Don't have an account? </Text>
-                      <TouchableOpacity onPress={handleSignup} hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}>
-                        <Text style={styles.signupLink}>Sign up</Text>
-                      </TouchableOpacity>
-                    </View>
                   </View>
                 </View>
               </View>
@@ -423,9 +281,16 @@ const LoginScreen: React.FC = () => {
           </ScrollView>
         </KeyboardAvoidingView>
       </DynamicBackground>
+
+      {/* Country Picker Modal */}
+      <CountryPickerModal
+        visible={showCountryPicker}
+        onClose={() => setShowCountryPicker(false)}
+        onSelect={(country) => setSelectedCountry(country)}
+        selectedCountryCode={selectedCountry.code}
+      />
     </SafeAreaView>
   );
 };
-
 
 export default LoginScreen;

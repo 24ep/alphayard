@@ -45,12 +45,14 @@ export interface AttentionApp {
 export interface SocialPost {
   id: string;
   author: {
+    id?: string;
     name: string;
     avatar: string;
     isVerified: boolean;
   };
   content: string;
   timestamp: string;
+  created_at?: string;
   likes: number;
   comments: number;
   shares: number;

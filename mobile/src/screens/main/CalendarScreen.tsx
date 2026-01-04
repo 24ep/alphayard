@@ -8,7 +8,10 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Platform,
+  Switch,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { calendarService } from '../../services/calendar/CalendarService';
 // Simple local event type for the simplified calendar screen
@@ -61,13 +64,13 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
   // Calendar state
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  
+
   // Drawer states
   const [showEventsDrawer, setShowEventsDrawer] = useState(false);
   const [showCreateEventDrawer, setShowCreateEventDrawer] = useState(false);
   const [showEventDetailDrawer, setShowEventDetailDrawer] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<SimpleEvent | null>(null);
-  
+
   // Form state for create/edit
   const [eventForm, setEventForm] = useState({
     title: '',
@@ -78,6 +81,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     location: '',
     color: brandColors.primary,
   });
+
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const isSameDay = (a: Date, b: Date) => startOfDay(a).getTime() === startOfDay(b).getTime();
@@ -90,7 +96,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     const diff = (day + 6) % 7; // make Monday=0
     const res = new Date(d);
     res.setDate(d.getDate() - diff);
-    res.setHours(0,0,0,0);
+    res.setHours(0, 0, 0, 0);
     return res;
   };
   const endOfWeek = (d: Date) => {
@@ -133,12 +139,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     if (loading) {
       const safetyTimer = setTimeout(() => {
         setLoading(false);
-        try {
-          if (events.length === 0) {
-            const mock = calendarService.getMockEvents();
-            setEvents(mock);
-          }
-        } catch {}
+        // Fallback or empty state if needed
       }, 6000);
       return () => clearTimeout(safetyTimer);
     }
@@ -155,28 +156,11 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
   }, []);
 
   const loadEvents = async () => {
-    const to = setTimeout(() => {
-      try {
-        const mockEvents = calendarService.getMockEvents();
-        setEvents(mockEvents.map(event => ({
-          id: event.id,
-          title: event.title,
-          description: event.description || '',
-          startDate: event.startDate,
-          endDate: event.endDate,
-          allDay: event.allDay,
-          location: event.location || '',
-          color: event.color,
-        })));
-      } catch {}
-      setLoading(false);
-    }, 5000);
-
     try {
       setLoading(true);
       const apiEvents = await calendarService.getEvents();
-      clearTimeout(to);
-      setEvents(apiEvents.map(event => ({
+      // Map API events to local SimpleEvent format
+      const mappedEvents: SimpleEvent[] = apiEvents.map(event => ({
         id: event.id,
         title: event.title,
         description: event.description || '',
@@ -185,23 +169,11 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
         allDay: event.allDay,
         location: event.location || '',
         color: event.color,
-      })));
-      setLoading(false);
+      }));
+      setEvents(mappedEvents);
     } catch (apiError) {
-      clearTimeout(to);
-      try {
-        const mockEvents = calendarService.getMockEvents();
-        setEvents(mockEvents.map(event => ({
-          id: event.id,
-          title: event.title,
-          description: event.description || '',
-          startDate: event.startDate,
-          endDate: event.endDate,
-          allDay: event.allDay,
-          location: event.location || '',
-          color: event.color,
-        })));
-      } catch {}
+      console.error('Failed to load events', apiError);
+    } finally {
       setLoading(false);
     }
   };
@@ -217,8 +189,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
 
   const handleEventCreate = async (eventData: Partial<SimpleEvent>) => {
     try {
-      const newEvent: SimpleEvent = {
-        id: Date.now().toString(),
+      await calendarService.createEvent({
         title: eventData.title || 'New Event',
         description: eventData.description,
         startDate: eventData.startDate || new Date().toISOString(),
@@ -226,9 +197,12 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
         allDay: eventData.allDay || false,
         location: eventData.location,
         color: eventData.color || brandColors.primary,
-      };
-      setEvents(prev => [...prev, newEvent]);
-    } catch {}
+        type: 'personal', // Default type
+      });
+      await loadEvents();
+    } catch (e) {
+      console.error('Failed to create event', e);
+    }
   };
 
   const handleDateClick = (date: Date) => {
@@ -297,23 +271,52 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     );
   };
 
-  const saveEvent = () => {
-    if (selectedEvent) {
-      setEvents(prev => prev.map(e => e.id === selectedEvent.id ? { ...e, ...eventForm } : e));
-      setShowEventDetailDrawer(false);
-    } else {
-      const newEvent: SimpleEvent = { id: Date.now().toString(), ...eventForm } as any;
-      setEvents(prev => [...prev, newEvent]);
-      setShowCreateEventDrawer(false);
+  const saveEvent = async () => {
+    try {
+      if (selectedEvent) {
+        // Edit existing
+        await calendarService.updateEvent({
+          id: selectedEvent.id,
+          title: eventForm.title,
+          description: eventForm.description,
+          startDate: eventForm.startDate,
+          endDate: eventForm.endDate,
+          allDay: eventForm.allDay,
+          location: eventForm.location,
+          color: eventForm.color,
+        });
+        setShowEventDetailDrawer(false);
+      } else {
+        // Create new
+        await calendarService.createEvent({
+          title: eventForm.title,
+          description: eventForm.description,
+          startDate: eventForm.startDate,
+          endDate: eventForm.endDate,
+          allDay: eventForm.allDay,
+          location: eventForm.location,
+          color: eventForm.color,
+          type: 'personal',
+        });
+        setShowCreateEventDrawer(false);
+      }
+      setSelectedEvent(null);
+      await loadEvents();
+    } catch (e) {
+      console.error('Failed to save event', e);
     }
-    setSelectedEvent(null);
   };
 
-  const deleteEvent = () => {
-    if (selectedEvent) {
-      setEvents(prev => prev.filter(e => e.id !== selectedEvent.id));
-      setShowEventDetailDrawer(false);
-      setSelectedEvent(null);
+  const deleteEvent = async () => {
+    try {
+      if (selectedEvent) {
+        await calendarService.deleteEvent(selectedEvent.id);
+        setShowEventDetailDrawer(false);
+        setSelectedEvent(null);
+        await loadEvents();
+      }
+    } catch (e) {
+      console.error('Failed to delete event', e);
     }
   };
 
@@ -367,7 +370,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
         {/* Weekday header */}
         <View style={{ paddingHorizontal: H_PADDING }}>
           <View style={{ flexDirection: 'row', backgroundColor: '#FFFFFF', borderTopLeftRadius: 12, borderTopRightRadius: 12, paddingVertical: 8, paddingHorizontal: 8 }}>
-            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
               <View key={d} style={{ flex: 1, alignItems: 'center' }}>
                 <Text style={{ fontSize: 12, color: '#6B7280', fontWeight: '600' }}>{d}</Text>
               </View>
@@ -428,7 +431,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
         setSelectedEvent(null);
       }}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '80%' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '90%' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>
                 {selectedEvent ? 'Edit Event' : 'Create Event'}
@@ -441,6 +444,169 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
                 <IconMC name="close" size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* Title */}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Title</Text>
+              <TextInput
+                value={eventForm.title}
+                onChangeText={text => setEventForm(prev => ({ ...prev, title: text }))}
+                placeholder="Event Title"
+                placeholderTextColor="#9CA3AF"
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, color: '#111827', marginBottom: 16 }}
+              />
+
+              {/* Description */}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Description</Text>
+              <TextInput
+                value={eventForm.description}
+                onChangeText={text => setEventForm(prev => ({ ...prev, description: text }))}
+                placeholder="Details about the event"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={3}
+                style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, color: '#111827', marginBottom: 16, textAlignVertical: 'top', minHeight: 80 }}
+              />
+
+              {/* Dates */}
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Start</Text>
+                  {Platform.OS === 'web' ? (
+                    <TextInput
+                      value={eventForm.startDate.split('T')[0] + ' ' + (eventForm.startDate.split('T')[1] || '').substring(0, 5)}
+                      onChangeText={(text) => {
+                        // Simple ISO string handling for web if picker not available
+                        // Ideally web would use <input type="datetime-local" /> but keeping it simple for React Native Web
+                        setEventForm(prev => ({ ...prev, startDate: text }));
+                      }}
+                      placeholder="YYYY-MM-DD HH:mm"
+                      style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12 }}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setShowStartDatePicker(true)}
+                      style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12 }}
+                    >
+                      <Text style={{ color: '#111827' }}>
+                        {new Date(eventForm.startDate || Date.now()).toLocaleDateString()} {new Date(eventForm.startDate || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>End</Text>
+                  {Platform.OS === 'web' ? (
+                    <TextInput
+                      value={eventForm.endDate.split('T')[0] + ' ' + (eventForm.endDate.split('T')[1] || '').substring(0, 5)}
+                      onChangeText={(text) => setEventForm(prev => ({ ...prev, endDate: text }))}
+                      placeholder="YYYY-MM-DD HH:mm"
+                      style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12 }}
+                    />
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setShowEndDatePicker(true)}
+                      style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12 }}
+                    >
+                      <Text style={{ color: '#111827' }}>
+                        {new Date(eventForm.endDate || Date.now()).toLocaleDateString()} {new Date(eventForm.endDate || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Date Pickers (Native only) */}
+              {Platform.OS !== 'web' && showStartDatePicker && (
+                <DateTimePicker
+                  value={new Date(eventForm.startDate || Date.now())}
+                  mode="datetime"
+                  display="default"
+                  onChange={(_event, date) => {
+                    setShowStartDatePicker(false);
+                    if (date) setEventForm(prev => ({ ...prev, startDate: date.toISOString() }));
+                  }}
+                />
+              )}
+              {Platform.OS !== 'web' && showEndDatePicker && (
+                <DateTimePicker
+                  value={new Date(eventForm.endDate || Date.now())}
+                  mode="datetime"
+                  display="default"
+                  onChange={(_event, date) => {
+                    setShowEndDatePicker(false);
+                    if (date) setEventForm(prev => ({ ...prev, endDate: date.toISOString() }));
+                  }}
+                />
+              )}
+
+              {/* All Day */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>All Day Event</Text>
+                <Switch
+                  value={eventForm.allDay}
+                  onValueChange={val => setEventForm(prev => ({ ...prev, allDay: val }))}
+                  trackColor={{ false: '#D1D5DB', true: '#FFB6C1' }}
+                  thumbColor={eventForm.allDay ? '#DB2777' : '#f4f3f4'}
+                />
+              </View>
+
+              {/* Location */}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Location</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, marginBottom: 16 }}>
+                <View style={{ paddingLeft: 12 }}>
+                  <IconMC name="map-marker" size={20} color="#9CA3AF" />
+                </View>
+                <TextInput
+                  value={eventForm.location}
+                  onChangeText={text => setEventForm(prev => ({ ...prev, location: text }))}
+                  placeholder="Add location"
+                  placeholderTextColor="#9CA3AF"
+                  style={{ flex: 1, padding: 12, fontSize: 16, color: '#111827' }}
+                />
+              </View>
+
+              {/* Color */}
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 8 }}>Color</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+                {['#FFB6C1', '#93C5FD', '#A7F3D0', '#FDE047', '#C4B5FD'].map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    onPress={() => setEventForm(prev => ({ ...prev, color: c }))}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: c,
+                      borderWidth: eventForm.color === c ? 2 : 0,
+                      borderColor: '#374151',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {eventForm.color === c && <IconMC name="check" size={16} color="#374151" />}
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Actions */}
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                {selectedEvent && (
+                  <TouchableOpacity
+                    onPress={deleteEvent}
+                    style={{ flex: 1, backgroundColor: '#FEF2F2', padding: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' }}
+                  >
+                    <Text style={{ fontWeight: '700', color: '#DC2626' }}>Delete</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={saveEvent}
+                  style={{ flex: 2, backgroundColor: '#FFB6C1', padding: 16, borderRadius: 12, alignItems: 'center' }}
+                >
+                  <Text style={{ fontWeight: '700', color: '#1F2937' }}>{selectedEvent ? 'Save Changes' : 'Create Event'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -461,31 +627,5 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     </MainScreenLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  gradientContainer: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  mainContentCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-    paddingVertical: 16,
-    paddingHorizontal: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 182, 193, 0.2)',
-  },
-});
 
 export default CalendarScreen;

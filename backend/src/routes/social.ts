@@ -40,6 +40,11 @@ router.get('/families', async (req: any, res: any) => {
  * - search: string (optional)
  * - limit: number (optional, default 50)
  * - offset: number (optional, default 0)
+ * - lat: number (optional, latitude for location filter)
+ * - lng: number (optional, longitude for location filter)
+ * - distance: number (optional, distance in km for location filter)
+ * - sortBy: 'recent' | 'nearby' | 'popular' (optional)
+ * - locationType: 'hometown' | 'workplace' | 'school' | 'all' (optional)
  */
 router.get('/posts', async (req: any, res: any) => {
   try {
@@ -50,7 +55,12 @@ router.get('/posts', async (req: any, res: any) => {
       reported,
       search,
       limit,
-      offset
+      offset,
+      lat,
+      lng,
+      distance,
+      sortBy,
+      locationType
     } = req.query;
 
     const filters = {
@@ -59,7 +69,13 @@ router.get('/posts', async (req: any, res: any) => {
       reported: reported === 'true' ? true : reported === 'false' ? false : undefined,
       search: search as string,
       limit: limit ? parseInt(limit as string) : undefined,
-      offset: offset ? parseInt(offset as string) : undefined
+      offset: offset ? parseInt(offset as string) : undefined,
+      // Location-based filtering
+      latitude: lat ? parseFloat(lat as string) : undefined,
+      longitude: lng ? parseFloat(lng as string) : undefined,
+      distanceKm: distance ? parseFloat(distance as string) : undefined,
+      sortBy: sortBy as 'recent' | 'nearby' | 'popular' | undefined,
+      locationType: locationType as 'hometown' | 'workplace' | 'school' | 'all' | undefined
     };
 
     const posts = await socialMediaService.getPosts(familyId as string, filters);
@@ -96,10 +112,17 @@ router.get('/posts/:id', async (req: any, res: any) => {
  */
 router.post('/posts', async (req: any, res: any) => {
   try {
+    console.log('Creating post. Body:', req.body);
     const postData = {
       ...req.body,
+      family_id: req.body.family_id || req.body.familyId,
       author_id: req.user.id
     };
+
+    if (!postData.family_id) {
+      console.error('Missing family_id in createPost request');
+      return res.status(400).json({ success: false, error: 'family_id is required' });
+    }
 
     const post = await socialMediaService.createPost(postData);
     res.status(201).json({ success: true, data: post });
@@ -168,7 +191,9 @@ router.post('/posts/:postId/comments', async (req: any, res: any) => {
     const commentData = {
       post_id: postId,
       author_id: req.user.id,
-      content: req.body.content
+      content: req.body.content,
+      media: req.body.media, // content: { type, url }
+      parentId: req.body.parentId // Optional parent ID for replies
     };
 
     const comment = await socialMediaService.createComment(commentData);

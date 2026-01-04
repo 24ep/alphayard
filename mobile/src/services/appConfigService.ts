@@ -59,8 +59,8 @@ class AppConfigService {
   private cacheTimestamp: number = 0;
 
   constructor() {
-    this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-    
+    this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+
     this.client = axios.create({
       baseURL: `${this.baseURL}/api/app-config`,
       timeout: 15000,
@@ -97,7 +97,7 @@ class AppConfigService {
       });
 
       const config: AppConfiguration = response.data;
-      
+
       // Save to cache
       await this.saveToCache(config);
       this.cachedConfig = config;
@@ -106,7 +106,7 @@ class AppConfigService {
       return config;
     } catch (error: any) {
       console.error('Error fetching app config:', error);
-      
+
       // Return cached config if available
       if (this.cachedConfig) {
         console.log('Using cached config due to error');
@@ -126,7 +126,7 @@ class AppConfigService {
       return response.data.screen;
     } catch (error: any) {
       console.error(`Error fetching screen config for ${screenKey}:`, error);
-      
+
       // Fallback to cached config
       if (this.cachedConfig?.screens[screenKey]) {
         return this.cachedConfig.screens[screenKey];

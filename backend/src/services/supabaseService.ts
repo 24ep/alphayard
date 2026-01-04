@@ -28,6 +28,7 @@ export const initializeSupabase = async (): Promise<SupabaseClient> => {
 
 export const getSupabaseClient = (): SupabaseClient => {
   if (!supabase) {
+    console.error('❌ getSupabaseClient called but supabase is null!');
     throw new Error('Supabase client not initialized. Call initializeSupabase() first.');
   }
   return supabase;

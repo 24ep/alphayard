@@ -24,19 +24,18 @@ import { CommentDrawer } from '../../components/home/CommentDrawer';
 import { PostDrawer } from '../../components/home/PostDrawer';
 import { FamilyDropdown } from '../../components/home/FamilyDropdown';
 import { AttentionDrawer } from '../../components/home/AttentionDrawer';
-import EmotionHeatMap from '../../components/EmotionHeatMap';
+import { EmotionCheckInModal } from '../../components/home/EmotionCheckInModal';
 import { useMainContent } from '../../contexts/MainContentContext';
 
 // Hooks and Utils
 import { useHomeScreen } from '../../hooks/home/useHomeScreen';
 import { emotionService, EmotionRecord } from '../../services/emotionService';
 import { useHomeBackground } from '../../hooks/useAppConfig';
-import { DynamicBackground } from '../../components/DynamicBackground';
 
 // API Services
-import { api, familyApi, safetyApi, locationApi } from '../../services/api';
+import { api, safetyApi, locationApi } from '../../services/api';
 import { socialService } from '../../services/dataServices';
-import { locationService, FamilyLocation } from '../../services/location/LocationService';
+import { locationService, FamilyLocation } from '../../services/location/locationService';
 
 
 // Constants and Styles
@@ -48,21 +47,23 @@ const API_BASE_URL_MOBILE = process.env.EXPO_PUBLIC_API_URL || 'http://localhost
 const HomeScreen: React.FC = () => {
   const { user } = useAuth();
 
-  // Get dynamic background and banner from CMS
-  const { background, banner, loading: backgroundLoading } = useHomeBackground();
+  // Get dynamic background from CMS - only used for logging/future features
+  useHomeBackground();
 
   const [families, setFamilies] = useState<any[]>([]); // Using any[] to bypass the lint for now, but better than never[]
   const [isPosting, setIsPosting] = useState(false);
 
-  const [safetyStats, setSafetyStats] = useState<any>(null);
-  const [locationStats, setLocationStats] = useState<any>(null);
+  // Safety and location stats - stored for future use
+  const [, setSafetyStats] = useState<any>(null);
+  const [, setLocationStats] = useState<any>(null);
 
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [emotionData, setEmotionData] = useState<EmotionRecord[]>([]);
-  const [loadingEmotionData, setLoadingEmotionData] = useState(false);
+  const [, setLoadingEmotionData] = useState(false);
   const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
   const [socialRefreshKey, setSocialRefreshKey] = useState(0);
+  const [showEmotionModal, setShowEmotionModal] = useState(false);
 
   const {
     // State
@@ -80,53 +81,57 @@ const HomeScreen: React.FC = () => {
     // Setters
     setShowCreatePostModal,
     setNewPostContent,
-    setShowCommentDrawer,
     setNewComment,
-    setCommentAttachments,
     setShowFamilyDropdown,
     setShowAttentionDrawer,
 
     // Handlers
     handleTabPress,
-    handleRefresh,
     handleCommentPress,
     handleCloseCommentDrawer,
     handleAddComment,
     handleAddAttachment,
     handleRemoveAttachment,
     handleLinkPress,
+    handleLikeComment,
     handleFamilySelect,
+
+    // Data
+    comments,
+    loadingComments,
   } = useHomeScreen();
 
   // Create Post attachments state
-  const [postImageUri, setPostImageUri] = useState<string | null>(null);
+  const [postMedia, setPostMedia] = useState<{ type: 'image' | 'video'; uri: string } | null>(null);
   const [postLocationLabel, setPostLocationLabel] = useState<string | null>(null);
+  const [postCoordinates, setPostCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
   const [showPostDrawer, setShowPostDrawer] = useState(false);
 
-  const [lastCreatedPost, setLastCreatedPost] = useState<{ content: string; imageUri?: string | null; locationLabel?: string | null } | null>(null);
+  const [lastCreatedPost] = useState<{ content: string; imageUri?: string | null; locationLabel?: string | null } | null>(null);
 
   // Homescreen background config
   const [bgType, setBgType] = useState<'color' | 'gradient' | 'image'>('gradient');
   const [bgColors, setBgColors] = useState<string[]>(['#FA7272', '#FFBBB4']);
   const [bgImageUrl, setBgImageUrl] = useState<string>('');
 
-  const handlePickImage = async () => {
+  const handlePickMedia = async (type: 'image' | 'video') => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'We need media permissions to attach images.');
+        Alert.alert('Permission required', 'We need media permissions to attach media.');
         return;
       }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+      const mediaType = type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos;
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: mediaType, quality: 0.8 });
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setPostImageUri(result.assets[0].uri);
+        setPostMedia({ type, uri: result.assets[0].uri });
       }
     } catch (e) {
-      console.error('pick image error', e);
+      console.error('pick media error', e);
     }
   };
 
-  const handleClearImage = () => setPostImageUri(null);
+  const handleClearMedia = () => setPostMedia(null);
 
   const handlePickLocation = async () => {
     try {
@@ -136,6 +141,10 @@ const HomeScreen: React.FC = () => {
         return;
       }
       const coords = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setPostCoordinates({
+        latitude: coords.coords.latitude,
+        longitude: coords.coords.longitude
+      });
       let label = `${coords.coords.latitude.toFixed(5)}, ${coords.coords.longitude.toFixed(5)}`;
       try {
         const geocode = await Location.reverseGeocodeAsync({ latitude: coords.coords.latitude, longitude: coords.coords.longitude });
@@ -150,7 +159,10 @@ const HomeScreen: React.FC = () => {
       console.error('pick location error', e);
     }
   };
-  const handleClearLocation = () => setPostLocationLabel(null);
+  const handleClearLocation = () => {
+    setPostLocationLabel(null);
+    setPostCoordinates(null);
+  };
 
   // Backend integration functions
   const loadFamilies = async () => {
@@ -210,7 +222,7 @@ const HomeScreen: React.FC = () => {
   const loadSafetyStats = async () => {
     try {
       const response = await safetyApi.getSafetyStats();
-      if (response.success) {
+      if (response?.success) {
         setSafetyStats(response.stats);
       }
     } catch (error: any) {
@@ -226,7 +238,7 @@ const HomeScreen: React.FC = () => {
   const loadLocationStats = async () => {
     try {
       const response = await locationApi.getLocationStats();
-      if (response.success) {
+      if (response?.success) {
         setLocationStats(response.stats);
       }
     } catch (error: any) {
@@ -357,6 +369,7 @@ const HomeScreen: React.FC = () => {
         unsubscribe();
       };
     }
+    return undefined;
   }, [user, activeSection]);
 
   // Update location service when hourse data changes
@@ -371,6 +384,27 @@ const HomeScreen: React.FC = () => {
     if (user) {
       locationService.setCurrentUser(user);
     }
+  }, [user]);
+
+  // Check for emotion check-in (1 PM - Midnight)
+  useEffect(() => {
+    const checkEmotionStatus = async () => {
+      if (!user) return;
+
+      const now = new Date();
+      const hour = now.getHours();
+
+      // Show between 1 PM (13:00) and Midnight
+      if (hour >= 13 && hour <= 23) {
+        const hasChecked = await emotionService.hasCheckedToday();
+        if (!hasChecked) {
+          // Double check with latest data if available, or just show
+          setShowEmotionModal(true);
+        }
+      }
+    };
+
+    checkEmotionStatus();
   }, [user]);
 
   // Animate to home when screen is focused
@@ -447,8 +481,10 @@ const HomeScreen: React.FC = () => {
       const created = {
         content: newPostContent,
         familyId: targetFamilyId,
-        media: postImageUri ? { type: 'image' as const, url: postImageUri } : undefined,
+        media: postMedia ? { type: postMedia.type, url: postMedia.uri } : undefined,
         location: postLocationLabel || undefined,
+        latitude: postCoordinates?.latitude,
+        longitude: postCoordinates?.longitude,
         tags: [],
       };
 
@@ -461,7 +497,7 @@ const HomeScreen: React.FC = () => {
 
       // Reset form
       setNewPostContent('');
-      setPostImageUri(null);
+      setPostMedia(null);
       setPostLocationLabel(null);
 
       // Don't show success drawer ("model up") - user request
@@ -523,7 +559,6 @@ const HomeScreen: React.FC = () => {
           selectedFamily={selectedFamily}
           onFamilyDropdownPress={() => setShowFamilyDropdown(!showFamilyDropdown)}
           showFamilyDropdown={showFamilyDropdown}
-          familyMembers={familyStatusMembers}
         />
 
         {/* Main Content Card with Fixed Tabs and Scrollable Content */}
@@ -582,9 +617,9 @@ const HomeScreen: React.FC = () => {
           newPostContent={newPostContent}
           setNewPostContent={setNewPostContent}
           onPost={handleCreatePost}
-          imageUri={postImageUri}
-          onPickImage={handlePickImage}
-          onClearImage={handleClearImage}
+          media={postMedia}
+          onPickMedia={handlePickMedia}
+          onClearMedia={handleClearMedia}
           locationLabel={postLocationLabel}
           onPickLocation={handlePickLocation}
           onClearLocation={handleClearLocation}
@@ -596,12 +631,15 @@ const HomeScreen: React.FC = () => {
         <CommentDrawer
           visible={showCommentDrawer}
           onClose={handleCloseCommentDrawer}
+          comments={comments}
+          loading={loadingComments}
           newComment={newComment}
           setNewComment={setNewComment}
           commentAttachments={commentAttachments}
           onAddAttachment={handleAddAttachment}
           onRemoveAttachment={handleRemoveAttachment}
           onAddComment={handleAddComment}
+          onLikeComment={handleLikeComment}
           onLinkPress={handleLinkPress}
         />
 
@@ -630,6 +668,15 @@ const HomeScreen: React.FC = () => {
           content={lastCreatedPost?.content || ''}
           imageUri={lastCreatedPost?.imageUri}
           locationLabel={lastCreatedPost?.locationLabel}
+        />
+
+        {/* Emotion Check-in Modal */}
+        <EmotionCheckInModal
+          visible={showEmotionModal}
+          onClose={() => setShowEmotionModal(false)}
+          onSuccess={() => {
+            loadEmotionData(); // Refresh data
+          }}
         />
       </SafeAreaView>
     </BackgroundWrapper>

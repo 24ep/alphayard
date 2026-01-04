@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { locationService } from '../services/location/LocationService';
+import { locationService } from '../services/location/locationService';
 import { useAuth } from './useAuth';
 import * as Location from 'expo-location';
 
@@ -49,7 +49,7 @@ export const useLocation = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       setLocationPermission(status === 'granted');
-      
+
       if (status !== 'granted') {
         setError('Location permission denied');
         return;
@@ -140,7 +140,7 @@ export const useLocation = () => {
 
     try {
       setLoading(true);
-      
+
       // Get user's families
       const families = await locationService.getFamilyLocations(user.id);
       setFamilyLocations(families);

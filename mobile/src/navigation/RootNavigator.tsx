@@ -14,6 +14,7 @@ export type RootStackParamList = {
   App: undefined;
   PinSetup: undefined;
   PinUnlock: undefined;
+  Loading: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -44,15 +45,6 @@ const RootNavigator: React.FC = () => {
     });
   }, [isAuthenticated, user, isLoading, isPinLoading, showApp]);
 
-  // Show loading screen while checking authentication or PIN status
-  if (isLoading || isPinLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF5A5A" />
-      </View>
-    );
-  }
-
   return (
     <NavigationContainer
       ref={navigationRef}
@@ -68,7 +60,17 @@ const RootNavigator: React.FC = () => {
           animationEnabled: false,
         }}
       >
-        {showApp ? (
+        {isLoading || isPinLoading ? (
+          // Show empty or loading screen while deciding
+          <Stack.Screen
+            name="Loading"
+            component={() => (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FF5A5A" />
+              </View>
+            )}
+          />
+        ) : showApp ? (
           // User is authenticated - show app screens
           <>
             {hasPin && isPinLocked ? (

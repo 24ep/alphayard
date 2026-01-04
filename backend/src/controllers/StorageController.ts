@@ -117,29 +117,19 @@ export class StorageController {
         }
       );
 
-      // Update file metadata in database
-      const { error: updateError } = await supabase
-        .from('files')
-        .update({
-          is_shared: isShared === 'true' || isShared === true,
-          metadata: { ...metadata }
-        })
-        .eq('id', uploadedFile.id);
-
-      if (updateError) {
-        console.error('Failed to update file metadata:', updateError);
-      }
+      // File metadata is already saved by storageService
 
       res.json({
         success: true,
         message: 'File uploaded successfully',
         file: uploadedFile
       });
-    } catch (error) {
-      console.error('Upload file error:', error);
+    } catch (error: any) {
+      console.error('Upload error:', error);
       res.status(500).json({
-        error: 'Internal server error',
-        message: 'Failed to upload file'
+        success: false,
+        error: error.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error : undefined
       });
     }
   }
@@ -203,7 +193,7 @@ export class StorageController {
       const userId = req.user.id;
 
       const success = await storageService.deleteFile(id, userId);
-      
+
       if (success) {
         res.json({
           success: true,

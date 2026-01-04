@@ -36,6 +36,7 @@ export interface CreateEventData {
   attendees?: string[];
   recurring?: Event['recurring'];
   reminders?: Event['reminders'];
+  color?: string;
 }
 
 export interface UpdateEventData extends Partial<CreateEventData> {

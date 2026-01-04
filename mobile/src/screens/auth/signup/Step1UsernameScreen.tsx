@@ -8,11 +8,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -36,7 +36,7 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
     setSignupMethod('email');
   };
 
-  const handleSocialSignup = async (provider: 'google' | 'facebook' | 'line') => {
+  const handleSocialSignup = async (provider: any) => {
     try {
       setSignupMethod('social');
       await loginWithSSO(provider);
@@ -64,7 +64,8 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      navigation.navigate('Step2Password', { email });
+      // Skip Password Step as per user request
+      navigation.navigate('Step3Family', { email, password: 'temp_password_123' });
     }
   };
 
@@ -82,10 +83,10 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
             {/* Header */}
             <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                 <Icon name="arrow-left" size={24} color="#ffffff" />
               </TouchableOpacity>
               <View style={styles.stepIndicator}>
@@ -193,7 +194,7 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
                 </TouchableOpacity>
               </View>
             )}
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -210,10 +211,13 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     flex: 1,
+  },
+  scrollContentContainer: {
     paddingHorizontal: 24,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -345,19 +349,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    backdropFilter: 'blur(10px)',
   },
   googleButton: {
     backgroundColor: 'rgba(219, 68, 55, 0.8)',
-    backdropFilter: 'blur(10px)',
   },
   facebookButton: {
     backgroundColor: 'rgba(66, 103, 178, 0.8)',
-    backdropFilter: 'blur(10px)',
   },
   lineButton: {
     backgroundColor: 'rgba(0, 195, 0, 0.8)',
-    backdropFilter: 'blur(10px)',
   },
   socialButtonText: {
     color: '#FFFFFF',
@@ -396,7 +396,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    backdropFilter: 'blur(10px)',
   },
   emailSignupButtonText: {
     color: '#ffffff',

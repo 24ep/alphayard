@@ -136,4 +136,21 @@ export const chatApi = {
     const response = await api.delete(`/chat/${chatId}/participants/${participantId}`);
     return response.data;
   },
+
+  // Upload attachment
+  uploadAttachment: async (messageId: string, file: { uri: string; name?: string; type?: string }): Promise<{ success: boolean; data: any }> => {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: file.uri,
+      name: file.name || 'file',
+      type: file.type || 'application/octet-stream',
+    } as any);
+
+    const response = await api.post(`/messages/${messageId}/attachments`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

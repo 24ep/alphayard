@@ -1,9 +1,6 @@
 import { Response } from 'express';
 import { ChatDatabaseService } from '../services/chatDatabaseService';
 
-// Use the ChatDatabaseService for database operations
-const { Chat, Message } = ChatDatabaseService;
-
 export class ChatController {
   /**
    * Get all chat rooms for a hourse
@@ -21,14 +18,14 @@ export class ChatController {
       }
 
       // Get all chat rooms for the hourse
-      const chatRooms = await Chat.findByFamilyId(familyId);
+      const chatRooms = await ChatDatabaseService.findByFamilyId(familyId);
 
       // Filter to only show rooms the user is a participant in
       const userChatRooms = [];
       for (const chat of chatRooms) {
-        const isParticipant = await chat.isParticipant(userId);
+        const isParticipant = await ChatDatabaseService.isParticipant(chat.id, userId);
         if (isParticipant) {
-          const participants = await chat.getParticipants();
+          const participants = await ChatDatabaseService.getParticipants(chat.id);
           userChatRooms.push({
             ...chat.toJSON(),
             participants: participants.map((p: any) => ({
@@ -50,9 +47,6 @@ export class ChatController {
       });
     } catch (error: any) {
       console.error('Get chat rooms error:', error);
-      try {
-        require('fs').appendFileSync('debug_chat_error.log', new Date().toISOString() + ' GetChatRooms Error: ' + (error.message || error) + '\nStack: ' + error.stack + '\n');
-      } catch (e) { }
       res.status(500).json({
         error: 'Internal server error',
         message: 'Failed to retrieve chat rooms'
@@ -84,7 +78,7 @@ export class ChatController {
       }
 
       // Create the chat room
-      const chatRoom = await Chat.create({
+      const chatRoom = await ChatDatabaseService.createChatRoom({
         familyId,
         name,
         type,
@@ -95,10 +89,10 @@ export class ChatController {
       });
 
       // Add the creator as an admin participant
-      await Chat.addParticipant(chatRoom.id, userId, 'admin');
+      await ChatDatabaseService.addParticipant(chatRoom.id, userId, 'admin');
 
       // Get participants for response
-      const participants = await chatRoom.getParticipants();
+      const participants = await ChatDatabaseService.getParticipants(chatRoom.id);
 
       res.status(201).json({
         success: true,
@@ -117,9 +111,6 @@ export class ChatController {
       });
     } catch (error: any) {
       console.error('Create chat room error:', error);
-      try {
-        require('fs').appendFileSync('debug_chat_error.log', new Date().toISOString() + ' CreateChatRoom Error: ' + (error.message || error) + '\nStack: ' + error.stack + '\n');
-      } catch (e) { }
       res.status(500).json({
         error: 'Internal server error',
         message: 'Failed to create chat room'
@@ -142,7 +133,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -151,7 +142,7 @@ export class ChatController {
       }
 
       // Check if user is a participant
-      const isParticipant = await chatRoom.isParticipant(userId);
+      const isParticipant = await ChatDatabaseService.isParticipant(chatId, userId);
       if (!isParticipant) {
         return res.status(403).json({
           error: 'Access denied',
@@ -160,7 +151,7 @@ export class ChatController {
       }
 
       // Get participants
-      const participants = await chatRoom.getParticipants();
+      const participants = await ChatDatabaseService.getParticipants(chatId);
 
       res.json({
         success: true,
@@ -202,7 +193,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -211,7 +202,7 @@ export class ChatController {
       }
 
       // Check if user is admin
-      const isAdmin = await chatRoom.isAdmin(userId);
+      const isAdmin = await ChatDatabaseService.isAdmin(chatId, userId);
       if (!isAdmin) {
         return res.status(403).json({
           error: 'Access denied',
@@ -226,11 +217,21 @@ export class ChatController {
       if (avatarUrl !== undefined) updates.avatar_url = avatarUrl;
       if (settings !== undefined) updates.settings = { ...chatRoom.settings, ...settings };
 
-      await chatRoom.update(updates);
+      const updatedChatRoom = await ChatDatabaseService.updateChatRoom(chatId, updates);
+
+      // Notify via socket
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${chatId}`).emit('chat-room-updated', {
+          chatId,
+          updates,
+          updatedBy: userId
+        });
+      }
 
       res.json({
         success: true,
-        data: chatRoom.toJSON()
+        data: updatedChatRoom.toJSON()
       });
     } catch (error) {
       console.error('Update chat room error:', error);
@@ -256,7 +257,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -265,7 +266,7 @@ export class ChatController {
       }
 
       // Check if user is admin
-      const isAdmin = await chatRoom.isAdmin(userId);
+      const isAdmin = await ChatDatabaseService.isAdmin(chatId, userId);
       if (!isAdmin) {
         return res.status(403).json({
           error: 'Access denied',
@@ -273,7 +274,7 @@ export class ChatController {
         });
       }
 
-      await chatRoom.delete();
+      await ChatDatabaseService.deleteChatRoom(chatId);
 
       res.json({
         success: true,
@@ -304,7 +305,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -313,7 +314,7 @@ export class ChatController {
       }
 
       // Check if current user is admin
-      const isAdmin = await chatRoom.isAdmin(currentUserId);
+      const isAdmin = await ChatDatabaseService.isAdmin(chatId, currentUserId);
       if (!isAdmin) {
         return res.status(403).json({
           error: 'Access denied',
@@ -322,7 +323,7 @@ export class ChatController {
       }
 
       // Check if user is already a participant
-      const isAlreadyParticipant = await chatRoom.isParticipant(newUserId);
+      const isAlreadyParticipant = await ChatDatabaseService.isParticipant(chatId, newUserId);
       if (isAlreadyParticipant) {
         return res.status(400).json({
           error: 'User already in chat',
@@ -331,7 +332,17 @@ export class ChatController {
       }
 
       // Add the participant
-      await Chat.addParticipant(chatId, newUserId, role);
+      await ChatDatabaseService.addParticipant(chatId, newUserId, role);
+
+      // Notify via socket
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${chatId}`).emit('participant-joined', {
+          chatId,
+          addedUserId: newUserId,
+          addedBy: currentUserId
+        });
+      }
 
       res.json({
         success: true,
@@ -361,7 +372,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -370,7 +381,7 @@ export class ChatController {
       }
 
       // Check if current user is admin or removing themselves
-      const isAdmin = await chatRoom.isAdmin(currentUserId);
+      const isAdmin = await ChatDatabaseService.isAdmin(chatId, currentUserId);
       const isRemovingSelf = currentUserId === userId;
 
       if (!isAdmin && !isRemovingSelf) {
@@ -381,7 +392,17 @@ export class ChatController {
       }
 
       // Remove the participant
-      await Chat.removeParticipant(chatId, userId);
+      await ChatDatabaseService.removeParticipant(chatId, userId);
+
+      // Notify via socket
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${chatId}`).emit('participant-left', {
+          chatId,
+          removedUserId: userId,
+          removedBy: currentUserId
+        });
+      }
 
       res.json({
         success: true,
@@ -412,7 +433,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -421,7 +442,7 @@ export class ChatController {
       }
 
       // Check if user is a participant
-      const isParticipant = await chatRoom.isParticipant(userId);
+      const isParticipant = await ChatDatabaseService.isParticipant(chatId, userId);
       if (!isParticipant) {
         return res.status(403).json({
           error: 'Access denied',
@@ -430,7 +451,7 @@ export class ChatController {
       }
 
       // Get messages
-      const messages = await Message.findByChatRoomId(chatId, {
+      const messages = await ChatDatabaseService.findMessagesByChatRoomId(chatId, {
         limit: parseInt(limit as string),
         offset: parseInt(offset as string),
         before: before as string,
@@ -440,21 +461,7 @@ export class ChatController {
       res.json({
         success: true,
         data: messages.map((message: any) => ({
-          id: message.id,
-          chatRoomId: message.chatRoomId,
-          senderId: message.senderId,
-          content: message.content,
-          type: message.type,
-          metadata: message.metadata,
-          replyTo: message.replyTo,
-          editedAt: message.editedAt,
-          deletedAt: message.deletedAt,
-          isPinned: message.isPinned,
-          reactions: message.reactions,
-          createdAt: message.createdAt,
-          updatedAt: message.updatedAt,
-          sender: message.sender,
-          replyToMessage: message.replyToMessage,
+          ...message.toJSON(),
           attachments: message.attachments || []
         }))
       });
@@ -490,7 +497,7 @@ export class ChatController {
         });
       }
 
-      const chatRoom = await Chat.findById(chatId);
+      const chatRoom = await ChatDatabaseService.findChatRoomById(chatId);
       if (!chatRoom) {
         return res.status(404).json({
           error: 'Chat room not found',
@@ -499,7 +506,7 @@ export class ChatController {
       }
 
       // Check if user is a participant
-      const isParticipant = await chatRoom.isParticipant(userId);
+      const isParticipant = await ChatDatabaseService.isParticipant(chatId, userId);
       if (!isParticipant) {
         return res.status(403).json({
           error: 'Access denied',
@@ -508,34 +515,32 @@ export class ChatController {
       }
 
       // Create the message
-      const message = await Message.create({
-        chatRoomId: chatId,
-        senderId: userId,
+      const message = await ChatDatabaseService.createMessage({
+        room_id: chatId,
+        sender_id: userId,
         content,
         type,
         metadata,
-        replyTo
+        reply_to_id: replyTo
       });
+
+      // Broadcast new message via Socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${chatId}`).emit('new-message', {
+          message: {
+            ...message.toJSON(),
+            reactions: []
+          }
+        });
+      }
 
       res.status(201).json({
         success: true,
         data: {
-          id: message.id,
-          chatRoomId: message.chatRoomId,
-          senderId: message.senderId,
-          content: message.content,
-          type: message.type,
-          metadata: message.metadata,
-          replyTo: message.replyTo,
-          editedAt: message.editedAt,
-          deletedAt: message.deletedAt,
-          isPinned: message.isPinned,
-          reactions: message.reactions,
-          createdAt: message.createdAt,
-          updatedAt: message.updatedAt,
-          sender: message.sender,
-          replyToMessage: message.replyToMessage,
-          attachments: message.attachments || []
+          ...message.toJSON(),
+          reactions: [],
+          attachments: []
         }
       });
     } catch (error) {
@@ -570,7 +575,7 @@ export class ChatController {
         });
       }
 
-      const message = await Message.findById(messageId);
+      const message = await ChatDatabaseService.findMessageById(messageId);
       if (!message) {
         return res.status(404).json({
           error: 'Message not found',
@@ -587,27 +592,28 @@ export class ChatController {
       }
 
       // Update the message
-      await message.update({ content });
+      const updatedMessage = await ChatDatabaseService.updateMessage(messageId, { content });
+
+      // Get reactions
+      const reactions = await ChatDatabaseService.getMessageReactions(messageId);
+
+      // Broadcast update via Socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${message.chatRoomId}`).emit('message-updated', {
+          message: {
+            ...updatedMessage.toJSON(),
+            reactions
+          }
+        });
+      }
 
       res.json({
         success: true,
         data: {
-          id: message.id,
-          chatRoomId: message.chatRoomId,
-          senderId: message.senderId,
-          content: message.content,
-          type: message.type,
-          metadata: message.metadata,
-          replyTo: message.replyTo,
-          editedAt: message.editedAt,
-          deletedAt: message.deletedAt,
-          isPinned: message.isPinned,
-          reactions: message.reactions,
-          createdAt: message.createdAt,
-          updatedAt: message.updatedAt,
-          sender: message.sender,
-          replyToMessage: message.replyToMessage,
-          attachments: message.attachments || []
+          ...updatedMessage.toJSON(),
+          reactions,
+          attachments: []
         }
       });
     } catch (error) {
@@ -634,7 +640,7 @@ export class ChatController {
         });
       }
 
-      const message = await Message.findById(messageId);
+      const message = await ChatDatabaseService.findMessageById(messageId);
       if (!message) {
         return res.status(404).json({
           error: 'Message not found',
@@ -643,9 +649,8 @@ export class ChatController {
       }
 
       // Check if user is the sender or admin
-      const chatRoom = await Chat.findById(message.chatRoomId);
+      const isAdmin = await ChatDatabaseService.isAdmin(message.chatRoomId, userId);
       const isSender = message.senderId === userId;
-      const isAdmin = chatRoom ? await chatRoom.isAdmin(userId) : false;
 
       if (!isSender && !isAdmin) {
         return res.status(403).json({
@@ -654,8 +659,19 @@ export class ChatController {
         });
       }
 
-      // Delete the message (soft delete)
-      await message.delete();
+      // Delete the message
+      await ChatDatabaseService.deleteMessage(messageId);
+
+      // Broadcast delete via Socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${message.chatRoomId}`).emit('message-deleted', {
+          messageId,
+          chatRoomId: message.chatRoomId,
+          deletedBy: userId,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       res.json({
         success: true,
@@ -686,7 +702,7 @@ export class ChatController {
         });
       }
 
-      const message = await Message.findById(messageId);
+      const message = await ChatDatabaseService.findMessageById(messageId);
       if (!message) {
         return res.status(404).json({
           error: 'Message not found',
@@ -694,16 +710,8 @@ export class ChatController {
         });
       }
 
-      // Check if user is a participant in the chat
-      const chatRoom = await Chat.findById(message.chatRoomId);
-      if (!chatRoom) {
-        return res.status(404).json({
-          error: 'Chat room not found',
-          message: 'The chat room for this message does not exist'
-        });
-      }
-
-      const isParticipant = await chatRoom.isParticipant(userId);
+      // Check if user is a participant
+      const isParticipant = await ChatDatabaseService.isParticipant(message.chatRoomId, userId);
       if (!isParticipant) {
         return res.status(403).json({
           error: 'Access denied',
@@ -712,7 +720,23 @@ export class ChatController {
       }
 
       // Add the reaction
-      await message.addReaction(userId, emoji);
+      await ChatDatabaseService.addReaction(messageId, userId, emoji);
+
+      // Get updated reactions
+      const reactions = await ChatDatabaseService.getMessageReactions(messageId);
+
+      // Broadcast update via Socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${message.chatRoomId}`).emit('reaction-added', {
+          messageId,
+          chatRoomId: message.chatRoomId,
+          userId,
+          emoji,
+          reactions,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       res.json({
         success: true,
@@ -743,7 +767,7 @@ export class ChatController {
         });
       }
 
-      const message = await Message.findById(messageId);
+      const message = await ChatDatabaseService.findMessageById(messageId);
       if (!message) {
         return res.status(404).json({
           error: 'Message not found',
@@ -751,16 +775,8 @@ export class ChatController {
         });
       }
 
-      // Check if user is a participant in the chat
-      const chatRoom = await Chat.findById(message.chatRoomId);
-      if (!chatRoom) {
-        return res.status(404).json({
-          error: 'Chat room not found',
-          message: 'The chat room for this message does not exist'
-        });
-      }
-
-      const isParticipant = await chatRoom.isParticipant(userId);
+      // Check if user is a participant
+      const isParticipant = await ChatDatabaseService.isParticipant(message.chatRoomId, userId);
       if (!isParticipant) {
         return res.status(403).json({
           error: 'Access denied',
@@ -769,7 +785,23 @@ export class ChatController {
       }
 
       // Remove the reaction
-      await message.removeReaction(userId, emoji);
+      await ChatDatabaseService.removeReaction(messageId, userId, emoji);
+
+      // Get updated reactions
+      const reactions = await ChatDatabaseService.getMessageReactions(messageId);
+
+      // Broadcast update via Socket.io
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat:${message.chatRoomId}`).emit('reaction-removed', {
+          messageId,
+          chatRoomId: message.chatRoomId,
+          userId,
+          emoji,
+          reactions,
+          timestamp: new Date().toISOString()
+        });
+      }
 
       res.json({
         success: true,

@@ -1,0 +1,109 @@
+﻿
+> bondarys-backend@1.0.0 dev
+> nodemon --exec ts-node src/server.ts
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: ts,json[39m
+[32m[nodemon] starting `ts-node src/server.ts`[39m
+node.exe : ΓÜá∩╕Å AWS SDK not installed - using local storage only
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá∩╕Å AWS SDK ...al storage only:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ΓÜá∩╕Å AWS S3 not configured - using local storage
+≡ƒöô Rate limiting disabled in development mode
+Γ£à Database pool configuration loaded
+Socket.IO server initialized
+Γ£à Socket.IO initialized
+≡ƒÜÇ Bondarys Backend Server running on 0.0.0.0:4000
+≡ƒîì Environment: development
+≡ƒÅÑ Health check: http://0.0.0.0:4000/health
+≡ƒôè Metrics: http://0.0.0.0:4000/metrics
+≡ƒöî Socket.IO: ws://0.0.0.0:4000
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"POST","requestId":"07d84544-1dae-4994-ab37-9482bee35334","service":"bondarys-api","timestamp":"2026-01-03T08:36:31.170Z","url":"/api/v1/auth/check-user","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[AUTH DEBUG] RAW REQUEST BODY: {"email":"jaroonwitpool@gmail.com"}
+[AUTH DEBUG] checkUserExistence - email: "jaroonwitpool@gmail.com", phone: "undefined"
+[UserModel.findOne] Executing SQL: SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at, p.full_name, p.avatar_url, p.phone, (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids, u.raw_user_meta_data as metadata FROM auth.users u LEFT JOIN public.profiles p ON u.id = p.id WHERE 1=1 AND u.email = $1
+[UserModel.findOne] With params: [ 'jaroonwitpool@gmail.com' ]
+[UserModel.findOne] Result rows: 1
+[AUTH DEBUG] findByEmail result: Found user ID: f739edde-45f8-4aa9-82c8-c1876f434683
+[AUTH] Check user existence for jaroonwitpool@gmail.com: true
+[32minfo[39m: Request completed {"duration":"62ms","ip":"127.0.0.1","method":"POST","requestId":"07d84544-1dae-4994-ab37-9482bee35334","service":"bondarys-api","statusCode":200,"timestamp":"2026-01-03T08:36:31.231Z","url":"/check-user"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"POST","requestId":"7e4395e0-1415-41b4-9fe2-530437ad8eb0","service":"bondarys-api","timestamp":"2026-01-03T08:36:31.244Z","url":"/api/v1/auth/otp/request","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[UserModel.findOne] Executing SQL: SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at, p.full_name, p.avatar_url, p.phone, (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids, u.raw_user_meta_data as metadata FROM auth.users u LEFT JOIN public.profiles p ON u.id = p.id WHERE 1=1 AND u.email = $1
+[UserModel.findOne] With params: [ 'jaroonwitpool@gmail.com' ]
+[UserModel.findOne] Result rows: 1
+Request OTP failed: error: relation "public.system_configs" does not exist
+    at E:\GitCloneProject\boundary\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async SystemConfigModel.get (E:\GitCloneProject\boundary\backend\src\models\SystemConfigModel.ts:13:21)
+    at async EmailService.sendEmail (E:\GitCloneProject\boundary\backend\src\services\emailService.ts:109:23)
+    at async AuthController.requestLoginOtp (E:\GitCloneProject\boundary\backend\src\controllers\AuthController.ts:731:9) {
+  length: 120,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '19',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1428',
+  routine: 'parserOpenTable'
+}
+[32minfo[39m: Request completed {"duration":"51ms","ip":"127.0.0.1","method":"POST","requestId":"7e4395e0-1415-41b4-9fe2-530437ad8eb0","service":"bondarys-api","statusCode":500,"timestamp":"2026-01-03T08:36:31.295Z","url":"/otp/request"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"GET","requestId":"7badb36d-c2bb-44d9-8f0c-4d642b22eef9","service":"bondarys-api","timestamp":"2026-01-03T08:36:43.958Z","url":"/api/v1/auth/me","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[32minfo[39m: Request completed {"duration":"1ms","ip":"127.0.0.1","method":"GET","requestId":"7badb36d-c2bb-44d9-8f0c-4d642b22eef9","service":"bondarys-api","statusCode":401,"timestamp":"2026-01-03T08:36:43.959Z","url":"/me"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"GET","requestId":"ee27ccf0-66d0-48e4-8d6b-1a4fc08ada2d","service":"bondarys-api","timestamp":"2026-01-03T08:36:45.740Z","url":"/api/app-config/assets/logo_white","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[APP_CONFIG] Asset not found: logo_white. Returning fallback.
+[32minfo[39m: Request completed {"duration":"24ms","ip":"127.0.0.1","method":"GET","requestId":"ee27ccf0-66d0-48e4-8d6b-1a4fc08ada2d","service":"bondarys-api","statusCode":304,"timestamp":"2026-01-03T08:36:45.764Z","url":"/assets/logo_white"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"GET","requestId":"1585c7bb-b911-435a-ab3c-580c8ce777f3","service":"bondarys-api","timestamp":"2026-01-03T08:36:45.766Z","url":"/api/app-config/screens/login_screen","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[32minfo[39m: Request completed {"duration":"17ms","ip":"127.0.0.1","method":"GET","requestId":"1585c7bb-b911-435a-ab3c-580c8ce777f3","service":"bondarys-api","statusCode":304,"timestamp":"2026-01-03T08:36:45.783Z","url":"/screens/login_screen"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"POST","requestId":"2d777d9e-0504-4a18-b090-4d2eac1abba5","service":"bondarys-api","timestamp":"2026-01-03T08:36:48.775Z","url":"/api/v1/auth/check-user","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[AUTH DEBUG] RAW REQUEST BODY: {"email":"jaroonwitpool@gmail.com"}
+[AUTH DEBUG] checkUserExistence - email: "jaroonwitpool@gmail.com", phone: "undefined"
+[UserModel.findOne] Executing SQL: SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at, p.full_name, p.avatar_url, p.phone, (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids, u.raw_user_meta_data as metadata FROM auth.users u LEFT JOIN public.profiles p ON u.id = p.id WHERE 1=1 AND u.email = $1
+[UserModel.findOne] With params: [ 'jaroonwitpool@gmail.com' ]
+[UserModel.findOne] Result rows: 1
+[AUTH DEBUG] findByEmail result: Found user ID: f739edde-45f8-4aa9-82c8-c1876f434683
+[AUTH] Check user existence for jaroonwitpool@gmail.com: true
+[32minfo[39m: Request completed {"duration":"22ms","ip":"127.0.0.1","method":"POST","requestId":"2d777d9e-0504-4a18-b090-4d2eac1abba5","service":"bondarys-api","statusCode":200,"timestamp":"2026-01-03T08:36:48.797Z","url":"/check-user"}
+[32minfo[39m: Request started {"ip":"127.0.0.1","method":"POST","requestId":"b3070055-3db4-43b2-ba06-ef85f812f184","service":"bondarys-api","timestamp":"2026-01-03T08:36:48.803Z","url":"/api/v1/auth/otp/request","userAgent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36 Edg/143.0.0.0"}
+[UserModel.findOne] Executing SQL: SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at, p.full_name, p.avatar_url, p.phone, (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids, u.raw_user_meta_data as metadata FROM auth.users u LEFT JOIN public.profiles p ON u.id = p.id WHERE 1=1 AND u.email = $1
+[UserModel.findOne] With params: [ 'jaroonwitpool@gmail.com' ]
+[UserModel.findOne] Result rows: 1
+Request OTP failed: error: relation "public.system_configs" does not exist
+    at E:\GitCloneProject\boundary\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async SystemConfigModel.get (E:\GitCloneProject\boundary\backend\src\models\SystemConfigModel.ts:13:21)
+    at async EmailService.sendEmail (E:\GitCloneProject\boundary\backend\src\services\emailService.ts:109:23)
+    at async AuthController.requestLoginOtp (E:\GitCloneProject\boundary\backend\src\controllers\AuthController.ts:731:9) {
+  length: 120,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '19',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1428',
+  routine: 'parserOpenTable'
+}
+[32minfo[39m: Request completed {"duration":"13ms","ip":"127.0.0.1","method":"POST","requestId":"b3070055-3db4-43b2-ba06-ef85f812f184","service":"bondarys-api","statusCode":500,"timestamp":"2026-01-03T08:36:48.816Z","url":"/otp/request"}

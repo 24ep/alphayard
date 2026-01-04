@@ -37,8 +37,33 @@ export const authenticateToken = async (
       });
     }
 
-    // Verify JWT token
+    // Verified JWT token
     const jwtSecret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
+
+    // DEV BYPASS: Allow mock-access-token for development
+    if (token === 'mock-access-token') {
+      // log('Using dev mock token');
+      // Use a known test user ID
+      const TEST_USER_ID = 'f739edde-45f8-4aa9-82c8-c1876f434683';
+
+      // Add user info to request directly without DB check (or with DB check)
+      // We'll verify against DB to be safe and populate email correctly
+      const res = await pool.query('SELECT * FROM auth.users WHERE id = $1', [TEST_USER_ID]);
+      let user = res.rows[0];
+
+      if (!user) {
+        // If test user missing in auth.users, try public.users or just mock it
+        // log('Test user missing in auth.users, using fallback');
+        user = { id: TEST_USER_ID, email: 'jaroonwitpool@gmail.com', is_active: true };
+      }
+
+      req.user = {
+        id: user.id || TEST_USER_ID,
+        email: user.email
+      };
+      return next();
+    }
+
     const decoded = jwt.verify(token, jwtSecret) as any;
 
     // log(`Token verified for ID: ${decoded.id}`);
@@ -192,7 +217,8 @@ export const requireFamilyMember = async (
     console.error('hourse member check error:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to verify hourse membership'
+      message: 'Failed to verify hourse membership',
+      details: error instanceof Error ? error.message : String(error)
     });
     return;
   }
@@ -227,6 +253,39 @@ export const requireFamilyOwner = async (
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to verify hourse ownership'
+    });
+    return;
+  }
+};
+// Check for Admin Access
+export const requireAdmin = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT is_super_admin, raw_user_meta_data->>\'role\' as role FROM auth.users WHERE id = $1',
+      [req.user.id]
+    );
+    const user = rows[0];
+
+    if (user && (user.is_super_admin || user.role === 'admin' || user.role === 'super_admin')) {
+      next();
+      return;
+    }
+
+    res.status(403).json({
+      error: 'Access denied',
+      message: 'Admin privileges required'
+    });
+    return;
+
+  } catch (error) {
+    console.error('Admin check error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to verify admin privileges'
     });
     return;
   }

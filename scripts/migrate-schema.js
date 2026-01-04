@@ -4,11 +4,11 @@ const path = require('path');
 
 // Database connection configuration
 const client = new Client({
-    host: process.env.DB_HOST || 'localhost', // Default to localhost for running from host machine
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'postgres',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres'
+  host: process.env.DB_HOST || 'localhost', // Default to localhost for running from host machine
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'postgres',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres'
 });
 
 // Mobile application tables SQL - Derived from scripts/create-mobile-tables.js
@@ -228,25 +228,68 @@ ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all for authenticated" ON public.profiles;
 CREATE POLICY "Allow all for authenticated" ON public.profiles FOR ALL USING (true); -- Insecure, placeholder
 
+
+-- System Configurations table
+CREATE TABLE IF NOT EXISTS public.system_configs (
+  key VARCHAR(255) PRIMARY KEY,
+  value JSONB NOT NULL,
+  description TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_by UUID REFERENCES auth.users(id)
+);
+
+ALTER TABLE public.system_configs ENABLE ROW LEVEL SECURITY;
+
+-- Countries table for Phone Auth
+CREATE TABLE IF NOT EXISTS public.countries (
+  code VARCHAR(2) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  dial_code VARCHAR(10) NOT NULL,
+  flag VARCHAR(10) NOT NULL,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Seed Countries (Upsert style)
+INSERT INTO public.countries (code, name, dial_code, flag) VALUES
+('US', 'United States', '+1', '🇺🇸'),
+('GB', 'United Kingdom', '+44', '🇬🇧'),
+('CA', 'Canada', '+1', '🇨🇦'),
+('AU', 'Australia', '+61', '🇦🇺'),
+('DE', 'Germany', '+49', '🇩🇪'),
+('FR', 'France', '+33', '🇫🇷'),
+('JP', 'Japan', '+81', '🇯🇵'),
+('CN', 'China', '+86', '🇨🇳'),
+('IN', 'India', '+91', '🇮🇳'),
+('TH', 'Thailand', '+66', '🇹🇭'),
+('SG', 'Singapore', '+65', '🇸🇬'),
+('MY', 'Malaysia', '+60', '🇲🇾'),
+('ID', 'Indonesia', '+62', '🇮🇩'),
+('VN', 'Vietnam', '+84', '🇻🇳'),
+('PH', 'Philippines', '+63', '🇵🇭')
+ON CONFLICT (code) DO UPDATE SET
+name = EXCLUDED.name,
+dial_code = EXCLUDED.dial_code,
+flag = EXCLUDED.flag;
 `;
 
 async function migrateSchema() {
-    try {
-        console.log('Connecting to database...');
-        await client.connect();
-        console.log('Connected successfully!');
+  try {
+    console.log('Connecting to database...');
+    await client.connect();
+    console.log('Connected successfully!');
 
-        console.log('\\nMigrating schema...');
-        await client.query(createSchemaSQL);
-        console.log('✅ Schema migration complete!');
+    console.log('\\nMigrating schema...');
+    await client.query(createSchemaSQL);
+    console.log('✅ Schema migration complete!');
 
-    } catch (error) {
-        console.error('❌ Error migrating schema:', error);
-        process.exit(1);
-    } finally {
-        await client.end();
-        console.log('\\nDatabase connection closed.');
-    }
+  } catch (error) {
+    console.error('❌ Error migrating schema:', error);
+    process.exit(1);
+  } finally {
+    await client.end();
+    console.log('\\nDatabase connection closed.');
+  }
 }
 
 migrateSchema();

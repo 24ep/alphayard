@@ -140,27 +140,15 @@ const MarketingScreen: React.FC<MarketingScreenProps> = () => {
               }
             ]}
           >
-            {/* Login Button - Primary */}
+            {/* Get Started Button - Primary */}
             <TouchableOpacity
               style={styles.loginButton}
               onPress={handleLogin}
               activeOpacity={0.9}
             >
               <View style={styles.buttonContent}>
-                <Icon name="login-variant" size={22} color="#FA7272" />
-                <Text style={styles.loginButtonText}>Login</Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Signup Button - Secondary */}
-            <TouchableOpacity
-              style={styles.signupButton}
-              onPress={handleSignup}
-              activeOpacity={0.9}
-            >
-              <View style={styles.buttonContent}>
-                <Icon name="account-plus" size={22} color="#FFFFFF" />
-                <Text style={styles.signupButtonText}>Sign Up</Text>
+                <Icon name="rocket-launch" size={22} color="#FA7272" />
+                <Text style={styles.loginButtonText}>Get Started</Text>
               </View>
             </TouchableOpacity>
           </Animated.View>

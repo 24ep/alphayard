@@ -6,14 +6,32 @@ import { authenticateToken, requireFamilyMember } from '../middleware/auth';
 // Routes will return stubbed success responses so the rest of the app can run.
 const router = express.Router();
 
+import fs from 'fs';
+import path from 'path';
+
 // Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads/chat');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename: timestamp-random.ext
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
 const upload = multer({
-  storage: multer.memoryStorage(),
+  storage: storage,
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Allow all file types for now, but you can add restrictions here
+    // Allow all file types for now
     cb(null, true);
   }
 });
@@ -21,6 +39,9 @@ const upload = multer({
 // All routes require authentication and hourse membership
 router.use(authenticateToken as any);
 router.use(requireFamilyMember as any);
+
+import pool from '../config/database';
+import { ChatDatabaseService } from '../services/chatDatabaseService';
 
 /**
  * Upload attachment for a message
@@ -37,15 +58,55 @@ router.post('/messages/:messageId/attachments', upload.single('file'), async (re
       });
     }
 
-    // Attachment upload is disabled in this environment – return stub response
+    // Construct URLs
+    // Relative URL (safer for mobile clients with different base URLs)
+    const relativeUrl = `/uploads/chat/${file.filename}`;
+    // Absolute URL (for convenience)
+    const fullUrl = `${req.protocol}://${req.get('host')}/uploads/chat/${file.filename}`;
+
+    // Determine metadata key based on mimetype
+    const isImage = file.mimetype.startsWith('image/');
+    const metadataKey = isImage ? 'imageUrl' : 'fileUrl';
+
+    // Update message metadata in database
+    await pool.query(
+      `UPDATE chat_messages 
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object($1::text, $2::text, 'fileName', $3::text, 'fileSize', $4::numeric, 'mimeType', $5::text),
+       updated_at = NOW()
+       WHERE id = $6`,
+      [metadataKey, relativeUrl, file.originalname, file.size, file.mimetype, messageId]
+    );
+
+    // Broadcast update via Socket.io
+    try {
+      const updatedMessage = await ChatDatabaseService.findMessageById(messageId);
+      if (updatedMessage) {
+        // Get reactions (needed for full message object)
+        const reactions = await ChatDatabaseService.getMessageReactions(messageId);
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`chat:${updatedMessage.chatRoomId}`).emit('message-updated', {
+            message: {
+              ...updatedMessage.toJSON(),
+              reactions
+            }
+          });
+        }
+      }
+    } catch (socketError) {
+      console.error('Socket broadcast error:', socketError);
+      // Continue, as upload was successful
+    }
+
     res.status(201).json({
       success: true,
       data: {
-        id: 'stub-attachment-id',
+        id: file.filename,
         file_name: file.originalname,
         file_size: file.size,
         mime_type: file.mimetype,
-        url: null,
+        url: relativeUrl,
+        fullUrl: fullUrl
       }
     });
   } catch (error) {

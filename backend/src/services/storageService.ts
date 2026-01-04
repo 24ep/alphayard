@@ -3,27 +3,9 @@ import sharp from 'sharp';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { getSupabaseClient } from './supabaseService';
-
-// Optional AWS SDK imports - only used if AWS credentials are configured
-let S3Client: any;
-let PutObjectCommand: any;
-let GetObjectCommand: any;
-let DeleteObjectCommand: any;
-let getSignedUrl: any;
-
-try {
-  const s3Client = require('@aws-sdk/client-s3');
-  S3Client = s3Client.S3Client;
-  PutObjectCommand = s3Client.PutObjectCommand;
-  GetObjectCommand = s3Client.GetObjectCommand;
-  DeleteObjectCommand = s3Client.DeleteObjectCommand;
-  const presigner = require('@aws-sdk/s3-request-presigner');
-  getSignedUrl = presigner.getSignedUrl;
-} catch (e) {
-  // AWS SDK not installed - will use local storage only
-  console.warn('⚠️ AWS SDK not installed - using local storage only');
-}
+import { pool } from '../config/database';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 interface FileUploadOptions {
   maxSize?: number;
@@ -46,27 +28,37 @@ interface UploadedFile {
 }
 
 class StorageService {
-  private s3Client: any = null;
+  private s3Client: S3Client | null = null;
   private bucketName: string;
   private uploadPath: string;
 
   constructor() {
-    this.initializeS3();
     this.bucketName = process.env.AWS_S3_BUCKET || 'bondarys-files';
     this.uploadPath = process.env.UPLOAD_PATH || 'uploads';
+    this.initializeS3();
   }
 
   private initializeS3() {
-    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && S3Client) {
+    if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
       try {
-        this.s3Client = new S3Client({
+        const s3Config: any = {
           region: process.env.AWS_REGION || 'us-east-1',
           credentials: {
             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
             secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
           },
-        });
-        console.log('✅ AWS S3 client initialized');
+          forcePathStyle: true, // Needed for MinIO
+        };
+
+        if (process.env.AWS_S3_ENDPOINT) {
+          s3Config.endpoint = process.env.AWS_S3_ENDPOINT;
+        }
+
+        this.s3Client = new S3Client(s3Config);
+        console.log('✅ AWS S3 client initialized (v3)');
+        if (process.env.AWS_S3_ENDPOINT) {
+          console.log(`✅ Using S3 Endpoint: ${process.env.AWS_S3_ENDPOINT}`);
+        }
       } catch (error) {
         console.warn('⚠️ Failed to initialize AWS S3 - using local storage:', error);
       }
@@ -78,7 +70,9 @@ class StorageService {
   // Configure multer for file uploads
   getMulterConfig(options: FileUploadOptions = {}) {
     const maxSize = options.maxSize || parseInt(process.env.MAX_FILE_SIZE || '10485760'); // 10MB
-    const allowedTypes = options.allowedTypes || (process.env.ALLOWED_FILE_TYPES || '').split(',');
+    const allowedTypes = options.allowedTypes || (process.env.ALLOWED_FILE_TYPES
+      ? process.env.ALLOWED_FILE_TYPES.split(',')
+      : ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/quicktime', 'application/pdf']);
 
     const storage = multer.memoryStorage();
 
@@ -142,7 +136,7 @@ class StorageService {
       } else {
         // Local storage fallback
         fileUrl = await this.uploadToLocal(processedBuffer, filePath);
-        
+
         if (thumbnailBuffer) {
           const thumbnailPath = `${this.uploadPath}/${userId}/thumbnails/${fileName}`;
           thumbnailUrl = await this.uploadToLocal(thumbnailBuffer, thumbnailPath);
@@ -164,21 +158,21 @@ class StorageService {
       });
 
       return uploadedFile;
-    } catch (error) {
+    } catch (error: any) {
       console.error('File upload error:', error);
-      throw new Error('Failed to upload file');
+      throw new Error(`Failed to upload file: ${error.message}`);
     }
   }
 
   private async uploadToS3(buffer: Buffer, key: string, contentType: string): Promise<void> {
-    if (!this.s3Client || !PutObjectCommand) throw new Error('S3 client not initialized');
+    if (!this.s3Client) throw new Error('S3 client not initialized');
 
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: key,
       Body: buffer,
       ContentType: contentType,
-      ACL: 'private',
+      // ACL: 'private', // MinIO might not support ACLs depending on config, better to omit for buckets controlled by policy
     });
 
     await this.s3Client.send(command);
@@ -198,7 +192,7 @@ class StorageService {
   }
 
   private async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    if (!this.s3Client || !getSignedUrl || !GetObjectCommand) {
+    if (!this.s3Client) {
       return `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/${key}`;
     }
 
@@ -207,16 +201,25 @@ class StorageService {
       Key: key,
     });
 
+    // For presigned URLs to work with MinIO in Docker when accessed from host (mobile app),
+    // the endpoint in S3Client might need to be different than internal one (http://minio:9000 vs http://localhost:9000).
+    // However, since backend generates the URL, it uses the configured endpoint.
+    // If backend uses http://minio:9000, the signed URL will have that host. 
+    // The mobile app (on host/emulator) cannot resolve 'minio'.
+    // Solution: We might need a PUBLIC_S3_ENDPOINT env var to override the host in the signed URL, 
+    // or rely on MinIO handling Host header. 
+    // For now, standard presigning. If issues arise, we can replace the host in result.
+
     return await getSignedUrl(this.s3Client, command, { expiresIn });
   }
 
   private async compressImage(buffer: Buffer, mimeType: string): Promise<Buffer> {
     try {
       const sharpInstance = sharp(buffer);
-      
+
       // Get image metadata
       const metadata = await sharpInstance.metadata();
-      
+
       // Resize if too large
       if (metadata.width && metadata.width > 1920) {
         sharpInstance.resize(1920, null, { withoutEnlargement: true });
@@ -251,104 +254,103 @@ class StorageService {
   }
 
   private async saveFileMetadata(fileData: UploadedFile): Promise<UploadedFile> {
-    const supabase = getSupabaseClient();
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO files (id, original_name, file_name, mime_type, size, url, thumbnail_url, uploaded_at, uploaded_by, family_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         RETURNING *`,
+        [
+          fileData.id,
+          fileData.originalName,
+          fileData.fileName,
+          fileData.mimeType,
+          fileData.size,
+          fileData.url,
+          fileData.thumbnailUrl,
+          fileData.uploadedAt,
+          fileData.uploadedBy,
+          fileData.familyId
+        ]
+      );
 
-    const { data, error } = await supabase
-      .from('files')
-      .insert({
-        id: fileData.id,
-        original_name: fileData.originalName,
-        file_name: fileData.fileName,
-        mime_type: fileData.mimeType,
-        size: fileData.size,
-        url: fileData.url,
-        thumbnail_url: fileData.thumbnailUrl,
-        uploaded_at: fileData.uploadedAt,
-        uploaded_by: fileData.uploadedBy,
-        family_id: fileData.familyId
-      })
-      .select()
-      .single();
-
-    if (error) {
+      const data = rows[0];
+      return {
+        id: data.id,
+        originalName: data.original_name,
+        fileName: data.file_name,
+        mimeType: data.mime_type,
+        size: data.size,
+        url: data.url,
+        thumbnailUrl: data.thumbnail_url,
+        uploadedAt: data.uploaded_at,
+        uploadedBy: data.uploaded_by,
+        familyId: data.family_id
+      };
+    } catch (error: any) {
       console.error('Failed to save file metadata:', error);
-      throw new Error('Failed to save file metadata');
+      throw new Error(`Failed to save file metadata: ${error.message}`);
     }
-
-    return {
-      id: data.id,
-      originalName: data.original_name,
-      fileName: data.file_name,
-      mimeType: data.mime_type,
-      size: data.size,
-      url: data.url,
-      thumbnailUrl: data.thumbnail_url,
-      uploadedAt: data.uploaded_at,
-      uploadedBy: data.uploaded_by,
-      familyId: data.family_id
-    };
   }
 
-  // Get files for a user or hourse
+  // Get files for a user or family
   async getFiles(userId: string, familyId?: string, limit: number = 50, offset: number = 0): Promise<{
     files: UploadedFile[];
     total: number;
   }> {
-    const supabase = getSupabaseClient();
+    try {
+      let query = `SELECT * FROM files WHERE uploaded_by = $1`;
+      let countQuery = `SELECT COUNT(*) FROM files WHERE uploaded_by = $1`;
+      const params: any[] = [userId];
 
-    let query = supabase
-      .from('files')
-      .select('*', { count: 'exact' })
-      .eq('uploaded_by', userId)
-      .order('uploaded_at', { ascending: false })
-      .range(parseInt(String(offset), 10), parseInt(String(offset), 10) + limit - 1);
+      if (familyId) {
+        query += ` AND family_id = $2`;
+        countQuery += ` AND family_id = $2`;
+        params.push(familyId);
+      }
 
-    if (familyId) {
-      query = query.eq('family_id', familyId);
-    }
+      query += ` ORDER BY uploaded_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      params.push(limit, offset);
 
-    const { data, error, count } = await query;
+      const { rows } = await pool.query(query, params);
+      const countResult = await pool.query(countQuery, familyId ? [userId, familyId] : [userId]);
 
-    if (error) {
+      const files: UploadedFile[] = rows.map((file: any) => ({
+        id: file.id,
+        originalName: file.original_name,
+        fileName: file.file_name,
+        mimeType: file.mime_type,
+        size: file.size,
+        url: file.url,
+        thumbnailUrl: file.thumbnail_url,
+        uploadedAt: file.uploaded_at,
+        uploadedBy: file.uploaded_by,
+        familyId: file.family_id
+      }));
+
+      return {
+        files,
+        total: parseInt(countResult.rows[0].count, 10)
+      };
+    } catch (error: any) {
       console.error('Failed to get files:', error);
       throw new Error('Failed to get files');
     }
-
-    const files: UploadedFile[] = (data || []).map(file => ({
-      id: file.id,
-      originalName: file.original_name,
-      fileName: file.file_name,
-      mimeType: file.mime_type,
-      size: file.size,
-      url: file.url,
-      thumbnailUrl: file.thumbnail_url,
-      uploadedAt: file.uploaded_at,
-      uploadedBy: file.uploaded_by,
-      familyId: file.family_id
-    }));
-
-    return {
-      files,
-      total: count || 0
-    };
   }
 
   // Delete file
   async deleteFile(fileId: string, userId: string): Promise<boolean> {
     try {
-      const supabase = getSupabaseClient();
-
       // Get file metadata
-      const { data: file, error: fetchError } = await supabase
-        .from('files')
-        .select('*')
-        .eq('id', fileId)
-        .eq('uploaded_by', userId)
-        .single();
+      const { rows } = await pool.query(
+        `SELECT * FROM files WHERE id = $1 AND uploaded_by = $2`,
+        [fileId, userId]
+      );
 
-      if (fetchError || !file) {
+      if (rows.length === 0) {
         throw new Error('File not found or access denied');
       }
+
+      const file = rows[0];
 
       // Delete from storage
       if (this.s3Client) {
@@ -373,16 +375,10 @@ class StorageService {
       }
 
       // Delete from database
-      const { error: deleteError } = await supabase
-        .from('files')
-        .delete()
-        .eq('id', fileId)
-        .eq('uploaded_by', userId);
-
-      if (deleteError) {
-        console.error('Failed to delete file metadata:', deleteError);
-        return false;
-      }
+      await pool.query(
+        `DELETE FROM files WHERE id = $1 AND uploaded_by = $2`,
+        [fileId, userId]
+      );
 
       return true;
     } catch (error) {
@@ -392,7 +388,7 @@ class StorageService {
   }
 
   private async deleteFromS3(key: string): Promise<void> {
-    if (!this.s3Client || !DeleteObjectCommand) return;
+    if (!this.s3Client) return;
 
     const command = new DeleteObjectCommand({
       Bucket: this.bucketName,
@@ -408,37 +404,32 @@ class StorageService {
     fileCount: number;
     limit: number;
   }> {
-    const supabase = getSupabaseClient();
+    try {
+      let query = `SELECT COALESCE(SUM(size), 0) as total_size, COUNT(*) as file_count FROM files WHERE uploaded_by = $1`;
+      const params: any[] = [userId];
 
-    let query = supabase
-      .from('files')
-      .select('size', { count: 'exact' })
-      .eq('uploaded_by', userId);
+      if (familyId) {
+        query += ` AND family_id = $2`;
+        params.push(familyId);
+      }
 
-    if (familyId) {
-      query = query.eq('family_id', familyId);
-    }
+      const { rows } = await pool.query(query, params);
+      const limit = parseInt(process.env.STORAGE_LIMIT || '1073741824'); // 1GB default
 
-    const { data, error, count } = await query;
-
-    if (error) {
+      return {
+        totalSize: parseInt(rows[0].total_size, 10) || 0,
+        fileCount: parseInt(rows[0].file_count, 10) || 0,
+        limit
+      };
+    } catch (error: any) {
       console.error('Failed to get storage usage:', error);
       throw new Error('Failed to get storage usage');
     }
-
-    const totalSize = (data || []).reduce((sum, file) => sum + file.size, 0);
-    const limit = parseInt(process.env.STORAGE_LIMIT || '1073741824'); // 1GB default
-
-    return {
-      totalSize,
-      fileCount: count || 0,
-      limit
-    };
   }
 
   // Health check
   async isHealthy(): Promise<boolean> {
-    if (this.s3Client && GetObjectCommand) {
+    if (this.s3Client) {
       try {
         // Test S3 connection
         const command = new GetObjectCommand({
@@ -447,7 +438,11 @@ class StorageService {
         });
         await this.s3Client.send(command);
         return true;
-      } catch (error) {
+      } catch (error: any) {
+        // NoSuchKey is fine, means we connected to bucket
+        if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+          return true;
+        }
         return false;
       }
     }

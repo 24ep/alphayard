@@ -8,11 +8,11 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 
 interface Step3FamilyScreenProps {
@@ -21,7 +21,7 @@ interface Step3FamilyScreenProps {
 }
 
 const Step3FamilyScreen: React.FC<Step3FamilyScreenProps> = ({ navigation, route }) => {
-  const { email, password } = route.params;
+  const { email, phone, password } = route.params;
   const [familyOption, setFamilyOption] = useState<'create' | 'join' | null>(null);
   const [familyCode, setFamilyCode] = useState('');
   const [errors, setErrors] = useState<{ familyCode?: string }>({});
@@ -31,8 +31,9 @@ const Step3FamilyScreen: React.FC<Step3FamilyScreenProps> = ({ navigation, route
     setFamilyCode('');
     setErrors({});
     // Automatically navigate to the next screen
-    navigation.navigate('Step3CreateFamily', { 
-      email, 
+    navigation.navigate('Step3CreateFamily', {
+      email,
+      phone,
       password
     });
   };
@@ -59,9 +60,10 @@ const Step3FamilyScreen: React.FC<Step3FamilyScreenProps> = ({ navigation, route
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      navigation.navigate('Step3JoinFamily', { 
-        email, 
-        password, 
+      navigation.navigate('Step3JoinFamily', {
+        email,
+        phone,
+        password,
         familyOption: 'join'
       });
     }
@@ -81,24 +83,26 @@ const Step3FamilyScreen: React.FC<Step3FamilyScreenProps> = ({ navigation, route
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContentContainer} showsVerticalScrollIndicator={false}>
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                 <Icon name="arrow-left" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <View style={styles.stepIndicator}>
-                <Text style={styles.stepText}>Step 3 of 6</Text>
+                <Text style={styles.stepText}>Step 1 of 4</Text>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '50%' }]} />
+                  <View style={[styles.progressFill, { width: '25%' }]} />
                 </View>
               </View>
             </View>
 
             {/* Title */}
             <View style={styles.titleContainer}>
-              <Text style={styles.title}>hourse Setup</Text>
-              <Text style={styles.subtitle}>Create a new hourse or join an existing one</Text>
+              <Text style={styles.title}>Welcome!</Text>
+              <Text style={styles.subtitle}>
+                It looks like you're new here. Let's get your account set up, starting with your family connection.
+              </Text>
             </View>
 
             {/* hourse Options */}
@@ -167,7 +171,7 @@ const Step3FamilyScreen: React.FC<Step3FamilyScreenProps> = ({ navigation, route
                 <Icon name="arrow-right" size={20} color="#bf4342" />
               </TouchableOpacity>
             )}
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -184,10 +188,13 @@ const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
   },
-  content: {
+  scrollContent: {
     flex: 1,
+  },
+  scrollContentContainer: {
     paddingHorizontal: 24,
     paddingTop: 20,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
@@ -252,7 +259,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
-    backdropFilter: 'blur(10px)',
   },
   optionCardSelected: {
     borderColor: 'rgba(255, 255, 255, 0.4)',

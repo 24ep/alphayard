@@ -13,6 +13,10 @@ export interface SocketEvents {
   'user-joined': (data: { chatId: string; userId: string; timestamp: string }) => void;
   'user-left': (data: { chatId: string; userId: string; timestamp: string }) => void;
   'new-message': (data: { message: any }) => void;
+  'message-updated': (data: { message: any }) => void;
+  'message-deleted': (data: { messageId: string; chatRoomId: string }) => void;
+  'reaction-added': (data: any) => void;
+  'reaction-removed': (data: any) => void;
   'chat:typing': (data: { chatId: string; userId: string; isTyping: boolean }) => void;
 
   // Location events
@@ -43,13 +47,16 @@ class SocketService {
     try {
       // Prefer accessToken used by the REST API, but fall back to legacy authToken if present
       const token = (await AsyncStorage.getItem('accessToken')) || (await AsyncStorage.getItem('authToken'));
-      
+
       if (!token) {
         console.log('No authentication token found, skipping socket connection');
         return;
       }
 
-      this.socket = io(config.apiUrl, {
+      // Strip /api/v1 from the URL for Socket.IO connection as it appends /socket.io automatically
+      const socketUrl = config.apiUrl.replace('/api/v1', '');
+
+      this.socket = io(socketUrl, {
         auth: {
           token: token
         },
@@ -59,7 +66,7 @@ class SocketService {
       });
 
       this.setupEventListeners();
-      
+
       return new Promise((resolve, reject) => {
         if (!this.socket) {
           reject(new Error('Socket initialization failed'));
@@ -73,8 +80,19 @@ class SocketService {
           resolve();
         });
 
-        this.socket.on('connect_error', (error) => {
-          console.error('Socket connection error:', error);
+        this.socket.on('connect_error', async (error) => {
+          console.error('Socket connection error:', error.message);
+
+          // Handle authentication errors
+          if (error.message.includes('jwt expired') ||
+            error.message.includes('Authentication error') ||
+            error.message.includes('invalid signature')) {
+            console.log('Socket authentication failed - clearing token');
+            await AsyncStorage.removeItem('accessToken');
+            await AsyncStorage.removeItem('authToken');
+            this.disconnect();
+          }
+
           reject(error);
         });
 
@@ -107,9 +125,9 @@ class SocketService {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      
+
       console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      
+
       setTimeout(() => {
         this.connect().catch((error) => {
           console.error('Reconnection failed:', error);

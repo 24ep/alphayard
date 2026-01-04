@@ -1,126 +1,132 @@
 import { Response } from 'express';
-import { getSupabaseClient } from '../services/supabaseService';
+import { pool } from '../config/database';
 
 export class NotesController {
   static async list(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
 
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .eq('family_id', familyId)
-        .order('updated_at', { ascending: false });
+      const { rows } = await pool.query(
+        'SELECT * FROM notes WHERE family_id = $1 ORDER BY updated_at DESC',
+        [familyId]
+      );
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to fetch notes', details: error.message });
-      }
-
-      return res.json({ success: true, data });
+      return res.json({ success: true, data: rows });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Notes list error:', err);
+      return res.status(500).json({ error: 'Failed to fetch notes', details: err.message });
     }
   }
 
   static async create(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const userId = req.user.id;
-      const { title, content } = req.body;
+      const { title, content, category, is_pinned, color } = req.body;
 
       if (!title && !content) {
         return res.status(400).json({ error: 'Title or content is required' });
       }
 
-      const { data, error } = await supabase
-        .from('notes')
-        .insert({
-          family_id: familyId,
-          user_id: userId,
-          title: title || null,
-          content: content || '',
-        })
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `INSERT INTO notes (family_id, user_id, title, content, category, is_pinned, color)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING *`,
+        [
+          familyId,
+          userId,
+          title || null,
+          content || '',
+          category || 'personal',
+          is_pinned || false,
+          color || '#FFB6C1'
+        ]
+      );
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to create note', details: error.message });
-      }
-
-      return res.status(201).json({ success: true, data });
+      return res.status(201).json({ success: true, data: rows[0] });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Notes create error:', err);
+      return res.status(500).json({ error: 'Failed to create note', details: err.message });
     }
   }
 
   static async update(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const { id } = req.params;
-      const { title, content } = req.body;
+      const { title, content, category, is_pinned, color } = req.body;
 
-      const { data: existing, error: findErr } = await supabase
-        .from('notes')
-        .select('id, family_id')
-        .eq('id', id)
-        .single();
-      if (findErr || !existing || existing.family_id !== familyId) {
+      // First check existence and permissions
+      const { rows: existing } = await pool.query(
+        'SELECT id, family_id FROM notes WHERE id = $1 LIMIT 1',
+        [id]
+      );
+
+      if (existing.length === 0 || existing[0].family_id !== familyId) {
         return res.status(404).json({ error: 'Note not found' });
       }
 
-      const { data, error } = await supabase
-        .from('notes')
-        .update({
-          title: title !== undefined ? title : undefined,
-          content: content !== undefined ? content : undefined,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      // Build dynamic update query
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to update note', details: error.message });
+      fields.push(`updated_at = NOW()`); // Always update timestamp
+
+      if (title !== undefined) {
+        fields.push(`title = $${paramIndex++}`);
+        values.push(title);
+      }
+      if (content !== undefined) {
+        fields.push(`content = $${paramIndex++}`);
+        values.push(content);
+      }
+      if (category !== undefined) {
+        fields.push(`category = $${paramIndex++}`);
+        values.push(category);
+      }
+      if (is_pinned !== undefined) {
+        fields.push(`is_pinned = $${paramIndex++}`);
+        values.push(is_pinned);
+      }
+      if (color !== undefined) {
+        fields.push(`color = $${paramIndex++}`);
+        values.push(color);
       }
 
-      return res.json({ success: true, data });
+      values.push(id); // ID is the last param
+      const query = `UPDATE notes SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+
+      const { rows } = await pool.query(query, values);
+
+      return res.json({ success: true, data: rows[0] });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Notes update error:', err);
+      return res.status(500).json({ error: 'Failed to update note', details: err.message });
     }
   }
 
   static async remove(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const { id } = req.params;
 
-      const { data: existing, error: findErr } = await supabase
-        .from('notes')
-        .select('id, family_id')
-        .eq('id', id)
-        .single();
-      if (findErr || !existing || existing.family_id !== familyId) {
+      // Check permissions
+      const { rows: existing } = await pool.query(
+        'SELECT id, family_id FROM notes WHERE id = $1 LIMIT 1',
+        [id]
+      );
+
+      if (existing.length === 0 || existing[0].family_id !== familyId) {
         return res.status(404).json({ error: 'Note not found' });
       }
 
-      const { error } = await supabase
-        .from('notes')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        return res.status(500).json({ error: 'Failed to delete note', details: error.message });
-      }
+      await pool.query('DELETE FROM notes WHERE id = $1', [id]);
 
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Notes delete error:', err);
+      return res.status(500).json({ error: 'Failed to delete note', details: err.message });
     }
   }
 }
-
-

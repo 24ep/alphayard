@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, KeyboardAvoidingView, Platform, FlatList, Alert, TouchableOpacity, Image, Linking } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { View, KeyboardAvoidingView, Platform, FlatList, Alert, TouchableOpacity, Image, Linking, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
   Box,
   VStack,
@@ -16,13 +16,8 @@ import {
   Divider,
   IconButton,
   Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
   Spinner,
+  useDisclose,
 } from 'native-base';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -53,20 +48,20 @@ interface ChatScreenProps {
 const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { 
-    isConnected, 
-    joinChat, 
-    leaveChat, 
-    sendMessage, 
-    startTyping, 
+  const {
+    isConnected,
+    joinChat,
+    leaveChat,
+    sendMessage,
+    startTyping,
     stopTyping,
     initiateCall,
-    on, 
-    off 
+    on,
+    off
   } = useSocket();
-  
+
   const { familyId, familyName, participants } = route.params;
-  
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -82,10 +77,10 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordingUri, setRecordingUri] = useState<string | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclose();
 
   const bgColor = useColorModeValue(colors.white[500], colors.gray[900]);
   const cardBgColor = useColorModeValue(colors.white[500], colors.gray[800]);
@@ -95,24 +90,26 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   useEffect(() => {
     // Load chat history
     loadChatHistory();
-    
+
     // Setup socket listeners (aligned with backend socket event names)
     on('new-message', handleNewMessage as any);
+    on('message-updated', handleMessageUpdated as any);
     on('chat:typing', handleTypingStatus as any);
     on('chat-joined', handleJoinedChat as any);
     on('chat-left', handleLeftChat as any);
-    
+
     // Join chat room when connected
     if (isConnected && chat?.id) {
       joinChat(chat.id);
     }
-    
+
     return () => {
       off('new-message', handleNewMessage as any);
+      off('message-updated', handleMessageUpdated as any);
       off('chat:typing', handleTypingStatus as any);
       off('chat-joined', handleJoinedChat as any);
       off('chat-left', handleLeftChat as any);
-      
+
       if (chat?.id) {
         leaveChat(chat.id);
       }
@@ -130,12 +127,12 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const loadChatHistory = async () => {
     try {
       setIsLoading(true);
-      
+
       // First, get or create the hourse chat
       const chatsResponse = await chatApi.getChats();
       if (chatsResponse.success) {
         let familyChat = chatsResponse.chats.find(c => c.type === 'hourse');
-        
+
         if (!familyChat) {
           // Create hourse chat if it doesn't exist
           const createResponse = await chatApi.createChat({
@@ -147,16 +144,16 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
             familyChat = createResponse.chat;
           }
         }
-        
+
         if (familyChat) {
           setChat(familyChat);
-          
+
           // Load messages for this chat
           const messagesResponse = await chatApi.getMessages(familyChat.id, {
             limit: 50,
             offset: 0,
           });
-          
+
           if (messagesResponse.success) {
             setMessages(messagesResponse.messages);
           }
@@ -175,9 +172,13 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     scrollToBottom();
   };
 
+  const handleMessageUpdated = (data: { message: Message }) => {
+    setMessages(prev => prev.map(m => m.id === data.message.id ? data.message : m));
+  };
+
   const handleTypingStatus = (data: { chatId: string; userId: string; userName: string; isTyping: boolean }) => {
     if (data.userId === user?.id) return;
-    
+
     setTypingUsers(prev => {
       if (data.isTyping) {
         return prev.includes(data.userId) ? prev : [...prev, data.userId];
@@ -201,26 +202,30 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
 
     try {
       setIsSending(true);
-      
+
       let messageType: 'text' | 'image' | 'video' | 'audio' | 'location' | 'file' = 'text';
       let content = newMessage.trim() || '';
       let metadata: any = {};
+      let fileToUpload: any = null;
 
       // Determine message type and prepare content
       if (audioUri) {
         messageType = 'audio';
         content = content || 'Voice message';
-        metadata = { audioUri, duration: recordingTime };
+        metadata = { duration: recordingTime }; // Initial metadata
+        fileToUpload = { uri: audioUri, type: 'audio/m4a', name: 'audio.m4a' };
         setRecordingUri(null);
         setRecordingTime(0);
       } else if (image) {
         messageType = 'image';
         content = content || '📷 Image';
-        metadata = { 
-          imageUri: image.uri,
+        metadata = {
           width: image.width,
-          height: image.height 
+          height: image.height,
+          // Store local URI initially for immediate display (sender side)
+          imageUrl: image.uri
         };
+        fileToUpload = { uri: image.uri, type: 'image/jpeg', name: 'image.jpg' };
         setSelectedImage(null);
       } else if (file) {
         messageType = 'file';
@@ -229,37 +234,59 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
           fileName: file.name,
           fileType: file.type,
           fileSize: file.size,
-          fileUri: file.uri
+          // Store local URI initially
+          fileUrl: file.uri
         };
+        fileToUpload = file;
         setSelectedFile(null);
       }
 
-      // Send message via Socket.io for real-time delivery
-      if (isConnected) {
-        sendMessage(chat.id, content, messageType);
-      } else {
-        // Fallback to API if socket not connected
-        const response = await chatApi.sendMessage(chat.id, {
-          content,
-          type: messageType,
-          metadata,
-        });
-        
-        if (response.success) {
-          setMessages(prev => [...prev, response.data]);
+      // For attachments, we MUST use HTTP API to get a Message ID first, then upload
+      const response = await chatApi.sendMessage(chat.id, {
+        content,
+        type: messageType,
+        metadata,
+      });
+
+      if (response.success && response.data) {
+        const sentMessage = response.data;
+        // Optimistically add to list (if API doesn't trigger 'new-message' for self? 
+        // Backend emits 'new-message' to room. Socket receives it.
+        // If socket receives it, duplicate?
+        // `handleNewMessage` appends.
+        // If I append manually, duplicate.
+        // API (ChatController) emits 'new-message' to room.
+        // Wait, socket echoes back to sender?
+        // `io.to(room).emit`. Yes, sender is in room.
+        // So I DO NOT need to append manually.
+        // BUT socket delivery takes time. Optimistic UI wants immediate.
+        // I'll rely on socket event for simplicity to avoid duplicates unless "isSending" UI blocks.
+        // Current UI shows "Sending..." spinner via `isSending`.
+        // So I wait.
+
+        // Now Upload Attachment
+        if (fileToUpload && sentMessage.id) {
+          try {
+            await chatApi.uploadAttachment(sentMessage.id, fileToUpload);
+          } catch (uploadError) {
+            console.error("Upload failed", uploadError);
+            Alert.alert("Upload Failed", "Message sent but attachment failed.");
+          }
         }
+      } else {
+        Alert.alert('Error', 'Failed to create message');
       }
-      
+
       // Clear input and attachments
       setNewMessage('');
       setSelectedFile(null);
       setSelectedImage(null);
-      
+
       // Stop typing indicator
       setIsTyping(false);
       stopTyping(chat.id);
-      
-      // Scroll to bottom
+
+      // Scroll to bottom (will happen when new-message arrives too)
       scrollToBottom();
     } catch (error) {
       console.error('Failed to send message with attachment:', error);
@@ -282,7 +309,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     // Otherwise send text message
     try {
       setIsSending(true);
-      
+
       // Send message via Socket.io for real-time delivery
       if (isConnected) {
         sendMessage(chat.id, newMessage.trim(), 'text');
@@ -292,19 +319,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
           content: newMessage.trim(),
           type: 'text',
         });
-        
+
         if (response.success) {
           setMessages(prev => [...prev, response.data]);
         }
       }
-      
+
       // Clear input
       setNewMessage('');
-      
+
       // Stop typing indicator
       setIsTyping(false);
       stopTyping(chat.id);
-      
+
       // Scroll to bottom
       scrollToBottom();
     } catch (error) {
@@ -317,19 +344,19 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
 
   const handleTyping = (text: string) => {
     setNewMessage(text);
-    
+
     if (!isTyping && text.length > 0) {
       setIsTyping(true);
       if (chat?.id) {
         startTyping(chat.id);
       }
     }
-    
+
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
     }
-    
+
     // Set new timeout to stop typing
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
@@ -339,26 +366,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     }, 1000);
   };
 
-  const handleTyping = (text: string) => {
-    setNewMessage(text);
-    
-    // Handle typing indicator
-    if (!isTyping) {
-      setIsTyping(true);
-      socketService.sendTypingStatus(true);
-    }
-    
-    // Clear typing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    // Set timeout to stop typing indicator
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-      socketService.sendTypingStatus(false);
-    }, 1000);
-  };
+
 
   const scrollToBottom = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -368,7 +376,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const handleFileSelect = async () => {
     try {
       setShowAttachmentMenu(false);
-      
+
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
@@ -393,7 +401,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const handleImageSelect = async () => {
     try {
       setShowAttachmentMenu(false);
-      
+
       // Request permissions
       const permissionResult = await imagePickerService.requestMediaLibraryPermissionsAsync();
       if (permissionResult.status !== 'granted') {
@@ -426,7 +434,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   const handleCameraCapture = async () => {
     try {
       setShowAttachmentMenu(false);
-      
+
       // Request camera permissions
       const permissionResult = await imagePickerService.requestCameraPermissionsAsync();
       if (permissionResult.status !== 'granted') {
@@ -504,10 +512,10 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
       // Stop recording
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
-      
+
       setIsRecording(false);
       setRecording(null);
-      
+
       if (uri) {
         setRecordingUri(uri);
         // Auto-send the recording (or you can show a preview first)
@@ -539,8 +547,8 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
         maxW="80%"
         mb={3}
       >
-        <HStack 
-          space={2} 
+        <HStack
+          space={2}
           alignItems="flex-end"
           flexDirection={isOwnMessage ? 'row-reverse' : 'row'}
         >
@@ -571,7 +579,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
               />
             </Box>
           )}
-          
+
           {/* Message Bubble */}
           <VStack space={1} flex={1}>
             {!isOwnMessage && (
@@ -579,7 +587,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                 {item.senderName}
               </Text>
             )}
-            
+
             <Box
               bg={isOwnMessage ? 'rgba(255, 90, 90, 0.8)' : 'rgba(255, 255, 255, 0.7)'}
               px={4}
@@ -607,7 +615,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                   {item.content}
                 </Text>
               )}
-              
+
               {item.type === 'image' && item.metadata?.imageUrl && (
                 <Box>
                   <Text
@@ -625,13 +633,15 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                     justifyContent="center"
                     alignItems="center"
                   >
-                    <Text style={textStyles.caption} color={colors.gray[600]}>
-                      Image Preview
-                    </Text>
+                    <Image
+                      source={{ uri: item.metadata.imageUrl }}
+                      style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                      resizeMode="cover"
+                    />
                   </Box>
                 </Box>
               )}
-              
+
               {item.type === 'location' && item.metadata?.location && (
                 <Box>
                   <Text
@@ -665,36 +675,28 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                     <HStack space={2} alignItems="center">
                       <Icon as={IconMC} name="map-marker" size={5} color={isOwnMessage ? colors.white[500] : colors.primary[500]} />
                       <VStack flex={1}>
-                        {location.address && (
+                        {item.metadata.location.address && (
                           <Text
                             style={textStyles.body}
                             color={isOwnMessage ? colors.white[500] : colors.gray[800]}
                             fontWeight="600"
                           >
-                            {location.address}
+                            {item.metadata.location.address}
                           </Text>
                         )}
                         <Text
                           style={textStyles.caption}
                           color={isOwnMessage ? colors.white[400] : colors.gray[600]}
                         >
-                          {location.latitude?.toFixed(6)}, {location.longitude?.toFixed(6)}
+                          {item.metadata.location.latitude?.toFixed(6)}, {item.metadata.location.longitude?.toFixed(6)}
                         </Text>
-                        {location.accuracy && (
-                          <Text
-                            style={textStyles.caption}
-                            color={isOwnMessage ? colors.white[400] : colors.gray[500]}
-                          >
-                            Accuracy: {Math.round(location.accuracy)}m
-                          </Text>
-                        )}
                       </VStack>
                       <Icon as={IconMC} name="open-in-new" size={4} color={isOwnMessage ? colors.white[400] : colors.gray[500]} />
                     </HStack>
                   </Pressable>
                 </Box>
               )}
-              
+
               {item.type === 'emergency' && (
                 <Box>
                   <Text
@@ -759,7 +761,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                 </Box>
               )}
             </Box>
-            
+
             <Text
               style={textStyles.caption}
               color={colors.gray[500]}
@@ -771,7 +773,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
               )}
             </Text>
           </VStack>
-          
+
           {/* Right Avatar for own messages */}
           {isOwnMessage && (
             <Box position="relative">
@@ -920,102 +922,60 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <LinearGradient
+      colors={['#FA7272', '#FFBBB4']}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
     >
-      <LinearGradient
-        colors={['#FA7272', '#FFBBB4']}
-        locations={[0, 1.0]}
-        start={{ x: 0, y: 1 }}
-        end={{ x: 1, y: 0 }}
-        style={{ flex: 1 }}
-      >
-        <Box flex={1} safeArea>
-        {/* Header */}
-        <HStack
-          bg="rgba(255, 255, 255, 0.9)"
-          px={4}
-          py={3}
-          alignItems="center"
-          space={3}
-          shadow={2}
-          borderBottomWidth={1}
-          borderBottomColor="rgba(240, 240, 240, 0.5)"
-        >
-          <IconButton
-            icon={<Icon as={IconMC} name="arrow-left" size={6} />}
-            onPress={() => navigation.goBack()}
-            variant="ghost"
-          />
-          
-          <Pressable flex={1} onPress={onOpen}>
-            <VStack>
-              <Text style={textStyles.h3} color={textColor} fontWeight="600">
-                {familyName}
-              </Text>
-              <HStack space={2} alignItems="center">
-                <HStack space={-2}>
-                  {participants.slice(0, 3).map((participant, index) => (
-                    <Avatar
-                      key={participant.id}
-                      size="xs"
-                      source={{ uri: participant.avatar }}
-                      bg={colors.primary[500]}
-                      borderWidth={1}
-                      borderColor={cardBgColor}
-                      zIndex={participants.length - index}
-                    >
-                      {participant.name.charAt(0)}
-                    </Avatar>
-                  ))}
-                </HStack>
-                <Text style={textStyles.caption} color={colors.gray[600]}>
-                  {participants.length} members
-                </Text>
-              </HStack>
-            </VStack>
-          </Pressable>
-          
-          <IconButton
-            icon={<Icon as={IconMC} name="phone" size={6} />}
-            onPress={() => {
-              const participantIds = participants.map(p => p.id);
-              initiateCall(participantIds, 'voice');
-              Alert.alert('Call Initiated', 'Starting voice call...');
-            }}
-            variant="ghost"
-          />
-          
-          <IconButton
-            icon={<Icon as={IconMC} name="video" size={6} />}
-            onPress={() => {
-              const participantIds = participants.map(p => p.id);
-              initiateCall(participantIds, 'video');
-              Alert.alert('Call Initiated', 'Starting video call...');
-            }}
-            variant="ghost"
-          />
-          
-          <IconButton
-            icon={<Icon as={IconMC} name="dots-vertical" size={6} />}
-            onPress={() => {
-              Alert.alert(
-                'Chat Options',
-                'Select an option',
-                [
-                  { text: 'View Members', onPress: () => {} },
-                  { text: 'Mute Notifications', onPress: () => {} },
-                  { text: 'Clear Chat', onPress: () => {} },
-                  { text: 'Leave Chat', onPress: () => {}, style: 'destructive' },
-                  { text: 'Cancel', style: 'cancel' }
-                ]
-              );
-            }}
-            variant="ghost"
-          />
-        </HStack>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
+      {/* Header Section */}
+      <SafeAreaView>
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <IconMC name="arrow-left" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.headerTitleContainer}
+              onPress={onOpen}
+            >
+              <Text style={styles.headerTitle} numberOfLines={1}>{familyName}</Text>
+              <Text style={styles.headerSubtitle}>
+                {participants.length} members • {participants.filter(p => p.isOnline).length} online
+              </Text>
+            </TouchableOpacity>
+
+            <HStack space={2}>
+              <TouchableOpacity
+                style={styles.headerActionButton}
+                onPress={() => {
+                  const participantIds = participants.map(p => p.id);
+                  initiateCall(participantIds, 'video');
+                  Alert.alert('Call Initiated', 'Starting video call...');
+                }}
+              >
+                <IconMC name="video" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.headerActionButton}
+                onPress={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              >
+                <IconMC name="dots-vertical" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </HStack>
+          </View>
+        </View>
+      </SafeAreaView>
+
+      {/* Main Content Card */}
+      <View style={styles.mainContentCard}>
         {/* Voice Recording Indicator */}
         {isRecording && (
           <Box
@@ -1026,9 +986,11 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
             alignItems="center"
             justifyContent="center"
             space={2}
+            borderTopLeftRadius={24}
+            borderTopRightRadius={24}
           >
             <Icon as={IconMC} name="microphone" size={5} color={colors.white[500]} />
-            <Text style={textStyles.body} color={colors.white[500]} fontWeight="500">
+            <Text style={{ color: 'white', fontWeight: '500' }}>
               Recording... {recordingTime}s
             </Text>
             <TouchableOpacity onPress={handleStopRecording}>
@@ -1037,8 +999,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
           </Box>
         )}
 
-        {/* Messages */}
-        <Box flex={1} px={4} bg="rgba(255, 255, 255, 0.05)">
+        <View style={{ flex: 1, paddingHorizontal: 4 }}>
           {isLoading ? (
             <Box flex={1} justifyContent="center" alignItems="center">
               <Spinner size="lg" color={colors.primary[500]} />
@@ -1057,95 +1018,103 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
               onLayout={scrollToBottom}
               ListFooterComponent={renderTypingIndicator}
               inverted={false}
+              contentContainerStyle={{ paddingBottom: 10, paddingTop: 10 }}
             />
           )}
-        </Box>
+        </View>
 
-        {/* Input */}
-        <Box bg="rgba(255, 255, 255, 0.9)" px={4} py={3} shadow={3} borderTopWidth={1} borderTopColor="rgba(240, 240, 240, 0.5)">
-          <HStack space={3} alignItems="flex-end">
-            <IconButton
-              icon={<Icon as={IconMC} name="plus" size={6} />}
-              onPress={toggleAttachmentMenu}
-              variant="ghost"
-              size="sm"
-            />
-            
-            <Box flex={1}>
-              <Input
-                value={newMessage}
-                onChangeText={handleTyping}
-                placeholder="Type a message..."
-                multiline
-                maxH={100}
-                borderRadius={20}
-                bg={inputBgColor}
-                borderWidth={0}
-                _focus={{
-                  bg: inputBgColor,
-                  borderWidth: 0,
-                }}
-                InputRightElement={
-                  <HStack space={1} mr={2}>
-                    <IconButton
-                      icon={<Icon as={IconMC} name="camera" size={5} />}
-                      onPress={handleCameraCapture}
-                      variant="ghost"
-                      size="sm"
-                    />
-                    <IconButton
-                      icon={<Icon as={IconMC} name="paperclip" size={5} />}
-                      onPress={toggleAttachmentMenu}
-                      variant="ghost"
-                      size="sm"
-                    />
-                                         <IconButton
-                       icon={
-                         isRecording ? (
-                           <Icon as={IconMC} name="stop" size={5} color={colors.error[500]} />
-                         ) : (
-                           <Icon as={IconMC} name="microphone" size={5} />
-                         )
-                       }
-                       onPress={isRecording ? handleStopRecording : handleStartRecording}
-                       variant="ghost"
-                       size="sm"
-                       bg={isRecording ? colors.error[100] : 'transparent'}
-                     />
-                  </HStack>
-                }
+        {/* Input Area - Inside Card */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <Box bg="white" px={4} py={3} borderTopWidth={1} borderTopColor="gray.100">
+            <HStack space={2} alignItems="flex-end">
+              <IconButton
+                icon={<Icon as={IconMC} name="plus" size={6} color="gray.500" />}
+                onPress={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                variant="ghost"
+                size="sm"
+                _pressed={{ bg: 'gray.100' }}
               />
-            </Box>
-            
-            <IconButton
-              icon={
-                isSending ? (
-                  <Spinner size="sm" color={colors.white[500]} />
-                ) : (
-                  <Icon as={IconMC} name="send" size={5} />
-                )
-              }
-              onPress={handleSendMessage}
-              bg={colors.primary[500]}
-              _pressed={{ bg: colors.primary[600] }}
-              borderRadius="full"
-              size="sm"
-              isDisabled={(!newMessage.trim() && !selectedFile && !selectedImage && !recordingUri) || isSending}
-            />
-          </HStack>
-        </Box>
-      </Box>
+
+              <Box flex={1}>
+                <Input
+                  value={newMessage}
+                  onChangeText={handleTyping}
+                  placeholder="Type a message..."
+                  multiline
+                  maxH={100}
+                  borderRadius={20}
+                  bg="gray.100"
+                  borderWidth={0}
+                  _focus={{
+                    bg: "gray.100",
+                    borderWidth: 0,
+                  }}
+                  fontSize="md"
+                  py={2}
+                  InputRightElement={
+                    <HStack space={1} mr={2} alignItems="center">
+                      <IconButton
+                        icon={<Icon as={IconMC} name="camera" size={5} color="gray.500" />}
+                        onPress={handleCameraCapture}
+                        variant="ghost"
+                        size="sm"
+                      />
+                      <IconButton
+                        icon={<Icon as={IconMC} name="paperclip" size={5} color="gray.500" />}
+                        onPress={() => handleFileSelect()} // Corrected call
+                        variant="ghost"
+                        size="sm"
+                      />
+                      <IconButton
+                        icon={
+                          isRecording ? (
+                            <Icon as={IconMC} name="stop" size={5} color={colors.error[500]} />
+                          ) : (
+                            <Icon as={IconMC} name="microphone" size={5} color="gray.500" />
+                          )
+                        }
+                        onPress={isRecording ? handleStopRecording : handleStartRecording}
+                        variant="ghost"
+                        size="sm"
+                        bg={isRecording ? colors.error[100] : 'transparent'}
+                      />
+                    </HStack>
+                  }
+                />
+              </Box>
+
+              <IconButton
+                icon={
+                  isSending ? (
+                    <Spinner size="sm" color="white" />
+                  ) : (
+                    <Icon as={IconMC} name="send" size={5} color="white" />
+                  )
+                }
+                onPress={handleSendMessage}
+                bg={colors.primary[500]}
+                _pressed={{ bg: colors.primary[600] }}
+                borderRadius="full"
+                size="sm"
+                isDisabled={(!newMessage.trim() && !selectedFile && !selectedImage && !recordingUri) || isSending}
+              />
+            </HStack>
+          </Box>
+        </KeyboardAvoidingView>
+      </View>
 
       {/* Participants Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
+        <Modal.Content>
+          <Modal.Header>
             <Text style={textStyles.h3} color={textColor}>
               hourse Members
             </Text>
-          </ModalHeader>
-          <ModalBody>
+          </Modal.Header>
+          <Modal.Body>
             <VStack space={3}>
               {participants.map((participant) => (
                 <HStack key={participant.id} space={3} alignItems="center">
@@ -1156,7 +1125,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                   >
                     {participant.name.charAt(0)}
                   </Avatar>
-                  
+
                   <VStack flex={1}>
                     <Text style={textStyles.h4} color={textColor} fontWeight="500">
                       {participant.name}
@@ -1176,18 +1145,77 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
                 </HStack>
               ))}
             </VStack>
-          </ModalBody>
-          <ModalFooter>
+          </Modal.Body>
+          <Modal.Footer>
             <Button variant="ghost" onPress={onClose}>
               Close
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Content>
       </Modal>
-        </Box>
-      </LinearGradient>
-    </KeyboardAvoidingView>
+
+    </LinearGradient>
   );
 };
 
-export default ChatScreen; 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginLeft: 16,
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  headerActionButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  mainContentCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+});
+
+export default ChatScreen;

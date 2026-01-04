@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CommonActions } from '@react-navigation/native';
+import { Alert, Platform } from 'react-native';
 
 // Conditional imports for optional dependencies
 let GoogleSignin: any;
@@ -31,7 +32,7 @@ import axios from 'axios';
 
 // Create a fallback axios instance in case apiClient fails to load
 const fallbackApi = axios.create({
-  baseURL: 'http://localhost:3000/api/v1',
+  baseURL: 'http://localhost:4000/api/v1',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 });
@@ -90,6 +91,10 @@ interface AuthContextType {
   _devSetOnboarding?: (complete: boolean) => void;
   // Navigation reference for forced navigation
   setNavigationRef?: (ref: any) => void;
+  checkUserExists: (identifier: string) => Promise<boolean>;
+  requestOtp: (identifier: string) => Promise<void>;
+  loginWithOtp: (identifier: string, otp: string) => Promise<void>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   loginError: string | null;
   clearLoginError: () => void;
 }
@@ -131,6 +136,9 @@ export const useAuth = () => {
         setNavigationRef: undefined,
         loginError: null,
         clearLoginError: () => { },
+        checkUserExists: async () => false,
+        requestOtp: async () => { },
+        loginWithOtp: async () => { },
       };
     }
     return context;
@@ -156,6 +164,10 @@ export const useAuth = () => {
       setNavigationRef: undefined,
       loginError: null,
       clearLoginError: () => { },
+      checkUserExists: async () => false,
+      requestOtp: async () => { },
+      loginWithOtp: async () => { },
+      verifyEmail: async () => { },
     };
   }
 };
@@ -180,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Initialize Google Sign-In only if available
   useEffect(() => {
     // Register unauthorized callback with apiClient
-    if (apiClient.setOnLogout) {
+    // Register unauthorized callback with apiClient
+    if (apiClient && apiClient.setOnLogout) {
       apiClient.setOnLogout(() => {
         console.log('[AUTH] 🛑 Received logout signal from API client');
         setUser(null);
@@ -319,64 +332,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Handle both flat response (backend) and nested data (if wrapper changes)
       const responseData = response as any;
       const userData = responseData.user || responseData.data?.user;
-      const accessToken = responseData.accessToken || responseData.token || responseData.data?.accessToken;
+      const accessToken = responseData.accessToken || responseData.data?.accessToken;
       const refreshToken = responseData.refreshToken || responseData.data?.refreshToken;
 
-      // Backend returns `token` (access token) + `refreshToken`. Support both shapes.
-      const resolvedAccessToken = accessToken;
+      if (!userData || !accessToken) {
+        throw new Error('Invalid login response from server');
+      }
 
-      // Store tokens
-      await AsyncStorage.multiSet([
-        ['accessToken', resolvedAccessToken],
-        ['refreshToken', refreshToken],
-      ]);
-
-      // Set token in API headers
-      api.setAuthToken(resolvedAccessToken);
-
-      // Transform user data to match our interface
-      const transformedUser: User = {
-        id: userData.id,
-        email: userData.email,
-        firstName: userData.firstName || userData.first_name,
-        lastName: userData.lastName || userData.last_name,
-        avatar: userData.avatarUrl || userData.avatar,
-        phone: userData.phoneNumber || userData.phone,
-        dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : undefined,
-        userType: 'hourse',
-        subscriptionTier: 'free',
-        familyIds: userData.families?.map((f: any) => f.id) || (userData.familyIds || []),
-        isOnboardingComplete: userData.isOnboardingComplete ?? true,
-        preferences: userData.preferences || {
-          notifications: true,
-          locationSharing: true,
-          popupSettings: {
-            enabled: true,
-            frequency: 'daily',
-            maxPerDay: 3,
-            categories: ['announcement', 'promotion'],
-          },
-        },
-        createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
-        updatedAt: userData.updatedAt ? new Date(userData.updatedAt) : new Date(),
-      };
-
-      // CRITICAL: Mark that we've logged in to prevent checkAuthState from interfering
-      hasCheckedAuthRef.current = true;
-
-      console.log('[AUTH] ✅ Login successful - setting user state');
-      console.log('[AUTH] ✅ User object:', JSON.stringify(transformedUser, null, 2));
-      console.log('[AUTH] ✅ User ID:', transformedUser.id);
-      console.log('[AUTH] ✅ User email:', transformedUser.email);
-
-      // CRITICAL: Set user state FIRST - this will make isAuthenticated true
-      // Set all states together to minimize re-renders
-      setUser(transformedUser);
       setIsOnboardingComplete(userData.isOnboardingComplete ?? true);
 
-      // Store user data in AsyncStorage for session persistence
-      await AsyncStorage.setItem('user', JSON.stringify(transformedUser));
-      console.log('[AUTH] User data stored in AsyncStorage for session persistence');
+      // Store auth data
+      await AsyncStorage.multiSet([
+        ['accessToken', accessToken],
+        ['refreshToken', refreshToken],
+        ['user', JSON.stringify(userData)],
+      ]);
+
+      api.setAuthToken(accessToken);
+      setUser(userData);
+
+      console.log('[AUTH] User data and tokens stored in AsyncStorage');
 
       setIsLoading(false);
 
@@ -390,7 +365,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.log('[AUTH] ✅✅✅ All states set - isAuthenticated should now be: true');
       console.log('[AUTH] ✅✅✅ Loading set to false, navigation should switch to AppNavigator');
 
-      logger.info('User logged in successfully:', userData.email);
+      logger.info('User logged in successfully:', userData?.email);
 
       // Force navigation reset if navigation ref is available
       setTimeout(() => {
@@ -632,23 +607,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const signup = async (userData: SignupData) => {
     try {
-      setIsLoading(true);
+      // setIsLoading(true); // Removed to prevent RootNavigator from unmounting AuthNavigator
 
-      // Validate required fields
-      if (!userData.email || !userData.password || !userData.firstName || !userData.lastName) {
-        throw new Error('Email, password, first name, and last name are required');
+      // Validate required fields (Allow either email or phone)
+      if ((!userData.email && !userData.phone) || !userData.password || !userData.firstName || !userData.lastName) {
+        throw new Error('An identifier (email or phone), password, first name, and last name are required');
       }
 
       // Transform data to match backend expectations
       const backendData = {
-        email: userData.email,
+        ...userData,
+        email: userData.email || `${userData.phone}@bondarys.local`, // Fallback for backend email requirement
         password: userData.password,
         firstName: userData.firstName,
         lastName: userData.lastName,
-        phoneNumber: userData.phone, // Backend expects phoneNumber, not phone
+        phone: userData.phone,
+        phoneNumber: userData.phone, // Backend sometimes expects phoneNumber
         dateOfBirth: userData.dateOfBirth,
-        // Include additional fields that might be expected
-        ...(userData as any)
       };
 
       console.log('🔧 Signup data being sent:', JSON.stringify(backendData, null, 2));
@@ -657,136 +632,97 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // API client returns response.data directly, not the full response object
         const responseData = await api.post('/auth/register', backendData) as any;
 
-        console.log('🔧 Signup response:', typeof responseData === 'string' ? (responseData as string).substring(0, 200) : JSON.stringify(responseData, null, 2));
-        console.log('🔧 Response type:', typeof responseData);
+        console.log('🔧 Signup initiated:', responseData);
 
-        // Check if response is HTML (Metro bundler or wrong endpoint)
-        if (typeof responseData === 'string' && ((responseData as string).trim().startsWith('<!DOCTYPE') || (responseData as string).trim().startsWith('<html'))) {
-          console.error('🔧 ERROR: Received HTML instead of JSON!');
-          console.error('🔧 This means the backend is not running or using wrong port');
-          const apiBaseURL = (api as any)?.defaults?.baseURL || (api as any)?.baseURL || 'unknown';
-          console.error('🔧 Current API URL:', apiBaseURL);
-          throw new Error('Backend server not found. Received HTML response instead of JSON. Please check if backend is running on port 3000.');
+        // Response should just be success message now
+        if (!responseData.success) {
+          throw new Error(responseData.message || 'Signup failed');
         }
 
-        // Check if responseData exists
-        if (!responseData) {
-          console.error('🔧 ResponseData is falsy:', responseData);
-          throw new Error('Invalid response from server: response is undefined or null');
+        // New flow: Backend returns tokens for immediate login
+        const { user, accessToken } = responseData;
+
+        if (user && accessToken) {
+          console.log('🔧 Signup successful - Setting up immediate session');
+          await handleAuthResponse(responseData);
+          console.log('🔧 Immediate session set - RootNavigator should now switch');
+        } else {
+          console.warn('🔧 Signup successful but tokens not found - check backend response');
         }
 
-        // Check if responseData is an object (JSON)
-        if (typeof responseData !== 'object' || Array.isArray(responseData)) {
-          console.error('🔧 ResponseData is not an object:', typeof responseData, responseData);
-          throw new Error('Invalid response format: expected JSON object');
-        }
-
-        // Handle different response structures
-        const responseDataAny = responseData as any;
-        const newUser = responseDataAny.user || responseDataAny.data?.user;
-        const accessToken = responseDataAny.accessToken || responseDataAny.token;
-        const refreshToken = responseDataAny.refreshToken;
-
-        if (!newUser) {
-          console.error('🔧 Response data structure:', JSON.stringify(responseData, null, 2));
-          throw new Error('User data not found in response');
-        }
-
-        if (!accessToken) {
-          throw new Error('Access token not found in response');
-        }
-
-        // Store tokens
-        await AsyncStorage.multiSet([
-          ['accessToken', accessToken],
-          ['refreshToken', refreshToken],
-        ]);
-
-        // Set token in API headers
-        api.setAuthToken(accessToken);
-
-        // Transform user data to match our interface
-        const transformedUser: User = {
-          id: newUser.id,
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          avatar: newUser.avatarUrl,
-          phone: newUser.phoneNumber,
-          dateOfBirth: newUser.dateOfBirth ? new Date(newUser.dateOfBirth) : undefined,
-          userType: userData.userType,
-          subscriptionTier: 'free',
-          familyIds: [],
-          isOnboardingComplete: newUser.isOnboardingComplete,
-          preferences: newUser.preferences || {
-            notifications: true,
-            locationSharing: true,
-            popupSettings: {
-              enabled: true,
-              frequency: 'daily',
-              maxPerDay: 3,
-              categories: ['announcement', 'promotion'],
-            },
-          },
-          createdAt: new Date(newUser.createdAt),
-          updatedAt: new Date(newUser.updatedAt),
-        };
-
-        setUser(transformedUser);
-        setIsOnboardingComplete(newUser.isOnboardingComplete);
-
-        logger.info('User signed up successfully:', newUser.email);
       } catch (innerError: any) {
         console.error('🔧 Inner signup error:', innerError);
         throw innerError;
       }
     } catch (error: any) {
-      console.error('🔧 Signup error details:', error);
-      console.error('🔧 Error type:', typeof error);
-      console.error('🔧 Error message:', error?.message);
-      console.error('🔧 Error code:', error?.code);
-      console.error('🔧 Error details:', error?.details);
-      console.error('🔧 Error response:', error?.response);
-      console.error('🔧 Error response data:', error?.response?.data);
-
-      // Extract more helpful error message
-      let errorMessage = error?.message || 'Failed to create account. Please try again.';
-
-      // If we have details, try to extract more info
-      if (error?.details) {
-        if (typeof error.details === 'string') {
-          errorMessage = error.details;
-        } else if (error.details?.message) {
-          errorMessage = error.details.message;
-        } else if (error.details?.error) {
-          errorMessage = error.details.error;
-        }
+      // Extremely defensive logging to find the exact crash point
+      console.log('🔧 [DEBUG] Signup catch block entered');
+      try {
+        console.error('🔧 Signup error summary:', {
+          type: typeof error,
+          message: error?.message,
+          code: error?.code,
+          hasResponse: !!error?.response,
+          hasDetails: !!error?.details
+        });
+      } catch (e) {
+        console.error('🔧 Failed to log error summary safely');
       }
 
-      // Check for common backend errors
-      if (error?.response?.data) {
-        const responseData = error.response.data;
-        if (responseData?.message) {
-          errorMessage = responseData.message;
-        } else if (responseData?.error) {
-          errorMessage = responseData.error;
-        } else if (typeof responseData === 'string') {
-          errorMessage = responseData;
+      // Extract helpful error message with total safety
+      let errorMessage = 'Failed to create account. Please try again.';
+
+      try {
+        if (error && typeof error === 'object') {
+          // Use a sequence of fallback attempts, each guarded
+          errorMessage = error.message || errorMessage;
+
+          // Try to get message from details (ApiClient format)
+          if (error.details) {
+            if (typeof error.details === 'string') {
+              errorMessage = error.details;
+            } else if (typeof error.details === 'object') {
+              errorMessage = error.details.message || error.details.error || errorMessage;
+            }
+          }
+
+          // Try to get message from response (Axios format)
+          const responseData = error.response?.data;
+          if (responseData) {
+            if (typeof responseData === 'string') {
+              errorMessage = responseData;
+            } else if (typeof responseData === 'object' && responseData !== null) {
+              errorMessage = responseData.message || responseData.error || errorMessage;
+            }
+          }
+        } else if (typeof error === 'string') {
+          errorMessage = error;
         }
+      } catch (extractionError) {
+        console.error('🔧 Error during message extraction:', extractionError);
       }
 
-      // Create a more informative error - ensure we can spread safely
-      const errorObj = (error && typeof error === 'object') ? error : {};
-      const enhancedError = {
-        ...errorObj,
-        message: errorMessage,
-        originalMessage: error?.message,
-      };
+      // Create a clean error object to throw
+      const enhancedError = new Error(String(errorMessage));
+      try {
+        (enhancedError as any).originalError = error;
+        (enhancedError as any).code = error?.code;
+      } catch (e) { }
 
-      logger.error('Signup failed:', enhancedError);
+      // Log only the message string to avoids issues with complex objects in loggers
+      if (typeof logger !== 'undefined' && logger.error) {
+        try {
+          logger.error('Signup failed:', String(errorMessage));
+        } catch (e) {
+          console.error('Logger failed:', e);
+        }
+      } else {
+        console.error('Signup failed:', errorMessage);
+      }
+
       throw enhancedError;
     } finally {
-      setIsLoading(false);
+      // setIsLoading(false);
     }
   };
 
@@ -870,6 +806,129 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const checkUserExists = async (identifier: string): Promise<boolean> => {
+    try {
+      const isEmail = identifier.includes('@');
+      console.log('[AuthContext] checkUserExists called with:', identifier, 'isEmail:', isEmail);
+      const response = await api.post('/auth/check-user', {
+        email: isEmail ? identifier : undefined,
+        phone: !isEmail ? identifier : undefined,
+      }) as any;
+      console.log('[AuthContext] checkUserExists response:', JSON.stringify(response));
+      if (!response.exists) {
+        const msg = `Debug: API Success (User Not Found)\nIdentifier: ${identifier}\nResponse: ${JSON.stringify(response, null, 2)}`;
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert('Debug: API Success (User Not Found)', msg);
+        }
+      }
+      return response.exists;
+    } catch (error: any) {
+      const errorDetails = {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+      };
+      console.error('[AuthContext] checkUserExists failed:', errorDetails);
+      const msg = `Login Debug Error:\n${JSON.stringify(errorDetails, null, 2)}`;
+      if (Platform.OS === 'web') {
+        window.alert(msg);
+      } else {
+        Alert.alert('Login Debug Error', msg);
+      }
+      return false;
+    }
+  };
+
+  const requestOtp = async (identifier: string): Promise<void> => {
+    try {
+      // setIsLoading(true);
+      const isEmail = identifier.includes('@');
+      await api.post('/auth/otp/request', {
+        email: isEmail ? identifier : undefined,
+        phone: !isEmail ? identifier : undefined,
+      });
+    } catch (error: any) {
+      console.error('Request OTP failed:', error);
+      throw error;
+    } finally {
+      // setIsLoading(false);
+    }
+  };
+
+  // Helper to handle successful auth response
+  const handleAuthResponse = async (data: any) => {
+    const { user: userData, accessToken, refreshToken } = data;
+
+    // Store tokens
+    await AsyncStorage.multiSet([
+      ['accessToken', accessToken],
+      ['refreshToken', refreshToken],
+    ]);
+
+    // Set token in API headers
+    api.setAuthToken(accessToken);
+
+    // Store user data
+    const transformedUser: User = {
+      ...userData,
+      createdAt: new Date(userData.createdAt),
+      updatedAt: new Date(userData.updatedAt),
+      // Ensure defaults
+      preferences: userData.preferences || {
+        notifications: true,
+        locationSharing: true,
+        popupSettings: { enabled: true, frequency: 'daily', maxPerDay: 4, categories: [] }
+      }
+    };
+
+    setUser(transformedUser);
+    setIsOnboardingComplete(transformedUser.isOnboardingComplete);
+    await AsyncStorage.setItem('user', JSON.stringify(transformedUser));
+
+    setForceUpdate(prev => prev + 1);
+  };
+
+  const loginWithOtp = async (identifier: string, otp: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setLoginError(null);
+
+      const isEmail = identifier.includes('@');
+      const response = await api.post('/auth/otp/login', {
+        email: isEmail ? identifier : undefined,
+        phone: !isEmail ? identifier : undefined,
+        otp
+      });
+
+      await handleAuthResponse(response);
+      logger.info('User logged in via OTP successfully');
+
+    } catch (error: any) {
+      console.error('Login with OTP failed:', error);
+      setLoginError(error.message || 'Invalid OTP');
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const verifyEmail = async (email: string, code: string): Promise<void> => {
+    try {
+      setIsLoading(true);
+      const response = await api.post('/auth/verify-email', { email, code });
+      await handleAuthResponse(response);
+      logger.info('Email verified successfully');
+    } catch (error: any) {
+      console.error('Verify email failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Create fresh context value for each render to ensure updates propagate
   console.log('🔧 Creating context value - user:', !!user, 'isAuthenticated:', !!user, 'forceUpdate:', forceUpdate);
   const value: AuthContextType = {
@@ -904,6 +963,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     },
     loginError,
     clearLoginError,
+    checkUserExists,
+    requestOtp,
+    loginWithOtp,
+    verifyEmail,
   };
 
   // Simple auth state logging

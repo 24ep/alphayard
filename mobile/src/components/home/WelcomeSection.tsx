@@ -1,44 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { Avatar } from 'native-base';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import CoolIcon from '../common/CoolIcon';
 import { homeStyles } from '../../styles/homeStyles';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
-import { ChatPage } from '../chat/ChatPage';
-import { ChatConversation } from '../chat/ChatConversation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBranding } from '../../contexts/BrandingContext';
 import { NotificationDrawer } from './NotificationDrawer';
-import { useNavigation } from '@react-navigation/native';
+import { ProfileDrawer } from './ProfileDrawer';
+import { ShareProfileDrawer } from './ShareProfileDrawer';
 import { useMainContent } from '../../contexts/MainContentContext';
 
 interface WelcomeSectionProps {
   selectedFamily: string;
   onFamilyDropdownPress: () => void;
   showFamilyDropdown: boolean;
-  familyMembers?: any[];
 }
 
 export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   selectedFamily,
   onFamilyDropdownPress,
   showFamilyDropdown,
-  familyMembers = [],
 }) => {
   const { user } = useAuth();
-  const navigation = useNavigation();
-  const { familyNameScaleAnim, welcomeOpacityAnim, chatOpacityAnim } = useNavigationAnimation();
+  const { familyNameScaleAnim, chatOpacityAnim } = useNavigationAnimation();
   const { setActiveSection } = useMainContent();
   const { iconUrl, mobileAppName } = useBranding();
-  
+
   // Chat state
-  const [showChatPage, setShowChatPage] = useState(false);
-  const [showChatConversation, setShowChatConversation] = useState(false);
-  const [currentChatId, setCurrentChatId] = useState<string>('');
-  const [currentChatName, setCurrentChatName] = useState<string>('');
-  
-  // Notification state
+  // Removed unused chat visibility and ID states
+
+  // Notification & Profile state
   const [showNotificationDrawer, setShowNotificationDrawer] = useState(false);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [showShareDrawer, setShowShareDrawer] = useState(false);
+
   const [notifications, setNotifications] = useState([
     {
       id: '1',
@@ -75,7 +72,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
       isRead: true
     }
   ]);
-  
+
   // hourse member avatars for rotation
   const familyAvatars = [
     { name: 'account', color: '#FFB6C1' },
@@ -96,7 +93,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
         useNativeDriver: true,
       }).start(() => {
         // Change avatar
-        setCurrentAvatarIndex((prevIndex) => 
+        setCurrentAvatarIndex((prevIndex) =>
           (prevIndex + 1) % familyAvatars.length
         );
         // Fade in
@@ -144,18 +141,18 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
 
   const handleNotificationPress = (notification: any) => {
     // Mark notification as read
-    setNotifications(prev => 
-      prev.map(n => 
+    setNotifications(prev =>
+      prev.map(n =>
         n.id === notification.id ? { ...n, isRead: true } : n
       )
     );
-    
+
     // Handle different notification types
     switch (notification.type) {
       case 'message':
         // Navigate to chat
         setShowNotificationDrawer(false);
-        setShowChatPage(true);
+        setActiveSection('chat');
         break;
       case 'hourse':
         // Could navigate to hourse screen
@@ -169,7 +166,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   };
 
   const handleMarkAllAsRead = () => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(n => ({ ...n, isRead: true }))
     );
   };
@@ -184,7 +181,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
     <View style={homeStyles.welcomeSection}>
       {/* Greeting removed */}
       <View style={homeStyles.familyNameRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={homeStyles.familyNameContainer}
           onPress={onFamilyDropdownPress}
         >
@@ -210,18 +207,18 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
                 {selectedFamily}
               </Animated.Text>
             </View>
-            <IconMC 
-              name={showFamilyDropdown ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color="#666666" 
+            <IconMC
+              name={showFamilyDropdown ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#666666"
             />
           </View>
         </TouchableOpacity>
         <Animated.View style={{ opacity: chatOpacityAnim }}>
           <View style={homeStyles.chatContainer}>
             {/* Notification Icon (left) */}
-            <TouchableOpacity 
-              style={homeStyles.notificationIconContainer} 
+            <TouchableOpacity
+              style={homeStyles.notificationIconContainer}
               onPress={handleNotificationIconPress}
             >
               <View style={homeStyles.notificationIcon}>
@@ -236,29 +233,37 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
               )}
             </TouchableOpacity>
 
-            {/* Chat Icon (right) */}
-            <TouchableOpacity style={homeStyles.chatCycleCard} onPress={handleChatAvatarPress}>
+            {/* Chat Icon (Restored) */}
+            <TouchableOpacity
+              style={homeStyles.chatCycleCard}
+              onPress={handleChatAvatarPress}
+              accessibilityLabel="Chat"
+            >
               <View style={homeStyles.notificationIcon}>
-                <CoolIcon name="chat" size={28} color="#FFFFFF" />
+                <CoolIcon name="chat-processing-outline" size={24} color="#FFFFFF" />
               </View>
               <View style={homeStyles.chatBadge}>
                 <Text style={homeStyles.chatBadgeText}>3</Text>
               </View>
             </TouchableOpacity>
 
-            {/* Settings Gear (far right) */}
+            {/* Profile Avatar (far right) */}
             <TouchableOpacity
               style={homeStyles.chatCycleCard}
-              onPress={() => {
-                // Navigate to unified Settings screen
-                // @ts-ignore
-                navigation.navigate('Settings');
-              }}
-              accessibilityLabel="Open Settings"
+              onPress={() => setShowProfileDrawer(true)}
+              accessibilityLabel="Open Profile"
             >
-              <View style={homeStyles.notificationIcon}>
-                <CoolIcon name="settings" size={26} color="#FFFFFF" />
-              </View>
+              <Avatar
+                bg="purple.500"
+                size="40px"
+                source={{
+                  uri: user?.avatar
+                }}
+                key={user?.avatar}
+                style={{ width: 40, height: 40 }}
+              >
+                {user?.firstName?.charAt(0)?.toUpperCase() || "U"}
+              </Avatar>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -273,6 +278,22 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
         onNotificationPress={handleNotificationPress}
         onMarkAllAsRead={handleMarkAllAsRead}
         onClearAll={handleClearAll}
+      />
+
+      {/* Profile Drawer */}
+      <ProfileDrawer
+        visible={showProfileDrawer}
+        onClose={() => setShowProfileDrawer(false)}
+        onSharePress={() => {
+          // Wait for profile drawer to close slightly? Or just open
+          setTimeout(() => setShowShareDrawer(true), 100);
+        }}
+      />
+
+      {/* Share Profile Drawer */}
+      <ShareProfileDrawer
+        visible={showShareDrawer}
+        onClose={() => setShowShareDrawer(false)}
       />
     </View>
   );

@@ -16,13 +16,16 @@ import Step4InviteFamilyScreen from '../screens/auth/signup/Step4InviteFamilyScr
 import Step4NameScreen from '../screens/auth/signup/Step4NameScreen';
 import Step5PersonalInfoScreen from '../screens/auth/signup/Step5PersonalInfoScreen';
 import Step6SurveyScreen from '../screens/auth/signup/Step6SurveyScreen';
+import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
 import WelcomeScreen from '../screens/auth/WelcomeScreen';
+import PinSetupScreen from '../screens/auth/PinSetupScreen';
 
 export type AuthStackParamList = {
   Marketing: undefined;
   MarketMenu: undefined;
   Login: undefined;
   Signup: undefined;
+  OtpVerification: { identifier: string; mode: 'login' | 'signup' };
   ForgotPassword: undefined;
   Onboarding: undefined;
   Step1Username: { email?: string };
@@ -31,18 +34,18 @@ export type AuthStackParamList = {
   Step3CreateFamily: { email: string; password: string };
   Step3JoinFamily: { email: string; password: string; familyOption: 'join' };
   Step4InviteFamily: { email: string; password: string; familyOption: 'create'; familyName: string; familyDescription?: string };
-  Step4Name: { 
-    email: string; 
-    password: string; 
+  Step4Name: {
+    email: string;
+    password: string;
     familyOption: 'create' | 'join';
     familyCode?: string;
     familyName?: string;
     familyDescription?: string;
     inviteEmails?: string[];
   };
-  Step5PersonalInfo: { 
-    email: string; 
-    password: string; 
+  Step5PersonalInfo: {
+    email: string;
+    password: string;
     familyOption: 'create' | 'join';
     familyCode?: string;
     familyName?: string;
@@ -66,13 +69,14 @@ export type AuthStackParamList = {
     userType?: string;
   };
   Welcome: undefined;
+  SetupPin: { email: string; isNewUser?: boolean };
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();
 
 const AuthNavigator: React.FC = () => {
   const { isAuthenticated, user } = useAuth();
-  
+
   // CRITICAL: If somehow this navigator is rendered when authenticated, return null immediately
   // Don't even render the error screen - just return null to prevent any rendering
   if (isAuthenticated && user) {
@@ -82,7 +86,7 @@ const AuthNavigator: React.FC = () => {
     console.error('[AuthNavigator] Returning null to prevent rendering');
     return null;
   }
-  
+
   return (
     <Stack.Navigator
       initialRouteName="Marketing"
@@ -121,7 +125,9 @@ const AuthNavigator: React.FC = () => {
       <Stack.Screen name="Step4Name" component={Step4NameScreen} />
       <Stack.Screen name="Step5PersonalInfo" component={Step5PersonalInfoScreen} />
       <Stack.Screen name="Step6Survey" component={Step6SurveyScreen} />
+      <Stack.Screen name="OtpVerification" component={OtpVerificationScreen} />
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
+      <Stack.Screen name="SetupPin" component={PinSetupScreen} />
     </Stack.Navigator>
   );
 };

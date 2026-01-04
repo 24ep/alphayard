@@ -1,13 +1,13 @@
 export const DEVELOPMENT_CONFIG = {
   // API Configuration
-  API_BASE_URL: 'http://localhost:3000/api/v1', // Backend runs on port 3000 (from .env)
+  API_BASE_URL: 'http://localhost:4000/api/v1', // Backend runs on port 4000
   API_TIMEOUT: 30000,
-  
+
   // App Configuration
   APP_NAME: 'Bondarys (Dev)',
   APP_VERSION: '1.0.0',
   BUILD_NUMBER: '1',
-  
+
   // Feature Flags
   FEATURES: {
     LOCATION_TRACKING: true,
@@ -21,7 +21,7 @@ export const DEVELOPMENT_CONFIG = {
     EXPENSES: true,
     PHOTOS: true,
   },
-  
+
   // Security
   SECURITY: {
     ENCRYPTION_ENABLED: false, // Disabled in dev
@@ -29,7 +29,7 @@ export const DEVELOPMENT_CONFIG = {
     SESSION_TIMEOUT: 86400, // 24 hours for dev
     MAX_LOGIN_ATTEMPTS: 10, // Higher for dev
   },
-  
+
   // Performance
   PERFORMANCE: {
     CACHE_ENABLED: false, // Disabled in dev
@@ -37,7 +37,7 @@ export const DEVELOPMENT_CONFIG = {
     IMAGE_COMPRESSION: false, // Disabled in dev
     LAZY_LOADING: false, // Disabled in dev
   },
-  
+
   // Analytics
   ANALYTICS: {
     ENABLED: false, // Disabled in dev
@@ -45,14 +45,14 @@ export const DEVELOPMENT_CONFIG = {
     TRACK_CRASHES: false,
     TRACK_PERFORMANCE: false,
   },
-  
+
   // Monitoring
   MONITORING: {
     ERROR_REPORTING: true,
     PERFORMANCE_MONITORING: true,
     CRASH_REPORTING: false, // Disabled in dev
   },
-  
+
   // Debug
   DEBUG: {
     LOG_LEVEL: 'debug',

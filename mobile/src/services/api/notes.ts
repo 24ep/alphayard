@@ -6,8 +6,27 @@ export interface Note {
   content: string;
   family_id: string;
   user_id: string;
+  category: 'personal' | 'work' | 'family' | 'ideas';
+  is_pinned: boolean;
+  color: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateNotePayload {
+  title?: string;
+  content?: string;
+  category?: 'personal' | 'work' | 'family' | 'ideas';
+  is_pinned?: boolean;
+  color?: string;
+}
+
+export interface UpdateNotePayload {
+  title?: string | null;
+  content?: string;
+  category?: 'personal' | 'work' | 'family' | 'ideas';
+  is_pinned?: boolean;
+  color?: string;
 }
 
 export const notesApi = {
@@ -15,11 +34,11 @@ export const notesApi = {
     const res = await api.get('/notes');
     return res.data;
   },
-  async create(payload: { title?: string; content?: string }) {
+  async create(payload: CreateNotePayload) {
     const res = await api.post('/notes', payload);
     return res.data;
   },
-  async update(id: string, payload: Partial<{ title: string | null; content: string }>) {
+  async update(id: string, payload: UpdateNotePayload) {
     const res = await api.put(`/notes/${id}`, payload);
     return res.data;
   },
@@ -28,5 +47,3 @@ export const notesApi = {
     return res.data;
   },
 };
-
-

@@ -4,7 +4,7 @@ import { hourse, FamilyMember, FamilyInvitation } from '../../types/hourse';
 export class FamilyService {
   private static instance: FamilyService;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): FamilyService {
     if (!FamilyService.instance) {
@@ -496,6 +496,24 @@ export class FamilyService {
       console.error('Error updating hourse settings:', error);
       throw new Error('Failed to update hourse settings');
     }
+  }
+  // Mock methods for ShoppingDrawer compatibility
+  getFamilyMembers(): any[] {
+    return [
+      { id: '1', name: 'You', relationship: 'Me', isOnline: true },
+      { id: '2', name: 'Mom', relationship: 'Parent', isOnline: false },
+      { id: '3', name: 'Dad', relationship: 'Parent', isOnline: true },
+      { id: '4', name: 'Sister', relationship: 'Sibling', isOnline: false },
+      { id: '5', name: 'Brother', relationship: 'Sibling', isOnline: true },
+    ];
+  }
+
+  searchFamilyMembers(query: string): any[] {
+    const members = this.getFamilyMembers();
+    if (!query) return members;
+    return members.filter(m =>
+      m.name.toLowerCase().includes(query.toLowerCase())
+    );
   }
 }
 

@@ -16,7 +16,7 @@ const router = express.Router();
 // Validation middleware
 const registerValidation = [
   body('email').isEmail().normalizeEmail(),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
+  // Password is now optional or auto-generated
   body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
   body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
 ];
@@ -79,6 +79,18 @@ router.post('/login', loginValidation, async (req: any, res: any) => {
   }
   return authController.login(req, res);
 });
+
+// Email normalization middleware for login flows
+const emailNormalization = [body('email').optional().isEmail().normalizeEmail()];
+
+// Check user existence
+router.post('/check-user', emailNormalization, (req: any, res: any) => authController.checkUserExistence(req, res));
+
+// Request Login OTP
+router.post('/otp/request', emailNormalization, (req: any, res: any) => authController.requestLoginOtp(req, res));
+
+// Login with OTP
+router.post('/otp/login', emailNormalization, (req: any, res: any) => authController.loginWithOtp(req, res));
 
 // Refresh token endpoint
 // Refresh token endpoint

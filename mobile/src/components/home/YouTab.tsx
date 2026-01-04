@@ -45,6 +45,7 @@ export const YouTab: React.FC<YouTabProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
+  const [showLiveStatus, setShowLiveStatus] = useState(true); // Default: expanded
   const [appointments, setAppointments] = useState<any[]>([]);
   const [shoppingItems, setShoppingItems] = useState<any[]>([]);
   const [familyReadItems, setFamilyReadItems] = useState<BlogItem[]>([]);
@@ -76,7 +77,7 @@ export const YouTab: React.FC<YouTabProps> = ({
         if (eventsResponse.success && eventsResponse.events) {
           const today = new Date();
           today.setHours(0, 0, 0, 0);
-          
+
           const todayEvents = eventsResponse.events
             .filter((event: any) => {
               const eventDate = new Date(event.start_date || event.startTime || event.startDate);
@@ -86,10 +87,10 @@ export const YouTab: React.FC<YouTabProps> = ({
             .map((event: any) => ({
               id: event.id,
               title: event.title,
-              time: event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', { 
-                hour: 'numeric', 
+              time: event.start_date ? new Date(event.start_date).toLocaleTimeString('en-US', {
+                hour: 'numeric',
                 minute: '2-digit',
-                hour12: true 
+                hour12: true
               }) : 'All Day',
               location: event.location || 'No location',
               type: event.event_type || 'general'
@@ -200,7 +201,7 @@ export const YouTab: React.FC<YouTabProps> = ({
 
 
   return (
-    <ScrollView 
+    <ScrollView
       style={homeStyles.tabContent}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -211,11 +212,11 @@ export const YouTab: React.FC<YouTabProps> = ({
       <View style={homeStyles.section}>
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>{sectionTitle}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('News')}> 
+          <TouchableOpacity onPress={() => navigation.navigate('News')}>
             <Text style={{ color: '#4A90E2', fontWeight: '600' }}>See more</Text>
           </TouchableOpacity>
         </View>
-        <BlogSlider 
+        <BlogSlider
           items={combinedBlogItems && combinedBlogItems.length > 0 ? combinedBlogItems : ([
             { id: 'm1', title: 'Build rituals that stick', subtitle: 'Tiny habits for families' },
             { id: 'm2', title: 'Celebrate micro-wins', subtitle: 'Motivation that lasts' },
@@ -246,7 +247,7 @@ export const YouTab: React.FC<YouTabProps> = ({
       <View style={homeStyles.section}>
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>Today's Appointments</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={homeStyles.addAppointmentButton}
             onPress={() => setShowCalendarDrawer(true)}
           >
@@ -267,7 +268,7 @@ export const YouTab: React.FC<YouTabProps> = ({
       <View style={homeStyles.section}>
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>Shopping List</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={homeStyles.addAppointmentButton}
             onPress={() => setShowShoppingDrawer(true)}
           >
@@ -284,27 +285,54 @@ export const YouTab: React.FC<YouTabProps> = ({
         )}
       </View>
 
-      {/* hourse Status */}
+      {/* Live Status Section - Collapsible Card */}
       <View style={homeStyles.section}>
-        <View style={homeStyles.sectionHeader}>
-          <Text style={homeStyles.sectionTitle}>Live Status</Text>
-          <TouchableOpacity style={homeStyles.refreshButton}>
-            <IconIon name="refresh" size={18} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-        {familyStatusMembers && familyStatusMembers.length > 0 ? (
-          <FamilyStatusCards 
-            members={familyStatusMembers.map((m: any) => ({
-              ...m,
-              status: onlineUserIds.includes(m.id) ? 'online' : m.status,
-            }))}
-            onMemberPress={(m) => { setSelectedMember(m); setDrawerVisible(true); }}
-          />
-        ) : (
-          <EmptyState
-            title="No hourse Members"
-            subtitle="Add hourse members to see their live status and health data."
-          />
+        <TouchableOpacity
+          style={homeStyles.sectionHeader}
+          onPress={() => setShowLiveStatus(!showLiveStatus)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <IconIon name="pulse" size={18} color="#EF4444" style={{ marginRight: 8 }} />
+            <Text style={homeStyles.sectionTitle}>Live Status</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#EFF6FF',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                marginRight: 8,
+              }}
+              onPress={() => navigation.navigate('Profile' as never)}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6' }}>View Profile</Text>
+            </TouchableOpacity>
+            <IconIon
+              name={showLiveStatus ? "chevron-up" : "chevron-down"}
+              size={20}
+              color="#6B7280"
+            />
+          </View>
+        </TouchableOpacity>
+
+        {showLiveStatus && (
+          <View style={{ marginTop: 8 }}>
+            {familyStatusMembers && familyStatusMembers.length > 0 ? (
+              <FamilyStatusCards
+                members={familyStatusMembers.map((m: any) => ({
+                  ...m,
+                  status: onlineUserIds.includes(m.id) ? 'online' : m.status,
+                }))}
+                onMemberPress={() => { }}
+              />
+            ) : (
+              <EmptyState
+                title="No Family Members"
+                subtitle="Add family members to see their live status and health data."
+              />
+            )}
+          </View>
         )}
       </View>
 
@@ -326,45 +354,6 @@ export const YouTab: React.FC<YouTabProps> = ({
         )}
       </View>
 
-      {/* hourse Insights */}
-      <View style={homeStyles.section}>
-        <View style={homeStyles.sectionHeader}>
-          <Text style={homeStyles.sectionTitle}>hourse Insights</Text>
-          <TouchableOpacity style={homeStyles.insightsButton}>
-            <IconIon name="analytics" size={18} color="#6B7280" />
-          </TouchableOpacity>
-        </View>
-        <View style={homeStyles.insightsGrid}>
-          <View style={homeStyles.insightCard}>
-            <View style={homeStyles.insightIcon}>
-              <CoolIcon name="heart" size={20} color="#EF4444" />
-            </View>
-            <Text style={homeStyles.insightValue}>-</Text>
-            <Text style={homeStyles.insightLabel}>Health Score</Text>
-          </View>
-          <View style={homeStyles.insightCard}>
-            <View style={homeStyles.insightIcon}>
-              <CoolIcon name="walk" size={20} color="#10B981" />
-            </View>
-            <Text style={homeStyles.insightValue}>-</Text>
-            <Text style={homeStyles.insightLabel}>Avg Steps</Text>
-          </View>
-          <View style={homeStyles.insightCard}>
-            <View style={homeStyles.insightIcon}>
-              <CoolIcon name="sleep" size={20} color="#3B82F6" />
-            </View>
-            <Text style={homeStyles.insightValue}>-</Text>
-            <Text style={homeStyles.insightLabel}>Avg Sleep</Text>
-          </View>
-          <View style={homeStyles.insightCard}>
-            <View style={homeStyles.insightIcon}>
-              <CoolIcon name="emoticon-happy" size={20} color="#F59E0B" />
-            </View>
-            <Text style={homeStyles.insightValue}>-</Text>
-            <Text style={homeStyles.insightLabel}>Mood</Text>
-          </View>
-        </View>
-      </View>
 
       {/* Emotion Heat Map */}
       <View style={homeStyles.section}>
@@ -373,7 +362,7 @@ export const YouTab: React.FC<YouTabProps> = ({
             <Text style={homeStyles.sectionTitle}>Emotion Tracking</Text>
           </View>
         </View>
-        
+
         {emotionData && emotionData.length > 0 ? (
           <EmotionHeatMap
             type="personal"
@@ -391,7 +380,7 @@ export const YouTab: React.FC<YouTabProps> = ({
       </View>
 
       {/* hourse Member Drawer */}
-      <FamilyMemberDrawer 
+      <FamilyMemberDrawer
         visible={drawerVisible}
         member={selectedMember}
         onClose={() => setDrawerVisible(false)}
@@ -413,21 +402,21 @@ export const YouTab: React.FC<YouTabProps> = ({
               Alert.alert('Error', 'No family selected');
               return;
             }
-            
+
             await familyApi.createShoppingItem({
               item: item.item,
               quantity: item.quantity,
               category: item.category,
               list: item.location || 'Groceries'
             });
-            
+
             // Reload shopping list
             const shoppingResponse = await familyApi.getShoppingList();
             if (shoppingResponse.items) {
               const activeItems = shoppingResponse.items.filter((i: any) => !i.completed);
               setShoppingItems(activeItems);
             }
-            
+
             setShowShoppingDrawer(false);
           } catch (error: any) {
             console.error('Error adding shopping item:', error);
@@ -435,6 +424,6 @@ export const YouTab: React.FC<YouTabProps> = ({
           }
         }}
       />
-    </ScrollView>
+    </ScrollView >
   );
 };

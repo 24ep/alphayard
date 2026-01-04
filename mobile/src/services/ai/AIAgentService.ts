@@ -2,7 +2,7 @@ import { apiClient } from '../api/apiClient';
 import { familyService } from '../hourse/FamilyService';
 import { userService } from '../user/UserService';
 import { chatService } from '../chat/ChatService';
-import { locationService } from '../location/LocationService';
+import { locationService } from '../location/locationService';
 import { safetyService } from '../safety/SafetyService';
 import { notificationService } from '../notification/NotificationService';
 import { storageService } from '../storage/StorageService';
@@ -251,11 +251,11 @@ class AIAgentService {
     try {
       // Analyze intent and entities
       const analysis = await this.analyzeIntent(request);
-      
+
       // Get or create conversation memory
       const conversationId = this.getConversationId(request.context);
       const memory = this.getMemory(conversationId);
-      
+
       // Add user message to memory
       memory.messages.push({
         role: 'user',
@@ -265,10 +265,10 @@ class AIAgentService {
 
       // Execute actions based on intent
       const actions = await this.executeActions(analysis, request.context);
-      
+
       // Generate response
       const response = await this.generateResponse(analysis, actions, request.context);
-      
+
       // Add assistant response to memory
       memory.messages.push({
         role: 'assistant',
@@ -276,10 +276,10 @@ class AIAgentService {
         timestamp: Date.now(),
         actions: actions
       });
-      
+
       // Update memory
       this.updateMemory(conversationId, memory);
-      
+
       // Track analytics
       analyticsService.trackEvent('ai_agent_request', {
         intent: analysis.intent,
@@ -310,7 +310,7 @@ class AIAgentService {
   }> {
     // Simple intent analysis - in production, use NLP service
     const message = request.message.toLowerCase();
-    
+
     // hourse management intents
     if (message.includes('add') && (message.includes('member') || message.includes('hourse'))) {
       return {
@@ -322,7 +322,7 @@ class AIAgentService {
         parameters: { email: this.extractEmail(message) }
       };
     }
-    
+
     if (message.includes('remove') && (message.includes('member') || message.includes('hourse'))) {
       return {
         intent: 'remove_family_member',
@@ -333,7 +333,7 @@ class AIAgentService {
         parameters: { memberId: this.extractMemberId(message) }
       };
     }
-    
+
     if (message.includes('invite') && (message.includes('member') || message.includes('hourse'))) {
       return {
         intent: 'invite_family_member',
@@ -344,7 +344,7 @@ class AIAgentService {
         parameters: { email: this.extractEmail(message) }
       };
     }
-    
+
     // Chat intents
     if (message.includes('send') && message.includes('message')) {
       return {
@@ -356,7 +356,7 @@ class AIAgentService {
         parameters: { message: this.extractMessage(message) }
       };
     }
-    
+
     // Safety intents
     if (message.includes('emergency') || message.includes('alert')) {
       return {
@@ -368,7 +368,7 @@ class AIAgentService {
         parameters: {}
       };
     }
-    
+
     if (message.includes('check in') || message.includes('checkin')) {
       return {
         intent: 'safety_check_in',
@@ -379,7 +379,7 @@ class AIAgentService {
         parameters: {}
       };
     }
-    
+
     // Location intents
     if (message.includes('location') || message.includes('where')) {
       return {
@@ -391,7 +391,7 @@ class AIAgentService {
         parameters: {}
       };
     }
-    
+
     // Health intents
     if (message.includes('health') || message.includes('medical')) {
       return {
@@ -403,7 +403,7 @@ class AIAgentService {
         parameters: { type: this.extractHealthType(message) }
       };
     }
-    
+
     // Expense intents
     if (message.includes('expense') || message.includes('spend') || message.includes('cost')) {
       return {
@@ -415,7 +415,7 @@ class AIAgentService {
         parameters: { amount: this.extractAmount(message), category: this.extractCategory(message) }
       };
     }
-    
+
     // Shopping intents
     if (message.includes('shopping') || message.includes('buy') || message.includes('purchase')) {
       return {
@@ -427,7 +427,7 @@ class AIAgentService {
         parameters: { item: this.extractItem(message) }
       };
     }
-    
+
     // Notes intents
     if (message.includes('note') || message.includes('write') || message.includes('document')) {
       return {
@@ -439,7 +439,7 @@ class AIAgentService {
         parameters: { content: this.extractContent(message) }
       };
     }
-    
+
     // Default help intent
     return {
       intent: 'help',
@@ -453,7 +453,7 @@ class AIAgentService {
 
   private async executeActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     try {
       switch (analysis.service) {
         case 'hourse':
@@ -499,13 +499,13 @@ class AIAgentService {
         description: 'Handle execution error'
       });
     }
-    
+
     return actions;
   }
 
   private async executeFamilyActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'addMember':
         try {
@@ -521,7 +521,7 @@ class AIAgentService {
           throw error;
         }
         break;
-        
+
       case 'removeMember':
         try {
           await familyService.removeMember(context.familyId, analysis.parameters.memberId);
@@ -536,7 +536,7 @@ class AIAgentService {
           throw error;
         }
         break;
-        
+
       case 'inviteMember':
         try {
           const result = await familyService.inviteMember(context.familyId, analysis.parameters);
@@ -552,13 +552,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeChatActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'sendMessage':
         try {
@@ -579,13 +579,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeSafetyActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'sendEmergencyAlert':
         try {
@@ -601,7 +601,7 @@ class AIAgentService {
           throw error;
         }
         break;
-        
+
       case 'checkIn':
         try {
           await safetyService.checkIn();
@@ -617,13 +617,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeLocationActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'shareLocation':
         try {
@@ -640,13 +640,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeHealthActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'addHealthRecord':
         try {
@@ -667,13 +667,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeExpenseActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'addExpense':
         try {
@@ -695,13 +695,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeShoppingActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'addShoppingItem':
         try {
@@ -722,13 +722,13 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async executeNoteActions(analysis: any, context: AIAgentContext): Promise<AIAgentAction[]> {
     const actions: AIAgentAction[] = [];
-    
+
     switch (analysis.method) {
       case 'createNote':
         try {
@@ -749,14 +749,14 @@ class AIAgentService {
         }
         break;
     }
-    
+
     return actions;
   }
 
   private async generateResponse(analysis: any, actions: AIAgentAction[], context: AIAgentContext): Promise<AIAgentResponse> {
     let message = '';
     const suggestions: string[] = [];
-    
+
     // Generate response based on actions
     if (actions.length > 0) {
       const action = actions[0];
@@ -788,7 +788,7 @@ class AIAgentService {
         `📝 **Notes**: Create and share notes\n` +
         `🎮 **Games**: Start hourse games\n\n` +
         `Just tell me what you'd like to do!`;
-      
+
       suggestions.push(
         'Add a hourse member',
         'Send a message to hourse',
@@ -797,7 +797,7 @@ class AIAgentService {
         'Create a shopping list'
       );
     }
-    
+
     return {
       message,
       actions,
@@ -856,10 +856,10 @@ class AIAgentService {
     const buyIndex = message.indexOf('buy');
     const purchaseIndex = message.indexOf('purchase');
     const shoppingIndex = message.indexOf('shopping');
-    
+
     let startIndex = Math.max(buyIndex, purchaseIndex, shoppingIndex);
     if (startIndex === -1) return '';
-    
+
     return message.substring(startIndex).replace(/buy|purchase|shopping/gi, '').trim();
   }
 
@@ -867,10 +867,10 @@ class AIAgentService {
     // Extract note content
     const noteIndex = message.indexOf('note');
     const writeIndex = message.indexOf('write');
-    
+
     let startIndex = Math.max(noteIndex, writeIndex);
     if (startIndex === -1) return message;
-    
+
     return message.substring(startIndex).replace(/note|write/gi, '').trim();
   }
 
@@ -919,7 +919,7 @@ class AIAgentService {
         familyService.getMembers(context.familyId),
         familyService.getFamilyStats(context.familyId)
       ]);
-      
+
       return {
         hourse,
         members,
@@ -938,7 +938,7 @@ class AIAgentService {
         userService.getUserPreferences(context.userId),
         userService.getUserStats(context.userId)
       ]);
-      
+
       return {
         user,
         preferences,
@@ -957,7 +957,7 @@ class AIAgentService {
         chatService.getRecentMessages(context.familyId),
         chatService.getUnreadCount(context.userId)
       ]);
-      
+
       return {
         chats,
         messages,
@@ -976,7 +976,7 @@ class AIAgentService {
         safetyService.getEmergencyContacts(),
         safetyService.getGeofences()
       ]);
-      
+
       return {
         status,
         contacts,

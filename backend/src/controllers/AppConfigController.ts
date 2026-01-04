@@ -243,7 +243,28 @@ export class AppConfigController {
         .single();
 
       if (error || !data) {
-        return res.status(404).json({ error: 'Asset not found' });
+        // Return default asset if not found (prevents 404 errors in development)
+        console.warn(`[APP_CONFIG] Asset not found: ${assetKey}. Returning fallback.`);
+
+        let fallbackUrl = '';
+        if (assetKey.includes('logo')) {
+          fallbackUrl = 'https://via.placeholder.com/200x200?text=Logo';
+        } else if (assetKey.includes('background')) {
+          fallbackUrl = 'https://via.placeholder.com/1080x1920?text=Background';
+        } else {
+          fallbackUrl = `https://via.placeholder.com/150?text=${assetKey}`;
+        }
+
+        return res.json({
+          asset: {
+            asset_key: assetKey,
+            asset_name: assetKey.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+            asset_type: 'image',
+            asset_url: fallbackUrl,
+            is_active: true,
+            version: 1
+          }
+        });
       }
 
       res.json({ asset: data });

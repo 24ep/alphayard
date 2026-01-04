@@ -5,7 +5,6 @@ import {
     StyleSheet,
     SafeAreaView,
     TouchableOpacity,
-    Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -115,13 +114,6 @@ export const PinSetupScreen: React.FC = () => {
                             <View style={[styles.stepDot, step === 'confirm' && styles.stepDotActive]} />
                         </View>
                     </View>
-
-                    {/* Footer */}
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>
-                            Your PIN will be required when you return to the app
-                        </Text>
-                    </View>
                 </View>
             </LinearGradient>
         </SafeAreaView>
@@ -137,7 +129,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: 0, // Full width
     },
     header: {
         alignItems: 'center',
@@ -161,12 +153,13 @@ const styles = StyleSheet.create({
     card: {
         flex: 1,
         backgroundColor: '#FFF',
-        borderRadius: 24,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         paddingVertical: 32,
         paddingHorizontal: 16,
         marginTop: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 5,
@@ -191,15 +184,6 @@ const styles = StyleSheet.create({
     stepDotActive: {
         backgroundColor: '#FA7272',
         width: 24,
-    },
-    footer: {
-        paddingVertical: 24,
-        alignItems: 'center',
-    },
-    footerText: {
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontSize: 14,
-        textAlign: 'center',
     },
 });
 

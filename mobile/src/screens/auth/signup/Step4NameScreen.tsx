@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 
 interface Step4NameScreenProps {
@@ -22,7 +20,7 @@ interface Step4NameScreenProps {
 }
 
 const Step4NameScreen: React.FC<Step4NameScreenProps> = ({ navigation, route }) => {
-  const { email, password, familyOption, familyCode, familyName, familyDescription, inviteEmails } = route.params;
+  const { email, phone, password, familyOption, familyCode, familyName, familyDescription, inviteEmails } = route.params;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -45,6 +43,7 @@ const Step4NameScreen: React.FC<Step4NameScreenProps> = ({ navigation, route }) 
     if (Object.keys(newErrors).length === 0) {
       navigation.navigate('Step5PersonalInfo', {
         email,
+        phone,
         password,
         familyOption,
         familyCode,
@@ -80,9 +79,9 @@ const Step4NameScreen: React.FC<Step4NameScreenProps> = ({ navigation, route }) 
                 <Icon name="arrow-left" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <View style={styles.stepIndicator}>
-                <Text style={styles.stepText}>Step 4 of 6</Text>
+                <Text style={styles.stepText}>Step 2 of 4</Text>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '66.67%' }]} />
+                  <View style={[styles.progressFill, { width: '50%' }]} />
                 </View>
               </View>
             </View>
@@ -102,7 +101,7 @@ const Step4NameScreen: React.FC<Step4NameScreenProps> = ({ navigation, route }) 
                   <View style={[styles.inputContainer, styles.halfWidth]}>
                     <Text style={styles.inputLabel}>First Name</Text>
                     <TextInput
-                      style={[styles.input, errors.firstName && styles.inputError]}
+                      style={[styles.input, errors.firstName ? styles.inputError : undefined]}
                       value={firstName}
                       onChangeText={(text) => {
                         setFirstName(text);
@@ -123,7 +122,7 @@ const Step4NameScreen: React.FC<Step4NameScreenProps> = ({ navigation, route }) 
                   <View style={[styles.inputContainer, styles.halfWidth]}>
                     <Text style={styles.inputLabel}>Last Name</Text>
                     <TextInput
-                      style={[styles.input, errors.lastName && styles.inputError]}
+                      style={[styles.input, errors.lastName ? styles.inputError : undefined]}
                       value={lastName}
                       onChangeText={(text) => {
                         setLastName(text);

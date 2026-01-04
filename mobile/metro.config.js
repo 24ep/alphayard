@@ -8,6 +8,7 @@ const config = getDefaultConfig(__dirname);
 
 // Ensure web platform is properly supported
 config.resolver.platforms = ['ios', 'android', 'native', 'web'];
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
 
 // Configure path aliases to match tsconfig.json
 config.resolver.alias = {

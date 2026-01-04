@@ -1,144 +1,150 @@
 import { Response } from 'express';
-import { getSupabaseClient } from '../services/supabaseService';
+import { pool } from '../config/database';
 
 export class TodosController {
   static async list(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
 
-      const { data, error } = await supabase
-        .from('todos')
-        .select('*')
-        .eq('family_id', familyId)
-        .order('position', { ascending: true });
+      const { rows } = await pool.query(
+        'SELECT * FROM todos WHERE family_id = $1 ORDER BY position ASC',
+        [familyId]
+      );
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to fetch todos', details: error.message });
-      }
-
-      return res.json({ success: true, data });
+      return res.json({ success: true, data: rows });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Todos list error:', err);
+      return res.status(500).json({ error: 'Failed to fetch todos', details: err.message });
     }
   }
 
   static async create(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const userId = req.user.id;
-      const { title, description } = req.body;
+      const { title, description, category, priority, due_date } = req.body;
 
       if (!title) {
         return res.status(400).json({ error: 'Title is required' });
       }
 
       // Determine next position
-      const { data: maxData } = await supabase
-        .from('todos')
-        .select('position')
-        .eq('family_id', familyId)
-        .order('position', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { rows: maxRows } = await pool.query(
+        'SELECT position FROM todos WHERE family_id = $1 ORDER BY position DESC LIMIT 1',
+        [familyId]
+      );
 
-      const nextPosition = (maxData?.position || 0) + 1;
+      const nextPosition = (maxRows[0]?.position || 0) + 1;
 
-      const { data, error } = await supabase
-        .from('todos')
-        .insert({
-          family_id: familyId,
-          user_id: userId,
+      const { rows } = await pool.query(
+        `INSERT INTO todos (family_id, user_id, title, description, is_completed, position, category, priority, due_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING *`,
+        [
+          familyId,
+          userId,
           title,
-          description: description || null,
-          is_completed: false,
-          position: nextPosition,
-        })
-        .select()
-        .single();
+          description || null,
+          false,
+          nextPosition,
+          category || 'work',
+          priority || 'medium',
+          due_date || null
+        ]
+      );
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to create todo', details: error.message });
-      }
-
-      return res.status(201).json({ success: true, data });
+      return res.status(201).json({ success: true, data: rows[0] });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Todos create error:', err);
+      return res.status(500).json({ error: 'Failed to create todo', details: err.message });
     }
   }
 
   static async update(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const { id } = req.params;
-      const { title, description, is_completed } = req.body;
+      const { title, description, is_completed, category, priority, due_date } = req.body;
 
-      const { data: existing, error: findErr } = await supabase
-        .from('todos')
-        .select('id, family_id')
-        .eq('id', id)
-        .single();
-      if (findErr || !existing || existing.family_id !== familyId) {
+      // Check permissions
+      const { rows: existing } = await pool.query(
+        'SELECT id, family_id FROM todos WHERE id = $1 LIMIT 1',
+        [id]
+      );
+
+      if (existing.length === 0 || existing[0].family_id !== familyId) {
         return res.status(404).json({ error: 'Todo not found' });
       }
 
-      const { data, error } = await supabase
-        .from('todos')
-        .update({
-          title: title !== undefined ? title : undefined,
-          description: description !== undefined ? description : undefined,
-          is_completed: is_completed !== undefined ? !!is_completed : undefined,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      // Build dynamic update query
+      const fields: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
 
-      if (error) {
-        return res.status(500).json({ error: 'Failed to update todo', details: error.message });
+      fields.push(`updated_at = NOW()`);
+
+      if (title !== undefined) {
+        fields.push(`title = $${paramIndex++}`);
+        values.push(title);
+      }
+      if (description !== undefined) {
+        fields.push(`description = $${paramIndex++}`);
+        values.push(description);
+      }
+      if (is_completed !== undefined) {
+        fields.push(`is_completed = $${paramIndex++}`);
+        values.push(!!is_completed);
+      }
+      if (category !== undefined) {
+        fields.push(`category = $${paramIndex++}`);
+        values.push(category);
+      }
+      if (priority !== undefined) {
+        fields.push(`priority = $${paramIndex++}`);
+        values.push(priority);
+      }
+      if (due_date !== undefined) {
+        fields.push(`due_date = $${paramIndex++}`);
+        values.push(due_date);
       }
 
-      return res.json({ success: true, data });
+      values.push(id);
+      const query = `UPDATE todos SET ${fields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+
+      const { rows } = await pool.query(query, values);
+
+      return res.json({ success: true, data: rows[0] });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Todos update error:', err);
+      return res.status(500).json({ error: 'Failed to update todo', details: err.message });
     }
   }
 
   static async remove(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const { id } = req.params;
 
-      const { data: existing, error: findErr } = await supabase
-        .from('todos')
-        .select('id, family_id')
-        .eq('id', id)
-        .single();
-      if (findErr || !existing || existing.family_id !== familyId) {
+      const { rows: existing } = await pool.query(
+        'SELECT id, family_id FROM todos WHERE id = $1 LIMIT 1',
+        [id]
+      );
+
+      if (existing.length === 0 || existing[0].family_id !== familyId) {
         return res.status(404).json({ error: 'Todo not found' });
       }
 
-      const { error } = await supabase
-        .from('todos')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        return res.status(500).json({ error: 'Failed to delete todo', details: error.message });
-      }
+      await pool.query('DELETE FROM todos WHERE id = $1', [id]);
 
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Todos delete error:', err);
+      return res.status(500).json({ error: 'Failed to delete todo', details: err.message });
     }
   }
 
   static async reorder(req: any, res: Response) {
     try {
-      const supabase = getSupabaseClient();
       const familyId = (req as any).familyId;
       const { orderedIds } = req.body as { orderedIds: string[] };
 
@@ -146,32 +152,40 @@ export class TodosController {
         return res.status(400).json({ error: 'orderedIds must be a non-empty array' });
       }
 
-      // Verify all belong to same hourse
-      const { data: items, error: fetchErr } = await supabase
-        .from('todos')
-        .select('id, family_id')
-        .in('id', orderedIds);
-      if (fetchErr) {
-        return res.status(500).json({ error: 'Failed to fetch todos', details: fetchErr.message });
-      }
-      const allSameFamily = (items || []).every(i => i.family_id === familyId);
+      // Verify all belong to same family
+      // Using ANY($1) for array check
+      const { rows: items } = await pool.query(
+        'SELECT id, family_id FROM todos WHERE id = ANY($1)',
+        [orderedIds]
+      );
+
+      const allSameFamily = items.every(i => i.family_id === familyId);
+      // Also check if found count matches (optional but good) - skipping for lenient handling
+
       if (!allSameFamily) {
-        return res.status(403).json({ error: 'Some todos do not belong to your hourse' });
+        return res.status(403).json({ error: 'Some todos do not belong to your family' });
       }
 
-      // Update positions
-      let position = 1;
-      for (const todoId of orderedIds) {
-        await supabase
-          .from('todos')
-          .update({ position })
-          .eq('id', todoId);
-        position += 1;
+      // Update positions in a loop (simpler for now, transaction recommended strictly but okay for this)
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        let position = 1;
+        for (const todoId of orderedIds) {
+          await client.query('UPDATE todos SET position = $1 WHERE id = $2', [position++, todoId]);
+        }
+        await client.query('COMMIT');
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
       }
 
       return res.json({ success: true });
     } catch (err: any) {
-      return res.status(500).json({ error: 'Internal server error' });
+      console.error('Todos reorder error:', err);
+      return res.status(500).json({ error: 'Internal server error', details: err.message });
     }
   }
 }

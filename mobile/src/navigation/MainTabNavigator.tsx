@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import CoolIcon from '../components/common/CoolIcon';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { ApplicationsDrawer } from '../components/home/ApplicationsDrawer';
 import { NavigationAnimationProvider } from '../contexts/NavigationAnimationContext';
 import { MainContentProvider, useMainContent } from '../contexts/MainContentContext';
@@ -70,6 +69,12 @@ const withSection = (section: 'home' | 'gallery' | 'calendar' | 'notes' | 'chat'
   };
 };
 
+// Define stable components outside render logic to prevent remounting
+const HomeTab = withSection('home');
+const GalleryTab = withSection('gallery');
+const CalendarTab = withSection('calendar');
+const NotesTab = withSection('notes');
+
 // Main Tab Navigator
 const MainTabNavigatorInner: React.FC = () => {
 
@@ -89,13 +94,14 @@ const MainTabNavigatorInner: React.FC = () => {
           },
           tabBarActiveTintColor: '#E8B4A1',
           tabBarInactiveTintColor: '#9E9E9E',
+          tabBarLabelPosition: 'below-icon', // Explicitly ensure label is below icon
         }}
       >
         <Tab.Screen
           name="Home"
-          component={withSection('home')}
+          component={HomeTab}
           options={{
-            tabBarLabel: '',
+            tabBarLabel: 'Home',
             tabBarIcon: ({ color, size }) => (
               <CoolIcon name="house-03" size={size} color={color} />
             ),
@@ -103,9 +109,9 @@ const MainTabNavigatorInner: React.FC = () => {
         />
         <Tab.Screen
           name="Gallery"
-          component={withSection('gallery')}
+          component={GalleryTab}
           options={{
-            tabBarLabel: '',
+            tabBarLabel: 'Gallery',
             tabBarIcon: ({ color, size }) => (
               <CoolIcon name="image" size={size} color={color} />
             ),
@@ -113,9 +119,9 @@ const MainTabNavigatorInner: React.FC = () => {
         />
         <Tab.Screen
           name="Calendar"
-          component={withSection('calendar')}
+          component={CalendarTab}
           options={{
-            tabBarLabel: '',
+            tabBarLabel: 'Calendar',
             tabBarIcon: ({ color, size }) => (
               <CoolIcon name="calendar" size={size} color={color} />
             ),
@@ -123,9 +129,9 @@ const MainTabNavigatorInner: React.FC = () => {
         />
         <Tab.Screen
           name="Notes"
-          component={withSection('notes')}
+          component={NotesTab}
           options={{
-            tabBarLabel: '',
+            tabBarLabel: 'Notes',
             tabBarIcon: ({ color, size }) => (
               <CoolIcon name="note-text" size={size} color={color} />
             ),
@@ -134,45 +140,16 @@ const MainTabNavigatorInner: React.FC = () => {
         <Tab.Screen
           name="Applications"
           component={HomeScreen}
+          listeners={() => ({
+            tabPress: (e) => {
+              e.preventDefault();
+              setShowAppsDrawer(true);
+            },
+          })}
           options={{
-            tabBarLabel: '',
-            tabBarButton: (props) => (
-              <TouchableOpacity
-                {...props}
-                activeOpacity={0.9}
-                onPress={() => setShowAppsDrawer(true)}
-                style={{
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  top: -18, // float above the tab bar
-                  marginRight: 12, // keep away from right screen edge
-                }}
-              >
-                <View style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 28,
-                  backgroundColor: 'rgba(255,255,255,0.6)', // glass-like
-                  borderWidth: 1,
-                  borderColor: 'rgba(255, 182, 193, 0.4)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                }}>
-                  <LinearGradient
-                    colors={['#FF6B6B', '#FFB6C1', '#9CA3AF']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={{
-                      position: 'absolute',
-                      width: '100%',
-                      height: '100%',
-                      opacity: 0.3,
-                    }}
-                  />
-                  <CoolIcon name="apps" size={26} color="#FF6B6B" />
-                </View>
-              </TouchableOpacity>
+            tabBarLabel: 'Apps',
+            tabBarIcon: ({ color, size }) => (
+              <CoolIcon name="apps" size={size} color={color} />
             ),
           }}
         />

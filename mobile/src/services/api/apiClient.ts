@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
+import { config } from '../../config/environment';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -31,16 +32,25 @@ class ApiClient {
   private logoutCallback: (() => void) | null = null;
 
   constructor() {
-    // Backend runs on port 3000
+    // Backend runs on port 4000 to avoid conflicts
     // Android emulator uses 10.0.2.2 to access localhost of the host machine
     console.log('[API] Initializing ApiClient...');
 
-    // In React Native, we need to be careful with Platform imports
-    // I will use a more robust way to detect environment or just default to common emulator IP
-    this.baseURL = 'http://10.0.2.2:3000/api/v1';
+    console.log('[API] Initializing ApiClient...');
 
-    if (Platform.OS === 'ios') {
-      this.baseURL = 'http://127.0.0.1:3000/api/v1';
+    // Use centralized configuration
+    this.baseURL = config.apiUrl;
+
+    // Override for Android Emulator if needed (though config should handle this if configured correctly)
+    // For now, we trust config.apiUrl which defaults to localhost:4000
+    // If running on Android device (not emulator), localhost won't work, but config structure allows overriding.
+
+    // Ensure we don't have double /api/v1 if config already has it (it does)
+    // The previous hardcoded values had /api/v1. config.apiUrl has /api/v1.
+
+    if (Platform.OS === 'android' && this.baseURL.includes('localhost')) {
+      // Special case for Android Emulator to map localhost to 10.0.2.2
+      this.baseURL = this.baseURL.replace('localhost', '10.0.2.2');
     }
 
     console.log('[API] Base URL set to:', this.baseURL);
@@ -157,18 +167,39 @@ class ApiClient {
 
   private async getAccessToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem('accessToken');
+      const token = await AsyncStorage.getItem('accessToken');
+      // DEV BYPASS: If no token stored and in development, use mock token
+      if (!token && __DEV__) {
+        console.log('[API] DEV: No token found, using mock-access-token');
+        return 'mock-access-token';
+      }
+      return token;
     } catch (error) {
       console.error('Error getting access token:', error);
+      // DEV BYPASS: Return mock token on error in development
+      if (__DEV__) {
+        console.log('[API] DEV: Error getting token, using mock-access-token');
+        return 'mock-access-token';
+      }
       return null;
     }
   }
 
   private async getRefreshToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem('refreshToken');
+      const token = await AsyncStorage.getItem('refreshToken');
+      // DEV BYPASS: If no token stored and in development, use mock token
+      if (!token && __DEV__) {
+        console.log('[API] DEV: No refresh token found, using mock-refresh-token');
+        return 'mock-refresh-token';
+      }
+      return token;
     } catch (error) {
       console.error('Error getting refresh token:', error);
+      // DEV BYPASS: Return mock token on error in development
+      if (__DEV__) {
+        return 'mock-refresh-token';
+      }
       return null;
     }
   }

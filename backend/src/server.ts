@@ -30,6 +30,7 @@ import todosRoutes from './routes/todos';
 import socialRoutes from './routes/social';
 import financialRoutes from './routes/financial';
 import emotionsRoutes from './routes/emotions';
+import miscRoutes from './routes/misc';
 // JS route modules
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const auditRoutes = require('./routes/audit');
@@ -46,6 +47,7 @@ import mobileRoutes from './routes/mobileRoutes';
 import settingsRoutes from './routes/settings';
 import adminAuthRoutes from './routes/adminAuth';
 import adminUsersRoutes from './routes/adminUsers';
+import configRoutes from './routes/config';
 import appConfigRoutes from './routes/appConfigRoutes';
 import pageBuilderRoutes from './routes/pageBuilderRoutes';
 import componentRoutes from './routes/componentRoutes';
@@ -62,7 +64,7 @@ import { requestIdMiddleware } from './middleware/requestId';
 // import { validateRequest } from './middleware/validation';
 
 // Import services
-// import { initializeSupabase, getSupabaseClient } from './services/supabaseService';
+import { initializeSupabase, getSupabaseClient } from './services/supabaseService';
 import { initializeSocket } from './socket/socketService';
 
 // Load environment variables from repository root
@@ -211,9 +213,15 @@ function startServer() {
   // CORS with dynamic origin support
   app.use(cors({
     origin: (origin, callback) => {
+      // In development, allow all origins
+      if (process.env.NODE_ENV !== 'production' || !origin) {
+        return callback(null, true);
+      }
+
       const allowedOrigins = [
         process.env.FRONTEND_URL || 'http://localhost:3001',
         'http://localhost:3000',
+        'http://localhost:4000', // Added 4000
         'http://localhost:8081',
         'http://localhost:19006',
         'http://localhost:19000',
@@ -225,7 +233,7 @@ function startServer() {
         'https://www.bondarys.com'
       ];
 
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         console.log('CORS blocked origin:', origin);
@@ -360,6 +368,7 @@ function startServer() {
   app.use('/api/v1/social', socialRoutes);
   app.use('/api/v1/finance', financialRoutes);
   app.use('/api/v1/emotions', emotionsRoutes);
+  app.use('/api/v1/misc', miscRoutes);
   // Audit routes (non-versioned)
   app.use('/api/audit', auditRoutes);
   app.use('/api/admin', adminRoutes);
@@ -379,6 +388,7 @@ function startServer() {
   app.use('/api/page-builder/assets', assetRoutes);
   app.use('/api/mobile', mobileRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/config', configRoutes); // New System Config Routes
   app.use('/api/admin/auth', adminUsersRoutes); // New RBAC-based auth
 
   // App Configuration API (for dynamic app management - login backgrounds, themes, etc.)
@@ -432,7 +442,7 @@ function startServer() {
   async function initializeServices() {
     try {
       // Initialize Database Pool
-      // await initializeSupabase();
+      await initializeSupabase();
       console.log('✅ Database pool configuration loaded');
 
       // Initialize Socket.IO
@@ -440,8 +450,11 @@ function startServer() {
       console.log('✅ Socket.IO initialized');
 
       // Start server
-      const PORT = parseInt(process.env.PORT || '3000');
+      // Forced to 4000 as requested, ignoring .env PORT if it's set to 3000
+      const PORT = 4000;
       const HOST = process.env.HOST || '0.0.0.0';
+
+      console.log(`[Server] Starting on port ${PORT}...`);
 
       server.listen(PORT, HOST, () => {
         console.log(`🚀 Bondarys Backend Server running on ${HOST}:${PORT}`);

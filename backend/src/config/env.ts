@@ -3,9 +3,11 @@ import path from 'path';
 import { z } from 'zod';
 
 // Load environment variables before validating
-// 1) Backend-local .env
+// 1) Project Root .env (3 levels up from src/config)
+dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
+// 2) Backend-local .env (2 levels up)
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
-// 2) Fallback to default .env resolution (e.g. project root)
+// 3) Fallback to default .env resolution
 dotenv.config();
 
 /**
@@ -18,7 +20,7 @@ dotenv.config();
 const envSchema = z.object({
   // Node Environment
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().transform(Number).default('3000'),
+  PORT: z.string().transform(Number).default('4000'),
 
   // Supabase
   SUPABASE_URL: z.string().url(),

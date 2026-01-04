@@ -1,5 +1,4 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { getSupabaseClient } from './supabaseService';
+import { query } from '../config/database';
 import { FinancialAccount, FinancialTransaction, FinancialCategory, FinancialBudget, FinancialGoal } from '../models/Financial';
 
 class FinanceService {
@@ -7,59 +6,63 @@ class FinanceService {
      * Get all accounts for a user
      */
     async getAccounts(userId: string): Promise<FinancialAccount[]> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_accounts')
-            .select('*')
-            .eq('user_id', userId)
-            .order('created_at', { ascending: true });
-
-        if (error) throw error;
-        return data || [];
+        const { rows } = await query(`
+            SELECT * FROM financial_accounts 
+            WHERE user_id = $1 
+            ORDER BY created_at ASC
+        `, [userId]);
+        return rows;
     }
 
     /**
      * Create a new account
      */
     async createAccount(accountData: Partial<FinancialAccount>): Promise<FinancialAccount> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_accounts')
-            .insert([accountData])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        // Extract fields to ensure safe insert
+        const { user_id, name, type, balance, currency, color, is_included_in_net_worth } = accountData;
+        const { rows } = await query(`
+            INSERT INTO financial_accounts (user_id, name, type, balance, currency, color, is_included_in_net_worth, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+            RETURNING *
+        `, [user_id, name, type, balance, currency, color, is_included_in_net_worth || true]);
+        return rows[0];
     }
 
     /**
      * Update an account
      */
     async updateAccount(accountId: string, updates: Partial<FinancialAccount>): Promise<FinancialAccount> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_accounts')
-            .update({ ...updates, updated_at: new Date().toISOString() })
-            .eq('id', accountId)
-            .select()
-            .single();
+        const fields: string[] = [];
+        const values: any[] = [];
+        let idx = 1;
 
-        if (error) throw error;
-        return data;
+        for (const [key, value] of Object.entries(updates)) {
+            if (key !== 'id' && key !== 'created_at' && key !== 'user_id') {
+                fields.push(`${key} = $${idx++}`);
+                values.push(value);
+            }
+        }
+
+        if (fields.length === 0) throw new Error('No updates provided');
+
+        fields.push(`updated_at = NOW()`);
+        values.push(accountId);
+
+        const { rows } = await query(`
+            UPDATE financial_accounts 
+            SET ${fields.join(', ')} 
+            WHERE id = $${idx} 
+            RETURNING *
+        `, values);
+
+        return rows[0];
     }
 
     /**
      * Delete an account
      */
     async deleteAccount(accountId: string): Promise<boolean> {
-        const client = getSupabaseClient();
-        const { error } = await client
-            .from('financial_accounts')
-            .delete()
-            .eq('id', accountId);
-
-        if (error) throw error;
+        await query('DELETE FROM financial_accounts WHERE id = $1', [accountId]);
         return true;
     }
 
@@ -67,113 +70,122 @@ class FinanceService {
      * Get transactions
      */
     async getTransactions(userId: string, filters: any = {}): Promise<FinancialTransaction[]> {
-        const client = getSupabaseClient();
-        let query = client
-            .from('financial_transactions')
-            .select(`
-          *,
-          category:financial_categories(id, name, icon, color, type),
-          account:financial_accounts(id, name, type, color)
-        `)
-            .eq('user_id', userId)
-            .order('date', { ascending: false });
+        let sql = `
+            SELECT 
+                ft.*,
+                fc.id as cat_id, fc.name as cat_name, fc.icon as cat_icon, fc.color as cat_color, fc.type as cat_type,
+                fa.id as acc_id, fa.name as acc_name, fa.type as acc_type, fa.color as acc_color
+            FROM financial_transactions ft
+            LEFT JOIN financial_categories fc ON ft.category_id = fc.id
+            LEFT JOIN financial_accounts fa ON ft.account_id = fa.id
+            WHERE ft.user_id = $1
+        `;
+        const values: any[] = [userId];
+        let idx = 2;
 
         if (filters.limit) {
-            query = query.limit(filters.limit);
+            sql += ` ORDER BY ft.date DESC LIMIT $${idx++}`;
+            values.push(filters.limit);
+        } else {
+            sql += ` ORDER BY ft.date DESC`;
         }
 
-        // Add more filters as needed (date range, type, etc.)
+        const { rows } = await query(sql, values);
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+        return rows.map(row => ({
+            id: row.id,
+            user_id: row.user_id,
+            account_id: row.account_id,
+            category_id: row.category_id,
+            amount: row.amount,
+            type: row.type,
+            date: row.date,
+            note: row.note || row.description, // Handle potential DB drift, logic says note
+            is_family_shared: row.is_family_shared || false,
+            location_label: row.location_label,
+            created_at: row.created_at,
+            updated_at: row.updated_at,
+            category: row.cat_id ? {
+                id: row.cat_id,
+                name: row.cat_name,
+                icon: row.cat_icon,
+                color: row.cat_color,
+                type: row.cat_type
+            } : undefined,
+            account: row.acc_id ? {
+                id: row.acc_id,
+                name: row.acc_name,
+                type: row.acc_type,
+                color: row.acc_color
+            } : undefined
+        } as FinancialTransaction));
     }
 
     /**
      * Create transaction and update account balance
      */
     async createTransaction(txData: Partial<FinancialTransaction>): Promise<FinancialTransaction> {
-        const client = getSupabaseClient();
-        // We should ideally use a transaction block here if Supabase supported it easily via client,
-        // but standard Supabase client doesn't support multi-statement transactions in one go easily without RPC.
-        // For now we will do it sequentially.
+        const { user_id, account_id, category_id, amount, type, date, note, is_family_shared, location_label } = txData;
 
-        const { data: transaction, error } = await client
-            .from('financial_transactions')
-            .insert([txData])
-            .select()
-            .single();
+        const { rows } = await query(`
+            INSERT INTO financial_transactions (user_id, account_id, category_id, amount, type, date, note, is_family_shared, location_label, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            RETURNING *
+        `, [user_id, account_id, category_id, amount, type, date, note, is_family_shared || false, location_label]);
 
-        if (error) throw error;
+        const transaction = rows[0];
 
         // Update account balance
-        if (transaction && txData.account_id) {
-            await this.updateAccountBalance(txData.account_id, txData.amount || 0, txData.type as any);
+        if (transaction && account_id) {
+            await this.updateAccountBalance(account_id, Number(amount || 0), type as any);
         }
 
         return transaction;
     }
 
     async updateAccountBalance(accountId: string, amount: number, type: 'income' | 'expense' | 'transfer') {
-        const client = getSupabaseClient();
-        // Calculate delta
         let delta = 0;
-        if (type === 'income') delta = Number(amount);
-        if (type === 'expense') delta = -Number(amount);
-        // Transfer logic would be more complex (source vs dest), kept simple for MVP or assumed single ledger entry
+        if (type === 'income') delta = amount;
+        if (type === 'expense') delta = -amount;
 
-        // Get current balance
-        const { data: account } = await client
-            .from('financial_accounts')
-            .select('balance')
-            .eq('id', accountId)
-            .single();
-
-        if (account) {
-            const newBalance = Number(account.balance) + delta;
-            await this.updateAccount(accountId, { balance: newBalance } as any);
-        }
+        // Atomic update
+        await query(`
+            UPDATE financial_accounts 
+            SET balance = balance + $1, updated_at = NOW() 
+            WHERE id = $2
+        `, [delta, accountId]);
     }
 
     /**
      * Get Categories
      */
     async getCategories(): Promise<FinancialCategory[]> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_categories')
-            .select('*')
-            .order('type', { ascending: true }); // Group by type naturally
-
-        if (error) throw error;
-        return data || [];
+        const { rows } = await query(`
+            SELECT * FROM financial_categories 
+            ORDER BY type ASC
+        `);
+        return rows;
     }
 
-    // Budgets and Goals methods can be added similarly...
     /**
-   * Get Goals
-   */
+    * Get Goals
+    */
     async getGoals(userId: string): Promise<FinancialGoal[]> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_goals')
-            .select('*')
-            .eq('user_id', userId);
-
-        if (error) throw error;
-        return data || [];
+        const { rows } = await query(`
+            SELECT * FROM financial_goals 
+            WHERE user_id = $1
+        `, [userId]);
+        return rows;
     }
 
     async createGoal(goalData: Partial<FinancialGoal>): Promise<FinancialGoal> {
-        const client = getSupabaseClient();
-        const { data, error } = await client
-            .from('financial_goals')
-            .insert([goalData])
-            .select()
-            .single();
-
-        if (error) throw error;
-        return data;
+        const { user_id, name, target_amount, current_amount, target_date, color } = goalData;
+        const { rows } = await query(`
+            INSERT INTO financial_goals (user_id, name, target_amount, current_amount, target_date, color, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            RETURNING *
+        `, [user_id, name, target_amount, current_amount || 0, target_date, color]);
+        return rows[0];
     }
 }
 

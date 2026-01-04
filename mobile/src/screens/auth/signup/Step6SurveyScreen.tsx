@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -116,7 +115,7 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
         password: route.params.password,
         firstName: route.params.firstName || '',
         lastName: route.params.lastName || '',
-        phone: route.params.phoneNumber || '',
+        phone: route.params.phone || route.params.phoneNumber || '',
         dateOfBirth: route.params.dateOfBirth || '',
         userType: route.params.userType || 'hourse',
         familyOption: route.params.familyOption,
@@ -132,8 +131,11 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
 
       await signup(signupData);
 
-      // Navigate to welcome screen
-      navigation.navigate('Welcome');
+      // Navigate directly to PIN Setup (skipping OTP verification)
+      navigation.navigate('SetupPin', {
+        email: route.params.email || route.params.phone || route.params.phoneNumber,
+        isNewUser: true
+      });
     } catch (error: any) {
       console.error('Signup error:', error);
       const errorMessage = String(error?.message || 'Failed to create account. Please try again.');
@@ -166,7 +168,7 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
         password: route.params.password,
         firstName: route.params.firstName || '',
         lastName: route.params.lastName || '',
-        phone: route.params.phoneNumber || '',
+        phone: route.params.phone || route.params.phoneNumber || '',
         dateOfBirth: route.params.dateOfBirth || '',
         userType: route.params.userType || 'hourse',
         familyOption: route.params.familyOption,
@@ -187,8 +189,11 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
 
       await signup(signupData);
 
-      // Navigate to welcome screen
-      navigation.navigate('Welcome');
+      // Navigate directly to PIN Setup (skipping OTP verification)
+      navigation.navigate('SetupPin', {
+        email: route.params.email || route.params.phone || route.params.phoneNumber,
+        isNewUser: true
+      });
     } catch (error: any) {
       console.error('Signup error:', error);
       const errorMessage = String(error?.message || 'Failed to create account. Please try again.');
@@ -236,7 +241,7 @@ const Step6SurveyScreen: React.FC<Step6SurveyScreenProps> = ({ navigation, route
                   <Icon name="arrow-left" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <View style={styles.stepIndicator}>
-                  <Text style={styles.stepText}>Step 6 of 6</Text>
+                  <Text style={styles.stepText}>Step 4 of 4</Text>
                   <View style={styles.progressBar}>
                     <View style={[styles.progressFill, { width: '100%' }]} />
                   </View>

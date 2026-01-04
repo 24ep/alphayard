@@ -14,6 +14,7 @@ export interface IUser {
   familyIds: string[];
   isEmailVerified: boolean;
   preferences: any;
+  metadata?: any; // Added for generic metadata access
   deviceTokens: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -42,12 +43,41 @@ export class UserModel {
   get password() { return this.data.password; }
   get familyIds() { return this.data.familyIds; }
   get isActive() { return this.data.isActive; }
+  get metadata() { return this.data.metadata; } // Expose metadata generic getter
 
   // Compatibility getters
   get isEmailVerified() { return this.data.isEmailVerified; }
   set isEmailVerified(val: boolean) { this.data.isEmailVerified = val; } // Setter needed for simple assignment if used
 
   get emailVerificationCode() { return (this.data as any).emailVerificationCode; }
+
+  // ... existing code ...
+
+  private static mapRowToModel(row: any): UserModel {
+    const meta = row.metadata || {};
+    const names = (row.full_name || '').split(' ');
+
+    const user: IUser = {
+      id: row.id,
+      email: row.email,
+      password: row.password,
+      firstName: names[0] || meta.firstName || '',
+      lastName: names.slice(1).join(' ') || meta.lastName || '',
+      avatar: row.avatar_url,
+      phone: row.phone,
+      userType: meta.userType || 'hourse',
+      familyIds: row.family_ids || [],
+      isEmailVerified: !!row.email_confirmed_at,
+      preferences: meta.preferences || {},
+      metadata: meta, // Store raw metadata
+      deviceTokens: meta.deviceTokens || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at || row.created_at,
+      isActive: true
+    };
+
+    return new UserModel(user);
+  }
   set emailVerificationCode(val: string | undefined) { (this.data as any).emailVerificationCode = val; }
 
   get emailVerificationExpiry() { return (this.data as any).emailVerificationExpiry; }
@@ -110,15 +140,27 @@ export class UserModel {
       sql += ` AND u.email = $${paramIdx++}`;
       params.push(criteria.email);
     }
+    if (criteria.phone) {
+      sql += ` AND p.phone = $${paramIdx++}`;
+      params.push(criteria.phone);
+    }
     if (criteria._id || criteria.id) {
       sql += ` AND u.id = $${paramIdx++}`;
       params.push(criteria._id || criteria.id);
     }
     // Add other fields as needed
 
-    const res = await query(sql, params);
-    if (res.rows.length === 0) return null;
-    return UserModel.mapRowToModel(res.rows[0]);
+    try {
+      console.log('[UserModel.findOne] Executing SQL:', sql.replace(/\s+/g, ' ').trim());
+      console.log('[UserModel.findOne] With params:', params);
+      const res = await query(sql, params);
+      console.log('[UserModel.findOne] Result rows:', res.rows.length);
+      if (res.rows.length === 0) return null;
+      return UserModel.mapRowToModel(res.rows[0]);
+    } catch (error) {
+      console.error('[UserModel.findOne] Database query failed:', error);
+      throw error;
+    }
   }
 
   static async create(userData: any): Promise<UserModel> {
@@ -142,6 +184,19 @@ export class UserModel {
          VALUES ($1, $2, $3, $4)
        `, [userId, `${userData.firstName} ${userData.lastName}`, userData.avatar, userData.phone]);
 
+      // 3. Insert into public.users (Required for social FK constraints)
+      await client.query(`
+         INSERT INTO public.users (id, email, password_hash, first_name, last_name, avatar_url, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+      `, [
+        userId,
+        userData.email,
+        hashedPassword,
+        userData.firstName,
+        userData.lastName,
+        userData.avatar
+      ]);
+
       await client.query('COMMIT');
       return UserModel.findById(userId) as Promise<UserModel>;
     } catch (e) {
@@ -153,33 +208,28 @@ export class UserModel {
   }
 
   static async findByIdAndUpdate(id: string, update: any, options?: any): Promise<UserModel | null> {
-    // This is a complex mapping because update object might have dot notation (e.g. 'location.latitude')
-    // For now, we support limited updates or assume flat structure for simple fields
-    // Real implementation would parse Mongo-style updates -> SQL updates
-
-    // Simplistic implementation for 'isOnline' and 'lastSeen' which are used in socketService
     const sets: string[] = [];
     const params: any[] = [id];
     let idx = 2;
+    const metadataUpdates: any = {};
 
     for (const [key, value] of Object.entries(update)) {
-      // Handle nested 'location' updates from socketService
-      if (key === 'location.latitude') {
-        // This implies we should update profiles or a locations table. 
-        // Ignoring for now or handling via a separate method would be better.
-        continue;
-      }
-
-      if (key === 'isOnline') {
-        // Store this in simple metadata update or ignore if we don't have a column
-        // We'll update the 'raw_user_meta_data'
-        sets.push(`raw_user_meta_data = jsonb_set(raw_user_meta_data, '{isOnline}', $${idx++})`);
-        params.push(JSON.stringify(value));
-      } else if (key === 'lastSeen') {
-        // Update last_sign_in_at or metadata
+      if (key === 'lastSeen' || key === 'lastLogin') {
         sets.push(`last_sign_in_at = $${idx++}`);
         params.push(value);
+      } else if (key === 'email' || key === 'encrypted_password') {
+        sets.push(`${key} = $${idx++}`);
+        params.push(value);
+      } else {
+        // Collect metadata updates to merge efficiently
+        metadataUpdates[key] = value;
       }
+    }
+
+    if (Object.keys(metadataUpdates).length > 0) {
+      // Use Postgres JSONB merge operator || to update multiple keys at once
+      sets.push(`raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $${idx++}::jsonb`);
+      params.push(JSON.stringify(metadataUpdates));
     }
 
     if (sets.length === 0) return UserModel.findById(id);
@@ -200,27 +250,4 @@ export class UserModel {
   }
 
   // Helper
-  private static mapRowToModel(row: any): UserModel {
-    const meta = row.metadata || {};
-    const names = (row.full_name || '').split(' ');
-
-    const user: IUser = {
-      id: row.id,
-      email: row.email,
-      password: row.password,
-      firstName: names[0] || meta.firstName || '',
-      lastName: names.slice(1).join(' ') || meta.lastName || '',
-      avatar: row.avatar_url,
-      phone: row.phone,
-      familyIds: row.family_ids || [],
-      userType: meta.userType || 'hourse',
-      isEmailVerified: !!row.email_confirmed_at,
-      preferences: meta.preferences || {},
-      deviceTokens: meta.deviceTokens || [],
-      createdAt: row.created_at,
-      updatedAt: row.updated_at || row.created_at,
-      isActive: meta.isActive !== false // Default to true
-    };
-    return new UserModel(user);
-  }
 }

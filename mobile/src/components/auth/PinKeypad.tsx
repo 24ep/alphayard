@@ -19,6 +19,7 @@ interface PinKeypadProps {
     error?: string;
     title?: string;
     subtitle?: string;
+    children?: React.ReactNode;
 }
 
 export const PinKeypad: React.FC<PinKeypadProps> = ({
@@ -28,6 +29,7 @@ export const PinKeypad: React.FC<PinKeypadProps> = ({
     error,
     title = 'Enter PIN',
     subtitle,
+    children,
 }) => {
     const handleKeyPress = (key: string) => {
         if (pin.length < maxLength) {
@@ -98,6 +100,9 @@ export const PinKeypad: React.FC<PinKeypadProps> = ({
 
             {/* PIN Dots */}
             <View style={styles.dotsContainer}>{renderDots()}</View>
+
+            {/* Custom Content (e.g., Forgot PIN) */}
+            {children}
 
             {/* Error Message */}
             {error && <Text style={styles.errorText}>{error}</Text>}

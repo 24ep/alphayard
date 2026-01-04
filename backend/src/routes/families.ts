@@ -1,10 +1,11 @@
-import express, { Response } from 'express';
-import { body } from 'express-validator';
-import { getSupabaseClient } from '../services/supabaseService';
+import express, { Response } from 'express'; // refresh
+
+import { body, query as queryParam } from 'express-validator'; // Rename express-validator query
 import { emailService } from '../services/emailService';
 import { authenticateToken, requireFamilyMember } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
-import { query } from 'express-validator';
+import { query as dbQuery } from '../config/database'; // Rename DB query
+
 // Online user tracking is currently handled inside the socket service;
 // the isUserOnline helper has been removed to simplify typings.
 const isUserOnline = (_userId: string): boolean => false;
@@ -17,68 +18,41 @@ router.use(authenticateToken as any);
 // List all families user belongs to
 router.get('/', authenticateToken as any, async (req: any, res: Response): Promise<void> => {
   try {
-    const supabase = getSupabaseClient();
     const userId = req.user.id;
 
-    // Get all families the user is a member of
-    const { data: memberships, error: membershipError } = await supabase
-      .from('family_members')
-      .select(`
-        family_id,
-        role,
-        joined_at,
-        families (
-          id,
-          name,
-          type,
-          description,
-          invite_code,
-          created_at,
-          updated_at,
-          owner_id
-        )
-      `)
-      .eq('user_id', userId);
+    // Get all families the user is a member of with details
+    const { rows: memberships } = await dbQuery(`
+      SELECT 
+        fm.family_id,
+        fm.role,
+        fm.joined_at,
+        f.id,
+        f.name,
+        f.type,
+        f.description,
+        f.invite_code,
+        f.created_at,
+        f.updated_at,
+        f.owner_id,
+        (SELECT count(*) FROM family_members WHERE family_id = f.id) as member_count
+      FROM family_members fm
+      JOIN families f ON fm.family_id = f.id
+      WHERE fm.user_id = $1
+    `, [userId]);
 
-    if (membershipError) {
-      console.error('Error fetching user families:', membershipError);
-      res.status(500).json({
-        error: 'Internal server error',
-        message: 'Failed to fetch families'
-      });
-      return;
-    }
-
-    // Get member counts for each family
-    const familiesWithCounts = await Promise.all(
-      (memberships || []).map(async (membership: any) => {
-        const family = membership.families;
-        if (!family) return null;
-
-        // Get member count
-        const { count } = await supabase
-          .from('family_members')
-          .select('id', { count: 'exact' })
-          .eq('family_id', family.id);
-
-        return {
-          id: family.id,
-          name: family.name,
-          description: family.description,
-          type: family.type,
-          inviteCode: family.invite_code,
-          createdAt: family.created_at,
-          updatedAt: family.updated_at,
-          ownerId: family.owner_id,
-          role: membership.role,
-          joinedAt: membership.joined_at,
-          membersCount: count || 0
-        };
-      })
-    );
-
-    // Filter out null values
-    const families = familiesWithCounts.filter(f => f !== null);
+    const families = memberships.map(m => ({
+      id: m.id,
+      name: m.name,
+      description: m.description,
+      type: m.type,
+      inviteCode: m.invite_code,
+      createdAt: m.created_at,
+      updatedAt: m.updated_at,
+      ownerId: m.owner_id,
+      role: m.role,
+      joinedAt: m.joined_at,
+      membersCount: parseInt(m.member_count) || 0
+    }));
 
     res.json({
       families,
@@ -95,242 +69,87 @@ router.get('/', authenticateToken as any, async (req: any, res: Response): Promi
   }
 });
 
-// Get family by ID (for admin or if user is a member)
-router.get('/:familyId', authenticateToken as any, async (req: any, res: Response): Promise<void> => {
-  try {
-    const supabase = getSupabaseClient();
-    const { familyId } = req.params;
-    const userId = req.user.id;
-
-    // Check if user is admin (for admin console access)
-    const isAdmin = req.user.role === 'admin' || req.user.type === 'admin';
-
-    // Get family details
-    const { data: hourse, error: familyError } = await supabase
-      .from('families')
-      .select(`
-        id,
-        name,
-        type,
-        description,
-        invite_code,
-        created_at,
-        updated_at,
-        owner_id,
-        users!owner_id (
-          id,
-          first_name,
-          last_name,
-          email
-        )
-      `)
-      .eq('id', familyId)
-      .single();
-
-    if (familyError || !hourse) {
-      res.status(404).json({
-        error: 'Family not found',
-        message: 'Family not found'
-      });
-      return;
-    }
-
-    // If not admin, verify user is a member
-    if (!isAdmin) {
-      const { data: membership } = await supabase
-        .from('family_members')
-        .select('user_id')
-        .eq('family_id', familyId)
-        .eq('user_id', userId)
-        .single();
-
-      if (!membership) {
-        res.status(403).json({
-          error: 'Access denied',
-          message: 'You are not a member of this family'
-        });
-        return;
-      }
-    }
-
-    // Get family members
-    const { data: members, error: membersError } = await supabase
-      .from('family_members')
-      .select(`
-        user_id,
-        role,
-        joined_at,
-        users (
-          id,
-          first_name,
-          last_name,
-          email,
-          avatar_url,
-          created_at
-        )
-      `)
-      .eq('family_id', familyId);
-
-    if (membersError) {
-      console.error('Error fetching family members:', membersError);
-    }
-
-    // Get stats
-    const { count: messageCount } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact' })
-      .eq('family_id', familyId);
-
-    const { count: locationCount } = await supabase
-      .from('location_history')
-      .select('id', { count: 'exact' })
-      .eq('family_id', familyId);
-
-    res.json({
-      id: hourse.id,
-      name: hourse.name,
-      description: hourse.description,
-      type: hourse.type,
-      invite_code: hourse.invite_code,
-      created_at: hourse.created_at,
-      updated_at: hourse.updated_at,
-      owner_id: hourse.owner_id,
-      owner: hourse.users ? {
-        id: (hourse.users as any).id,
-        first_name: (hourse.users as any).first_name,
-        last_name: (hourse.users as any).last_name,
-        email: (hourse.users as any).email
-      } : null,
-      member_count: members?.length || 0,
-      members: members?.map(member => ({
-        user_id: member.user_id,
-        role: member.role,
-        joined_at: member.joined_at,
-        user: member.users ? {
-          id: (member.users as any).id,
-          first_name: (member.users as any).first_name,
-          last_name: (member.users as any).last_name,
-          email: (member.users as any).email,
-          avatar_url: (member.users as any).avatar_url
-        } : null
-      })) || [],
-      stats: {
-        totalMessages: messageCount || 0,
-        totalLocations: locationCount || 0,
-        totalMembers: members?.length || 0
-      }
-    });
-
-  } catch (error) {
-    console.error('Get family error:', error);
-    res.status(500).json({
-      error: 'Internal server error',
-      message: 'An unexpected error occurred'
-    });
-    return;
-  }
-});
-
 // Get user's hourse
 router.get('/my-hourse', authenticateToken as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const userId = req.user.id;
 
     // First, find the user's family
-    const { data: membership } = await supabase
-      .from('family_members')
-      .select('family_id')
-      .eq('user_id', userId)
-      .limit(1)
-      .single();
+    const { rows: memberships } = await dbQuery(
+      'SELECT family_id FROM family_members WHERE user_id = $1 LIMIT 1',
+      [userId]
+    );
 
-    // If user doesn't belong to any family, return null hourse (not 404)
-    if (!membership) {
+    if (memberships.length === 0) {
       return res.json({
         hourse: null,
         message: 'User does not belong to any hourse yet'
       });
     }
 
-    const familyId = membership.family_id;
+    const familyId = memberships[0].family_id;
 
     // Get hourse details
-    const { data: hourse, error: familyError } = await supabase
-      .from('families')
-      .select(`
-        id,
-        name,
-        type,
-        description,
-        invite_code,
-        created_at,
-        owner_id
-      `)
-      .eq('id', familyId)
-      .single();
+    const { rows: families } = await dbQuery(
+      'SELECT id, name, type, description, invite_code, created_at, owner_id FROM families WHERE id = $1',
+      [familyId]
+    );
 
-    if (familyError || !hourse) {
+    if (families.length === 0) {
       return res.json({
         hourse: null,
         message: 'hourse not found'
       });
     }
 
-    // Get hourse members
-    const { data: members, error: membersError } = await supabase
-      .from('family_members')
-      .select(`
-        user_id,
-        role,
-        joined_at,
-        users (
-          id,
-          first_name,
-          last_name,
-          email,
-          avatar_url
-        )
-      `)
-      .eq('family_id', familyId);
+    const hourse = families[0];
 
-    if (membersError) {
-      console.error('Error fetching hourse members:', membersError);
-      return res.status(500).json({
-        error: 'Failed to fetch hourse members',
-        message: 'An error occurred while fetching hourse members'
-      });
-    }
+    // Get hourse members with user details
+    const { rows: members } = await dbQuery(`
+      SELECT 
+        fm.user_id,
+        fm.role,
+        fm.joined_at,
+        u.id,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.avatar_url,
+        p.full_name
+      FROM family_members fm
+      LEFT JOIN public.users u ON fm.user_id = u.id -- using public.users now
+      LEFT JOIN public.profiles p ON fm.user_id = p.id
+      WHERE fm.family_id = $1
+    `, [familyId]);
 
     // Get hourse stats
-    const { count: messageCount } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact' })
-      .eq('family_id', familyId);
-
-    const { count: locationCount } = await supabase
-      .from('location_history')
-      .select('id', { count: 'exact' })
-      .eq('family_id', familyId);
+    const { rows: msgStats } = await dbQuery(
+      'SELECT count(*) FROM messages WHERE family_id = $1',
+      [familyId]
+    );
+    const { rows: locStats } = await dbQuery(
+      'SELECT count(*) FROM location_history WHERE family_id = $1',
+      [familyId]
+    );
 
     res.json({
       hourse: {
         ...hourse,
-        members: members?.map(member => ({
+        members: members.map(member => ({
           id: member.user_id,
-          firstName: (member.users as any)?.first_name,
-          lastName: (member.users as any)?.last_name,
-          email: (member.users as any)?.email,
-          avatar: (member.users as any)?.avatar_url,
+          firstName: member.first_name || member.full_name?.split(' ')[0],
+          lastName: member.last_name || member.full_name?.split(' ').slice(1).join(' '),
+          email: member.email,
+          avatar: member.avatar_url,
           role: member.role,
           joinedAt: member.joined_at,
           isOnline: isUserOnline(member.user_id),
-          notifications: Math.floor(Math.random() * 5)
-        })) || [],
+          notifications: 0 // Mock notification count
+        })),
         stats: {
-          totalMessages: messageCount || 0,
-          totalLocations: locationCount || 0,
-          totalMembers: members?.length || 0
+          totalMessages: parseInt(msgStats[0].count) || 0,
+          totalLocations: parseInt(locStats[0].count) || 0,
+          totalMembers: members.length
         }
       }
     });
@@ -344,6 +163,107 @@ router.get('/my-hourse', authenticateToken as any, async (req: any, res: Respons
   }
 });
 
+// Get family by ID (for admin or if user is a member)
+router.get('/:familyId', authenticateToken as any, async (req: any, res: Response): Promise<void> => {
+  try {
+    const { familyId } = req.params;
+    const userId = req.user.id;
+    const isAdmin = req.user.role === 'admin' || req.user.type === 'admin';
+
+    // If not admin, verify user is a member
+    if (!isAdmin) {
+      const { rows } = await dbQuery(
+        'SELECT 1 FROM family_members WHERE family_id = $1 AND user_id = $2',
+        [familyId, userId]
+      );
+      if (rows.length === 0) {
+        res.status(403).json({
+          error: 'Access denied',
+          message: 'You are not a member of this family'
+        });
+        return;
+      }
+    }
+
+    // Get family details with owner info
+    const { rows: families } = await dbQuery(`
+      SELECT 
+        f.id, f.name, f.type, f.description, f.invite_code, f.created_at, f.updated_at, f.owner_id,
+        u.first_name, u.last_name, u.email
+      FROM families f
+      LEFT JOIN public.users u ON f.owner_id = u.id
+      WHERE f.id = $1
+    `, [familyId]);
+
+    if (families.length === 0) {
+      res.status(404).json({
+        error: 'Family not found',
+        message: 'Family not found'
+      });
+      return;
+    }
+
+    const hourse = families[0];
+
+    // Get family members
+    const { rows: members } = await dbQuery(`
+      SELECT 
+        fm.user_id, fm.role, fm.joined_at,
+        u.id, u.first_name, u.last_name, u.email, u.avatar_url
+      FROM family_members fm
+      LEFT JOIN public.users u ON fm.user_id = u.id
+      WHERE fm.family_id = $1
+    `, [familyId]);
+
+    // Get stats
+    const { rows: msgStats } = await dbQuery('SELECT count(*) FROM messages WHERE family_id = $1', [familyId]);
+    const { rows: locStats } = await dbQuery('SELECT count(*) FROM location_history WHERE family_id = $1', [familyId]);
+
+    res.json({
+      id: hourse.id,
+      name: hourse.name,
+      description: hourse.description,
+      type: hourse.type,
+      invite_code: hourse.invite_code,
+      created_at: hourse.created_at,
+      updated_at: hourse.updated_at,
+      owner_id: hourse.owner_id,
+      owner: {
+        id: hourse.owner_id,
+        first_name: hourse.first_name,
+        last_name: hourse.last_name,
+        email: hourse.email
+      },
+      member_count: members.length,
+      members: members.map(member => ({
+        user_id: member.user_id,
+        role: member.role,
+        joined_at: member.joined_at,
+        user: {
+          id: member.id,
+          first_name: member.first_name,
+          last_name: member.last_name,
+          email: member.email,
+          avatar_url: member.avatar_url
+        }
+      })),
+      stats: {
+        totalMessages: parseInt(msgStats[0].count) || 0,
+        totalLocations: parseInt(locStats[0].count) || 0,
+        totalMembers: members.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Get family error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'An unexpected error occurred'
+    });
+    return;
+  }
+});
+
 // Update hourse
 router.put('/my-hourse', [
   requireFamilyMember as any,
@@ -352,7 +272,6 @@ router.put('/my-hourse', [
   body('type').optional().isIn(['hourse', 'friends', 'sharehouse'])
 ], validateRequest, async (req: any, res: Response): Promise<void> => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const familyRole = req.familyRole;
     const { name, description, type } = req.body;
@@ -366,34 +285,39 @@ router.put('/my-hourse', [
       return;
     }
 
-    const updateData: any = {
-      updated_at: new Date().toISOString()
-    };
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
 
-    if (name) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (type) updateData.type = type;
-
-    const { data: hourse, error } = await supabase
-      .from('families')
-      .update(updateData)
-      .eq('id', familyId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Update hourse error:', error);
-      res.status(500).json({
-        error: 'Failed to update hourse',
-        message: 'An error occurred while updating hourse details'
-      });
-      return;
+    if (name) {
+      updates.push(`name = $${idx++}`);
+      values.push(name);
+    }
+    if (description !== undefined) {
+      updates.push(`description = $${idx++}`);
+      values.push(description);
+    }
+    if (type) {
+      updates.push(`type = $${idx++}`);
+      values.push(type);
     }
 
-    res.json({
-      message: 'hourse updated successfully',
-      hourse
-    });
+    if (updates.length > 0) {
+      updates.push(`updated_at = NOW()`);
+      values.push(familyId); // familyId for WHERE clause
+
+      const { rows } = await dbQuery(
+        `UPDATE families SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+        values
+      );
+
+      res.json({
+        message: 'hourse updated successfully',
+        hourse: rows[0]
+      });
+    } else {
+      res.json({ message: 'No changes made' });
+    }
 
   } catch (error) {
     console.error('Update hourse error:', error);
@@ -412,7 +336,6 @@ router.post('/invite', [
   body('message').optional().trim()
 ], validateRequest, async (req: any, res: Response): Promise<void> => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const familyRole = req.familyRole;
     const { email, message } = req.body;
@@ -427,15 +350,14 @@ router.post('/invite', [
     }
 
     // Check if user is already a member
-    const { data: existingMember } = await supabase
-      .from('family_members')
-      .select('user_id, users(email)')
-      .eq('family_id', familyId);
+    const { rows: existingMembers } = await dbQuery(`
+      SELECT fm.user_id, u.email, u.first_name 
+      FROM family_members fm
+      LEFT JOIN public.users u ON fm.user_id = u.id
+      WHERE fm.family_id = $1
+    `, [familyId]);
 
-    const isAlreadyMember = existingMember?.some(
-      member => (member.users as any)?.email === email
-    );
-
+    const isAlreadyMember = existingMembers.some(m => m.email === email);
     if (isAlreadyMember) {
       res.status(400).json({
         error: 'User already a member',
@@ -445,15 +367,12 @@ router.post('/invite', [
     }
 
     // Check if invitation already exists
-    const { data: existingInvitation } = await supabase
-      .from('family_invitations')
-      .select('id')
-      .eq('family_id', familyId)
-      .eq('email', email)
-      .eq('status', 'pending')
-      .single();
+    const { rows: existingInvites } = await dbQuery(
+      'SELECT id FROM family_invitations WHERE family_id = $1 AND email = $2 AND status = $3',
+      [familyId, email, 'pending']
+    );
 
-    if (existingInvitation) {
+    if (existingInvites.length > 0) {
       res.status(400).json({
         error: 'Invitation already sent',
         message: 'An invitation has already been sent to this email'
@@ -461,89 +380,48 @@ router.post('/invite', [
       return;
     }
 
-    // Ensure hourse has an invite code (used in email + join links)
-    let inviteCode = null;
-    const { data: family } = await supabase
-      .from('families')
-      .select('id, name, invite_code')
-      .eq('id', familyId)
-      .single();
+    // Ensure hourse has an invite code
+    const { rows: families } = await dbQuery('SELECT id, name, invite_code FROM families WHERE id = $1', [familyId]);
+    let inviteCode = families[0]?.invite_code;
+    let familyName = families[0]?.name;
 
-    if (family) {
-      inviteCode = family.invite_code;
-
-      // If no invite_code yet, generate a simple one and persist it
-      if (!inviteCode) {
-        inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const { error: codeError } = await supabase
-          .from('families')
-          .update({ invite_code: inviteCode, updated_at: new Date().toISOString() })
-          .eq('id', familyId);
-
-        if (codeError) {
-          console.warn('Failed to persist generated invite code:', codeError);
-        }
-      }
+    if (!inviteCode) {
+      inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      await dbQuery(
+        'UPDATE families SET invite_code = $1, updated_at = NOW() WHERE id = $2',
+        [inviteCode, familyId]
+      );
     }
 
     // Create invitation
-    const { data: invitation, error } = await supabase
-      .from('family_invitations')
-      .insert({
-        family_id: familyId,
-        email,
-        invited_by: req.user.id,
-        message: message || '',
-        status: 'pending',
-        created_at: new Date().toISOString(),
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-      })
-      .select()
-      .single();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { rows: newInvite } = await dbQuery(`
+      INSERT INTO family_invitations (family_id, email, invited_by, message, status, created_at, expires_at)
+      VALUES ($1, $2, $3, $4, 'pending', NOW(), $5)
+      RETURNING *
+    `, [familyId, email, req.user.id, message || '', expiresAt]);
 
-    if (error || !invitation) {
-      console.error('Create invitation error:', error);
-      res.status(500).json({
-        error: 'Failed to send invitation',
-        message: 'An error occurred while sending the invitation'
-      });
-      return;
-    }
-
-    // Send email invitation (best-effort)
+    // Send email
     try {
-      const inviterSourceList = (existingMember as any[]) || [];
-      const inviterMatch: any = inviterSourceList.find(
-        (m: any) => m.user_id === req.user.id && m.users && (m.users as any).first_name
-      );
-      const inviterName =
-        inviterMatch?.users?.first_name || req.user.email;
+      const inviter = existingMembers.find(m => m.user_id === req.user.id);
+      const inviterName = inviter?.first_name || req.user.email;
+      const frontendBaseUrl = process.env.FRONTEND_URL || process.env.MOBILE_APP_URL || 'https://bondarys.com';
+      const inviteUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/invite?code=${inviteCode}`;
 
-      const frontendBaseUrl =
-        process.env.FRONTEND_URL ||
-        process.env.MOBILE_APP_URL ||
-        'https://bondarys.com';
-
-      const inviteUrl = `${frontendBaseUrl.replace(/\/+$/, '')}/invite?code=${inviteCode || ''}`;
-
-      await emailService.sendFamilyInvitation(
-        {
-          inviterName,
-          familyName: family?.name || 'Your hourse',
-          inviteCode: inviteCode || '',
-          inviteUrl,
-          message,
-        },
-        email
-      );
-    } catch (emailError) {
-      console.error('Failed to send family invitation email:', emailError);
-      // Do not fail the HTTP request just because email sending failed
+      await emailService.sendFamilyInvitation({
+        inviterName,
+        familyName: familyName || 'Your hourse',
+        inviteCode,
+        inviteUrl,
+        message
+      }, email);
+    } catch (e) {
+      console.error('Email sending failed', e);
     }
 
     res.status(201).json({
       message: 'Invitation sent successfully',
-      invitation
+      invitation: newInvite[0]
     });
 
   } catch (error) {
@@ -559,46 +437,29 @@ router.post('/invite', [
 // Get hourse invitations
 router.get('/invitations', requireFamilyMember as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
 
-    const { data: invitations, error } = await supabase
-      .from('family_invitations')
-      .select(`
-        id,
-        email,
-        message,
-        status,
-        created_at,
-        expires_at,
-        users!invited_by (
-          first_name,
-          last_name
-        )
-      `)
-      .eq('family_id', familyId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Get invitations error:', error);
-      return res.status(500).json({
-        error: 'Failed to fetch invitations',
-        message: 'An error occurred while fetching invitations'
-      });
-    }
+    const { rows: invitations } = await dbQuery(`
+      SELECT 
+        fi.id, fi.email, fi.message, fi.status, fi.created_at, fi.expires_at,
+        u.first_name, u.last_name
+      FROM family_invitations fi
+      LEFT JOIN public.users u ON fi.invited_by = u.id
+      WHERE fi.family_id = $1
+      ORDER BY fi.created_at DESC
+    `, [familyId]);
 
     res.json({
-      invitations: invitations?.map(invitation => ({
+      invitations: invitations.map(invitation => ({
         id: invitation.id,
         email: invitation.email,
         message: invitation.message,
         status: invitation.status,
         createdAt: invitation.created_at,
         expiresAt: invitation.expires_at,
-        invitedBy: invitation.users ?
-          `${(invitation.users as any).first_name} ${(invitation.users as any).last_name}` :
-          'Unknown'
-      })) || []
+        invitedBy: invitation.first_name ?
+          `${invitation.first_name} ${invitation.last_name}` : 'Unknown'
+      }))
     });
 
   } catch (error) {
@@ -613,17 +474,19 @@ router.get('/invitations', requireFamilyMember as any, async (req: any, res: Res
 // Accept invitation (by invitation ID or code)
 router.post('/invitations/:invitationId/accept', authenticateToken as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const { invitationId } = req.params;
 
     // Get invitation
-    const { data: invitation, error: inviteError } = await supabase
-      .from('family_invitations')
-      .select('*, families(id, name)')
-      .eq('id', invitationId)
-      .single();
+    const { rows: invitations } = await dbQuery(`
+      SELECT fi.*, f.id as family_id, f.name as family_name
+      FROM family_invitations fi
+      JOIN families f ON fi.family_id = f.id
+      WHERE fi.id = $1
+    `, [invitationId]);
 
-    if (inviteError || !invitation) {
+    const invitation = invitations[0];
+
+    if (!invitation) {
       return res.status(404).json({
         error: 'Invitation not found',
         message: 'This invitation does not exist or has expired'
@@ -641,10 +504,10 @@ router.post('/invitations/:invitationId/accept', authenticateToken as any, async
     // Check if invitation has expired
     if (new Date(invitation.expires_at) < new Date()) {
       // Mark as expired
-      await supabase
-        .from('family_invitations')
-        .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .eq('id', invitationId);
+      await dbQuery(
+        'UPDATE family_invitations SET status = $1, updated_at = NOW() WHERE id = $2',
+        ['expired', invitationId]
+      );
 
       return res.status(400).json({
         error: 'Invitation expired',
@@ -661,19 +524,17 @@ router.post('/invitations/:invitationId/accept', authenticateToken as any, async
     }
 
     // Check if user is already a member
-    const { data: existingMember } = await supabase
-      .from('family_members')
-      .select('id')
-      .eq('family_id', invitation.family_id)
-      .eq('user_id', req.user.id)
-      .single();
+    const { rows: existingMember } = await dbQuery(
+      'SELECT id FROM family_members WHERE family_id = $1 AND user_id = $2',
+      [invitation.family_id, req.user.id]
+    );
 
-    if (existingMember) {
+    if (existingMember.length > 0) {
       // Mark invitation as accepted even if already a member
-      await supabase
-        .from('family_invitations')
-        .update({ status: 'accepted', updated_at: new Date().toISOString() })
-        .eq('id', invitationId);
+      await dbQuery(
+        'UPDATE family_invitations SET status = $1, updated_at = NOW() WHERE id = $2',
+        ['accepted', invitationId]
+      );
 
       return res.status(200).json({
         message: 'You are already a member of this hourse',
@@ -682,32 +543,23 @@ router.post('/invitations/:invitationId/accept', authenticateToken as any, async
     }
 
     // Add user as member
-    const { error: memberError } = await supabase
-      .from('family_members')
-      .insert({
-        family_id: invitation.family_id,
-        user_id: req.user.id,
-        role: 'member', // Default role, can be changed by admin later
-        joined_at: new Date().toISOString()
-      });
-
-    if (memberError) {
-      console.error('Add member error:', memberError);
-      return res.status(500).json({
-        error: 'Failed to join hourse',
-        message: 'An error occurred while joining the hourse'
-      });
-    }
+    await dbQuery(`
+      INSERT INTO family_members (family_id, user_id, role, joined_at)
+      VALUES ($1, $2, $3, NOW())
+    `, [invitation.family_id, req.user.id, 'member']);
 
     // Mark invitation as accepted
-    await supabase
-      .from('family_invitations')
-      .update({ status: 'accepted', updated_at: new Date().toISOString() })
-      .eq('id', invitationId);
+    await dbQuery(
+      'UPDATE family_invitations SET status = $1, updated_at = NOW() WHERE id = $2',
+      ['accepted', invitationId]
+    );
 
     res.json({
       message: 'Successfully joined the hourse',
-      family: invitation.families
+      family: {
+        id: invitation.family_id,
+        name: invitation.family_name
+      }
     });
 
   } catch (error) {
@@ -722,17 +574,17 @@ router.post('/invitations/:invitationId/accept', authenticateToken as any, async
 // Decline invitation
 router.post('/invitations/:invitationId/decline', authenticateToken as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const { invitationId } = req.params;
 
     // Get invitation
-    const { data: invitation, error: inviteError } = await supabase
-      .from('family_invitations')
-      .select('id, email, status')
-      .eq('id', invitationId)
-      .single();
+    const { rows: invitations } = await dbQuery(
+      'SELECT id, email, status FROM family_invitations WHERE id = $1',
+      [invitationId]
+    );
 
-    if (inviteError || !invitation) {
+    const invitation = invitations[0];
+
+    if (!invitation) {
       return res.status(404).json({
         error: 'Invitation not found',
         message: 'This invitation does not exist'
@@ -748,18 +600,10 @@ router.post('/invitations/:invitationId/decline', authenticateToken as any, asyn
     }
 
     // Mark invitation as declined
-    const { error: updateError } = await supabase
-      .from('family_invitations')
-      .update({ status: 'declined', updated_at: new Date().toISOString() })
-      .eq('id', invitationId);
-
-    if (updateError) {
-      console.error('Decline invitation error:', updateError);
-      return res.status(500).json({
-        error: 'Failed to decline invitation',
-        message: 'An error occurred while declining the invitation'
-      });
-    }
+    await dbQuery(
+      'UPDATE family_invitations SET status = $1, updated_at = NOW() WHERE id = $2',
+      ['declined', invitationId]
+    );
 
     res.json({
       message: 'Invitation declined successfully'
@@ -777,59 +621,36 @@ router.post('/invitations/:invitationId/decline', authenticateToken as any, asyn
 // Get user's pending invitations (invitations sent to their email)
 router.get('/invitations/pending', authenticateToken as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const userEmail = req.user.email;
 
-    const { data: invitations, error } = await supabase
-      .from('family_invitations')
-      .select(`
-        id,
-        family_id,
-        email,
-        message,
-        status,
-        created_at,
-        expires_at,
-        families (
-          id,
-          name,
-          description
-        ),
-        users!invited_by (
-          first_name,
-          last_name
-        )
-      `)
-      .eq('email', userEmail)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Get pending invitations error:', error);
-      return res.status(500).json({
-        error: 'Failed to fetch invitations',
-        message: 'An error occurred while fetching invitations'
-      });
-    }
+    const { rows: invitations } = await dbQuery(`
+      SELECT 
+        fi.id, fi.family_id, fi.email, fi.message, fi.status, fi.created_at, fi.expires_at,
+        f.id as family_id, f.name as family_name, f.description as family_desc,
+        u.first_name, u.last_name
+      FROM family_invitations fi
+      JOIN families f ON fi.family_id = f.id
+      LEFT JOIN public.users u ON fi.invited_by = u.id
+      WHERE fi.email = $1 AND fi.status = 'pending'
+    `, [userEmail]);
 
     res.json({
-      invitations: invitations?.map(inv => ({
-        id: inv.id,
-        familyId: inv.family_id,
-        email: inv.email,
-        message: inv.message,
-        status: inv.status,
-        createdAt: inv.created_at,
-        expiresAt: inv.expires_at,
-        family: inv.families ? {
-          id: (inv.families as any).id,
-          name: (inv.families as any).name,
-          description: (inv.families as any).description
-        } : null,
-        invitedBy: inv.users ?
-          `${(inv.users as any).first_name} ${(inv.users as any).last_name}` :
-          'Unknown'
-      })) || []
+      invitations: invitations.map(invitation => ({
+        id: invitation.id,
+        familyId: invitation.family_id,
+        email: invitation.email,
+        message: invitation.message,
+        status: invitation.status,
+        createdAt: invitation.created_at,
+        expiresAt: invitation.expires_at,
+        family: {
+          id: invitation.family_id,
+          name: invitation.family_name,
+          description: invitation.family_desc
+        },
+        invitedBy: invitation.first_name ?
+          `${invitation.first_name} ${invitation.last_name}` : 'Unknown'
+      }))
     });
 
   } catch (error) {
@@ -844,37 +665,35 @@ router.get('/invitations/pending', authenticateToken as any, async (req: any, re
 // Leave hourse
 router.post('/leave', requireFamilyMember as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const familyRole = req.familyRole;
 
     // Check if user is the owner
     if (familyRole === 'owner') {
       // Check if there are other members
-      const { count } = await supabase
-        .from('family_members')
-        .select('user_id', { count: 'exact' })
-        .eq('family_id', familyId);
+      const { rows } = await dbQuery(
+        'SELECT count(*) FROM family_members WHERE family_id = $1',
+        [familyId]
+      );
 
-      if (count && count > 1) {
+      const count = parseInt(rows[0].count);
+
+      if (count > 1) {
         return res.status(400).json({
           error: 'Cannot leave hourse',
           message: 'As the owner, you must transfer ownership or remove all other members before leaving'
         });
       }
 
-      // If owner is the only member, delete the hourse
-      await supabase
-        .from('families')
-        .delete()
-        .eq('id', familyId);
+      // If owner is the only member, delete the hourse (cascade should handle members, but specific logic might vary)
+      // Ideally DELETE FROM families WHERE id = familyId
+      await dbQuery('DELETE FROM families WHERE id = $1', [familyId]);
     } else {
       // Remove user from hourse
-      await supabase
-        .from('family_members')
-        .delete()
-        .eq('family_id', familyId)
-        .eq('user_id', req.user.id);
+      await dbQuery(
+        'DELETE FROM family_members WHERE family_id = $1 AND user_id = $2',
+        [familyId, req.user.id]
+      );
     }
 
     res.json({
@@ -894,52 +713,31 @@ router.post('/leave', requireFamilyMember as any, async (req: any, res: Response
 // Get shopping list items for hourse
 router.get('/shopping-list', requireFamilyMember as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
 
-    const { data: items, error } = await supabase
-      .from('shopping_items')
-      .select(`
-        id,
-        family_id,
-        item,
-        quantity,
-        category,
-        completed,
-        list_name,
-        created_by,
-        created_at,
-        updated_at,
-        users!created_by (
-          first_name,
-          last_name
-        )
-      `)
-      .eq('family_id', familyId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Get shopping list error:', error);
-      return res.status(500).json({
-        error: 'Failed to fetch shopping list',
-        message: 'An error occurred while fetching shopping items'
-      });
-    }
+    const { rows: items } = await dbQuery(`
+      SELECT 
+        si.id, si.family_id, si.item, si.quantity, si.category, si.completed, si.list_name, si.created_by, si.created_at, si.updated_at,
+        u.first_name, u.last_name
+      FROM shopping_items si
+      LEFT JOIN public.users u ON si.created_by = u.id
+      WHERE si.family_id = $1
+      ORDER BY si.created_at DESC
+    `, [familyId]);
 
     res.json({
-      items: items?.map(item => ({
+      items: items.map(item => ({
         id: item.id,
         item: item.item,
         quantity: item.quantity || '1',
         category: item.category || 'general',
         completed: item.completed || false,
         list: item.list_name || 'Groceries',
-        createdBy: item.users ?
-          `${(item.users as any).first_name} ${(item.users as any).last_name}` :
-          'Unknown',
+        createdBy: item.first_name ?
+          `${item.first_name} ${item.last_name}` : 'Unknown',
         createdAt: item.created_at,
         updatedAt: item.updated_at
-      })) || []
+      }))
     });
 
   } catch (error) {
@@ -960,44 +758,32 @@ router.post('/shopping-list', [
   body('list').optional().isString(),
 ], validateRequest, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const { item, quantity, category, list } = req.body;
 
-    const { data: newItem, error } = await supabase
-      .from('shopping_items')
-      .insert({
-        family_id: familyId,
-        item: item.trim(),
-        quantity: quantity || '1',
-        category: category || 'general',
-        list_name: list || 'Groceries',
-        completed: false,
-        created_by: req.user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Create shopping item error:', error);
-      return res.status(500).json({
-        error: 'Failed to create shopping item',
-        message: 'An error occurred while creating the item'
-      });
-    }
+    const { rows: newItem } = await dbQuery(`
+      INSERT INTO shopping_items (family_id, item, quantity, category, list_name, completed, created_by, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, false, $6, NOW(), NOW())
+      RETURNING *
+    `, [
+      familyId,
+      item.trim(),
+      quantity || '1',
+      category || 'general',
+      list || 'Groceries',
+      req.user.id
+    ]);
 
     res.status(201).json({
       item: {
-        id: newItem.id,
-        item: newItem.item,
-        quantity: newItem.quantity,
-        category: newItem.category,
-        completed: newItem.completed,
-        list: newItem.list_name,
-        createdAt: newItem.created_at,
-        updatedAt: newItem.updated_at
+        id: newItem[0].id,
+        item: newItem[0].item,
+        quantity: newItem[0].quantity,
+        category: newItem[0].category,
+        completed: newItem[0].completed,
+        list: newItem[0].list_name,
+        createdAt: newItem[0].created_at,
+        updatedAt: newItem[0].updated_at
       }
     });
 
@@ -1020,62 +806,72 @@ router.put('/shopping-list/:itemId', [
   body('list').optional().isString(),
 ], validateRequest, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const { itemId } = req.params;
     const { item, quantity, category, completed, list } = req.body;
 
     // Verify item belongs to hourse
-    const { data: existing } = await supabase
-      .from('shopping_items')
-      .select('id, family_id')
-      .eq('id', itemId)
-      .single();
+    const { rows: existing } = await dbQuery(
+      'SELECT id, family_id FROM shopping_items WHERE id = $1',
+      [itemId]
+    );
 
-    if (!existing || existing.family_id !== familyId) {
+    if (existing.length === 0 || existing[0].family_id !== familyId) {
       return res.status(404).json({
         error: 'Item not found',
         message: 'Shopping item not found'
       });
     }
 
-    const updatePayload: any = {
-      updated_at: new Date().toISOString()
-    };
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
 
-    if (item !== undefined) updatePayload.item = item.trim();
-    if (quantity !== undefined) updatePayload.quantity = quantity;
-    if (category !== undefined) updatePayload.category = category;
-    if (completed !== undefined) updatePayload.completed = completed;
-    if (list !== undefined) updatePayload.list_name = list;
-
-    const { data: updatedItem, error } = await supabase
-      .from('shopping_items')
-      .update(updatePayload)
-      .eq('id', itemId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Update shopping item error:', error);
-      return res.status(500).json({
-        error: 'Failed to update shopping item',
-        message: 'An error occurred while updating the item'
-      });
+    if (item !== undefined) {
+      updates.push(`item = $${idx++}`);
+      values.push(item.trim());
+    }
+    if (quantity !== undefined) {
+      updates.push(`quantity = $${idx++}`);
+      values.push(quantity);
+    }
+    if (category !== undefined) {
+      updates.push(`category = $${idx++}`);
+      values.push(category);
+    }
+    if (completed !== undefined) {
+      updates.push(`completed = $${idx++}`);
+      values.push(completed);
+    }
+    if (list !== undefined) {
+      updates.push(`list_name = $${idx++}`);
+      values.push(list);
     }
 
-    res.json({
-      item: {
-        id: updatedItem.id,
-        item: updatedItem.item,
-        quantity: updatedItem.quantity,
-        category: updatedItem.category,
-        completed: updatedItem.completed,
-        list: updatedItem.list_name,
-        createdAt: updatedItem.created_at,
-        updatedAt: updatedItem.updated_at
-      }
-    });
+    if (updates.length > 0) {
+      updates.push(`updated_at = NOW()`);
+      values.push(itemId);
+
+      const { rows: updatedItem } = await dbQuery(
+        `UPDATE shopping_items SET ${updates.join(', ')} WHERE id = $${idx} RETURNING *`,
+        values
+      );
+
+      res.json({
+        item: {
+          id: updatedItem[0].id,
+          item: updatedItem[0].item,
+          quantity: updatedItem[0].quantity,
+          category: updatedItem[0].category,
+          completed: updatedItem[0].completed,
+          list: updatedItem[0].list_name,
+          createdAt: updatedItem[0].created_at,
+          updatedAt: updatedItem[0].updated_at
+        }
+      });
+    } else {
+      res.json({ message: 'No changes made' });
+    }
 
   } catch (error) {
     console.error('Update shopping item error:', error);
@@ -1089,36 +885,23 @@ router.put('/shopping-list/:itemId', [
 // Delete shopping list item
 router.delete('/shopping-list/:itemId', requireFamilyMember as any, async (req: any, res: Response) => {
   try {
-    const supabase = getSupabaseClient();
     const familyId = req.familyId;
     const { itemId } = req.params;
 
     // Verify item belongs to hourse
-    const { data: existing } = await supabase
-      .from('shopping_items')
-      .select('id, family_id')
-      .eq('id', itemId)
-      .single();
+    const { rows: existing } = await dbQuery(
+      'SELECT id, family_id FROM shopping_items WHERE id = $1',
+      [itemId]
+    );
 
-    if (!existing || existing.family_id !== familyId) {
+    if (existing.length === 0 || existing[0].family_id !== familyId) {
       return res.status(404).json({
         error: 'Item not found',
         message: 'Shopping item not found'
       });
     }
 
-    const { error } = await supabase
-      .from('shopping_items')
-      .delete()
-      .eq('id', itemId);
-
-    if (error) {
-      console.error('Delete shopping item error:', error);
-      return res.status(500).json({
-        error: 'Failed to delete shopping item',
-        message: 'An error occurred while deleting the item'
-      });
-    }
+    await dbQuery('DELETE FROM shopping_items WHERE id = $1', [itemId]);
 
     res.json({
       success: true,
@@ -1134,59 +917,66 @@ router.delete('/shopping-list/:itemId', requireFamilyMember as any, async (req: 
   }
 });
 
-export default router;
-
 // Get events for a specific hourse (must be a member of that hourse)
 router.get(
   '/:familyId/events',
   [
-    query('startDate').optional().isISO8601(),
-    query('endDate').optional().isISO8601(),
-    query('type').optional().isString(),
-    query('createdBy').optional().isUUID(),
+    queryParam('startDate').optional().isISO8601(),
+    queryParam('endDate').optional().isISO8601(),
+    queryParam('type').optional().isString(),
+    queryParam('createdBy').optional().isUUID(),
   ],
   validateRequest,
   async (req: any, res: Response) => {
     try {
-      const supabase = getSupabaseClient();
-      const { familyId } = req.params as { familyId: string };
-      const { startDate, endDate, type, createdBy } = req.query as Record<string, string>;
+      const { familyId } = req.params;
+      const { startDate, endDate, type, createdBy } = req.query;
 
       // Verify requester is a member of the requested hourse
-      const { data: membership } = await supabase
-        .from('family_members')
-        .select('user_id')
-        .eq('family_id', familyId)
-        .eq('user_id', req.user.id)
-        .single();
-      if (!membership) {
+      const { rows: membership } = await dbQuery(
+        'SELECT 1 FROM family_members WHERE family_id = $1 AND user_id = $2',
+        [familyId, req.user.id]
+      );
+
+      if (membership.length === 0) {
         return res.status(403).json({
           error: 'Access denied',
           message: 'You are not a member of this hourse',
         });
       }
 
-      let queryBuilder = supabase
-        .from('events')
-        .select('*')
-        .eq('family_id', familyId)
-        .order('start_date', { ascending: true });
+      let sql = 'SELECT * FROM events WHERE family_id = $1';
+      const params: any[] = [familyId];
+      let idx = 2;
 
-      if (startDate) queryBuilder = queryBuilder.gte('start_date', startDate);
-      if (endDate) queryBuilder = queryBuilder.lte('end_date', endDate);
-      if (type) queryBuilder = queryBuilder.eq('event_type', type);
-      if (createdBy) queryBuilder = queryBuilder.eq('created_by', createdBy);
-
-      const { data, error } = await queryBuilder;
-      if (error) {
-        console.error('Get hourse events error:', error);
-        return res.status(500).json({ error: 'Failed to fetch hourse events' });
+      if (startDate) {
+        sql += ` AND start_date >= $${idx++}`;
+        params.push(startDate);
+      }
+      if (endDate) {
+        sql += ` AND end_date <= $${idx++}`;
+        params.push(endDate);
+      }
+      if (type) {
+        sql += ` AND event_type = $${idx++}`;
+        params.push(type);
+      }
+      if (createdBy) {
+        sql += ` AND created_by = $${idx++}`;
+        params.push(createdBy);
       }
 
-      return res.json({ events: data || [] });
+      sql += ' ORDER BY start_date ASC';
+
+      const { rows: events } = await dbQuery(sql, params);
+
+      return res.json({ events: events });
     } catch (error) {
       console.error('Get hourse events error:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
 );
+
+export default router;
+

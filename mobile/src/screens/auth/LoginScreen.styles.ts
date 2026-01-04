@@ -1,6 +1,4 @@
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 // Red/Coral color palette (matching signup page)
 const colors = {
@@ -9,54 +7,54 @@ const colors = {
   backgroundGradientStart: '#FA7272', // Primary red
   backgroundGradientEnd: '#FFBBB4', // Coral
   backgroundOverlay: 'rgba(255, 255, 255, 0.1)',
-  
+
   // Primary brand color
   primary: '#FA7272',
   primaryDark: '#bf4342',
   primaryLight: '#FFBBB4',
   primaryLighter: 'rgba(255, 255, 255, 0.2)',
-  
+
   // Text colors - for white card background
   textPrimary: '#1D1D1F', // Dark text for white card
   textSecondary: '#666666', // Secondary text
   textTertiary: '#999999', // Tertiary text
   textWhite: '#FFFFFF', // White text for buttons
-  
+
   // Input colors - white card style
   inputBackground: '#FFFFFF',
   inputBorder: '#E5E5E5',
   inputBorderFocused: '#FA7272',
   inputPlaceholder: '#999999',
   inputText: '#1D1D1F',
-  
+
   // Error colors
   error: '#FF4757',
   errorBackground: 'rgba(255, 71, 87, 0.1)',
   errorBorder: '#FF4757',
-  
+
   // Success colors
   success: '#10B981',
-  
+
   // Button colors - red/coral primary
   buttonPrimary: '#FA7272',
   buttonPrimaryHover: '#E86565',
   buttonDisabled: 'rgba(250, 114, 114, 0.5)',
   buttonText: '#FFFFFF',
-  
+
   // Social button colors - white circles
   socialButtonBg: '#FFFFFF',
   socialButtonBorder: '#E5E5E5',
-  
+
   // Divider
   divider: '#E5E5E5',
-  
+
   // Link colors
   link: '#FA7272',
-  
+
   // Checkbox colors
   checkboxBorder: '#FA7272',
   checkboxChecked: '#FA7272',
-  
+
   // Shadow
   shadow: 'rgba(0, 0, 0, 0.15)',
 };
@@ -165,6 +163,10 @@ export const styles = StyleSheet.create({
   },
   backButtonPlaceholder: {
     flex: 1,
+  },
+  headerContainer: {
+    marginBottom: 24,
+    alignItems: 'flex-start',
   },
   inputContainer: {
     marginBottom: 20,

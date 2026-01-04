@@ -5,14 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../../utils/fontUtils';
 
 interface Step3JoinFamilyScreenProps {
@@ -21,14 +19,14 @@ interface Step3JoinFamilyScreenProps {
 }
 
 const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigation, route }) => {
-  const { email, password } = route.params;
+  const { email, phone, password } = route.params;
   const [pinCode, setPinCode] = useState(['', '', '', '', '', '']);
   const [errors, setErrors] = useState<{ pinCode?: string }>({});
   const inputRefs = useRef<TextInput[]>([]);
 
   const handlePinChange = (value: string, index: number) => {
     if (value.length > 1) return; // Only allow single digit
-    
+
     const newPinCode = [...pinCode];
     newPinCode[index] = value;
     setPinCode(newPinCode);
@@ -52,7 +50,7 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
 
   const validatePinCode = () => {
     const pinString = pinCode.join('');
-    
+
     if (pinString.length !== 6) {
       setErrors({ pinCode: 'Please enter a complete 6-digit PIN code' });
       return false;
@@ -70,11 +68,12 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
     if (!validatePinCode()) return;
 
     const pinString = pinCode.join('');
-    
+
     // Navigate to name step with PIN code
-    navigation.navigate('Step4Name', { 
-      email, 
-      password, 
+    navigation.navigate('Step4Name', {
+      email,
+      phone,
+      password,
       familyOption: 'join',
       familyCode: pinString
     });
@@ -90,7 +89,7 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
         colors={['#FA7272', '#FFBBB4']}
         style={styles.gradient}
       >
-        
+
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
@@ -99,9 +98,9 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.stepIndicator}>
-                <Text style={styles.stepText}>Step 3 of 6</Text>
+                <Text style={styles.stepText}>Step 1 of 4</Text>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progressFill, { width: '50%' }]} />
+                  <View style={[styles.progressFill, { width: '25%' }]} />
                 </View>
               </View>
             </View>
@@ -151,7 +150,7 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
                 <View style={styles.infoText}>
                   <Text style={styles.infoTitle}>How to get the PIN?</Text>
                   <Text style={styles.infoDescription}>
-                    Ask the hourse admin to share the 6-digit PIN code. 
+                    Ask the hourse admin to share the 6-digit PIN code.
                     This code is used to securely join the hourse group.
                   </Text>
                 </View>
@@ -164,7 +163,7 @@ const Step3JoinFamilyScreen: React.FC<Step3JoinFamilyScreenProps> = ({ navigatio
                 <Icon name="arrow-left" size={20} color="#FFFFFF" />
                 <Text style={styles.backButtonText}>Back to Options</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
                 <Text style={styles.nextButtonText}>Join hourse</Text>
                 <Icon name="arrow-right" size={20} color="#bf4342" />
@@ -303,7 +302,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 16,
     elevation: 8,
-    backdropFilter: 'blur(10px)',
   },
   infoText: {
     flex: 1,

@@ -25,7 +25,7 @@ export const homeStyles = StyleSheet.create({
   tabContentScrollView: {
     flex: 1,
   },
-  
+
   // Split-out style modules
   ...shoppingStyles,
   ...goalsStyles,
@@ -90,7 +90,7 @@ export const homeStyles = StyleSheet.create({
     fontSize: 12,
     color: '#F3F4F6',
   },
-  
+
   // Header styles
   header: {
     flexDirection: 'row',
@@ -774,23 +774,23 @@ export const homeStyles = StyleSheet.create({
     gap: 8,
     backgroundColor: 'transparent',
     marginHorizontal: 0,
-    marginTop: 0,
+    marginTop: -10, // Move up a little bit
     marginBottom: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   tab: {
-    width: 120,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    width: 115,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
     borderRadius: 9999,
     alignItems: 'center',
     backgroundColor: 'rgba(255, 182, 193, 0.1)',
     borderWidth: 0,
     borderColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 4,
+    flexDirection: 'row', // Restore Horizontal layout
+    justifyContent: 'flex-start',
+    gap: 6,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
@@ -856,7 +856,7 @@ export const homeStyles = StyleSheet.create({
   tabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#C2185B',
     textAlign: 'center',
   },
   activeTabText: {
@@ -2633,14 +2633,14 @@ export const homeStyles = StyleSheet.create({
     color: '#374151',
     lineHeight: 18,
   },
-  
+
   // Inline Links in Comments
   commentInlineLink: {
     color: '#3B82F6',
     textDecorationLine: 'underline',
     fontWeight: '500',
   },
-  
+
   // Comment Image Preview
   commentImageContainer: {
     marginTop: 8,
@@ -2654,7 +2654,7 @@ export const homeStyles = StyleSheet.create({
     height: 150,
     borderRadius: 8,
   },
-  
+
   // Comment Attachments
   commentAttachment: {
     flexDirection: 'row',
@@ -2689,13 +2689,13 @@ export const homeStyles = StyleSheet.create({
     padding: 4,
     marginLeft: 8,
   },
-  
+
   addCommentSection: {
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderTopWidth: 0, // Removed border
+    borderTopColor: 'transparent',
+    backgroundColor: 'transparent', // Removed background
   },
   addCommentInputContainer: {
     flexDirection: 'row',
@@ -2733,7 +2733,7 @@ export const homeStyles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 4,
   },
-  
+
   // Attachment Preview Styles
   attachmentPreview: {
     marginBottom: 12,
@@ -2888,7 +2888,7 @@ export const homeStyles = StyleSheet.create({
   },
 
   // New hourse Tab Redesign Styles
-  
+
   // hourse Overview Header
   familyOverviewHeader: {
     backgroundColor: '#FFFFFF',

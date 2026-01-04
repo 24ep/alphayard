@@ -116,18 +116,17 @@ export const PinUnlockScreen: React.FC = () => {
                             title="Enter Your PIN"
                             subtitle="Enter your 6-digit PIN to unlock"
                             error={error}
-                        />
+                        >
+                            <View style={styles.forgotPinWrapper}>
+                                <TouchableOpacity onPress={handleForgotPin}>
+                                    <Text style={styles.forgotTextInside}>Forgot PIN?</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </PinKeypad>
 
                         {isVerifying && (
                             <Text style={styles.verifyingText}>Verifying...</Text>
                         )}
-                    </View>
-
-                    {/* Footer */}
-                    <View style={styles.footer}>
-                        <TouchableOpacity onPress={handleForgotPin}>
-                            <Text style={styles.forgotText}>Forgot PIN?</Text>
-                        </TouchableOpacity>
                     </View>
                 </View>
             </LinearGradient>
@@ -144,7 +143,7 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
-        paddingHorizontal: 20,
+        paddingHorizontal: 0, // Full width
     },
     header: {
         alignItems: 'center',
@@ -168,29 +167,31 @@ const styles = StyleSheet.create({
     card: {
         flex: 1,
         backgroundColor: '#FFF',
-        borderRadius: 24,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
         paddingVertical: 32,
         paddingHorizontal: 16,
         marginTop: 20,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 5,
+    },
+    forgotPinWrapper: {
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    forgotTextInside: {
+        color: '#FA7272',
+        fontSize: 16,
+        fontWeight: '500',
+        textDecorationLine: 'underline',
     },
     verifyingText: {
         textAlign: 'center',
         color: '#666',
         marginTop: 16,
-    },
-    footer: {
-        paddingVertical: 24,
-        alignItems: 'center',
-    },
-    forgotText: {
-        color: 'rgba(255, 255, 255, 0.9)',
-        fontSize: 16,
-        textDecorationLine: 'underline',
     },
 });
 

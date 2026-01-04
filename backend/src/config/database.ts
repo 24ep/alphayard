@@ -1,7 +1,7 @@
 import { Pool } from 'pg';
 import { config } from './env';
 
-const poolConfig = {
+const poolConfig: any = {
     host: config.DB_HOST,
     port: config.DB_PORT,
     database: config.DB_NAME,
@@ -9,11 +9,12 @@ const poolConfig = {
     password: config.DB_PASSWORD,
     max: 20, // Max number of clients in the pool
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    connectionTimeoutMillis: 10000,
 };
 
-// If DATABASE_URL is present, it overrides specific fields (pg supports this natively if passed as string, but Pool takes config object)
-// For simplicity, we prefer the individual fields, but one could parse the URL.
+if (config.DATABASE_URL) {
+    poolConfig.connectionString = config.DATABASE_URL;
+}
 
 export const pool = new Pool(poolConfig);
 

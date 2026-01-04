@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import handlebars from 'handlebars';
 import fs from 'fs';
 import path from 'path';
+import { SystemConfigModel } from '../models/SystemConfigModel';
 
 interface EmailOptions {
   to: string;
@@ -86,10 +87,10 @@ class EmailService {
 
   private loadTemplates() {
     const templatesDir = path.join(__dirname, '../templates/emails');
-    
+
     if (fs.existsSync(templatesDir)) {
       const templateFiles = fs.readdirSync(templatesDir);
-      
+
       templateFiles.forEach(file => {
         if (file.endsWith('.hbs')) {
           const templateName = file.replace('.hbs', '');
@@ -104,14 +105,39 @@ class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    if (!this.transporter || !EMAIL_ENABLED) {
-      // Email disabled or not configured: treat as no-op success in local/dev
+    // Check System Config for OTP provider override
+    const otpConfig = await SystemConfigModel.get('otp_config');
+    // Default to 'mock' if no config found OR explicitly set to mock
+    // This answers "which mock otp": It defaults to Mock if not configured!
+    const isMock = otpConfig?.emailProvider === 'mock' || !otpConfig;
+
+    if (isMock) {
+      console.log('\n================== [MOCK OTP EMAIL] ==================');
+      console.log(`To: ${options.to}`);
+      console.log(`Subject: ${options.subject}`);
+      console.log(`Code/Data:`, JSON.stringify(options.data, null, 2));
+      console.log('======================================================\n');
+
+      await this.logEmail({
+        to: options.to,
+        subject: options.subject,
+        template: options.template,
+        messageId: 'mock-' + Date.now(),
+        status: 'sent'
+      });
       return true;
+    }
+
+    if (!this.transporter || !EMAIL_ENABLED) {
+      // If we reach here, we are NOT in mock mode, but also have no transporter.
+      // This is a misconfiguration if someone explicitly set "smtp" but didn't provide env vars.
+      console.warn('⚠️ Email SMTP not configured and Mock mode disabled. Email not sent.');
+      return false;
     }
 
     try {
       let html: string;
-      
+
       if (this.templates.has(options.template)) {
         const template = this.templates.get(options.template)!;
         html = template(options.data);
@@ -130,7 +156,7 @@ class EmailService {
 
       const result = await this.transporter.sendMail(mailOptions);
       console.log(`✅ Email sent to ${options.to}:`, result.messageId);
-      
+
       // Log email in database
       await this.logEmail({
         to: options.to,
@@ -143,7 +169,7 @@ class EmailService {
       return true;
     } catch (error) {
       console.error('❌ Failed to send email:', error);
-      
+
       // Log failed email
       await this.logEmail({
         to: options.to,
@@ -192,7 +218,7 @@ class EmailService {
 
   private generateContentFromData(data: Record<string, any>): string {
     let content = '';
-    
+
     if (data.inviterName && data.familyName) {
       content = `
         <h2>You're invited to join ${data.familyName}!</h2>
@@ -318,7 +344,7 @@ class EmailService {
   // Health check
   async isHealthy(): Promise<boolean> {
     if (!this.transporter) return false;
-    
+
     try {
       await this.transporter.verify();
       return true;

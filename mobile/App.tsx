@@ -5,6 +5,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { PinProvider } from './src/contexts/PinContext';
 import { SocketProvider } from './src/contexts/SocketContext';
 import { MainContentProvider } from './src/contexts/MainContentContext';
+import { NativeBaseProvider } from 'native-base';
 import RootNavigator from './src/navigation/RootNavigator';
 
 /**
@@ -23,19 +24,21 @@ const App: React.FC = () => {
   console.log('🚀 App Starting...');
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <PinProvider>
-            <SocketProvider>
-              <MainContentProvider>
-                <RootNavigator />
-              </MainContentProvider>
-            </SocketProvider>
-          </PinProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <NativeBaseProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <AuthProvider>
+            <PinProvider>
+              <SocketProvider>
+                <MainContentProvider>
+                  <RootNavigator />
+                </MainContentProvider>
+              </SocketProvider>
+            </PinProvider>
+          </AuthProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </NativeBaseProvider>
   );
 };
 

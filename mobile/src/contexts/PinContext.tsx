@@ -58,8 +58,8 @@ export const PinProvider: React.FC<PinProviderProps> = ({ children }) => {
             setHasPin(hasPinSetup);
 
             if (hasPinSetup) {
-                // Check if session has timed out
-                await checkLockStatus();
+                // Force lock on startup if PIN exists
+                setIsPinLocked(true);
             }
         } catch (error) {
             console.error('Error checking PIN status:', error);
@@ -78,6 +78,9 @@ export const PinProvider: React.FC<PinProviderProps> = ({ children }) => {
                     setIsPinLocked(true);
                     console.log('[PIN] Session timed out, app locked');
                 }
+            } else {
+                // If IDK when last activity was but PIN exists, lock it
+                if (hasPin) setIsPinLocked(true);
             }
         } catch (error) {
             console.error('Error checking lock status:', error);
