@@ -384,10 +384,17 @@ export class AuthController {
       }
 
       // Verify refresh token
-      const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as any;
+      let decoded;
+      try {
+        decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET!) as any;
+      } catch (verifyError) {
+        console.error('[AUTH DEBUG] Refresh token verification failed:', verifyError);
+        return res.status(401).json({ success: false, message: 'Invalid refresh token (verification failed)' });
+      }
 
       const user = await UserModel.findById(decoded.id || decoded.userId);
       if (!user) {
+        console.error('[AUTH DEBUG] Refresh token user not found:', decoded.id || decoded.userId);
         return res.status(401).json({
           success: false,
           message: 'Invalid refresh token',
@@ -396,6 +403,8 @@ export class AuthController {
 
       // Check if refresh token exists in user's tokens
       if (!user.refreshTokens.includes(refreshToken)) {
+        console.error('[AUTH DEBUG] Refresh token not in user whitelist. Token:', refreshToken.substring(0, 10) + '...');
+        console.error('[AUTH DEBUG] User tokens:', user.refreshTokens.map((t: string) => t.substring(0, 10) + '...'));
         return res.status(401).json({
           success: false,
           message: 'Invalid refresh token',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, Text, TouchableOpacity } from 'react-native';
+import { Alert } from 'react-native';
 import {
   Box,
   VStack,
@@ -10,11 +10,6 @@ import {
   Badge,
   Pressable,
   Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   useDisclosure,
   Button,
   Input,
@@ -31,31 +26,8 @@ import {
   Spinner,
 } from 'native-base';
 // Mock MapView component for development
-const MapView = ({ children, style, region, onPress }: any) => (
-  <View style={[style, { backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center' }]}>
-    <Text style={{ color: '#666', fontSize: 16 }}>Map View (Mock)</Text>
-    <Text style={{ color: '#999', fontSize: 12 }}>Tap to set geofence location</Text>
-    {children}
-  </View>
-);
-
-const Marker = ({ coordinate, onPress, children }: any) => (
-  <TouchableOpacity onPress={onPress} style={{ position: 'absolute' }}>
-    {children}
-  </TouchableOpacity>
-);
-
-const Circle = ({ center, radius, fillColor, strokeColor }: any) => (
-  <View style={{ 
-    position: 'absolute', 
-    width: radius * 2, 
-    height: radius * 2, 
-    borderRadius: radius,
-    backgroundColor: fillColor || 'rgba(0, 122, 255, 0.2)',
-    borderWidth: 2,
-    borderColor: strokeColor || '#007AFF'
-  }} />
-);
+import { MapCN } from '../../components/common/MapCN';
+import { Marker, Circle } from 'react-native-maps';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';
@@ -85,7 +57,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
-  
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
 
@@ -162,7 +134,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
 
     try {
       setIsLoading(true);
-      
+
       const geofenceData = {
         name: formData.name.trim(),
         type: formData.type,
@@ -190,7 +162,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
       onClose();
       onEditClose();
       setSelectedGeofence(null);
-      
+
       Alert.alert('Success', selectedGeofence ? 'Geofence updated' : 'Geofence created');
     } catch (error) {
       Alert.alert('Error', 'Failed to save geofence');
@@ -281,7 +253,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
           >
             <Text fontSize={20}>{getTypeIcon(geofence.type)}</Text>
           </Box>
-          
+
           <VStack flex={1}>
             <HStack space={2} alignItems="center">
               <Text style={textStyles.h4} color={textColor} fontWeight="600">
@@ -295,11 +267,11 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
                 {geofence.isActive ? 'Active' : 'Inactive'}
               </Badge>
             </HStack>
-            
+
             <Text style={textStyles.caption} color={colors.gray[600]}>
               Radius: {geofence.radius}m
             </Text>
-            
+
             <HStack space={2} mt={1}>
               {geofence.notifications.onEnter && (
                 <Badge colorScheme="blue" variant="subtle" size="xs">
@@ -318,7 +290,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
               )}
             </HStack>
           </VStack>
-          
+
           <VStack space={1}>
             <IconButton
               icon={<Icon as={IconMC} name="pencil" size={4} />}
@@ -377,15 +349,10 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
         h={300}
         mb={4}
       >
-        <MapView
-          provider={PROVIDER_GOOGLE}
+        <MapCN
           style={{ flex: 1 }}
           region={mapRegion}
           onPress={handleMapPress}
-          showsUserLocation={true}
-          showsMyLocationButton={true}
-          showsCompass={true}
-          showsScale={true}
         >
           {/* Geofence circles */}
           {geofences.map((geofence) => (
@@ -401,7 +368,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
               strokeWidth={2}
             />
           ))}
-          
+
           {/* Geofence markers */}
           {geofences.map((geofence) => (
             <Marker
@@ -424,7 +391,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
               </Box>
             </Marker>
           ))}
-        </MapView>
+        </MapCN>
       </Box>
 
       {/* Geofence list */}
@@ -476,14 +443,14 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
 
       {/* Create/Edit Geofence Modal */}
       <Modal isOpen={isOpen || isEditOpen} onClose={onClose || onEditClose} size="xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
+        <Modal.Overlay />
+        <Modal.Content>
+          <Modal.Header>
             <Text style={textStyles.h3} color={textColor}>
               {selectedGeofence ? 'Edit Safety Zone' : 'Create Safety Zone'}
             </Text>
-          </ModalHeader>
-          <ModalBody>
+          </Modal.Header>
+          <Modal.Body>
             <VStack space={4}>
               {/* Basic Info */}
               <FormControl>
@@ -645,8 +612,8 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
                 Tap on the map above to set the zone center
               </Text>
             </VStack>
-          </ModalBody>
-          <ModalFooter>
+          </Modal.Body>
+          <Modal.Footer>
             <HStack space={3}>
               <Button variant="ghost" onPress={onClose || onEditClose}>
                 Cancel
@@ -660,8 +627,8 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
                 {selectedGeofence ? 'Update' : 'Create'}
               </Button>
             </HStack>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Content>
       </Modal>
     </Box>
   );

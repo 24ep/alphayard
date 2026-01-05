@@ -39,13 +39,13 @@ class EmotionService {
   async submitEmotionCheck(emotion: number): Promise<void> {
     try {
       const today = new Date().toISOString().split('T')[0];
-      
+
       const response = await api.post('/emotions', {
         emotion,
         date: today,
       });
 
-      if (response.data.success) {
+      if (response.success) {
         // Store today's date in AsyncStorage
         await AsyncStorage.setItem(this.STORAGE_KEY, today);
       }

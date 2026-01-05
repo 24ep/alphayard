@@ -4,7 +4,7 @@ import './src/utils/platformConstantsPolyfill';
 import './src/utils/jimpErrorHandler';
 import './src/utils/webPolyfills';
 
-import { AppRegistry } from 'react-native';
+import { AppRegistry } from 'react-native-web';
 import App from './App';
 // import App from './src/TestApp';
 

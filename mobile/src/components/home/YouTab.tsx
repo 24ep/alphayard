@@ -28,6 +28,7 @@ interface YouTabProps {
   familyLocations: any[];
   emotionData: EmotionRecord[];
   selectedFamily?: any;
+  onCheckInPress: () => void;
 }
 
 export const YouTab: React.FC<YouTabProps> = ({
@@ -37,6 +38,7 @@ export const YouTab: React.FC<YouTabProps> = ({
   familyLocations,
   emotionData,
   selectedFamily,
+  onCheckInPress,
 }) => {
   const navigation = useNavigation<any>();
   const { onlineUserIds } = useSocket();
@@ -296,18 +298,6 @@ export const YouTab: React.FC<YouTabProps> = ({
             <Text style={homeStyles.sectionTitle}>Live Status</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#EFF6FF',
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 16,
-                marginRight: 8,
-              }}
-              onPress={() => navigation.navigate('Profile' as never)}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: '#3B82F6' }}>View Profile</Text>
-            </TouchableOpacity>
             <IconIon
               name={showLiveStatus ? "chevron-up" : "chevron-down"}
               size={20}
@@ -336,6 +326,8 @@ export const YouTab: React.FC<YouTabProps> = ({
         )}
       </View>
 
+
+
       {/* hourse Location */}
       <View style={homeStyles.section}>
         <View style={homeStyles.sectionHeader}>
@@ -345,7 +337,42 @@ export const YouTab: React.FC<YouTabProps> = ({
           </TouchableOpacity>
         </View>
         {familyLocations && familyLocations.length > 0 ? (
-          <FamilyLocationMap locations={familyLocations} />
+          <FamilyLocationMap
+            locations={familyLocations}
+            onMemberSelect={(location) => {
+              let member = familyStatusMembers?.find(m => m.id === location.userId || m.id === location.id);
+
+              // Fallback: If not found, check if it's the current user (sometimes IDs might mismatch slightly or be 'current-user')
+              if (!member && (location.userId === selectedFamily?.ownerId || location.userName === 'You')) {
+                member = familyStatusMembers?.find(m => m.name === 'You' || m.id === 'current-user');
+              }
+
+              // Match by name as fallback
+              if (!member) {
+                member = familyStatusMembers?.find(m => m.name === location.userName);
+              }
+
+              // Final fallback
+              if (!member) {
+
+                member = {
+                  id: location.userId,
+                  name: location.userName,
+                  avatar: '', // This was the issue, ideally we want to try to find the avatar
+                  status: location.isOnline ? 'online' : 'offline',
+                  lastActive: location.timestamp,
+                  location: location.address || 'Unknown',
+                  batteryLevel: location.batteryLevel || 0,
+                  heartRate: 0,
+                  steps: 0,
+                  sleepHours: 0
+                };
+              }
+
+              setSelectedMember(member);
+              setDrawerVisible(true);
+            }}
+          />
         ) : (
           <EmptyState
             title="No Location Data"
@@ -358,9 +385,13 @@ export const YouTab: React.FC<YouTabProps> = ({
       {/* Emotion Heat Map */}
       <View style={homeStyles.section}>
         <View style={homeStyles.sectionHeader}>
-          <View style={homeStyles.sectionTitleContainer}>
-            <Text style={homeStyles.sectionTitle}>Emotion Tracking</Text>
-          </View>
+          <Text style={homeStyles.sectionTitle}>Emotion Tracking</Text>
+          <TouchableOpacity
+            style={homeStyles.addAppointmentButton}
+            onPress={onCheckInPress}
+          >
+            <CoolIcon name="plus" size={20} color="#FFB6C1" />
+          </TouchableOpacity>
         </View>
 
         {emotionData && emotionData.length > 0 ? (

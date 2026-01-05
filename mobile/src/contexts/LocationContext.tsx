@@ -48,15 +48,30 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
   const { isAuthenticated } = useAuth();
   useEffect(() => {
     let isMounted = true;
+    let locationUnsubscribe: (() => void) | undefined;
+
     const init = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Try to start location tracking
         await locationService.startLocationTracking({ highAccuracy: true, interval: 30000 });
-        
-        // Get current location if available
+
+        // Subscribe to location updates
+        locationUnsubscribe = locationService.subscribeToLocationUpdates((loc) => {
+          if (!isMounted) return;
+          setCurrentLocation({
+            id: 'current',
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            address: loc.address || '',
+            timestamp: new Date(loc.timestamp).toISOString(),
+            accuracy: loc.accuracy,
+          });
+        });
+
+        // Get current location if available (immediate check)
         const loc = locationService.getCurrentLocation();
         if (isMounted && loc) {
           setCurrentLocation({
@@ -68,7 +83,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
             accuracy: loc.accuracy,
           });
         }
-        
+
         // Fetch family locations if authenticated (this doesn't require location permission)
         if (isMounted && isAuthenticated) {
           await refreshFamilyLocations();
@@ -93,6 +108,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     init();
     return () => {
       isMounted = false;
+      if (locationUnsubscribe) {
+        locationUnsubscribe();
+      }
       locationService.stopLocationTracking();
     };
   }, [isAuthenticated]);
@@ -137,7 +155,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     try {
       setIsLoading(true);
       setError(null);
-      
+
       if (!isAuthenticated) {
         setFamilyLocations([]);
         return;

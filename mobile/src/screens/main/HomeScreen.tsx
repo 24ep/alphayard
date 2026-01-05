@@ -53,10 +53,6 @@ const HomeScreen: React.FC = () => {
   const [families, setFamilies] = useState<any[]>([]); // Using any[] to bypass the lint for now, but better than never[]
   const [isPosting, setIsPosting] = useState(false);
 
-  // Safety and location stats - stored for future use
-  const [, setSafetyStats] = useState<any>(null);
-  const [, setLocationStats] = useState<any>(null);
-
   const [, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [emotionData, setEmotionData] = useState<EmotionRecord[]>([]);
@@ -64,6 +60,10 @@ const HomeScreen: React.FC = () => {
   const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
   const [socialRefreshKey, setSocialRefreshKey] = useState(0);
   const [showEmotionModal, setShowEmotionModal] = useState(false);
+
+  // Safety and location stats - stored for future use
+  const [, setSafetyStats] = useState<any>(null);
+  const [, setLocationStats] = useState<any>(null);
 
   const {
     // State
@@ -218,6 +218,8 @@ const HomeScreen: React.FC = () => {
       setFamilies([]);
     }
   };
+
+
 
   const loadSafetyStats = async () => {
     try {
@@ -531,9 +533,10 @@ const HomeScreen: React.FC = () => {
                 showAttentionDrawer={showAttentionDrawer}
                 setShowAttentionDrawer={setShowAttentionDrawer}
                 familyStatusMembers={familyStatusMembers}
-                emotionData={emotionData}
                 familyLocations={familyLocations}
+                emotionData={emotionData}
                 selectedFamily={selectedFamily}
+                onCheckInPress={() => setShowEmotionModal(true)}
               />
             );
           case 'financial':
@@ -678,6 +681,8 @@ const HomeScreen: React.FC = () => {
             loadEmotionData(); // Refresh data
           }}
         />
+
+
       </SafeAreaView>
     </BackgroundWrapper>
   );

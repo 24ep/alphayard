@@ -54,9 +54,14 @@ config.transformer = {
 };
 
 /*
-// Patch resolver to ensure PlatformConstants polyfill loads first
+// Patch resolver to ensure PlatformConstants polyfill loads first and handle Web aliasing
 const originalResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Alias react-native to react-native-web on web platform
+  if (platform === 'web' && moduleName === 'react-native') {
+    return context.resolveRequest(context, 'react-native-web', platform);
+  }
+
   // If resolving the main entry point, ensure polyfill is loaded
   if (moduleName === './index' || moduleName === 'index.js') {
     // This ensures polyfill loads first
@@ -66,5 +71,63 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     : context.resolveRequest(context, moduleName, platform);
 };
 */
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web') {
+    // Alias main react-native package
+    if (moduleName === 'react-native') {
+      return context.resolveRequest(context, 'react-native-web', platform);
+    }
+
+    // Handle deep imports into react-native/
+    if (moduleName.startsWith('react-native/')) {
+      // Redirect codegenNativeCommands
+      if (moduleName.includes('codegenNativeCommands')) {
+        return {
+          filePath: path.resolve(__dirname, 'src/mocks/codegenNativeCommandsMock.js'),
+          type: 'sourceFile',
+        };
+      }
+      // Specific map for Alert
+      if (moduleName.includes('Alert')) {
+        return context.resolveRequest(context, 'react-native-web/dist/exports/Alert', platform);
+      }
+      // Specific map for LogBox
+      if (moduleName.includes('LogBox')) {
+        return context.resolveRequest(context, 'react-native-web/dist/exports/LogBox', platform);
+      }
+      // Specific map for Platform
+      if (moduleName.includes('Platform')) {
+        return context.resolveRequest(context, 'react-native-web/dist/exports/Platform', platform);
+      }
+    }
+
+    // Handle deep imports (via relative path or other means)
+    if (moduleName.includes('codegenNativeCommands')) {
+      return {
+        filePath: path.resolve(__dirname, 'src/mocks/codegenNativeCommandsMock.js'),
+        type: 'sourceFile',
+      };
+    }
+
+    // Attempt to redirect common Utilities/Platform to react-native-web's Platform if deep imported
+    if (moduleName.endsWith('Utilities/Platform') || moduleName === '../Utilities/Platform') {
+      return context.resolveRequest(context, 'react-native-web/dist/exports/Platform', platform);
+    }
+
+    // Redirect deep LogBox imports if missed by above
+    if (moduleName.includes('Libraries/LogBox/LogBox')) {
+      return context.resolveRequest(context, 'react-native-web/dist/exports/LogBox', platform);
+    }
+
+    // Redirect ReactNativePrivateInterface to a mock
+    if (moduleName.includes('ReactNativePrivateInterface')) {
+      return {
+        filePath: path.resolve(__dirname, 'src/mocks/LogBoxMock.js'),
+        type: 'sourceFile',
+      };
+    }
+  }
+  return context.resolveRequest(context, moduleName, platform);
+};
 
 module.exports = config;

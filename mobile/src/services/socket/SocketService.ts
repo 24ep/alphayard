@@ -45,8 +45,8 @@ class SocketService {
 
   async connect(): Promise<void> {
     try {
-      // Prefer accessToken used by the REST API, but fall back to legacy authToken if present
-      const token = (await AsyncStorage.getItem('accessToken')) || (await AsyncStorage.getItem('authToken'));
+      // Use the same token key as the main API client
+      const token = await AsyncStorage.getItem('accessToken');
 
       if (!token) {
         console.log('No authentication token found, skipping socket connection');

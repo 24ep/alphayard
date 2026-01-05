@@ -75,6 +75,7 @@ class ApiClient {
         try {
           const token = await this.getAccessToken();
           if (token) {
+            config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${token}`;
           }
         } catch (error) {
@@ -108,7 +109,6 @@ class ApiClient {
         const isExpectedError =
           status === 404 || // Endpoint may not exist yet
           (status === 401 && !isAuthEndpoint && ( // Exclude login/register from expected errors
-            originalRequest?.url?.includes('/auth/me') || // Expected when not logged in
             originalRequest?.url?.includes('/auth/refresh') || // Expected when token expired
             originalRequest?.url?.includes('/notifications') || // May require auth
             originalRequest?.url?.includes('/mobile/branding') // May require auth
@@ -243,7 +243,6 @@ class ApiClient {
     const isExpectedError = error.isExpectedError ||
       error.response?.status === 404 ||
       (error.response?.status === 401 && (
-        error.config?.url?.includes('/auth/me') ||
         error.config?.url?.includes('/auth/refresh') ||
         error.config?.url?.includes('/notifications') ||
         error.config?.url?.includes('/mobile/branding')

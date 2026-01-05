@@ -1,6 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import IconIon from 'react-native-vector-icons/Ionicons';
+import { Modal, View, Text, TouchableOpacity, ScrollView, Platform, Alert, Image } from 'react-native';
+
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface FamilyStatusMember {
@@ -36,7 +36,7 @@ const Section: React.FC<{ title: string; icon?: string } & { children: React.Rea
   </View>
 );
 
-const Divider = () => <View style={{ height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 }} />;
+
 
 export const FamilyMemberDrawer: React.FC<FamilyMemberDrawerProps> = ({ visible, member, onClose }) => {
   const renderHeartRateChart = () => {
@@ -170,21 +170,86 @@ export const FamilyMemberDrawer: React.FC<FamilyMemberDrawerProps> = ({ visible,
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
         <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFB6C1', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>{member?.name?.charAt(0) ?? '?'}</Text>
+          <View style={{ padding: 20, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: '#FFB6C1', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  {member?.avatar ? (
+                    <Image
+                      source={{ uri: member.avatar }}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 20 }}>{member?.name?.charAt(0) ?? '?'}</Text>
+                  )}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827' }}>{member?.name ?? 'Member'}</Text>
+                  {!!member && (
+                    <Text style={{ color: '#6B7280', fontSize: 13, marginTop: 2 }}>
+                      {member.location}
+                    </Text>
+                  )}
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>{member?.name ?? 'Member'}</Text>
-                {!!member && (
-                  <Text style={{ color: '#6B7280', fontSize: 12 }}>{member.location} • {member.heartRate} bpm • {member.steps} steps • {member.sleepHours}h sleep • {member.batteryLevel}% battery</Text>
-                )}
-              </View>
+              <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
+                <IconMC name="close" size={24} color="#9CA3AF" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={onClose}>
-              <IconMC name="close" size={22} color="#6B7280" />
-            </TouchableOpacity>
+
+            {/* Action Buttons */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'center', gap: 6 }}
+                onPress={() => Alert.alert('Directions', `Navigating to ${member?.name || 'member'}...`)}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="directions" size={24} color="#3B82F6" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>Direction</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'center', gap: 6 }}
+                onPress={() => Alert.alert('Call', `Calling ${member?.name || 'member'}...`)}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="phone" size={24} color="#10B981" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>Call</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'center', gap: 6 }}
+                onPress={() => Alert.alert('Distract', 'Sent distraction!')}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF2F2', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="alert" size={24} color="#EF4444" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>Distract</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'center', gap: 6 }}
+                onPress={() => Alert.alert('Profile', `Viewing ${member?.name || 'member'}'s profile`)}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#F3E8FF', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="account" size={24} color="#8B5CF6" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>Profile</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ flex: 1, alignItems: 'center', gap: 6 }}
+                onPress={() => Alert.alert('Message', `Messaging ${member?.name || 'member'}...`)}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="message-text" size={24} color="#F97316" />
+                </View>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#4B5563' }}>Message</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false}>

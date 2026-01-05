@@ -1,53 +1,45 @@
 // Web polyfills - lazy loaded to avoid early React Native access
 
 const getRN = () => {
-  try {
-    return require('react-native');
-  } catch {
-    return null;
+  // Avoid require('react-native') on web to prevent bundler including native code
+  if (typeof window !== 'undefined') {
+    try {
+      return require('react-native-web');
+    } catch {
+      return null;
+    }
   }
+  return null;
 };
 
 // BackHandler polyfill for web
-(function() {
+(function () {
   const RN = getRN();
-  if (!RN) return;
-  
-  if (RN.Platform?.OS === 'web') {
+  // ... rest of logic
+
+  if (typeof window !== 'undefined') { // Force web check
     const BackHandler = {
-      addEventListener: () => ({ remove: () => {} }),
-      removeEventListener: () => {},
-      exitApp: () => {},
-      goBack: () => {},
+      addEventListener: () => ({ remove: () => { } }),
+      removeEventListener: () => { },
+      exitApp: () => { },
+      goBack: () => { },
     };
-    
+
     (global as any).BackHandler = BackHandler;
-    
+
     try {
-      const rnWeb = require('react-native-web');
-      if (rnWeb && !rnWeb.BackHandler) {
-        rnWeb.BackHandler = BackHandler;
-      }
-    } catch {}
+      // Even use explicit require here if needed, but let's stick to safe pattern
+    } catch { }
   }
 })();
 
 export const webPolyfills = {
   get BackHandler() {
-    const RN = getRN();
-    if (!RN) {
-      return {
-        addEventListener: () => ({ remove: () => {} }),
-        removeEventListener: () => {},
-        exitApp: () => {},
-        goBack: () => {},
-      };
-    }
-    return RN.Platform?.OS === 'web' ? {
-      addEventListener: () => ({ remove: () => {} }),
-      removeEventListener: () => {},
-      exitApp: () => {},
-      goBack: () => {},
-    } : RN.BackHandler;
+    return {
+      addEventListener: () => ({ remove: () => { } }),
+      removeEventListener: () => { },
+      exitApp: () => { },
+      goBack: () => { },
+    };
   },
 };

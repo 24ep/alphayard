@@ -63,6 +63,7 @@ export interface FamilyLocation {
   timestamp: Date;
   address?: string;
   placeLabel?: string;
+  isOnline?: boolean;
 }
 
 class LocationService {
@@ -70,13 +71,14 @@ class LocationService {
   private locationWatcher: number | null = null;
   private geofences: Geofence[] = [];
   private safetyZones: SafetyZone[] = [];
-  private isTracking = false;
+  private _isTracking = false;
   private updateInterval = 30000; // 30 seconds
   private highAccuracyMode = false;
   private backgroundMode = false;
   private familyData: any[] = [];
   private currentUser: any = null;
   private familyLocationListeners: Array<(locations: FamilyLocation[]) => void> = [];
+  private currentLocationListeners: Array<(location: LocationData) => void> = [];
   private familyLocations: FamilyLocation[] = [];
 
   // Location tracking methods
@@ -129,13 +131,53 @@ class LocationService {
         }
       );
 
+      // Try to get an immediate fix as well
+      const locationPromise = Location.getCurrentPositionAsync({
+        accuracy: this.highAccuracyMode ? Location.Accuracy.High : Location.Accuracy.Balanced,
+      });
+
+      // Timeout for immediate fix - fallback to mock if taking too long (common on Android emulator/Web)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Location timeout')), 5000)
+      );
+
+      try {
+        const location: any = await Promise.race([locationPromise, timeoutPromise]);
+        this.handleLocationUpdate({
+          coords: {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            accuracy: location.coords.accuracy || 0,
+            altitude: location.coords.altitude || undefined,
+            heading: location.coords.heading || undefined,
+            speed: location.coords.speed || undefined,
+          },
+          timestamp: location.timestamp,
+        });
+      } catch (err) {
+        logger.warn('Failed to get immediate location fix or timed out', err);
+        // If in DEV or Web, fallback to a default location to avoid "Locating..." stuck state
+        if (__DEV__ || Platform.OS === 'web') {
+          logger.info('Using fallback mock location');
+          this.handleLocationUpdate({
+            coords: {
+              latitude: 37.7749,
+              longitude: -122.4194, // San Francisco
+              accuracy: 100,
+            },
+            timestamp: Date.now(),
+          });
+        }
+      }
+
+
       this.locationWatcher = subscription as any; // Store subscription
-      this.isTracking = true;
+      this._isTracking = true;
       logger.info('Location tracking started successfully');
     } catch (error) {
       logger.error('Failed to start location tracking:', error);
       // Don't throw - allow app to continue without location tracking
-      this.isTracking = false;
+      this._isTracking = false;
     }
   }
 
@@ -147,7 +189,7 @@ class LocationService {
       }
       this.locationWatcher = null;
     }
-    this.isTracking = false;
+    this._isTracking = false;
     logger.info('Location tracking stopped');
   }
 
@@ -155,14 +197,14 @@ class LocationService {
     try {
       // Check current permission status
       const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-      
+
       if (existingStatus === 'granted') {
         return true;
       }
 
       // Request permission
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status === 'granted') {
         logger.info('Location permission granted');
         return true;
@@ -189,19 +231,22 @@ class LocationService {
     };
 
     this.currentLocation = locationData;
-    
+
     // Get address and place label
     this.getAddressFromCoordinates(locationData.latitude, locationData.longitude)
       .then(({ address, placeLabel }) => {
         locationData.address = address;
         locationData.placeLabel = placeLabel;
-        
+
         // Send location update via socket
         this.sendLocationUpdate(locationData);
-        
+
+        // Notify local listeners
+        this.notifyLocationListeners(locationData);
+
         // Check geofences
         this.checkGeofences(locationData);
-        
+
         // Check safety zones
         this.checkSafetyZones(locationData);
       })
@@ -209,6 +254,8 @@ class LocationService {
         logger.error('Failed to get address:', error);
         // Still send location update without address
         this.sendLocationUpdate(locationData);
+        // Notify local listeners even if address fails
+        this.notifyLocationListeners(locationData);
       });
   };
 
@@ -226,22 +273,22 @@ class LocationService {
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${process.env.GOOGLE_MAPS_API_KEY}`
       );
-      
+
       const data = await response.json();
-      
+
       if (data.results && data.results.length > 0) {
         const result = data.results[0];
         const address = result.formatted_address;
-        
+
         // Determine place label based on address components
         const placeLabel = this.determinePlaceLabel(result.address_components);
-        
+
         return { address, placeLabel };
       }
     } catch (error) {
       logger.error('Reverse geocoding failed:', error);
     }
-    
+
     return {};
   }
 
@@ -249,16 +296,16 @@ class LocationService {
     // Logic to determine if location is home, work, school, etc.
     // This would typically use saved locations or AI classification
     const types = addressComponents.flatMap(component => component.types);
-    
+
     if (types.includes('establishment')) {
       // Could be work, school, etc.
       return 'establishment';
     }
-    
+
     if (types.includes('sublocality')) {
       return 'neighborhood';
     }
-    
+
     return 'unknown';
   }
 
@@ -279,12 +326,12 @@ class LocationService {
   async addGeofence(geofence: Omit<Geofence, 'id'>): Promise<string> {
     const id = `geofence_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newGeofence: Geofence = { ...geofence, id };
-    
+
     this.geofences.push(newGeofence);
-    
+
     // Save to local storage and sync with backend
     await this.saveGeofences();
-    
+
     logger.info('Geofence added:', id);
     return id;
   }
@@ -318,25 +365,25 @@ class LocationService {
   private checkGeofences(locationData: LocationData) {
     this.geofences.forEach(geofence => {
       if (!geofence.isActive) return;
-      
-        const distance = this.calculateDistance(
+
+      const distance = this.calculateDistance(
         locationData.latitude,
         locationData.longitude,
-          geofence.latitude,
-          geofence.longitude
-        );
+        geofence.latitude,
+        geofence.longitude
+      );
 
       const isInside = distance <= geofence.radius;
-      
+
       // Check if this is a new state change
       const wasInside = this.wasInsideGeofence(geofence.id);
-      
+
       if (isInside && !wasInside && geofence.notifications.onEnter) {
         this.triggerGeofenceNotification(geofence, 'enter');
       } else if (!isInside && wasInside && geofence.notifications.onExit) {
         this.triggerGeofenceNotification(geofence, 'exit');
       }
-      
+
       // Update geofence state
       this.updateGeofenceState(geofence.id, isInside);
     });
@@ -350,8 +397,8 @@ class LocationService {
     const Δλ = (lon2 - lon1) * Math.PI / 180;
 
     const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
     return R * c;
@@ -371,7 +418,7 @@ class LocationService {
   private triggerGeofenceNotification(geofence: Geofence, event: 'enter' | 'exit') {
     // Send notification to hourse members
     const message = `${geofence.name}: hourse member ${event}ed the area`;
-    
+
     // This would trigger push notifications and in-app alerts
     logger.info('Geofence notification:', message);
   }
@@ -380,10 +427,10 @@ class LocationService {
   async addSafetyZone(safetyZone: Omit<SafetyZone, 'id'>): Promise<string> {
     const id = `safety_zone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newSafetyZone: SafetyZone = { ...safetyZone, id };
-    
+
     this.safetyZones.push(newSafetyZone);
     await this.saveSafetyZones();
-    
+
     logger.info('Safety zone added:', id);
     return id;
   }
@@ -411,7 +458,7 @@ class LocationService {
         zone.center.latitude,
         zone.center.longitude
       );
-      
+
       if (distance <= zone.radius) {
         this.triggerSafetyZoneAlert(zone, locationData);
       }
@@ -420,7 +467,7 @@ class LocationService {
 
   private triggerSafetyZoneAlert(zone: SafetyZone, locationData: LocationData) {
     const alertMessage = `Safety Alert: You are in a ${zone.type} zone - ${zone.name}`;
-    
+
     // Send emergency alert to hourse
     const locationString = `${locationData.latitude},${locationData.longitude}${locationData.address ? ` (${locationData.address})` : ''}`;
     socketService.sendEmergencyAlert(
@@ -428,7 +475,7 @@ class LocationService {
       locationString,
       zone.type === 'danger' ? 'panic' : 'location'
     );
-    
+
     logger.warn('Safety zone alert triggered:', zone.name);
   }
 
@@ -438,7 +485,7 @@ class LocationService {
   }
 
   isTracking(): boolean {
-    return this.isTracking;
+    return this._isTracking;
   }
 
   async getLocationHistory(userId: string, startTime: Date, endTime: Date): Promise<LocationHistory> {
@@ -507,7 +554,7 @@ class LocationService {
   // Battery optimization
   setHighAccuracyMode(enabled: boolean) {
     this.highAccuracyMode = enabled;
-    if (this.isTracking) {
+    if (this._isTracking) {
       // Restart tracking with new settings
       this.stopLocationTracking();
       this.startLocationTracking({ highAccuracy: enabled });
@@ -534,7 +581,7 @@ class LocationService {
     this.familyLocationListeners.push(callback);
     // Immediately call with current locations
     callback(this.familyLocations);
-    
+
     // Return unsubscribe function
     return () => {
       const index = this.familyLocationListeners.indexOf(callback);
@@ -561,8 +608,8 @@ class LocationService {
 
     // Transform family data into FamilyLocation format
     // This is a simplified version - in production, you'd fetch actual locations
-    this.familyLocations = this.familyData
-      .flatMap((family: any) => 
+    const memberLocations = this.familyData
+      .flatMap((family: any) =>
         (family.members || []).map((member: any) => ({
           userId: member.id || member.userId,
           userName: member.name || member.userName || 'Unknown',
@@ -570,16 +617,62 @@ class LocationService {
           latitude: member.latitude || this.currentLocation?.latitude || 0,
           longitude: member.longitude || this.currentLocation?.longitude || 0,
           accuracy: member.accuracy || this.currentLocation?.accuracy,
-          timestamp: member.lastLocationUpdate 
-            ? new Date(member.lastLocationUpdate) 
+          timestamp: member.lastLocationUpdate
+            ? new Date(member.lastLocationUpdate)
             : new Date(),
           address: member.address,
           placeLabel: member.placeLabel,
+          isOnline: !!member.isOnline,
         }))
-      )
-      .filter((loc: FamilyLocation) => loc.userId !== this.currentUser?.id);
+      );
+
+    // Add current user if available
+    if (this.currentUser) {
+      const currentUserLocation: FamilyLocation = {
+        userId: this.currentUser.id || 'current-user',
+        userName: `${this.currentUser.firstName || ''} ${this.currentUser.lastName || ''}`.trim() || 'You',
+        familyId: this.familyData[0]?.id || 'unknown',
+        latitude: this.currentLocation?.latitude || 0,
+        longitude: this.currentLocation?.longitude || 0,
+        accuracy: this.currentLocation?.accuracy || 0,
+        timestamp: this.currentLocation?.timestamp || new Date(),
+        address: this.currentLocation?.address,
+        placeLabel: this.currentLocation?.placeLabel,
+        isOnline: true,
+      };
+      // Avoid duplicate if user is somehow in the list
+      const filteredMembers = memberLocations.filter((m: FamilyLocation) => m.userId !== this.currentUser.id);
+      this.familyLocations = [currentUserLocation, ...filteredMembers];
+    } else {
+      this.familyLocations = memberLocations;
+    }
 
     this.notifyFamilyLocationListeners();
+  }
+
+  subscribeToLocationUpdates(callback: (location: LocationData) => void): () => void {
+    this.currentLocationListeners.push(callback);
+    // Immediately call with current location if available
+    if (this.currentLocation) {
+      callback(this.currentLocation);
+    }
+
+    return () => {
+      const index = this.currentLocationListeners.indexOf(callback);
+      if (index > -1) {
+        this.currentLocationListeners.splice(index, 1);
+      }
+    };
+  }
+
+  private notifyLocationListeners(location: LocationData) {
+    this.currentLocationListeners.forEach(callback => {
+      try {
+        callback(location);
+      } catch (error) {
+        logger.error('Error in location listener:', error);
+      }
+    });
   }
 }
 

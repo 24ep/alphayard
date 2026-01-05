@@ -231,6 +231,8 @@ export const ChatDatabaseService = {
 
   // Legacy Adapter Methods for Socket support
   findChatRoomById: Chat.findById,
+  findByFamilyId: Chat.findByFamilyId,
+  createChatRoom: Chat.create,
 
   isParticipant: async (chatId: string, userId: string) => {
     const chat = await Chat.findById(chatId);
@@ -242,9 +244,36 @@ export const ChatDatabaseService = {
     return chat ? chat.isAdmin(userId) : false;
   },
 
-  createMessage: Message.create,
+  getParticipants: async (chatId: string) => {
+    const chat = await Chat.findById(chatId);
+    return chat ? chat.getParticipants() : [];
+  },
 
+  updateChatRoom: async (id: string, updates: any) => {
+    const chat = await Chat.findById(id);
+    if (chat) {
+      await chat.update(updates);
+      return Chat.findById(id);
+    }
+    return null;
+  },
+
+  deleteChatRoom: async (id: string) => {
+    const chat = await Chat.findById(id);
+    if (chat) {
+      await chat.delete();
+      return true;
+    }
+    return false;
+  },
+
+  // Participants stubs or implementations
+  addParticipant: Chat.addParticipant,
+  removeParticipant: Chat.removeParticipant,
+
+  createMessage: Message.create,
   findMessageById: Message.findById,
+  findMessagesByChatRoomId: Message.findByChatRoomId,
 
   updateMessage: async (id: string, updates: any) => {
     const msg = await Message.findById(id);

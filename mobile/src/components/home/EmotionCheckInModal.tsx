@@ -40,15 +40,18 @@ export const EmotionCheckInModal: React.FC<EmotionCheckInModalProps> = ({
 
     return (
         <Modal isOpen={visible} onClose={onClose} size="lg">
-            <Modal.Content maxWidth="400px">
-                <Modal.CloseButton />
-                <Modal.Header>How are you feeling?</Modal.Header>
-                <Modal.Body>
-                    <VStack space={4} alignItems="center" py={4}>
-                        <Text fontSize="md" color="gray.500" textAlign="center">
-                            Track your mood to see your wellbeing history.
-                        </Text>
+            <Modal.Content maxWidth="400px" p={4}>
+                <VStack space={2} mb={4}>
+                    <Text fontSize="xl" fontWeight="bold" textAlign="left">
+                        How are you feeling?
+                    </Text>
+                    <Text fontSize="sm" color="gray.500" textAlign="left">
+                        Track your mood to see your wellbeing history.
+                    </Text>
+                </VStack>
 
+                <Modal.Body p={0}>
+                    <VStack space={6} alignItems="center">
                         <HStack space={2} justifyContent="center" flexWrap="wrap" w="100%">
                             {emotions.map((e) => (
                                 <VStack key={e.level} alignItems="center" m={2}>
@@ -66,6 +69,15 @@ export const EmotionCheckInModal: React.FC<EmotionCheckInModalProps> = ({
                                 </VStack>
                             ))}
                         </HStack>
+
+                        <Button
+                            variant="unstyled"
+                            size="sm"
+                            onPress={onClose}
+                            _text={{ color: "gray.400", fontSize: "xs" }}
+                        >
+                            Decline to answer
+                        </Button>
                     </VStack>
                 </Modal.Body>
             </Modal.Content>
