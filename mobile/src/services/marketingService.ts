@@ -147,13 +147,13 @@ class MarketingService {
       {
         id: '1',
         title: 'Stay Connected',
-        subtitle: 'With Your Family',
-        description: 'Keep your loved ones close with real-time location sharing, instant messaging, and family updates.',
+        subtitle: 'With Your Circle',
+        description: 'Keep your loved ones close with real-time location sharing, instant messaging, and circle updates.',
         icon: 'home-heart',
         gradient: ['#FA7272', '#FFBBB4'],
         features: [
           'Real-time location tracking',
-          'Instant family messaging',
+          'Instant circle messaging',
           'Safety alerts & notifications'
         ],
         slide_order: 1
@@ -162,7 +162,7 @@ class MarketingService {
         id: '2',
         title: 'Safety First',
         subtitle: 'Always Protected',
-        description: 'Emergency alerts, geofencing, and safety features to ensure your family\'s security and peace of mind.',
+        description: 'Emergency alerts, geofencing, and safety features to ensure your circle\'s security and peace of mind.',
         icon: 'shield-check',
         gradient: ['#FA7272', '#FFBBB4'],
         features: [
@@ -176,11 +176,11 @@ class MarketingService {
         id: '3',
         title: 'Share Moments',
         subtitle: 'Create Memories',
-        description: 'Share photos, videos, and memories with your family in a secure, private environment.',
+        description: 'Share photos, videos, and memories with your circle in a secure, private environment.',
         icon: 'camera-plus',
         gradient: ['#FA7272', '#FFBBB4'],
         features: [
-          'Family photo gallery',
+          'Circle photo gallery',
           'Secure file sharing',
           'Memory timeline'
         ],
@@ -190,11 +190,11 @@ class MarketingService {
         id: '4',
         title: 'Organize Life',
         subtitle: 'Together',
-        description: 'Manage family schedules, tasks, and events with shared calendars and to-do lists.',
+        description: 'Manage circle schedules, tasks, and events with shared calendars and to-do lists.',
         icon: 'calendar-check',
         gradient: ['#FA7272', '#FFBBB4'],
         features: [
-          'Shared family calendar',
+          'Shared circle calendar',
           'Task management',
           'Event planning'
         ],
@@ -205,3 +205,4 @@ class MarketingService {
 }
 
 export default new MarketingService();
+

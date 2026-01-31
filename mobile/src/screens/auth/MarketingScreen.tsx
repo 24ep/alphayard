@@ -1,8 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import {
   View,
-  Text,
-  TouchableOpacity,
   StyleSheet,
   Dimensions,
   Animated,
@@ -13,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { ThemedButton } from '../../components/common/ThemedButton';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,15 +52,19 @@ interface MarketingScreenProps {
   navigation: any;
 }
 
+
+
 const MarketingScreen: React.FC<MarketingScreenProps> = () => {
   const navigation = useNavigation();
   const { isAuthenticated, user } = useAuth();
 
   // Animations
-  const contentFadeAnim = useRef(new Animated.Value(0)).current;
-  const contentSlideAnim = useRef(new Animated.Value(40)).current;
+  // Animations - Initialized to final static state
+  const contentFadeAnim = useRef(new Animated.Value(1)).current; // Start fully visible
+  const contentSlideAnim = useRef(new Animated.Value(0)).current; // Start at final position
   const shapeAnim1 = useRef(new Animated.Value(0)).current;
   const shapeAnim2 = useRef(new Animated.Value(0)).current;
+
 
   // CRITICAL: Navigate away if authenticated
   useEffect(() => {
@@ -81,95 +85,26 @@ const MarketingScreen: React.FC<MarketingScreenProps> = () => {
 
   if (isAuthenticated && user) return null;
 
-  useEffect(() => {
-    // Entrance animations
-    // We separate the loops from the entrance parallel block because loops run forever
-    // and we don't want to block the completion of the entrance (though .start() on parallel with loops just runs them)
-    // However, putting .start() INSIDE parallel array was the bug.
-
-    // 1. One-off entrance animations
-    Animated.parallel([
-      Animated.timing(contentFadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentSlideAnim, {
-        toValue: 0,
-        duration: 1000,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    // 2. Loop animations (start independently)
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shapeAnim1, { toValue: 10, duration: 3000, useNativeDriver: true }),
-        Animated.timing(shapeAnim1, { toValue: 0, duration: 3000, useNativeDriver: true }),
-      ])
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(shapeAnim2, { toValue: -15, duration: 4000, useNativeDriver: true }),
-        Animated.timing(shapeAnim2, { toValue: 0, duration: 4000, useNativeDriver: true }),
-      ])
-    ).start();
-
-  }, []);
+  // Animations removed as requested
 
   const handleGetStarted = () => {
-    navigation.navigate('Signup' as never);
-  };
-
-  const handleLogin = () => {
     navigation.navigate('Login' as never);
   };
+
+
+
+  if (isAuthenticated && user) return null;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Background Gradient - Darker modern pink */}
-      <LinearGradient
-        colors={['#992525', '#4A0808']} // Dark red/wine gradient
-        style={styles.gradient}
-      >
+      {/* Dynamic Background */}
+      <ScreenBackground screenId="marketing" style={styles.gradient}>
         <SafeAreaView style={styles.safeArea}>
 
-          {/* Abstract background shapes */}
-          <View style={styles.shapesContainer}>
-            <Animated.View style={{ transform: [{ translateY: shapeAnim1 }] }}>
-              <Torus style={styles.shapeTorus} />
-            </Animated.View>
-
-            <Animated.View style={{ transform: [{ translateY: shapeAnim2 }] }}>
-              <Capsule style={styles.shapeCapsule} />
-            </Animated.View>
-
-            <Animated.View style={{ transform: [{ rotate: '45deg' }] }}>
-              <TwistedTube style={styles.shapeTwisted} />
-            </Animated.View>
-          </View>
-
-          {/* Main Text Content */}
-          <Animated.View
-            style={[
-              styles.textContainer,
-              {
-                opacity: contentFadeAnim,
-                transform: [{ translateY: contentSlideAnim }],
-              },
-            ]}
-          >
-            <Text style={styles.heroTitle}>
-              It's easy talking to{'\n'}your friends with{'\n'}Bondarys
-            </Text>
-
-            <Text style={styles.subtitle}>
-              Call Your Friend Simply and Simple{'\n'}With Bondarys
-            </Text>
-          </Animated.View>
+          {/* Spacer for centered action buttons */}
+          <View style={styles.spacer} />
 
           {/* Bottom Action */}
           <Animated.View
@@ -181,21 +116,18 @@ const MarketingScreen: React.FC<MarketingScreenProps> = () => {
               }
             ]}
           >
-            <TouchableOpacity
-              style={styles.primaryButton}
+            <ThemedButton
+              componentId="whitebutton"
+              label="Get Started"
               onPress={handleGetStarted}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.primaryButtonText}>Get Started</Text>
-            </TouchableOpacity>
+              // Allow overriding styles if needed, but componentId should handle most
+              style={{ width: '100%' }}
+            />
 
-            <TouchableOpacity onPress={handleLogin} style={{ padding: 12 }}>
-              <Text style={styles.loginLink}>Already have an account? Sign In</Text>
-            </TouchableOpacity>
+
           </Animated.View>
-
         </SafeAreaView>
-      </LinearGradient>
+      </ScreenBackground>
     </View>
   );
 };
@@ -211,6 +143,10 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     position: 'relative',
+    justifyContent: 'flex-end',
+  },
+  spacer: {
+    flex: 1,
   },
   shapesContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -324,12 +260,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1F0A0A', // Dark text for contrast
   },
-  loginLink: {
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '500',
-  }
+
+
 });
 
 export default MarketingScreen;
+

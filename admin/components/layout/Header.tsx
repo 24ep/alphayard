@@ -168,7 +168,7 @@ export function Header({ onGlobalSearch, onFilterClick, onLogout }: HeaderProps)
                 </div>
                 <div className="max-h-96 overflow-y-auto">
                   {[
-                    { type: 'error', title: 'New family registered', desc: 'Johnson Family just joined the platform', time: '2 minutes ago' },
+                    { type: 'error', title: 'New Circle registered', desc: 'Johnson Circle just joined the platform', time: '2 minutes ago' },
                     { type: 'info', title: 'System update available', desc: 'Version 2.1.0 is ready for deployment', time: '1 hour ago' },
                     { type: 'success', title: 'Backup completed', desc: 'Daily backup completed successfully', time: '3 hours ago' },
                   ].map((notification, idx) => (
@@ -216,7 +216,7 @@ export function Header({ onGlobalSearch, onFilterClick, onLogout }: HeaderProps)
               </div>
               <div className="text-left hidden md:block">
                 <p className="text-sm font-medium text-gray-900">Admin User</p>
-                <p className="text-xs text-gray-500">admin@bondarys.com</p>
+                  <p className="text-xs text-gray-500 truncate">admin@appkit.com</p>
               </div>
               <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} aria-hidden="true" />
             </button>
@@ -268,3 +268,4 @@ export function Header({ onGlobalSearch, onFilterClick, onLogout }: HeaderProps)
     </header>
   )
 }
+

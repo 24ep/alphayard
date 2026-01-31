@@ -14,10 +14,21 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+// import { LinearGradient } from 'expo-linear-gradient';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { 
+  ArrowLeft,
+  Phone,
+  Mail,
+  Pencil,
+  Home,
+  Activity,
+  User,
+  FileText,
+  Wallet
+} from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
-import { useFamily } from '../../hooks/useFamily';
+// import { useCircle } from '../../hooks/useCircle';
 import { userService } from '../../services/user/UserService';
 import { ProfileStatusTab } from '../../components/profile/ProfileStatusTab';
 import { ProfileInfoTab } from '../../components/profile/ProfileInfoTab';
@@ -27,13 +38,24 @@ import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { colors } from '../../theme/colors';
 
+// Cast icons to avoid lint issues
+const ArrowLeftIcon = ArrowLeft as any;
+const PhoneIcon = Phone as any;
+const MailIcon = Mail as any;
+const PencilIcon = Pencil as any;
+const HomeIcon = Home as any;
+const ActivityIcon = Activity as any;
+const UserIcon = User as any;
+const FileTextIcon = FileText as any;
+const WalletIcon = Wallet as any;
+
 const { width } = Dimensions.get('window');
 
 const TABS = [
-  { key: 'status', label: 'Status', icon: 'pulse' },
-  { key: 'profile', label: 'Profile', icon: 'account' },
-  { key: 'social', label: 'Social', icon: 'post' },
-  { key: 'financial', label: 'Financial', icon: 'wallet' },
+  { key: 'status', label: 'Status', icon: ActivityIcon },
+  { key: 'profile', label: 'Profile', icon: UserIcon },
+  { key: 'social', label: 'Social', icon: FileTextIcon },
+  { key: 'financial', label: 'Financial', icon: WalletIcon },
 ];
 
 interface UserProfile {
@@ -50,7 +72,7 @@ const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
   const { user, logout } = useAuth();
-  const { currentFamily } = useFamily();
+  // const { currentCircle } = useCircle();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,14 +98,14 @@ const ProfileScreen: React.FC = () => {
         email: user?.email || 'john.doe@example.com',
         phoneNumber: '+66 123 456 789',
         avatar: user?.avatar,
-        bio: 'Living life to the fullest with my wonderful family.',
+        bio: 'Living life to the fullest with my wonderful circle.',
       };
 
       try {
         const response = await userService.getProfile();
-        setProfile(response.data || mockProfile);
+        setProfile((response.data as unknown as UserProfile) || (mockProfile as UserProfile));
       } catch {
-        setProfile(mockProfile);
+        setProfile(mockProfile as UserProfile);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -130,12 +152,8 @@ const ProfileScreen: React.FC = () => {
     : 'User';
 
   return (
-    <LinearGradient
-      colors={['#FA7272', '#FFBBB4', '#FFFFFF']}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
+    <ScreenBackground screenId="profile">
+      <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
       {/* Header Section with Back Button */}
@@ -145,7 +163,7 @@ const ProfileScreen: React.FC = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-left" size={24} color="#FFFFFF" />
+            <ArrowLeftIcon size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
           <View style={{ width: 40 }} />
@@ -170,11 +188,11 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.headerInfo}>
             <Text style={styles.userName}>{displayName}</Text>
             <View style={styles.contactRow}>
-              <Icon name="phone" size={14} color="#6B7280" />
+              <PhoneIcon size={14} color={"#6B7280" as any} />
               <Text style={styles.contactText}>{profile?.phoneNumber || 'Not set'}</Text>
             </View>
             <View style={styles.contactRow}>
-              <Icon name="email" size={14} color="#6B7280" />
+              <MailIcon size={14} color={"#6B7280" as any} />
               <Text style={styles.contactText} numberOfLines={1}>
                 {profile?.email || 'Not set'}
               </Text>
@@ -186,17 +204,17 @@ const ProfileScreen: React.FC = () => {
             style={styles.editButton}
             onPress={() => setShowEditModal(true)}
           >
-            <Icon name="pencil" size={20} color="#3B82F6" />
+            <PencilIcon size={20} color={"#3B82F6" as any} />
           </TouchableOpacity>
         </View>
 
-        {/* Family Badge */}
-        {currentFamily && (
-          <View style={styles.familyBadge}>
-            <Icon name="home-heart" size={16} color="#8B5CF6" />
-            <Text style={styles.familyBadgeText}>{currentFamily.name}</Text>
+        {/* Circle Badge - Temporarily disabled until Circle migration is complete */}
+        {/* {currentCircle && (
+          <View style={styles.circleBadge}>
+            <HomeIcon size={16} color={"#8B5CF6" as any} />
+            <Text style={styles.circleBadgeText}>{currentCircle.name}</Text>
           </View>
-        )}
+        )} */}
       </View>
 
       {/* Main Content Card with Rounded Top */}
@@ -216,10 +234,9 @@ const ProfileScreen: React.FC = () => {
                   style={[styles.tab, isActive && styles.tabActive]}
                   onPress={() => handleTabPress(index)}
                 >
-                  <Icon
-                    name={tab.icon}
+                  <tab.icon
                     size={20}
-                    color={isActive ? '#3B82F6' : '#6B7280'}
+                    color={(isActive ? '#3B82F6' : '#6B7280') as any}
                   />
                   <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
                     {tab.label}
@@ -257,11 +274,11 @@ const ProfileScreen: React.FC = () => {
               email={profile?.email}
               phone={profile?.phoneNumber}
               bio={profile?.bio}
-              family={currentFamily ? {
-                name: currentFamily.name,
-                memberCount: currentFamily.members?.length || 1,
-                role: 'Member',
-              } : undefined}
+              // circle={currentCircle ? {
+              //   name: currentCircle.name,
+              //   memberCount: currentCircle.members?.length || 1,
+              //   role: 'Member',
+              // } : undefined}
             />
           </View>
 
@@ -282,7 +299,7 @@ const ProfileScreen: React.FC = () => {
         {/* Edit Profile Modal */}
         <EditProfileModal
           visible={showEditModal}
-          profile={profile}
+          profile={profile as any}
           onClose={() => setShowEditModal(false)}
           onSave={async (data) => {
             try {
@@ -295,7 +312,8 @@ const ProfileScreen: React.FC = () => {
           }}
         />
       </View>
-    </LinearGradient>
+       </View>
+    </ScreenBackground>
   );
 };
 
@@ -408,7 +426,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  familyBadge: {
+  circleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
@@ -418,7 +436,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginTop: 12,
   },
-  familyBadgeText: {
+  circleBadgeText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#8B5CF6',

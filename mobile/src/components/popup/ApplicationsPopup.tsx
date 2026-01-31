@@ -66,7 +66,7 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
     {
       id: 'gallery',
       name: 'Gallery',
-      description: 'hourse photo sharing',
+      description: 'Circle photo sharing',
       icon: 'image',
       color: '#FF6B6B',
       route: 'Gallery',
@@ -96,7 +96,7 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
     {
       id: 'social',
       name: 'Social',
-      description: 'hourse social network',
+      description: 'Circle social network',
       icon: 'people',
       color: '#FFA07A',
       route: 'Social',
@@ -148,7 +148,7 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
     {
       id: 'goals',
       name: 'Goals',
-      description: 'hourse goals',
+      description: 'Circle goals',
       icon: 'trophy',
       color: '#F8C471',
       route: 'Goals',
@@ -160,7 +160,7 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
     {
       id: 'location',
       name: 'Location',
-      description: 'hourse tracking',
+      description: 'Circle tracking',
       icon: 'location',
       color: '#3498DB',
       route: 'Location',
@@ -182,7 +182,7 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
     {
       id: 'budget',
       name: 'Budget',
-      description: 'hourse budget',
+      description: 'Circle budget',
       icon: 'wallet',
       color: '#27AE60',
       route: 'Budget',
@@ -232,12 +232,12 @@ const ApplicationsPopup: React.FC<ApplicationsPopupProps> = React.memo(({
 
     // Settings Group
     {
-      id: 'hourse',
-      name: 'hourse',
-      description: 'hourse settings',
+      id: 'Circle',
+      name: 'Circle',
+      description: 'Circle settings',
       icon: 'people-circle',
       color: '#9B59B6',
-      route: 'hourse',
+      route: 'Circle',
       category: 'settings',
       gradient: ['#9B59B6', '#AB69C6'],
     },

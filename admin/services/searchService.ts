@@ -9,7 +9,7 @@ import { listContent } from './contentService'
 
 export interface SearchResult {
   id: string
-  type: 'user' | 'family' | 'content' | 'ticket' | 'audit'
+  type: 'user' | 'Circle' | 'content' | 'ticket' | 'audit'
   title: string
   subtitle?: string
   description?: string
@@ -51,9 +51,9 @@ class SearchService {
             type: 'user' as const,
             title: `${user.firstName} ${user.lastName}`,
             subtitle: user.email,
-            description: `Role: ${user.role} • Status: ${user.status}`,
+            description: `Status: ${user.status} • Source: ${user.source}`,
             url: `?module=users&id=${user.id}`,
-            metadata: { role: user.role, status: user.status }
+            metadata: { status: user.status, source: user.source }
           }))
         results.push(...userResults)
       } catch (error) {
@@ -62,23 +62,23 @@ class SearchService {
 
       // Search families
       try {
-        const families = await adminService.getSocialMediaFamilies()
-        const familyResults = families
-          .filter(family => 
-            family.name?.toLowerCase().includes(searchTerm) ||
-            family.id?.toLowerCase().includes(searchTerm)
+        const families = await adminService.getFamilies()
+        const CircleResults = families
+          .filter(Circle => 
+            Circle.name?.toLowerCase().includes(searchTerm) ||
+            Circle.id?.toLowerCase().includes(searchTerm)
           )
           .slice(0, 5)
-          .map(family => ({
-            id: family.id || '',
-            type: 'family' as const,
-            title: family.name || 'Unnamed Family',
-            subtitle: `Family ID: ${family.id}`,
-            description: `${family.member_count || 0} members`,
-            url: `?module=families&id=${family.id}`,
-            metadata: { memberCount: family.member_count }
+          .map(Circle => ({
+            id: Circle.id || '',
+            type: 'Circle' as const,
+            title: Circle.name || 'Unnamed Circle',
+            subtitle: `Circle ID: ${Circle.id}`,
+            description: `${Circle.member_count || 0} members`,
+            url: `?module=families&id=${Circle.id}`,
+            metadata: { memberCount: Circle.member_count }
           }))
-        results.push(...familyResults)
+        results.push(...CircleResults)
       } catch (error) {
         console.error('Error searching families:', error)
       }
@@ -130,6 +130,7 @@ class SearchService {
 }
 
 export const searchService = new SearchService()
+
 
 
 

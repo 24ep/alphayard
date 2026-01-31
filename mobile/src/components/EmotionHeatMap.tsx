@@ -8,11 +8,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { FONT_STYLES } from '../utils/fontUtils';
-import { emotionService, EmotionRecord, FamilyEmotionAverage } from '../services/emotionService';
+import { emotionService, EmotionRecord, CircleEmotionAverage } from '../services/emotionService';
 
 interface EmotionHeatMapProps {
-  type: 'personal' | 'hourse';
-  data: EmotionRecord[] | FamilyEmotionAverage[];
+  type: 'personal' | 'Circle';
+  data: EmotionRecord[] | CircleEmotionAverage[];
 }
 
 const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
@@ -71,7 +71,7 @@ const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
       const record = (data as EmotionRecord[]).find(d => d.date === date);
       return record ? record.emotion : null;
     } else {
-      const record = (data as FamilyEmotionAverage[]).find(d => d.date === date);
+      const record = (data as CircleEmotionAverage[]).find(d => d.date === date);
       return record ? Math.round(record.average_emotion) : null;
     }
   };
@@ -175,7 +175,7 @@ const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
         label: 'Your Average'
       };
     } else {
-      const records = data as FamilyEmotionAverage[];
+      const records = data as CircleEmotionAverage[];
       const totalDays = records.length;
       const averageEmotion = totalDays > 0
         ? records.reduce((sum, record) => sum + record.average_emotion, 0) / totalDays
@@ -184,7 +184,7 @@ const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
       return {
         totalDays,
         averageEmotion: Math.round(averageEmotion * 10) / 10,
-        label: 'hourse Average'
+        label: 'Circle Average'
       };
     }
   };
@@ -205,7 +205,7 @@ const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
               color="#FFFFFF"
             />
             <Text style={styles.title}>
-              {type === 'personal' ? 'Your Wellbeing' : 'hourse Wellbeing'}
+              {type === 'personal' ? 'Your Wellbeing' : 'Circle Wellbeing'}
             </Text>
           </View>
           <View style={styles.statsContainer}>
@@ -237,7 +237,7 @@ const EmotionHeatMap: React.FC<EmotionHeatMapProps> = ({
           <Text style={styles.footerText}>
             {type === 'personal'
               ? `Showing last ${numWeeks} weeks · Track daily for patterns`
-              : 'See how your hourse is feeling together'
+              : 'See how your Circle is feeling together'
             }
           </Text>
         </View>
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
-    fontFamily: FONT_STYLES.englishSemiBold,
+    fontCIRCLE: FONT_STYLES.englishSemiBold,
   },
   statsContainer: {
     alignItems: 'flex-end',
@@ -279,18 +279,18 @@ const styles = StyleSheet.create({
   statsLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
-    fontFamily: FONT_STYLES.englishBody,
+    fontCIRCLE: FONT_STYLES.englishBody,
   },
   statsValue: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    fontFamily: FONT_STYLES.englishSemiBold,
+    fontCIRCLE: FONT_STYLES.englishSemiBold,
   },
   statsDays: {
     fontSize: 10,
     color: 'rgba(255, 255, 255, 0.6)',
-    fontFamily: FONT_STYLES.englishBody,
+    fontCIRCLE: FONT_STYLES.englishBody,
   },
   heatMapContainer: {
     marginBottom: 12,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   legendLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
-    fontFamily: FONT_STYLES.englishBody,
+    fontCIRCLE: FONT_STYLES.englishBody,
   },
   legendColors: {
     flexDirection: 'row',
@@ -328,9 +328,11 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
-    fontFamily: FONT_STYLES.englishBody,
+    fontCIRCLE: FONT_STYLES.englishBody,
     textAlign: 'center',
   },
 });
 
 export default EmotionHeatMap;
+
+

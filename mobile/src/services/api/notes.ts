@@ -4,9 +4,9 @@ export interface Note {
   id: string;
   title: string | null;
   content: string;
-  family_id: string;
+  circle_id: string;
   user_id: string;
-  category: 'personal' | 'work' | 'family' | 'ideas';
+  category: 'personal' | 'work' | 'circle' | 'ideas';
   is_pinned: boolean;
   color: string;
   created_at: string;
@@ -16,7 +16,7 @@ export interface Note {
 export interface CreateNotePayload {
   title?: string;
   content?: string;
-  category?: 'personal' | 'work' | 'family' | 'ideas';
+  category?: 'personal' | 'work' | 'circle' | 'ideas';
   is_pinned?: boolean;
   color?: string;
 }
@@ -24,7 +24,7 @@ export interface CreateNotePayload {
 export interface UpdateNotePayload {
   title?: string | null;
   content?: string;
-  category?: 'personal' | 'work' | 'family' | 'ideas';
+  category?: 'personal' | 'work' | 'circle' | 'ideas';
   is_pinned?: boolean;
   color?: string;
 }
@@ -47,3 +47,4 @@ export const notesApi = {
     return res.data;
   },
 };
+

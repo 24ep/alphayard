@@ -45,8 +45,8 @@ export interface Database {
             status: string
             expires_at: string
           } | null
-          family_id: string | null
-          family_role: 'admin' | 'member' | null
+          Circle_id: string | null
+          Circle_role: 'admin' | 'member' | null
           emergency_contacts: Array<{
             id: string
             name: string
@@ -72,4 +72,5 @@ export interface Database {
     }
   }
 }
+
 

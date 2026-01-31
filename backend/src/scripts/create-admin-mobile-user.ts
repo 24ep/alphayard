@@ -23,7 +23,7 @@ async function createAdminMobileUser() {
             firstName: 'Super',
             lastName: 'Admin',
             phone: '+15555555555',
-            userType: 'hourse'
+            userType: 'circle'
         };
 
         // Hash the password
@@ -116,3 +116,4 @@ async function createAdminMobileUser() {
 }
 
 createAdminMobileUser();
+

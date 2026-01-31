@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import XLSX from 'xlsx';
 import { Pool } from 'pg';
-import supabaseService from '../services/supabaseService';
+
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -268,13 +268,8 @@ export class LocalizationController {
   // Get translation completion statistics
   async getTranslationStats(req: any, res: Response) {
     try {
-      const { data, error } = await supabaseService.getSupabaseClient().rpc('get_translation_completion');
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ stats: data });
+      const { rows } = await pool.query('SELECT * FROM get_translation_completion()');
+      res.json({ stats: rows });
     } catch (error) {
       console.error('Error fetching translation stats:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -284,40 +279,37 @@ export class LocalizationController {
   // Get translation dashboard
   async getTranslationDashboard(req: any, res: Response) {
     try {
-      // Get total counts
-      const { data: keyCount } = await supabaseService.getSupabaseClient()
-        .from('translation_keys')
-        .select('id', { count: 'exact' })
-        .eq('is_active', true);
-
-      const { data: languageCount } = await supabaseService.getSupabaseClient()
-        .from('languages')
-        .select('id', { count: 'exact' })
-        .eq('is_active', true);
-
-      const { data: translationCount } = await supabaseService.getSupabaseClient()
-        .from('translations')
-        .select('id', { count: 'exact' })
-        .eq('is_approved', true);
+      // Get basic counts
+      const countsQuery = `
+        SELECT 
+          (SELECT COUNT(*) FROM translation_keys WHERE is_active = true) as total_keys,
+          (SELECT COUNT(*) FROM languages WHERE is_active = true) as total_languages,
+          (SELECT COUNT(*) FROM translations WHERE is_approved = true) as total_translations
+      `;
+      const { rows: countsRows } = await pool.query(countsQuery);
+      const counts = countsRows[0];
 
       // Get completion stats
-      const { data: completionStats } = await supabaseService.getSupabaseClient().rpc('get_translation_completion');
+      const { rows: completionStats } = await pool.query('SELECT * FROM get_translation_completion()');
 
       // Get recent translations
-      const { data: recentTranslations } = await supabaseService.getSupabaseClient()
-        .from('translations')
-        .select(`
-          *,
-          translation_keys(key, category),
-          languages(code, name)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const recentQuery = `
+        SELECT 
+          t.*,
+          tk.key as tkey, tk.category,
+          l.code as lcode, l.name as lname
+        FROM translations t
+        JOIN translation_keys tk ON t.key_id = tk.id
+        JOIN languages l ON t.language_id = l.id
+        ORDER BY t.created_at DESC
+        LIMIT 10
+      `;
+      const { rows: recentTranslations } = await pool.query(recentQuery);
 
       const dashboard = {
-        total_keys: keyCount?.length || 0,
-        total_languages: languageCount?.length || 0,
-        total_translations: translationCount?.length || 0,
+        total_keys: parseInt(counts.total_keys),
+        total_languages: parseInt(counts.total_languages),
+        total_translations: parseInt(counts.total_translations),
         completion_stats: completionStats || [],
         recent_translations: recentTranslations || []
       };

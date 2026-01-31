@@ -18,42 +18,42 @@ interface ChatMember {
 interface ChatPageProps {
   onClose: () => void;
   onNavigateToChat: (chatId: string, chatName: string) => void;
-  familyMembers?: any[];
+  circleMembers?: any[];
 }
 
-type ChatCategory = 'hourse' | 'workplace' | 'hometown' | 'commercial' | 'other';
+type ChatCategory = 'Circle' | 'workplace' | 'hometown' | 'commercial' | 'other';
 
-export const ChatPage: React.FC<ChatPageProps> = ({ onClose, onNavigateToChat, familyMembers = [] }) => {
+export const ChatPage: React.FC<ChatPageProps> = ({ onClose, onNavigateToChat, circleMembers = [] }) => {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
   const [showGroupManagement, setShowGroupManagement] = useState(false);
   const [groupManagementMode, setGroupManagementMode] = useState<'create' | 'manage'>('create');
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [selectedGroupName, setSelectedGroupName] = useState<string>('');
-  const [activeCategory, setActiveCategory] = useState<ChatCategory>('hourse');
+  const [activeCategory, setActiveCategory] = useState<ChatCategory>('Circle');
 
-  // Generate chat list from real hourse data
+  // Generate chat list from real Circle data
   const generateChatList = (): ChatMember[] => {
     const chatList: ChatMember[] = [];
     
-    // Add hourse group chat if there are multiple members
-    if (familyMembers.length > 1) {
+    // Add Circle group chat if there are multiple members
+    if (circleMembers.length > 1) {
       chatList.push({
-        id: 'hourse-group',
-        name: 'hourse Group',
+        id: 'Circle-group',
+        name: 'Circle Group',
         avatar: '👨‍👩‍👧‍👦',
         lastMessage: 'No recent messages',
         lastMessageTime: 'No activity',
         unreadCount: 0,
-        isOnline: familyMembers.some(member => member.status === 'online'),
+        isOnline: circleMembers.some(member => member.status === 'online'),
         isGroup: true,
       });
     }
     
-    // Add individual hourse members
-    familyMembers.forEach((member) => {
+    // Add individual Circle members
+    circleMembers.forEach((member) => {
       chatList.push({
         id: member.id || `member-${member.name}`,
-        name: member.name || 'hourse Member',
+        name: member.name || 'Circle Member',
         avatar: member.avatar || '👤',
         lastMessage: 'No recent messages',
         lastMessageTime: 'No activity',
@@ -130,7 +130,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ onClose, onNavigateToChat, f
       {/* Category Tabs */}
       <SegmentedTabs
         tabs={[
-          { id: 'hourse', label: 'hourse', icon: 'home' },
+          { id: 'Circle', label: 'Circle', icon: 'home' },
           { id: 'workplace', label: 'Workplace', icon: 'briefcase' },
           { id: 'hometown', label: 'Hometown', icon: 'map-marker' },
           { id: 'commercial', label: 'Commercial', icon: 'store' },
@@ -220,7 +220,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({ onClose, onNavigateToChat, f
         groupId={groupManagementMode === 'manage' ? selectedGroupId : undefined}
         groupName={groupManagementMode === 'manage' ? selectedGroupName : undefined}
         members={[]} // In a real app, this would be the actual group members
-        allFamilyMembers={familyMembers}
+        allCircleMembers={circleMembers}
         onCreateGroup={handleCreateNewGroup}
         onInviteMembers={handleInviteMembers}
         onRemoveMember={handleRemoveMember}
@@ -372,3 +372,4 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 182, 193, 0.1)',
   },
 });
+

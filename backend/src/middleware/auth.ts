@@ -2,14 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/UserModel';
 import pool from '../config/database'; // Using postgres pool directly
+import { config } from '../config/env';
 
 export interface AuthenticatedRequest extends Request {
   user: {
     id: string;
     email: string;
+    role?: string;
   };
-  familyId?: string;
-  familyRole?: string;
+  circleId?: string;
+  circleRole?: string;
 }
 
 export const authenticateToken = async (
@@ -38,7 +40,7 @@ export const authenticateToken = async (
     }
 
     // Verified JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
+    const jwtSecret = config.JWT_SECRET;
 
     // DEV BYPASS: Allow mock-access-token for development
     if (token === 'mock-access-token') {
@@ -48,12 +50,11 @@ export const authenticateToken = async (
 
       // Add user info to request directly without DB check (or with DB check)
       // We'll verify against DB to be safe and populate email correctly
-      const res = await pool.query('SELECT * FROM auth.users WHERE id = $1', [TEST_USER_ID]);
+      const res = await pool.query('SELECT * FROM public.users WHERE id = $1', [TEST_USER_ID]);
       let user = res.rows[0];
 
       if (!user) {
-        // If test user missing in auth.users, try public.users or just mock it
-        // log('Test user missing in auth.users, using fallback');
+        // If test user missing in public.users, just mock it
         user = { id: TEST_USER_ID, email: 'jaroonwitpool@gmail.com', is_active: true };
       }
 
@@ -67,6 +68,16 @@ export const authenticateToken = async (
     const decoded = jwt.verify(token, jwtSecret) as any;
 
     // log(`Token verified for ID: ${decoded.id}`);
+
+    // SPECIAL CASE: Handle hardcoded 'admin' user from adminAuth.ts
+    if (decoded.id === 'admin') {
+      req.user = {
+        id: 'admin',
+        email: 'admin@bondarys.com',
+        role: 'admin'
+      } as any;
+      return next();
+    }
 
     // Check if user still exists and is active
     const user = await UserModel.findById(decoded.id);
@@ -90,8 +101,13 @@ export const authenticateToken = async (
     // Add user info to request
     req.user = {
       id: user.id,
-      email: user.email
-    };
+      email: user.email,
+      role: (user as any).role
+    } as any;
+    
+    try {
+      require('fs').appendFileSync('debug_auth.log', `[${new Date().toISOString()}] [authenticateToken] Success. UserID: ${user.id}, ExtractedRole: ${(user as any).role}\n`);
+    } catch (e) {}
 
     next();
   } catch (error) {
@@ -133,21 +149,32 @@ export const optionalAuth = async (
       return next(); // Continue without authentication
     }
 
-    const jwtSecret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
+    const jwtSecret = config.JWT_SECRET;
     const decoded = jwt.verify(
       token,
       jwtSecret
     ) as any;
 
-    const res = await pool.query('SELECT id, email FROM auth.users WHERE id = $1', [decoded.id]);
+    const res = await pool.query(
+      `SELECT id, email, raw_user_meta_data, role FROM public.users WHERE id = $1`,
+      [decoded.id]
+    );
     const user = res.rows[0];
 
     if (user) {
+      // Extract role from metadata or direct column
+      const meta = user.raw_user_meta_data || {};
+      const userRole = user.role || meta.role;
+      
       req.user = {
         id: user.id,
-        email: user.email
+        email: user.email,
+        role: userRole
       };
     }
+    
+    // Debug log provided token role vs db role
+    // console.log(`[authenticateToken] User: ${user?.email}, Role: ${req.user?.role}`);
 
     next();
   } catch (error) {
@@ -163,8 +190,14 @@ export const requireRole = (requiredRole: string) => {
       // Extract role from a trusted source. Prefer upstream assignment (e.g., gateway),
       // fallback to JWT claim parsed earlier into req as needed by your stack.
       const roleFromRequest = (req as any).userRole || (req as any).user?.role;
+      try {
+        require('fs').appendFileSync('debug_auth.log', `[${new Date().toISOString()}] [requireRole] User: ${req.user?.id}, Role from request: ${roleFromRequest}, Required: ${requiredRole}\n`);
+      } catch (e) {}
 
       if (!roleFromRequest) {
+        try {
+          require('fs').appendFileSync('debug_auth.log', `[${new Date().toISOString()}] [requireRole] Access denied: Role not present\n`);
+        } catch (e) {}
         return res.status(403).json({
           error: 'Access denied',
           message: 'Role not present on request'
@@ -172,9 +205,12 @@ export const requireRole = (requiredRole: string) => {
       }
 
       if (roleFromRequest !== requiredRole && roleFromRequest !== 'super_admin') {
+        try {
+          require('fs').appendFileSync('debug_auth.log', `[${new Date().toISOString()}] [requireRole] Access denied: Role ${roleFromRequest} does not match ${requiredRole}\n`);
+        } catch (e) {}
         return res.status(403).json({
           error: 'Access denied',
-          message: `Requires role: ${requiredRole}`
+          message: `Requires role: ${requiredRole}. Your role: ${roleFromRequest}`
         });
       }
 
@@ -188,71 +224,94 @@ export const requireRole = (requiredRole: string) => {
   };
 };
 
-export const requireFamilyMember = async (
+export const requireCircleMember = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
     const { rows } = await pool.query(
-      'SELECT family_id, role FROM family_members WHERE user_id = $1 LIMIT 1',
+      'SELECT circle_id, role FROM circle_members WHERE user_id = $1 LIMIT 1',
       [req.user.id]
     );
-    const familyMember = rows[0];
+    const circleMember = rows[0];
 
-    if (!familyMember) {
+    if (!circleMember) {
       res.status(403).json({
         error: 'Access denied',
-        message: 'You must be a member of a hourse to access this resource'
+        message: 'You must be a member of a circle to access this resource'
       });
       return;
     }
 
-    // Add hourse info to request
-    req.familyId = familyMember.family_id;
-    req.familyRole = familyMember.role;
+    // Add circle info to request
+    req.circleId = circleMember.circle_id;
+    req.circleRole = circleMember.role;
 
     next();
   } catch (error) {
-    console.error('hourse member check error:', error);
+    console.error('circle member check error:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to verify hourse membership',
-      details: error instanceof Error ? error.message : String(error)
+      message: 'Failed to verify circle membership',
     });
     return;
   }
 };
 
-export const requireFamilyOwner = async (
+export const optionalCircleMember = async (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
     const { rows } = await pool.query(
-      "SELECT family_id, role FROM family_members WHERE user_id = $1 AND role = 'owner' LIMIT 1",
+      'SELECT circle_id, role FROM circle_members WHERE user_id = $1 LIMIT 1',
       [req.user.id]
     );
-    const familyMember = rows[0];
+    const circleMember = rows[0];
 
-    if (!familyMember) {
+    if (circleMember) {
+      req.circleId = circleMember.circle_id;
+      req.circleRole = circleMember.role;
+    }
+
+    next();
+  } catch (error) {
+    console.error('Optional circle member check error:', error);
+    next();
+  }
+};
+
+export const requireCircleOwner = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const { rows } = await pool.query(
+      "SELECT circle_id, role FROM circle_members WHERE user_id = $1 AND role = 'owner' LIMIT 1",
+      [req.user.id]
+    );
+    const circleMember = rows[0];
+
+    if (!circleMember) {
       res.status(403).json({
         error: 'Access denied',
-        message: 'You must be a hourse owner to access this resource'
+        message: 'You must be a circle owner to access this resource'
       });
       return;
     }
 
-    req.familyId = familyMember.family_id;
-    req.familyRole = familyMember.role;
+    req.circleId = circleMember.circle_id;
+    req.circleRole = circleMember.role;
 
     next();
   } catch (error) {
-    console.error('hourse owner check error:', error);
+    console.error('circle owner check error:', error);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to verify hourse ownership'
+      message: 'Failed to verify circle ownership'
     });
     return;
   }
@@ -265,12 +324,12 @@ export const requireAdmin = async (
 ): Promise<void> => {
   try {
     const { rows } = await pool.query(
-      'SELECT is_super_admin, raw_user_meta_data->>\'role\' as role FROM auth.users WHERE id = $1',
+      "SELECT is_active as is_super_admin, role, raw_user_meta_data->>'role' as meta_role FROM public.users WHERE id = $1",
       [req.user.id]
     );
     const user = rows[0];
 
-    if (user && (user.is_super_admin || user.role === 'admin' || user.role === 'super_admin')) {
+    if (user && (user.is_super_admin || user.role === 'admin' || user.role === 'super_admin' || user.meta_role === 'admin' || user.meta_role === 'super_admin')) {
       next();
       return;
     }

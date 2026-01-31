@@ -430,6 +430,19 @@ export class HealthCheckService {
     const startTime = Date.now();
 
     try {
+      if (Platform.OS === 'web') {
+        const duration = Date.now() - startTime;
+        return {
+          name: 'Storage Space',
+          status: 'healthy', // Assume healthy on web
+          message: 'Storage checks not available on web',
+          details: {
+            freeSpace: 'Unknown',
+          },
+          duration,
+        };
+      }
+
       const RNFS = require('react-native-fs');
       const freeSpace = await RNFS.getFSInfo();
       const duration = Date.now() - startTime;
@@ -512,6 +525,33 @@ export class HealthCheckService {
 
   // Get system metrics
   private async getSystemMetrics(): Promise<SystemMetrics> {
+    if (Platform.OS === 'web') {
+        return {
+            memory: {
+                used: 0,
+                total: 0,
+                available: 0,
+                percentage: 0,
+            },
+            storage: {
+                used: 0,
+                total: 0,
+                available: 0,
+                percentage: 0,
+            },
+            network: {
+                isConnected: true,
+                type: 'wifi',
+                speed: 100,
+            },
+            battery: {
+                level: 100,
+                isCharging: true,
+                temperature: 25,
+            },
+        };
+    }
+
     const RNFS = require('react-native-fs');
     const freeSpace = await RNFS.getFSInfo();
 

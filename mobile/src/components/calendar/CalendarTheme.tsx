@@ -251,7 +251,7 @@ export const getResponsiveStyles = (theme: CalendarTheme) => {
 
 export const getEventTypeColors = () => ({
   personal: '#4caf50',
-  hourse: '#e91e63',
+  Circle: '#e91e63',
   work: '#2196f3',
   school: '#9c27b0',
   medical: '#f44336',
@@ -266,7 +266,7 @@ export const getPriorityColors = () => ({
 
 export const getEventTypeIcons = () => ({
   personal: 'person-outline',
-  hourse: 'people-outline',
+  Circle: 'people-outline',
   work: 'briefcase-outline',
   school: 'school-outline',
   medical: 'medical-outline',
@@ -282,3 +282,4 @@ export const getResponsiveSpacing = (baseSpacing: number) => {
   const scale = width / 375;
   return Math.max(baseSpacing * scale, baseSpacing * 0.8);
 };
+

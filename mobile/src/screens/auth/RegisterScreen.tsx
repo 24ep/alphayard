@@ -126,7 +126,7 @@ const RegisterScreen: React.FC = () => {
           <BrandLogo size="medium" color={brandColors.primary} />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>
-            Join Bondarys to keep your hourse safe and connected
+            Join Bondarys to keep your Circle safe and connected
           </Text>
         </View>
 

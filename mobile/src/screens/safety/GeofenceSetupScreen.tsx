@@ -298,7 +298,7 @@ const GeofenceSetupScreen: React.FC<GeofenceSetupScreenProps> = ({ route }) => {
         <EmptyState
           icon="map-marker-radius-outline"
           title="No geofences set up"
-          subtitle="Create geofences to get alerts when hourse members enter or leave specific areas"
+          subtitle="Create geofences to get alerts when Circle members enter or leave specific areas"
           actionText="Add Geofence"
           onAction={handleAddGeofence}
         />

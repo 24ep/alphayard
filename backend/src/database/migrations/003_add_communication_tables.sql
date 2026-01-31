@@ -6,7 +6,7 @@
 -- Chat rooms table
 CREATE TABLE IF NOT EXISTS chat_rooms (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) DEFAULT 'hourse',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -106,16 +106,16 @@ ALTER TABLE scheduled_notifications ENABLE ROW LEVEL SECURITY;
 -- Create RLS policies for communication data
 CREATE POLICY IF NOT EXISTS "hourse members can view hourse chat rooms" ON chat_rooms FOR SELECT USING (
   EXISTS (
-    SELECT 1 FROM family_members 
-    WHERE family_members.family_id = chat_rooms.family_id 
-    AND family_members.user_id = auth.uid()
+    SELECT 1 FROM circle_members 
+    WHERE circle_members.circle_id = chat_rooms.circle_id 
+    AND circle_members.user_id = auth.uid()
   )
 );
 
 CREATE POLICY IF NOT EXISTS "hourse members can view hourse chat messages" ON chat_messages FOR SELECT USING (
   EXISTS (
-    SELECT 1 FROM family_members fm
-    JOIN chat_rooms cr ON cr.family_id = fm.family_id
+    SELECT 1 FROM circle_members fm
+    JOIN chat_rooms cr ON cr.circle_id = fm.circle_id
     WHERE cr.id = chat_messages.room_id 
     AND fm.user_id = auth.uid()
   )
@@ -124,8 +124,8 @@ CREATE POLICY IF NOT EXISTS "hourse members can view hourse chat messages" ON ch
 CREATE POLICY IF NOT EXISTS "hourse members can send messages" ON chat_messages FOR INSERT WITH CHECK (
   auth.uid() = sender_id AND
   EXISTS (
-    SELECT 1 FROM family_members fm
-    JOIN chat_rooms cr ON cr.family_id = fm.family_id
+    SELECT 1 FROM circle_members fm
+    JOIN chat_rooms cr ON cr.circle_id = fm.circle_id
     WHERE cr.id = room_id 
     AND fm.user_id = auth.uid()
   )

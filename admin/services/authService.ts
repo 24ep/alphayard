@@ -34,11 +34,25 @@ class AuthService {
 
     try {
       const response = await fetch(url, config)
+      
+      if (response.status === 401) {
+        // Only redirect if NOT already on login page and NOT calling login endpoint
+        const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login'
+        const isAuthEndpoint = endpoint.includes('/auth/login')
+
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_user')
+
+        if (!isLoginPage && !isAuthEndpoint && typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
+        throw new Error('Unauthorized')
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
-
+      
       return await response.json()
     } catch (error: any) {
       console.error('API request failed:', error)

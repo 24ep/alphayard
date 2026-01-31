@@ -34,7 +34,9 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  XMarkIcon
+  XMarkIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
 } from '@heroicons/react/24/outline'
 import { ContentPage, ContentComponent } from '../../types/content'
 import { ErrorBoundary } from '../ui/ErrorBoundary'
@@ -666,26 +668,26 @@ const ContentTab: React.FC<ContentTabProps> = ({
                     </span>
                   </div>
                   <div className="flex space-x-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onMoveComponent(component.id, 'up')
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded"
-                      aria-label="Move up"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        onMoveComponent(component.id, 'down')
-                      }}
-                      className="p-1 hover:bg-gray-100 rounded"
-                      aria-label="Move down"
-                    >
-                      ↓
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onMoveComponent(component.id, 'up')
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        aria-label="Move up"
+                      >
+                        <ChevronUpIcon className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onMoveComponent(component.id, 'down')
+                        }}
+                        className="p-1 hover:bg-gray-100 rounded"
+                        aria-label="Move down"
+                      >
+                        <ChevronDownIcon className="h-3 w-3" />
+                      </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation()

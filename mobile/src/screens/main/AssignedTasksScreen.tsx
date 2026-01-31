@@ -22,7 +22,7 @@ interface Task {
   id: string;
   title: string;
   description: string;
-  category: 'work' | 'personal' | 'hourse' | 'urgent';
+  category: 'work' | 'personal' | 'Circle' | 'urgent';
   priority: 'low' | 'medium' | 'high';
   dueDate: string;
   isCompleted: boolean;
@@ -35,7 +35,7 @@ const AssignedTasksScreen: React.FC = () => {
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [newTaskCategory, setNewTaskCategory] = useState<'work' | 'personal' | 'hourse' | 'urgent'>('work');
+  const [newTaskCategory, setNewTaskCategory] = useState<'work' | 'personal' | 'Circle' | 'urgent'>('work');
   const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [newTaskDueDate, setNewTaskDueDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -56,9 +56,9 @@ const AssignedTasksScreen: React.FC = () => {
     },
     {
       id: '2',
-      title: 'hourse dinner planning',
-      description: 'Plan menu and grocery shopping for weekend hourse dinner',
-      category: 'hourse',
+      title: 'Circle dinner planning',
+      description: 'Plan menu and grocery shopping for weekend Circle dinner',
+      category: 'Circle',
       priority: 'medium',
       dueDate: '2024-01-20T18:00:00',
       isCompleted: false,
@@ -160,7 +160,7 @@ const AssignedTasksScreen: React.FC = () => {
     switch (category) {
       case 'work': return '#2196F3';
       case 'personal': return '#9C27B0';
-      case 'hourse': return '#FF9800';
+      case 'Circle': return '#FF9800';
       case 'urgent': return '#F44336';
       default: return '#666666';
     }
@@ -170,7 +170,7 @@ const AssignedTasksScreen: React.FC = () => {
     switch (category) {
       case 'work': return 'briefcase';
       case 'personal': return 'account';
-      case 'hourse': return 'home';
+      case 'Circle': return 'home';
       case 'urgent': return 'alert';
       default: return 'checkbox-blank-circle';
     }
@@ -213,7 +213,7 @@ const AssignedTasksScreen: React.FC = () => {
     setShowAssignModal(false);
   };
 
-  const handleAssignToFamilyMember = (memberName: string) => {
+  const handleAssignToCircleMember = (memberName: string) => {
     if (selectedTask) {
       // Update the task assignment
       const updatedTasks = tasks.map(task =>
@@ -433,7 +433,7 @@ const AssignedTasksScreen: React.FC = () => {
           <View style={styles.modalSection}>
             <Text style={styles.modalSectionTitle}>Category</Text>
             <View style={styles.modalCategoryGrid}>
-              {(['work', 'personal', 'hourse', 'urgent'] as const).map(category => (
+              {(['work', 'personal', 'Circle', 'urgent'] as const).map(category => (
                 <TouchableOpacity
                   key={category}
                   style={[
@@ -602,19 +602,19 @@ const AssignedTasksScreen: React.FC = () => {
         title="Assign Task"
       >
         <View style={styles.assignModalContainer}>
-          <Text style={styles.assignModalSubtitle}>Select a hourse member to assign this task to:</Text>
+          <Text style={styles.assignModalSubtitle}>Select a Circle member to assign this task to:</Text>
 
-          <View style={styles.familyMembersList}>
+          <View style={styles.circleMembersList}>
             {['Mom', 'Dad', 'Sister', 'Brother', 'Grandma', 'Grandpa'].map((member) => (
               <TouchableOpacity
                 key={member}
-                style={styles.familyMemberOption}
-                onPress={() => handleAssignToFamilyMember(member)}
+                style={styles.circleMemberOption}
+                onPress={() => handleAssignToCircleMember(member)}
               >
-                <View style={styles.familyMemberAvatar}>
+                <View style={styles.circleMemberAvatar}>
                   <IconMC name="account" size={20} color="#FFFFFF" />
                 </View>
-                <Text style={styles.familyMemberName}>{member}</Text>
+                <Text style={styles.circleMemberName}>{member}</Text>
                 <IconIon name="chevron-forward" size={16} color="#666666" />
               </TouchableOpacity>
             ))}
@@ -1069,10 +1069,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  familyMembersList: {
+  circleMembersList: {
     gap: 12,
   },
-  familyMemberOption: {
+  circleMemberOption: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  familyMemberAvatar: {
+  circleMemberAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1091,7 +1091,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  familyMemberName: {
+  circleMemberName: {
     flex: 1,
     fontSize: 16,
     fontWeight: '500',

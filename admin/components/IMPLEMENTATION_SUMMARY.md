@@ -1,4 +1,4 @@
-# Family Safety Incidents - Real Data Implementation
+# Circle Safety Incidents - Real Data Implementation
 
 ## ✅ **Completed Implementation**
 
@@ -23,20 +23,20 @@
   - `network_type` (VARCHAR) - Network type
 
 - **New Tables Created**:
-  - `emergency_contacts` - Family emergency contacts
+  - `emergency_contacts` - Circle emergency contacts
   - `safety_incident_contacts` - Track which contacts were notified
-  - `safety_incident_family_members` - Track which family members were notified
+  - `safety_incident_Circle_members` - Track which Circle members were notified
 
 ### **3. Admin Service Updates**
 - **File**: `admin/services/adminService.ts`
 - **New Methods Added**:
-  - `getSafetyIncidents(familyId?)` - Fetch incidents with optional family filter
+  - `getSafetyIncidents(CircleId?)` - Fetch incidents with optional Circle filter
   - `getSafetyIncident(id)` - Fetch single incident
   - `acknowledgeSafetyIncident(id)` - Acknowledge incident
   - `resolveSafetyIncident(id)` - Resolve incident
 
 ### **4. Frontend Component Updates**
-- **File**: `admin/components/FamilySafetyIncidents.tsx`
+- **File**: `admin/components/CircleSafetyIncidents.tsx`
 - **Changes Made**:
   - ✅ Removed all mock data
   - ✅ Integrated with real API endpoints
@@ -82,20 +82,20 @@ npm run dev
 
 ## **📊 Data Flow**
 
-1. **Admin Console** → Calls `adminService.getSafetyIncidents(familyId)`
+1. **Admin Console** → Calls `adminService.getSafetyIncidents(CircleId)`
 2. **Admin Service** → Makes API request to `/api/v1/safety/incidents`
 3. **Backend Route** → Queries `safety_alerts` table with joins
-4. **Database** → Returns incident data with related contacts and family members
+4. **Database** → Returns incident data with related contacts and Circle members
 5. **Backend** → Transforms and returns JSON response
 6. **Frontend** → Displays incidents in list with detailed modal
 
 ## **🎯 Features Working**
 
-- ✅ **Real Family Data**: Fetches actual families from database
+- ✅ **Real Circle Data**: Fetches actual families from database
 - ✅ **Real Incident Data**: Fetches actual safety alerts from database
-- ✅ **Incident Details**: Shows user info, location, contacts, family members
+- ✅ **Incident Details**: Shows user info, location, contacts, Circle members
 - ✅ **Acknowledge/Resolve**: Updates incident status in database
-- ✅ **Filtering**: Filter by family, status, type
+- ✅ **Filtering**: Filter by Circle, status, type
 - ✅ **Search**: Search incidents by title, user, message
 - ✅ **Statistics**: Real-time counts of active, high priority, etc.
 
@@ -114,9 +114,10 @@ To test the implementation:
 
 1. **Create Test Data**: Insert some safety alerts into the database
 2. **Access Admin Console**: Navigate to Safety → Emergency Incidents
-3. **Select Family**: Choose a family from the dropdown
+3. **Select Circle**: Choose a Circle from the dropdown
 4. **View Incidents**: See real incidents in the list
 5. **Click Incident**: View detailed information
 6. **Acknowledge/Resolve**: Test the action buttons
 
-The system now uses real data from the database instead of mock data, providing a fully functional family safety incidents management interface for administrators.
+The system now uses real data from the database instead of mock data, providing a fully functional Circle safety incidents management interface for administrators.
+

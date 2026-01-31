@@ -11,6 +11,7 @@ import { colors } from '../../../theme/colors';
 import { textStyles } from '../../../theme/typography';
 import AuthInput from '../../../components/auth/AuthInput';
 import { LoginFormProps } from '../types';
+import { isDev } from '../../../utils/isDev';
 
 const LoginForm: React.FC<LoginFormProps> = ({
   email,
@@ -108,7 +109,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
         </Button>
 
         {/* Development Bypass Button */}
-        {__DEV__ && onDevBypass && (
+        {isDev && onDevBypass && (
           <Button
             onPress={onDevBypass}
             variant="outline"

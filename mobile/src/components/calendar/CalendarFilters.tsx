@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { brandColors } from '../../theme/colors';
 
 export interface CalendarFilter {
-  type: 'all' | 'personal' | 'hourse' | 'work' | 'school' | 'medical' | 'other';
+  type: 'all' | 'personal' | 'Circle' | 'work' | 'school' | 'medical' | 'other';
   priority: 'all' | 'low' | 'medium' | 'high';
   dateRange: 'all' | 'today' | 'week' | 'month' | 'custom';
   showCompleted: boolean;
@@ -33,7 +33,7 @@ export const CalendarFilters: React.FC<CalendarFiltersProps> = ({
   const eventTypes = [
     { key: 'all', label: 'All', icon: 'apps-outline', color: '#666' },
     { key: 'personal', label: 'Personal', icon: 'person-outline', color: '#4caf50' },
-    { key: 'hourse', label: 'hourse', icon: 'people-outline', color: '#e91e63' },
+    { key: 'Circle', label: 'Circle', icon: 'people-outline', color: '#e91e63' },
     { key: 'work', label: 'Work', icon: 'briefcase-outline', color: '#2196f3' },
     { key: 'school', label: 'School', icon: 'school-outline', color: '#9c27b0' },
     { key: 'medical', label: 'Medical', icon: 'medical-outline', color: '#f44336' },
@@ -427,3 +427,4 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
 });
+

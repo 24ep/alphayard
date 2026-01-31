@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from '../config/env';
 
 export interface AdminRequest extends Request {
   admin?: {
-    id: string;
+    id: string; // This is now users.id
+    adminId?: string; // This is admin_users.id (optional)
     email: string;
     firstName?: string;
     lastName?: string;
@@ -30,7 +32,7 @@ export const authenticateAdmin = async (
     }
 
     // Verify JWT token
-    const jwtSecret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
+    const jwtSecret = config.JWT_SECRET;
     const decoded = jwt.verify(token, jwtSecret) as any;
 
     // Check if it's an admin token
@@ -43,7 +45,8 @@ export const authenticateAdmin = async (
 
     // Add admin info to request
     req.admin = {
-      id: decoded.id,
+      id: decoded.id, // users.id
+      adminId: decoded.adminId, // admin_users.id
       email: decoded.email,
       firstName: decoded.firstName,
       lastName: decoded.lastName,

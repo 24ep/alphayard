@@ -22,6 +22,7 @@ interface PinKeypadProps {
     children?: React.ReactNode;
     showBiometric?: boolean;
     onBiometricPress?: () => void;
+    showValues?: boolean;
 }
 
 export const PinKeypad: React.FC<PinKeypadProps> = ({
@@ -34,6 +35,7 @@ export const PinKeypad: React.FC<PinKeypadProps> = ({
     children,
     showBiometric = false,
     onBiometricPress,
+    showValues = false,
 }) => {
     const handleKeyPress = (key: string) => {
         if (pin.length < maxLength) {
@@ -50,16 +52,35 @@ export const PinKeypad: React.FC<PinKeypadProps> = ({
     const renderDots = () => {
         const dots = [];
         for (let i = 0; i < maxLength; i++) {
-            dots.push(
-                <View
-                    key={i}
-                    style={[
-                        styles.dot,
-                        i < pin.length ? styles.dotFilled : styles.dotEmpty,
-                        error ? styles.dotError : null,
-                    ]}
-                />
-            );
+            if (showValues) {
+                 // Render Box with Value
+                 dots.push(
+                    <View
+                        key={i}
+                        style={[
+                            styles.box,
+                            i < pin.length ? styles.boxFilled : styles.boxEmpty,
+                            error ? styles.boxError : null,
+                        ]}
+                    >
+                        <Text style={styles.boxText}>
+                            {i < pin.length ? pin[i] : ''}
+                        </Text>
+                    </View>
+                );
+            } else {
+                // Render Dot
+                dots.push(
+                    <View
+                        key={i}
+                        style={[
+                            styles.dot,
+                            i < pin.length ? styles.dotFilled : styles.dotEmpty,
+                            error ? styles.dotError : null,
+                        ]}
+                    />
+                );
+            }
         }
         return dots;
     };
@@ -172,6 +193,32 @@ const styles = StyleSheet.create({
     dotError: {
         borderColor: '#EF4444',
         backgroundColor: '#FEE2E2',
+    },
+    // Box styles for OTP
+    box: {
+        width: 45,
+        height: 55,
+        borderRadius: 12,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9F9F9',
+    },
+    boxEmpty: {
+        borderColor: '#DDD',
+    },
+    boxFilled: {
+        borderColor: '#FA7272',
+        backgroundColor: '#FFF',
+    },
+    boxError: {
+        borderColor: '#EF4444',
+        backgroundColor: '#FEE2E2',
+    },
+    boxText: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: '#333',
     },
     errorText: {
         color: '#EF4444',

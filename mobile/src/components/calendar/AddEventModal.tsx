@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../theme/colors';
-import { typography } from '../../theme/typography';
+import { useBranding } from '../../contexts/BrandingContext';
+import { DateTimePickerDrawer } from './DateTimePickerDrawer';
 
 interface Event {
   id: string;
@@ -22,11 +23,11 @@ interface Event {
   endDate: string;
   allDay: boolean;
   location?: string;
-  type: 'hourse' | 'personal' | 'work' | 'school' | 'medical' | 'other';
+  type: 'Circle' | 'personal' | 'work' | 'school' | 'medical' | 'other';
   color: string;
   attendees: string[];
   createdBy: string;
-  familyId?: string;
+  circleId?: string;
   recurring?: {
     type: 'daily' | 'weekly' | 'monthly' | 'yearly';
     interval: number;
@@ -52,7 +53,20 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   selectedDate,
 }) => {
   const { t } = useTranslation();
+  const { categories } = useBranding();
   
+  // Get Date/Time Picker Config
+  const pickerConfigSettings = React.useMemo(() => {
+    if (!categories) return null;
+    for (const cat of categories) {
+      if (cat.id === 'advanced-inputs') { // category id
+        const found = cat.components.find(c => c.id === 'datetime-picker');
+        if (found) return found.config;
+      }
+    }
+    return null;
+  }, [categories]);
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -64,12 +78,33 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   });
   const [loading, setLoading] = useState(false);
 
+
+  const [pickerConfig, setPickerConfig] = useState<{
+    visible: boolean;
+    mode: 'start' | 'end';
+    currentDate: Date;
+  }>({
+    visible: false,
+    mode: 'start',
+    currentDate: new Date(),
+  });
+
   useEffect(() => {
     if (selectedDate && visible) {
       const date = new Date(selectedDate);
       const startDate = date.toISOString();
       const endDate = new Date(date.getTime() + 60 * 60 * 1000).toISOString(); // +1 hour
       
+      setFormData(prev => ({
+        ...prev,
+        startDate,
+        endDate,
+      }));
+    } else if (visible && !selectedDate && !formData.startDate) {
+      // Initialize with current time if no date selected
+      const now = new Date();
+      const startDate = now.toISOString();
+      const endDate = new Date(now.getTime() + 60 * 60 * 1000).toISOString();
       setFormData(prev => ({
         ...prev,
         startDate,
@@ -141,7 +176,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
   const getEventTypeColor = (type: string) => {
     const colors = {
-      hourse: '#EF4444',
+      Circle: '#EF4444',
       personal: '#3B82F6',
       work: '#10B981',
       school: '#F59E0B',
@@ -155,16 +190,68 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const formatWithPattern = (date: Date, pattern: string) => {
+    const map: Record<string, string> = {
+      YYYY: date.getFullYear().toString(),
+      MM: (date.getMonth() + 1).toString().padStart(2, '0'),
+      MMM: date.toLocaleString('en-US', { month: 'short' }),
+      MMMM: date.toLocaleString('en-US', { month: 'long' }),
+      DD: date.getDate().toString().padStart(2, '0'),
+      HH: date.getHours().toString().padStart(2, '0'),
+      h: (date.getHours() % 12 || 12).toString(),
+      mm: date.getMinutes().toString().padStart(2, '0'),
+      ss: date.getSeconds().toString().padStart(2, '0'),
+      A: date.getHours() >= 12 ? 'PM' : 'AM',
+    };
+    return pattern.replace(/YYYY|MMMM|MMM|MM|DD|HH|h|mm|ss|A/g, matched => map[matched]);
+  };
+
   const formatDateTime = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+    
+    // Use configured format or fallback
+    const displayFormat = pickerConfigSettings?.displayFormat || 'MMM DD, YYYY h:mm A';
+    
+    try {
+      return formatWithPattern(date, displayFormat);
+    } catch (e) {
+      return date.toLocaleString();
+    }
+  };
+
+  const openPicker = (mode: 'start' | 'end') => {
+    const dateStr = mode === 'start' ? formData.startDate : formData.endDate;
+    const date = dateStr ? new Date(dateStr) : new Date();
+    setPickerConfig({
+      visible: true,
+      mode,
+      currentDate: date,
     });
+  };
+
+  const handlePickerConfirm = (date: Date) => {
+    if (pickerConfig.mode === 'start') {
+      const newStart = date.toISOString();
+      // If end date is before new start date, push end date to start + 1h
+      const currentEnd = formData.endDate ? new Date(formData.endDate) : null;
+      let newEnd = formData.endDate;
+      
+      if (!currentEnd || currentEnd <= date) {
+        newEnd = new Date(date.getTime() + 60 * 60 * 1000).toISOString();
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        startDate: newStart,
+        endDate: newEnd,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        endDate: date.toISOString(),
+      }));
+    }
   };
 
   return (
@@ -235,7 +322,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('calendar.eventType')}</Text>
             <View style={styles.typeContainer}>
-              {(['hourse', 'personal', 'work', 'school', 'medical', 'other'] as const).map((type) => (
+              {(['Circle', 'personal', 'work', 'school', 'medical', 'other'] as const).map((type) => (
                 <TouchableOpacity
                   key={type}
                   style={[
@@ -271,27 +358,35 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           {/* Start Date/Time */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('calendar.startDate')} *</Text>
-            <TextInput
-              style={styles.input}
-              value={formatDateTime(formData.startDate)}
-              placeholder={t('calendar.startDatePlaceholder')}
-              placeholderTextColor={colors.gray[400]}
-              editable={false}
-            />
+            <TouchableOpacity onPress={() => openPicker('start')}>
+              <View style={[styles.input, { justifyContent: 'center' }]}>
+                <Text style={{ color: formData.startDate ? colors.gray[700] : colors.gray[400], fontSize: 16 }}>
+                  {formData.startDate ? formatDateTime(formData.startDate) : t('calendar.startDatePlaceholder')}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* End Date/Time */}
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>{t('calendar.endDate')} *</Text>
-            <TextInput
-              style={styles.input}
-              value={formatDateTime(formData.endDate)}
-              placeholder={t('calendar.endDatePlaceholder')}
-              placeholderTextColor={colors.gray[400]}
-              editable={false}
-            />
+            <TouchableOpacity onPress={() => openPicker('end')}>
+              <View style={[styles.input, { justifyContent: 'center' }]}>
+                <Text style={{ color: formData.endDate ? colors.gray[700] : colors.gray[400], fontSize: 16 }}>
+                  {formData.endDate ? formatDateTime(formData.endDate) : t('calendar.endDatePlaceholder')}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </ScrollView>
+
+        <DateTimePickerDrawer
+          visible={pickerConfig.visible}
+          onClose={() => setPickerConfig(prev => ({ ...prev, visible: false }))}
+          onConfirm={handlePickerConfirm}
+          initialDate={pickerConfig.currentDate}
+          title={pickerConfig.mode === 'start' ? t('calendar.startDate') : t('calendar.endDate')}
+        />
       </View>
     </Modal>
   );

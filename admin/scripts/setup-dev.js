@@ -3,7 +3,7 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-console.log('🚀 Setting up Bondarys CMS Development Environment');
+console.log('🚀 Setting up Appkit Development Environment');
 console.log('================================================');
 
 // Check if we're in the right directory

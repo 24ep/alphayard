@@ -21,7 +21,7 @@ export type RootStackParamList = {
   AssignedTasks: undefined;
   
   // Chat screens
-  FamilyGroupChat: undefined;
+  CircleGroupChat: undefined;
   IndividualChat: undefined;
   
   // AI screens
@@ -39,8 +39,8 @@ export type RootStackParamList = {
   Notes: undefined;
   TaskManagement: undefined;
   
-  // hourse screens
-  FamilyDetail: { familyId?: string };
+  // Circle screens
+  CircleDetail: { circleId?: string };
   
 
   

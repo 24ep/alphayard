@@ -133,11 +133,11 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
     return 'City Center';
   };
 
-  // Calculate map center, bounds, and zoom dynamically based on all hourse member locations
+  // Calculate map center, bounds, and zoom dynamically based on all Circle member locations
   useEffect(() => {
     if (locations.length > 0) {
 
-      // Calculate bounds to include all hourse members
+      // Calculate bounds to include all Circle members
       const lats = locations.map(loc => loc.latitude);
       const lngs = locations.map(loc => loc.longitude);
 
@@ -256,13 +256,13 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
 
 
 
-          {/* Map overlay with hourse members */}
+          {/* Map overlay with Circle members */}
           <View style={styles.mapOverlay}>
             {/* Debug: Show test avatar if no locations */}
             {locations.length === 0 && (
               <View
                 style={[
-                  styles.familyMarker,
+                  styles.circleMarker,
                   {
                     left: 50,
                     top: 50,
@@ -286,7 +286,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
                 <View
                   key={location.id}
                   style={[
-                    styles.familyMarker,
+                    styles.circleMarker,
                     {
                       left: pixelPos.x - 20, // Center the marker (40px / 2)
                       top: pixelPos.y - 20,
@@ -358,7 +358,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
         {/* Map info */}
         <View style={styles.mapInfo}>
           <Text style={styles.mapInfoText}>
-            Clean Map • {locations.length} hourse members • Zoom: {mapZoom} • Auto-fit: {locations.length > 0 ? 'ON' : 'OFF'}
+            Clean Map • {locations.length} Circle members • Zoom: {mapZoom} • Auto-fit: {locations.length > 0 ? 'ON' : 'OFF'}
           </Text>
           <Text style={[styles.mapInfoText, { fontSize: 10, marginTop: 2 }]}>
             Center: {mapCenter.lat.toFixed(4)}, {mapCenter.lng.toFixed(4)} • Tiles: {getMapTileUrls()[0].split('/').slice(-3).join('/')}
@@ -380,7 +380,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
 
             {/* Drawer Header */}
             <View style={styles.drawerHeader}>
-              <Text style={styles.drawerTitle}>hourse Location Map</Text>
+              <Text style={styles.drawerTitle}>Circle Location Map</Text>
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setShowMapDrawer(false)}
@@ -410,7 +410,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
 
 
 
-                {/* Map overlay with hourse members */}
+                {/* Map overlay with Circle members */}
                 <View style={styles.fullMapOverlay}>
                   {uniqueLocations.map((location) => {
                     const pixelPos = latLngToPixel(location.latitude, location.longitude);
@@ -421,7 +421,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
                       <View
                         key={location.id}
                         style={[
-                          styles.fullFamilyMarker,
+                          styles.fullCircleMarker,
                           {
                             left: pixelPos.x - 25, // Center the larger marker (50px / 2)
                             top: pixelPos.y - 25,
@@ -484,10 +484,10 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
               </View>
             </View>
 
-            {/* hourse Members Cards */}
-            <View style={styles.drawerFamilyCardsContainer}>
+            {/* Circle Members Cards */}
+            <View style={styles.drawerCircleCardsContainer}>
               <ScrollView
-                style={styles.familyListScroll}
+                style={styles.circleListScroll}
                 showsVerticalScrollIndicator={false}
               >
                 {uniqueLocations.map((member) => {
@@ -501,7 +501,7 @@ export const FreeMapView: React.FC<FreeMapViewProps> = ({
                   const lastDetected = new Date(member.lastUpdated);
 
                   return (
-                    <View key={member.id} style={styles.familyListItem}>
+                    <View key={member.id} style={styles.circleListItem}>
                       <View style={styles.listAvatar}>
                         <View style={[styles.listAvatarCircle, { backgroundColor: getStatusColor(member.status || 'online') }]}>
                           <Text style={styles.listAvatarText}>{getAvatarInitials(member.userName)}</Text>
@@ -624,7 +624,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  familyMarker: {
+  circleMarker: {
     position: 'absolute',
     width: 40,
     height: 40,
@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  fullFamilyMarker: {
+  fullCircleMarker: {
     position: 'absolute',
     width: 50,
     height: 50,
@@ -897,8 +897,8 @@ const styles = StyleSheet.create({
   fullFitButton: {
     backgroundColor: 'rgba(59, 130, 246, 0.95)',
   },
-  // hourse cards styles
-  familyCardsContainer: {
+  // Circle cards styles
+  circleCardsContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
-  drawerFamilyCardsContainer: {
+  drawerCircleCardsContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -931,17 +931,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 12,
   },
-  familyCardsScroll: {
+  circleCardsScroll: {
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 20,
   },
-  familyListScroll: {
+  circleListScroll: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 20,
   },
-  familyCard: {
+  circleCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -958,7 +958,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  familyListItem: {
+  circleListItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
@@ -1006,7 +1006,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B7280',
     marginBottom: 8,
-    fontFamily: 'monospace',
+    fontCIRCLE: 'monospace',
   },
   cardDetails: {
     flexDirection: 'row',
@@ -1083,3 +1083,4 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
 });
+

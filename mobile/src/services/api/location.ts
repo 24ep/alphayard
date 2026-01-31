@@ -22,7 +22,7 @@ export interface Location {
 
 export interface Geofence {
   id: string;
-  familyId: string;
+  circleId: string;
   name: string;
   description?: string;
   centerLatitude: number;
@@ -83,9 +83,9 @@ export const locationApi = {
     return response.data;
   },
 
-  // Get hourse locations
-  getFamilyLocations: async (): Promise<{ success: boolean; locations: Location[] }> => {
-    const response = await api.get('/location/hourse');
+  // Get Circle locations
+  getCircleLocations: async (): Promise<{ success: boolean; locations: Location[] }> => {
+    const response = await api.get('/location/Circle');
     return response.data;
   },
 
@@ -125,3 +125,4 @@ export const locationApi = {
     return response.data;
   },
 };
+

@@ -76,18 +76,18 @@ export function AnalyticsModule() {
           },
           {
             id: '3',
-            title: 'Family Reunion 2024',
+            title: 'Circle Reunion 2024',
             type: 'event',
             views: 45,
             likes: 12
           }
         ],
         recentActivity: [
-          { action: 'Created', content: 'Family Reunion 2024', date: '2024-01-15', user: 'Sarah Johnson' },
+          { action: 'Created', content: 'Circle Reunion 2024', date: '2024-01-15', user: 'Sarah Johnson' },
           { action: 'Published', content: 'Grandma\'s Apple Pie Recipe', date: '2024-01-10', user: 'Mary Smith' },
           { action: 'Updated', content: 'Safety Alert: Storm Warning', date: '2024-01-08', user: 'John Wilson' },
           { action: 'Created', content: 'Christmas Memories 2023', date: '2024-01-05', user: 'Lisa Brown' },
-          { action: 'Published', content: 'Weekly Family Tips', date: '2024-01-03', user: 'Mike Davis' }
+          { action: 'Published', content: 'Weekly Circle Tips', date: '2024-01-03', user: 'Mike Davis' }
         ]
       }
       
@@ -236,3 +236,4 @@ export function AnalyticsModule() {
     </div>
   )
 }
+

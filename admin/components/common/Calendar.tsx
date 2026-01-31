@@ -15,7 +15,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline'
 
-interface Family {
+interface Circle {
   id: string
   name: string
   description: string
@@ -31,20 +31,20 @@ interface Event {
   startTime?: string
   endTime?: string
   location?: string
-  familyId: string
+  CircleId: string
   createdBy: string
   createdAt: string
   isRecurring: boolean
   recurrenceType?: 'daily' | 'weekly' | 'monthly' | 'yearly'
   attendees: string[]
   isAllDay: boolean
-  category: 'family' | 'birthday' | 'holiday' | 'meeting' | 'celebration' | 'other'
+  category: 'Circle' | 'birthday' | 'holiday' | 'meeting' | 'celebration' | 'other'
   priority: 'low' | 'medium' | 'high'
 }
 
 export function Calendar() {
-  const [families, setFamilies] = useState<Family[]>([])
-  const [selectedFamily, setSelectedFamily] = useState<string>('')
+  const [families, setFamilies] = useState<Circle[]>([])
+  const [selectedCircle, setSelectedCircle] = useState<string>('')
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -61,7 +61,7 @@ export function Calendar() {
     endTime: '',
     location: '',
     isAllDay: false,
-    category: 'family',
+    category: 'Circle',
     priority: 'medium',
     attendees: [] as string[]
   })
@@ -71,16 +71,16 @@ export function Calendar() {
   }, [])
 
   useEffect(() => {
-    if (selectedFamily) {
-      loadFamilyEvents()
+    if (selectedCircle) {
+      loadCircleEvents()
     }
-  }, [selectedFamily])
+  }, [selectedCircle])
 
   const loadData = async () => {
     setLoading(true)
     try {
       setFamilies([])
-      setSelectedFamily('')
+      setSelectedCircle('')
     } catch (error) {
       console.error('Error loading families:', error)
     } finally {
@@ -88,13 +88,13 @@ export function Calendar() {
     }
   }
 
-  const loadFamilyEvents = async () => {
-    if (!selectedFamily) return
+  const loadCircleEvents = async () => {
+    if (!selectedCircle) return
     
     try {
       setEvents([])
     } catch (error) {
-      console.error('Error loading family events:', error)
+      console.error('Error loading Circle events:', error)
     }
   }
 
@@ -118,7 +118,7 @@ export function Calendar() {
       endTime: '',
       location: '',
       isAllDay: false,
-      category: 'family',
+      category: 'Circle',
       priority: 'medium',
       attendees: []
     })
@@ -156,7 +156,7 @@ export function Calendar() {
       const newEvent: Event = {
         id: Date.now().toString(),
         ...(formData as any),
-        familyId: selectedFamily,
+        CircleId: selectedCircle,
         createdBy: 'Current User',
         createdAt: new Date().toISOString(),
         isRecurring: false,
@@ -176,7 +176,7 @@ export function Calendar() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'family': return 'blue'
+      case 'Circle': return 'blue'
       case 'birthday': return 'pink'
       case 'holiday': return 'green'
       case 'meeting': return 'purple'
@@ -194,9 +194,9 @@ export function Calendar() {
     }
   }
 
-  const getSelectedFamilyName = () => {
-    const family = families.find(f => f.id === selectedFamily)
-    return family?.name || 'Select Family'
+  const getSelectedCircleName = () => {
+    const Circle = families.find(f => f.id === selectedCircle)
+    return Circle?.name || 'Select Circle'
   }
 
   const formatEventTime = (event: Event) => {
@@ -219,7 +219,7 @@ export function Calendar() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Family Calendar</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Circle Calendar</h2>
           <p className="text-gray-600">Manage events and schedules for families</p>
         </div>
         <button onClick={handleCreate} className="btn btn-primary">
@@ -228,19 +228,19 @@ export function Calendar() {
         </button>
       </div>
 
-      {/* Family Selection */}
+      {/* Circle Selection */}
       <div className="card">
         <div className="card-body">
           <div className="flex items-center gap-4">
-            <label className="form-label">Select Family:</label>
+            <label className="form-label">Select Circle:</label>
             <select
-              value={selectedFamily}
-              onChange={(e) => setSelectedFamily(e.target.value)}
+              value={selectedCircle}
+              onChange={(e) => setSelectedCircle(e.target.value)}
               className="form-select w-auto"
             >
-              {families.map(family => (
-                <option key={family.id} value={family.id}>
-                  {family.name} ({family.memberCount} members)
+              {families.map(Circle => (
+                <option key={Circle.id} value={Circle.id}>
+                  {Circle.name} ({Circle.memberCount} members)
                 </option>
               ))}
             </select>
@@ -248,7 +248,7 @@ export function Calendar() {
         </div>
       </div>
 
-      {selectedFamily && (
+      {selectedCircle && (
         <>
           {/* Calendar Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -258,9 +258,9 @@ export function Calendar() {
             </div>
             <div className="stat-card">
               <div className="stat-number text-green-600">
-                {events.filter(e => e.category === 'family').length}
+                {events.filter(e => e.category === 'Circle').length}
               </div>
-              <div className="stat-label">Family Events</div>
+              <div className="stat-label">Circle Events</div>
             </div>
             <div className="stat-card">
               <div className="stat-number text-purple-600">
@@ -297,7 +297,7 @@ export function Calendar() {
                   className="form-select w-auto"
                 >
                   <option value="all">All Categories</option>
-                  <option value="family">Family</option>
+                  <option value="Circle">Circle</option>
                   <option value="birthday">Birthday</option>
                   <option value="holiday">Holiday</option>
                   <option value="meeting">Meeting</option>
@@ -410,7 +410,7 @@ export function Calendar() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold mb-4">
-              {editingEvent ? 'Edit Event' : 'Create Event'} for {getSelectedFamilyName()}
+              {editingEvent ? 'Edit Event' : 'Create Event'} for {getSelectedCircleName()}
             </h3>
             
             <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
@@ -433,7 +433,7 @@ export function Calendar() {
                     onChange={(e) => setFormData({ ...formData, category: e.target.value as any })}
                     className="form-select"
                   >
-                    <option value="family">Family</option>
+                    <option value="Circle">Circle</option>
                     <option value="birthday">Birthday</option>
                     <option value="holiday">Holiday</option>
                     <option value="meeting">Meeting</option>
@@ -557,3 +557,4 @@ export function Calendar() {
     </div>
   )
 }
+

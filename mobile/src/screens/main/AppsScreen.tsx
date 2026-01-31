@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Dimensions, TextInput, SafeAreaView, Animated } from 'react-native';
 import CoolIcon from '../../components/common/CoolIcon';
 import { useNavigation } from '@react-navigation/native';
@@ -7,7 +7,9 @@ import { useNavigationAnimation } from '../../contexts/NavigationAnimationContex
 import { useFocusEffect } from '@react-navigation/native';
 import { homeStyles } from '../../styles/homeStyles';
 import { WelcomeSection } from '../../components/home/WelcomeSection';
-import { useHomeBackground } from '../../hooks/useAppConfig';
+
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface App {
     id: string;
@@ -40,7 +42,8 @@ const getGridConfig = (currentWidth = width) => {
 
 const AppsScreen: React.FC = () => {
     const navigation = useNavigation<any>();
-    useHomeBackground();
+    const { t } = useLanguage();
+    // useHomeBackground();
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [screenDimensions, setScreenDimensions] = useState({ width, height });
@@ -62,31 +65,31 @@ const AppsScreen: React.FC = () => {
     );
 
     const apps: App[] = [
-        { id: 'gallery', name: 'Gallery', description: 'hourse photo sharing', icon: 'image', color: '#FF6B6B', route: 'Gallery', category: 'communication', gradient: ['#FF6B6B', '#FF8E8E'] },
-        { id: 'secondhand', name: 'Second Hand Shop', description: 'Buy & sell used items', icon: 'wallet', color: '#F59E0B', route: 'SecondHandShop', category: 'utilities', gradient: ['#F59E0B', '#FBBF24'] },
-        { id: 'communication', name: 'Communication', description: 'Chat, calls & voice', icon: 'chatbubbles', color: '#4ECDC4', route: 'Communication', category: 'communication', gradient: ['#4ECDC4', '#6EDDD6'] },
-        //    { id: 'social', name: 'Social', description: 'hourse social network', icon: 'people', color: '#FFA07A', route: 'Social', category: 'communication', gradient: ['#FFA07A', '#FFB08C'] }, // Removed Social as it is a main tab now
-        { id: 'storage', name: 'Storage', description: 'File management', icon: 'folder', color: '#DDA0DD', route: 'Storage', category: 'productivity', gradient: ['#DDA0DD', '#E5B3E5'] },
-        { id: 'notes', name: 'Note & To Do', description: 'Notes and tasks', icon: 'document-text', color: '#98D8C8', route: 'Notes', category: 'productivity', gradient: ['#98D8C8', '#A8E0D0'] },
-        { id: 'calendar', name: 'Calendar', description: 'Event planning', icon: 'calendar', color: '#F7DC6F', route: 'Calendar', category: 'productivity', gradient: ['#F7DC6F', '#F8E07F'] },
-        { id: 'location', name: 'Location', description: 'hourse tracking', icon: 'location', color: '#3498DB', route: 'Location', category: 'safety', gradient: ['#3498DB', '#44A8EB'] },
-        { id: 'health', name: 'Health', description: 'Health records', icon: 'medical', color: '#2ECC71', route: 'Health', category: 'safety', gradient: ['#2ECC71', '#3EDC81'] },
-        { id: 'budget', name: 'Budget', description: 'hourse budget', icon: 'wallet', color: '#27AE60', route: 'Budget', category: 'finance', gradient: ['#27AE60', '#37BE70'] },
-        { id: 'expenses', name: 'Expenses', description: 'Track spending', icon: 'card', color: '#8E44AD', route: 'Expenses', category: 'finance', gradient: ['#8E44AD', '#9E54BD'] },
-        { id: 'savings', name: 'Savings', description: 'Save money', icon: 'trending-up', color: '#16A085', route: 'Savings', category: 'finance', gradient: ['#16A085', '#26B095'] },
-        { id: 'investments', name: 'Investments', description: 'Investment tracking', icon: 'analytics', color: '#D68910', route: 'Investments', category: 'finance', gradient: ['#D68910', '#E69920'] },
-        { id: 'hourse', name: 'hourse', description: 'hourse settings', icon: 'people-circle', color: '#9B59B6', route: 'hourse', category: 'settings', gradient: ['#9B59B6', '#AB69C6'] },
-        { id: 'profile', name: 'Profile', description: 'Your account profile', icon: 'person-circle', color: '#2563EB', route: 'Profile', category: 'settings', gradient: ['#60A5FA', '#2563EB'] },
+        { id: 'gallery', name: t('apps.name.gallery'), description: 'Circle photo sharing', icon: 'image', color: '#FF6B6B', route: 'Gallery', category: 'communication', gradient: ['#FF6B6B', '#FF8E8E'] },
+        { id: 'secondhand', name: t('apps.name.secondhand'), description: 'Buy & sell used items', icon: 'wallet', color: '#F59E0B', route: 'SecondHandShop', category: 'utilities', gradient: ['#F59E0B', '#FBBF24'] },
+        { id: 'communication', name: t('apps.name.communication'), description: 'Chat, calls & voice', icon: 'chatbubbles', color: '#4ECDC4', route: 'Communication', category: 'communication', gradient: ['#4ECDC4', '#6EDDD6'] },
+        //    { id: 'social', name: 'Social', description: 'Circle social network', icon: 'people', color: '#FFA07A', route: 'Social', category: 'communication', gradient: ['#FFA07A', '#FFB08C'] }, // Removed Social as it is a main tab now
+        { id: 'storage', name: t('apps.name.storage'), description: 'File management', icon: 'folder', color: '#DDA0DD', route: 'Storage', category: 'productivity', gradient: ['#DDA0DD', '#E5B3E5'] },
+        { id: 'notes', name: t('apps.name.notes'), description: 'Notes and tasks', icon: 'document-text', color: '#98D8C8', route: 'Notes', category: 'productivity', gradient: ['#98D8C8', '#A8E0D0'] },
+        { id: 'calendar', name: t('apps.name.calendar'), description: 'Event planning', icon: 'calendar', color: '#F7DC6F', route: 'Calendar', category: 'productivity', gradient: ['#F7DC6F', '#F8E07F'] },
+        { id: 'location', name: t('apps.name.location'), description: 'Circle tracking', icon: 'location', color: '#3498DB', route: 'Location', category: 'safety', gradient: ['#3498DB', '#44A8EB'] },
+        { id: 'health', name: t('apps.name.health'), description: 'Health records', icon: 'medical', color: '#2ECC71', route: 'Health', category: 'safety', gradient: ['#2ECC71', '#3EDC81'] },
+        { id: 'budget', name: t('apps.name.budget'), description: 'Circle budget', icon: 'wallet', color: '#27AE60', route: 'Budget', category: 'finance', gradient: ['#27AE60', '#37BE70'] },
+        { id: 'expenses', name: t('apps.name.expenses'), description: 'Track spending', icon: 'card', color: '#8E44AD', route: 'Expenses', category: 'finance', gradient: ['#8E44AD', '#9E54BD'] },
+        { id: 'savings', name: t('apps.name.savings'), description: 'Save money', icon: 'trending-up', color: '#16A085', route: 'Savings', category: 'finance', gradient: ['#16A085', '#26B095'] },
+        { id: 'investments', name: t('apps.name.investments'), description: 'Investment tracking', icon: 'analytics', color: '#D68910', route: 'Investments', category: 'finance', gradient: ['#D68910', '#E69920'] },
+        { id: 'Circle', name: t('apps.name.circle'), description: 'Circle settings', icon: 'people-circle', color: '#9B59B6', route: 'Circle', category: 'settings', gradient: ['#9B59B6', '#AB69C6'] },
+        { id: 'profile', name: t('apps.name.profile'), description: 'Your account profile', icon: 'person-circle', color: '#2563EB', route: 'Profile', category: 'settings', gradient: ['#60A5FA', '#2563EB'] },
     ];
 
     const categories = [
-        { id: 'all', name: 'All Apps', icon: 'apps' },
-        { id: 'communication', name: 'Communication', icon: 'chatbubbles' },
-        { id: 'productivity', name: 'Productivity', icon: 'briefcase' },
-        { id: 'safety', name: 'Safety', icon: 'shield-checkmark' },
-        { id: 'finance', name: 'Finance', icon: 'wallet' },
-        { id: 'utilities', name: 'Utilities', icon: 'apps' },
-        { id: 'settings', name: 'Settings', icon: 'settings' },
+        { id: 'all', name: t('apps.cat.all'), icon: 'apps' },
+        { id: 'communication', name: t('apps.cat.communication'), icon: 'chatbubbles' },
+        { id: 'productivity', name: t('apps.cat.productivity'), icon: 'briefcase' },
+        { id: 'safety', name: t('apps.cat.safety'), icon: 'shield-checkmark' },
+        { id: 'finance', name: t('apps.cat.finance'), icon: 'wallet' },
+        { id: 'utilities', name: t('apps.cat.utilities'), icon: 'apps' },
+        { id: 'settings', name: t('apps.cat.settings'), icon: 'settings' },
     ];
 
     const getFilteredApps = () => {
@@ -117,8 +120,8 @@ const AppsScreen: React.FC = () => {
     };
 
     const handleAppPress = (app: App) => {
-        if (app.route === 'hourse') {
-            navigation.navigate('FamilySettings');
+        if (app.route === 'Circle') {
+            navigation.navigate('CircleSettings');
             return;
         }
         navigation.navigate(app.route as never);
@@ -168,7 +171,7 @@ const AppsScreen: React.FC = () => {
             { title: 'General', apps: appsList.filter(app => ['communication', 'location', 'health'].includes(app.id)) },
             { title: 'Utilities', apps: appsList.filter(app => ['secondhand'].includes(app.id)) },
             { title: 'Finance', apps: appsList.filter(app => ['budget', 'expenses', 'savings', 'investments'].includes(app.id)) },
-            { title: 'Settings', apps: appsList.filter(app => ['hourse', 'profile'].includes(app.id)) },
+            { title: 'Settings', apps: appsList.filter(app => ['Circle', 'profile'].includes(app.id)) },
         ].filter(s => s.apps.length > 0);
 
         return sections.map((section, sectionIndex) => (
@@ -197,18 +200,6 @@ const AppsScreen: React.FC = () => {
 
     const filteredApps = getFilteredApps();
 
-    const BackgroundWrapper = useMemo(() => {
-        return ({ children }: { children: React.ReactNode }) => (
-            <LinearGradient
-                colors={['#FA7272', '#FFBBB4', '#FFFFFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1 }}
-            >
-                {children}
-            </LinearGradient>
-        );
-    }, []);
 
     const scrollViewRef = React.useRef<ScrollView>(null);
     const [categoriesY, setCategoriesY] = useState(0);
@@ -221,13 +212,18 @@ const AppsScreen: React.FC = () => {
     };
 
     return (
-        <BackgroundWrapper>
+        <ScreenBackground screenId="apps">
             <SafeAreaView style={homeStyles.container}>
                 <WelcomeSection
                     mode="organize"
+                    title="Applications"
+                    labelAbove="Workspace"
+                    leftIcon="view-grid"
                     activeCategoryType={appFilterType}
                     onCategoryTypeChange={setAppFilterType}
-                />
+                >
+                    <View style={{ height: 20 }} />
+                </WelcomeSection>
 
                 <Animated.View style={[
                     homeStyles.mainContentCard,
@@ -246,7 +242,7 @@ const AppsScreen: React.FC = () => {
                         {/* Header within Card - simplified */}
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12 }}>
                             <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' }}>Applications</Text>
+                                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' }}>{t('apps.name.applications')}</Text>
                                 <Text style={{ fontSize: 12, color: '#666666' }}>{filteredApps.length} apps • {getGridConfig(screenDimensions.width).appsPerRow} per row</Text>
                             </View>
                         </View>
@@ -257,7 +253,7 @@ const AppsScreen: React.FC = () => {
                                 <CoolIcon name="search" size={20} color="#666666" />
                                 <TextInput
                                     style={{ flex: 1, fontSize: 16, color: '#1a1a1a', fontWeight: '500' }}
-                                    placeholder="Search applications..."
+                                    placeholder={t('header.search_placeholder')}
                                     placeholderTextColor="#999999"
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
@@ -296,8 +292,9 @@ const AppsScreen: React.FC = () => {
                     </ScrollView>
                 </Animated.View>
             </SafeAreaView>
-        </BackgroundWrapper>
+        </ScreenBackground>
     );
 };
 
 export default AppsScreen;
+

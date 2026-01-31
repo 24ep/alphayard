@@ -59,6 +59,10 @@
   font-display: swap;
 }
 
+:root {
+  --border: 0 0% 89.8%;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -95,4 +99,5 @@
     @apply transition-all duration-200 ease-out;
   }
 }
+
 

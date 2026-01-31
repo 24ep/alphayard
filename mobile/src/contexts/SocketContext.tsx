@@ -96,7 +96,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
     socketService.on('safety:alert', (data) => {
       Alert.alert(
         '🚨 Emergency Alert',
-        data.message || 'A family member has sent an emergency alert.',
+        data.message || 'A circle member has sent an emergency alert.',
         [
           {
             text: 'Acknowledge',
@@ -205,7 +205,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   };
 
   // =============================================
-  // hourse METHODS
+  // Circle METHODS
   // =============================================
 
   const updateStatus = (status: string, message?: string) => {
@@ -307,3 +307,4 @@ export const useSocket = (): SocketContextType => {
 };
 
 export default SocketContext;
+

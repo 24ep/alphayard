@@ -1,4 +1,4 @@
-const supabaseService = require('../services/supabaseService');
+const { pool } = require('../config/database');
 const winston = require('winston');
 
 // Configure logger
@@ -18,22 +18,11 @@ async function getDatabaseStats() {
   try {
     console.log('📊 Gathering database statistics...\n');
 
-    // Initialize Supabase service
-    await supabaseService.initialize();
-
-    // Get database statistics
-    const stats = await supabaseService.getDatabaseStats();
-    
-    console.log('📈 Table Statistics:');
-    console.log('┌─────────────────────────┬─────────┬─────────────┐');
-    console.log('│ Table Name              │ Records │ Status      │');
-    console.log('├─────────────────────────┼─────────┼─────────────┤');
-
     const tableNames = [
       'users',
       'families', 
-      'family_members',
-      'family_invitations',
+      'circle_members',
+      'circle_invitations',
       'user_locations',
       'location_history',
       'geofences',
@@ -57,23 +46,26 @@ async function getDatabaseStats() {
       'documents'
     ];
 
+    console.log('📈 Table Statistics:');
+    console.log('┌─────────────────────────┬─────────┬─────────────┐');
+    console.log('│ Table Name              │ Records │ Status      │');
+    console.log('├─────────────────────────┼─────────┼─────────────┤');
+
     let totalRecords = 0;
     let errorCount = 0;
 
     for (const tableName of tableNames) {
-      const tableStats = stats[tableName];
       let recordCount = 'N/A';
       let status = '❌ Error';
 
-      if (tableStats) {
-        if (tableStats.error) {
-          status = `❌ ${tableStats.error}`;
-          errorCount++;
-        } else {
-          recordCount = tableStats.count || 0;
-          status = '✅ OK';
-          totalRecords += recordCount;
-        }
+      try {
+        const { rows } = await pool.query(`SELECT count(*) FROM ${tableName}`);
+        recordCount = rows[0].count || 0;
+        status = '✅ OK';
+        totalRecords += parseInt(recordCount);
+      } catch (error) {
+        status = '❌ Error';
+        errorCount++;
       }
 
       const paddedTableName = tableName.padEnd(23);
@@ -89,29 +81,22 @@ async function getDatabaseStats() {
     console.log(`   Tables with Errors: ${errorCount}`);
     console.log(`   Tables OK: ${tableNames.length - errorCount}`);
 
-    // Get health status
-    const healthStatus = await supabaseService.getHealthStatus();
-    console.log(`\n🏥 Health Status:`);
-    console.log(`   Response Time: ${healthStatus.responseTime}ms`);
-    console.log(`   Connection Retries: ${healthStatus.connectionRetries}`);
-    console.log(`   Last Check: ${healthStatus.timestamp}`);
-
     // Performance metrics
+    const start = Date.now();
+    await pool.query('SELECT 1');
+    const responseTime = Date.now() - start;
+    
+    console.log(`\n🏥 Health Status:`);
+    console.log(`   Response Time: ${responseTime}ms`);
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
+
     console.log(`\n⚡ Performance:`);
-    if (healthStatus.responseTime < 100) {
+    if (responseTime < 100) {
       console.log('   Response Time: 🟢 Excellent (< 100ms)');
-    } else if (healthStatus.responseTime < 500) {
+    } else if (responseTime < 500) {
       console.log('   Response Time: 🟡 Good (< 500ms)');
     } else {
       console.log('   Response Time: 🔴 Slow (> 500ms)');
-    }
-
-    if (healthStatus.connectionRetries === 0) {
-      console.log('   Connection Stability: 🟢 Excellent (no retries)');
-    } else if (healthStatus.connectionRetries < 3) {
-      console.log('   Connection Stability: 🟡 Good (< 3 retries)');
-    } else {
-      console.log('   Connection Stability: 🔴 Poor (> 3 retries)');
     }
 
     console.log('\n✅ Database statistics gathered successfully!');

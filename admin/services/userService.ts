@@ -1,146 +1,151 @@
-// Mobile App Users API Service
+
 import { API_BASE_URL } from './apiConfig'
+import { Circle } from './adminService'
+
+export interface UserAttribute {
+    key: string;
+    value: string;
+}
 
 export interface User {
-  id: string
-  firstName: string
-  lastName: string
-  email: string
-  phone?: string
-  avatar?: string
-  dateOfBirth?: string
-  userType: 'hourse' | 'children' | 'seniors'
-  subscriptionTier: 'free' | 'premium' | 'elite'
-  familyIds: string[]
-  isOnboardingComplete: boolean
-  preferences: {
-    notifications: boolean
-    locationSharing: boolean
-    popupSettings: {
-      enabled: boolean
-      frequency: 'daily' | 'weekly' | 'monthly'
-      maxPerDay: number
-      categories: string[]
-    }
-  }
-  role: 'admin' | 'moderator' | 'user' | 'family_admin'
-  status: 'active' | 'inactive' | 'pending' | 'suspended'
-  isVerified: boolean
-  lastLogin?: string
-  createdAt: string
-  updatedAt: string
-  familyId?: string
-  familyName?: string
-  permissions: string[]
-  location?: string
-  timezone?: string
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    avatarUrl?: string; // Changed from avatar to match backend avatar_url mapping
+    status: 'active' | 'inactive' | 'pending' | 'suspended' | 'banned';
+    role: string;
+    userType: 'circle' | 'children' | 'seniors'; // Updated hourse to circle
+    subscriptionTier?: 'free' | 'premium' | 'elite';
+    isVerified: boolean;
+    isOnboardingComplete: boolean;
+    source: string;
+    circleId?: string;
+    circleIds?: string[];
+    dateOfBirth?: string;
+    lastLogin?: string;
+    preferences?: any;
+    permissions: string[];
+    createdAt: string;
+    updatedAt?: string;
+    tags?: string[];
+    attributes?: Record<string, string>;
+    circles?: { id: string, name: string }[];
+    apps?: {
+        appId: string;
+        appName: string;
+        joinedAt: string;
+        role: string;
+    }[];
 }
 
-export interface Family {
-  id: string
-  name: string
-  description: string
-  memberCount: number
-}
+export interface GlobalUser extends User {}
 
 class UserService {
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
-    const token = localStorage.getItem('admin_token')
-    
-    const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-      ...options,
-    }
-
-    try {
-      const response = await fetch(url, config)
-      
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Clear invalid token
-          localStorage.removeItem('admin_token')
-          localStorage.removeItem('admin_user')
-          console.warn('Authentication token expired or invalid')
+    private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+        const url = `${API_BASE_URL}${endpoint}`
+        const token = localStorage.getItem('admin_token')
+        
+        const config: RequestInit = {
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token && { Authorization: `Bearer ${token}` }),
+                ...options.headers,
+            },
+            ...options,
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      return await response.json()
-    } catch (error) {
-      console.error('API request failed:', error)
-      throw error
+
+        const response = await fetch(url, config)
+        
+        if (response.status === 401) {
+            localStorage.removeItem('admin_token')
+            localStorage.removeItem('admin_user')
+            if (typeof window !== 'undefined') {
+                window.location.href = '/login'
+            }
+            throw new Error('Unauthorized')
+        }
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}))
+            throw new Error(error.message || `HTTP error! status: ${response.status}`)
+        }
+        
+        return await response.json()
     }
-  }
 
-  // Mobile App Users
-  async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/users')
-  }
+    private mapBackendUser(u: any): GlobalUser {
+        return {
+            id: u.id,
+            email: u.email,
+            firstName: u.first_name || '',
+            lastName: u.last_name || '',
+            phone: u.phone,
+            avatarUrl: u.avatar_url,
+            status: u.is_active ? 'active' : 'inactive',
+            role: u.metadata?.role || 'user',
+            userType: (u.metadata?.userType === 'hourse' ? 'circle' : u.metadata?.userType) || 'circle',
+            isVerified: u.metadata?.isVerified || false,
+            isOnboardingComplete: u.metadata?.isOnboardingComplete || false,
+            source: u.metadata?.source || 'email',
+            createdAt: u.created_at,
+            permissions: u.metadata?.permissions || [],
+            tags: u.metadata?.tags || [],
+            attributes: u.metadata?.attributes || {},
+            circles: u.circles || [],
+            apps: u.metadata?.apps || []
+        }
+    }
 
-  async getUser(id: string): Promise<User> {
-    return this.request<User>(`/users/${id}`)
-  }
+    async getUsers(params: any = {}): Promise<GlobalUser[]> {
+        const query = new URLSearchParams()
+        if (params.search) query.append('search', params.search)
+        if (params.page) query.append('page', params.page)
+        if (params.limit) query.append('limit', params.limit)
+        
+        const response = await this.request<{ users: any[] }>(`/admin/users?${query.toString()}`)
+        return (response.users || []).map(u => this.mapBackendUser(u))
+    }
 
-  async createUser(userData: Partial<User>): Promise<User> {
-    return this.request<User>('/users', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    })
-  }
+    async getUserById(id: string): Promise<GlobalUser | undefined> {
+        const response = await this.request<{ user: any }>(`/admin/users/${id}`)
+        return response.user ? this.mapBackendUser(response.user) : undefined
+    }
 
-  async updateUser(id: string, userData: Partial<User>): Promise<User> {
-    return this.request<User>(`/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(userData),
-    })
-  }
+    async createUser(userData: any): Promise<GlobalUser> {
+        const response = await this.request<any>('/admin/users', {
+            method: 'POST',
+            body: JSON.stringify(userData),
+        })
+        return this.mapBackendUser(response)
+    }
 
-  async deleteUser(id: string): Promise<void> {
-    return this.request<void>(`/users/${id}`, {
-      method: 'DELETE',
-    })
-  }
+    async updateUser(id: string, updates: Partial<GlobalUser>): Promise<GlobalUser> {
+        // Map frontend updates back to backend expected format if necessary
+        const backendUpdates: any = { ...updates }
+        if (updates.firstName !== undefined) backendUpdates.firstName = updates.firstName
+        if (updates.lastName !== undefined) backendUpdates.lastName = updates.lastName
+        if (updates.status !== undefined) backendUpdates.is_active = (updates.status === 'active')
+        
+        const response = await this.request<any>(`/admin/users/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(backendUpdates),
+        })
+        return this.mapBackendUser(response.user || response)
+    }
 
-  async updateUserStatus(id: string, status: string): Promise<User> {
-    return this.request<User>(`/users/${id}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    })
-  }
+    async deleteUser(id: string): Promise<void> {
+        await this.request(`/admin/users/${id}`, {
+            method: 'DELETE',
+        })
+    }
 
-  // Families
-  async getFamilies(): Promise<Family[]> {
-    return this.request<Family[]>('/families')
-  }
-
-  async getFamily(id: string): Promise<Family> {
-    return this.request<Family>(`/families/${id}`)
-  }
-
-  async createFamily(familyData: Partial<Family>): Promise<Family> {
-    return this.request<Family>('/families', {
-      method: 'POST',
-      body: JSON.stringify(familyData),
-    })
-  }
-
-  async updateFamily(id: string, familyData: Partial<Family>): Promise<Family> {
-    return this.request<Family>(`/families/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(familyData),
-    })
-  }
-
-  async deleteFamily(id: string): Promise<void> {
-    return this.request<void>(`/families/${id}`, {
-      method: 'DELETE',
-    })
-  }
+    async getCircles(): Promise<Circle[]> {
+        const response = await this.request<{ families: Circle[] }>('/admin/families')
+        return response.families || []
+    }
 }
 
 export const userService = new UserService()
+

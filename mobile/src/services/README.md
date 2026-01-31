@@ -19,18 +19,18 @@ We have successfully replaced all mock data with actual service implementations 
 - **API Endpoints**: `/social/posts`, `/social/comments`, `/social/trending-tags`
 - **Features**: Create, read, update, delete posts; like/comment/share functionality
 
-### 2. Family Status Service (`FamilyStatusService.ts`)
-- **Purpose**: Tracks family member status, location, and health metrics
-- **API Endpoints**: `/family/status/members`, `/family/status/locations`
+### 2. Circle Status Service (`CircleStatusService.ts`)
+- **Purpose**: Tracks circle member status, location, and health metrics
+- **API Endpoints**: `/circle/status/members`, `/circle/status/locations`
 - **Features**: Real-time status updates, location tracking, health monitoring
 
 ### 3. Appointment Service (`AppointmentService.ts`)
-- **Purpose**: Manages family appointments and events
+- **Purpose**: Manages circle appointments and events
 - **API Endpoints**: `/appointments`, `/appointments/reminders`
 - **Features**: Create/edit appointments, reminders, calendar integration
 
 ### 4. Shopping List Service (`ShoppingListService.ts`)
-- **Purpose**: Manages family shopping lists and items
+- **Purpose**: Manages circle shopping lists and items
 - **API Endpoints**: `/shopping/items`, `/shopping/categories`
 - **Features**: Item management, categories, completion tracking
 
@@ -72,14 +72,14 @@ import { socialService } from '../services/dataServices';
 
 // Fetch social posts
 const posts = await socialService.getPosts({
-  familyId: 'family-123',
+  circleId: 'circle-123',
   limit: 20
 });
 
 // Create a new post
 const newPost = await socialService.createPost({
-  content: 'Hello family!',
-  familyId: 'family-123',
+  content: 'Hello circle!',
+  circleId: 'circle-123',
   tags: ['update']
 });
 ```
@@ -89,7 +89,7 @@ const newPost = await socialService.createPost({
 import { useDataServiceWithRefresh } from '../hooks/useDataService';
 import { socialService } from '../services/dataServices';
 
-const MyComponent = ({ familyId }) => {
+const MyComponent = ({ circleId }) => {
   const {
     data: posts = [],
     error,
@@ -97,8 +97,8 @@ const MyComponent = ({ familyId }) => {
     refreshing,
     onRefresh
   } = useDataServiceWithRefresh(
-    () => socialService.getPosts({ familyId, limit: 20 }),
-    { dependencies: [familyId] }
+    () => socialService.getPosts({ circleId, limit: 20 }),
+    { dependencies: [circleId] }
   );
 
   return (
@@ -167,8 +167,8 @@ Test the complete flow:
 ### Removed Mock Data
 The following mock constants have been removed from `constants/home.ts`:
 - `MOCK_SOCIAL_POSTS`
-- `MOCK_FAMILY_STATUS_CARDS`
-- `MOCK_FAMILY_STATUS_MEMBERS`
+- `MOCK_CIRCLE_STATUS_CARDS`
+- `MOCK_CIRCLE_STATUS_MEMBERS`
 - `MOCK_APPOINTMENTS`
 - `MOCK_SHOPPING_LIST`
 - `MOCK_RECENTLY_USED`
@@ -204,3 +204,5 @@ Each service can be configured with:
 - Fallback data
 - Cache settings
 - Request/response transformations
+
+

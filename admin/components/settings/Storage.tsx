@@ -18,7 +18,7 @@ import {
   FunnelIcon
 } from '@heroicons/react/24/outline'
 
-interface Family {
+interface Circle {
   id: string
   name: string
   description: string
@@ -32,14 +32,14 @@ interface FileItem {
   size: number
   uploadedBy: string
   uploadedAt: string
-  familyId: string
+  CircleId: string
   tags: string[]
   isShared: boolean
 }
 
 export function Storage() {
-  const [families, setFamilies] = useState<Family[]>([])
-  const [selectedFamily, setSelectedFamily] = useState<string>('')
+  const [families, setFamilies] = useState<Circle[]>([])
+  const [selectedCircle, setSelectedCircle] = useState<string>('')
   const [files, setFiles] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -51,16 +51,16 @@ export function Storage() {
   }, [])
 
   useEffect(() => {
-    if (selectedFamily) {
-      loadFamilyFiles()
+    if (selectedCircle) {
+      loadCircleFiles()
     }
-  }, [selectedFamily])
+  }, [selectedCircle])
 
   const loadData = async () => {
     setLoading(true)
     try {
       setFamilies([])
-      setSelectedFamily('')
+      setSelectedCircle('')
     } catch (error) {
       console.error('Error loading families:', error)
     } finally {
@@ -68,13 +68,13 @@ export function Storage() {
     }
   }
 
-  const loadFamilyFiles = async () => {
-    if (!selectedFamily) return
+  const loadCircleFiles = async () => {
+    if (!selectedCircle) return
     
     try {
       setFiles([])
     } catch (error) {
-      console.error('Error loading family files:', error)
+      console.error('Error loading Circle files:', error)
     }
   }
 
@@ -102,9 +102,9 @@ export function Storage() {
     return `${(size / 1024).toFixed(1)} GB`
   }
 
-  const getSelectedFamilyName = () => {
-    const family = families.find(f => f.id === selectedFamily)
-    return family?.name || 'Select Family'
+  const getSelectedCircleName = () => {
+    const Circle = families.find(f => f.id === selectedCircle)
+    return Circle?.name || 'Select Circle'
   }
 
   if (loading) {
@@ -121,7 +121,7 @@ export function Storage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
             <FolderIcon className="h-6 w-6" />
-            Family Storage
+            Circle Storage
           </h2>
           <p className="text-gray-600">Manage files and documents for families</p>
         </div>
@@ -131,19 +131,19 @@ export function Storage() {
         </button>
       </div>
 
-      {/* Family Selection */}
+      {/* Circle Selection */}
       <div className="card">
         <div className="card-body">
           <div className="flex items-center gap-4">
-            <label className="form-label">Select Family:</label>
+            <label className="form-label">Select Circle:</label>
             <select
-              value={selectedFamily}
-              onChange={(e) => setSelectedFamily(e.target.value)}
+              value={selectedCircle}
+              onChange={(e) => setSelectedCircle(e.target.value)}
               className="form-select w-auto"
             >
-              {families.map(family => (
-                <option key={family.id} value={family.id}>
-                  {family.name} ({family.memberCount} members)
+              {families.map(Circle => (
+                <option key={Circle.id} value={Circle.id}>
+                  {Circle.name} ({Circle.memberCount} members)
                 </option>
               ))}
             </select>
@@ -151,7 +151,7 @@ export function Storage() {
         </div>
       </div>
 
-      {selectedFamily && (
+      {selectedCircle && (
         <>
           {/* Storage Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -278,7 +278,7 @@ export function Storage() {
       {showUpload && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Upload Files to {getSelectedFamilyName()}</h3>
+            <h3 className="text-lg font-semibold mb-4">Upload Files to {getSelectedCircleName()}</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
               <ArrowUpTrayIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">Drag and drop files here or click to browse</p>
@@ -298,3 +298,4 @@ export function Storage() {
     </div>
   )
 }
+

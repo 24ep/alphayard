@@ -42,7 +42,7 @@ const WidgetCustomizationModal: React.FC<WidgetCustomizationModalProps> = ({
   };
 
   const categories = [
-    { id: 'hourse', name: 'hourse', icon: 'account-group' },
+    { id: 'Circle', name: 'Circle', icon: 'account-group' },
     { id: 'productivity', name: 'Productivity', icon: 'briefcase' },
     { id: 'social', name: 'Social', icon: 'account-multiple' },
     { id: 'health', name: 'Health', icon: 'heart-pulse' },
@@ -124,3 +124,4 @@ const WidgetCustomizationModal: React.FC<WidgetCustomizationModalProps> = ({
 };
 
 export default WidgetCustomizationModal;
+

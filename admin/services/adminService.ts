@@ -44,11 +44,24 @@ export interface UserGroup {
   color: string
 }
 
-export interface Family {
+export interface Application {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  is_active?: boolean
+  branding?: any
+  settings?: {
+    google_analytics_id?: string
+    [key: string]: any
+  }
+}
+
+export interface Circle {
   id: string
   name: string
   description?: string
-  type: 'family' | 'friends' | 'sharehouse'
+  type: 'Circle' | 'friends' | 'sharehouse'
   invite_code?: string
   created_at: string
   updated_at: string
@@ -61,10 +74,10 @@ export interface Family {
     last_name: string
     email: string
   }
-  members?: FamilyMember[]
+  members?: CircleMember[]
 }
 
-export interface FamilyMember {
+export interface CircleMember {
   user_id: string
   role: 'owner' | 'admin' | 'member'
   joined_at: string
@@ -74,6 +87,23 @@ export interface FamilyMember {
     last_name: string
     email: string
     avatar_url?: string
+  }
+}
+
+export interface DashboardStats {
+  totalUsers: number
+  activeUsers: number
+  totalFamilies: number
+  activeSubscriptions: number
+  totalScreens: number
+  recentUsers: number
+  recentFamilies: number
+  recentAlerts: number
+  recentMessages: number
+  revenue: {
+    totalRevenue: number
+    avgRevenue: number
+    subscriptionCount: number
   }
 }
 
@@ -89,11 +119,26 @@ class AdminService {
         ...options.headers,
       },
       ...options,
+      signal: AbortSignal.timeout(15000) // 15s timeout
     }
 
     try {
       const response = await fetch(url, config)
       
+      if (response.status === 401) {
+        // Only redirect if NOT already on login page and NOT calling login endpoint
+        const isLoginPage = typeof window !== 'undefined' && window.location.pathname === '/login'
+        const isAuthEndpoint = endpoint.includes('/auth/login')
+
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_user')
+
+        if (!isLoginPage && !isAuthEndpoint && typeof window !== 'undefined') {
+          window.location.href = '/login'
+        }
+        throw new Error('Unauthorized')
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
@@ -102,7 +147,7 @@ class AdminService {
     } catch (error) {
       console.error('API request failed:', error)
       // Return empty data instead of throwing error for better UX
-      if (endpoint.includes('/admin/users')) {
+      if (endpoint.includes('/admin/admin-users')) {
         return [] as T
       }
       if (endpoint.includes('/admin/roles')) {
@@ -139,31 +184,51 @@ class AdminService {
     return data
   }
 
+  // Dashboard Stats
+  async getDashboardStats(period: string = '30'): Promise<DashboardStats> {
+    const response = await this.request<{ stats: DashboardStats }>(`/admin/dashboard?period=${period}`)
+    return response.stats
+  }
+
   // Admin Users
   async getAdminUsers(): Promise<AdminUser[]> {
-    return this.request<AdminUser[]>('/admin/users')
+    const response = await this.request<{ users: any[] }>('/admin/admin-users')
+    // Map backend snake_case to frontend camelCase
+    return (response.users || []).map(u => ({
+      id: u.id,
+      firstName: u.first_name || '',
+      lastName: u.last_name || '',
+      email: u.email,
+      role: u.role_name || 'admin',
+      status: u.is_active ? 'active' : 'inactive',
+      isVerified: true,
+      lastLogin: u.last_login,
+      createdAt: u.created_at,
+      updatedAt: u.created_at,
+      permissions: [],
+    })) as AdminUser[]
   }
 
   async getAdminUser(id: string): Promise<AdminUser> {
-    return this.request<AdminUser>(`/admin/users/${id}`)
+    return this.request<AdminUser>(`/admin/admin-users/${id}`)
   }
 
-  async createAdminUser(userData: Partial<AdminUser>): Promise<AdminUser> {
-    return this.request<AdminUser>('/admin/users', {
+  async createAdminUser(userData: { email: string; password: string; firstName?: string; lastName?: string; roleId?: string }): Promise<AdminUser> {
+    return this.request<AdminUser>('/admin/admin-users', {
       method: 'POST',
       body: JSON.stringify(userData),
     })
   }
 
   async updateAdminUser(id: string, userData: Partial<AdminUser>): Promise<AdminUser> {
-    return this.request<AdminUser>(`/admin/users/${id}`, {
+    return this.request<AdminUser>(`/admin/admin-users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(userData),
     })
   }
 
   async deleteAdminUser(id: string): Promise<void> {
-    return this.request<void>(`/admin/users/${id}`, {
+    return this.request<void>(`/admin/admin-users/${id}`, {
       method: 'DELETE',
     })
   }
@@ -177,7 +242,15 @@ class AdminService {
 
   // Roles
   async getRoles(): Promise<Role[]> {
-    return this.request<Role[]>('/admin/roles')
+    const response = await this.request<{ roles: any[] }>('/admin/roles')
+    return (response.roles || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description || '',
+      permissions: r.permissions || [],
+      color: '#3B82F6',
+      isSystem: false,
+    })) as Role[]
   }
 
   async getRole(id: string): Promise<Role> {
@@ -239,6 +312,10 @@ class AdminService {
   }
 
   // Application Settings
+  async getApplications(): Promise<{ applications: Application[] }> {
+    return this.request<{ applications: Application[] }>('/admin/applications')
+  }
+
   async getApplicationSettings(): Promise<{ settings: any[] }> {
     return this.request<{ settings: any[] }>('/admin/application-settings')
   }
@@ -255,6 +332,63 @@ class AdminService {
     return this.request<{ setting: any }>('/admin/application-settings', {
       method: 'POST',
       body: JSON.stringify(payload)
+    })
+  }
+
+  async updateApplication(id: string, data: Partial<Application>): Promise<Application> {
+      return this.request<Application>(`/admin/applications/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data)
+      })
+  }
+
+  async seedScreens(appId?: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>('/mobile/inventory/seed', {
+      method: 'POST',
+      body: JSON.stringify({ appId })
+    })
+  }
+
+  async uploadBrandingAsset(appId: string, formData: FormData): Promise<{ url: string }> {
+    const token = localStorage.getItem('admin_token')
+    const response = await fetch(`${API_BASE_URL}/admin/applications/${appId}/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: formData
+    })
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.message || 'Upload failed')
+    }
+    
+    return response.json()
+  }
+
+  // Application Versioning
+  async getApplicationVersions(appId: string): Promise<{ versions: any[] }> {
+    return this.request<{ versions: any[] }>(`/admin/applications/${appId}/versions`)
+  }
+
+  async createApplicationVersion(appId: string, data?: { branding?: any, settings?: any }): Promise<any> {
+    return this.request<any>(`/admin/applications/${appId}/versions`, {
+      method: 'POST',
+      body: JSON.stringify(data || {})
+    })
+  }
+
+  async updateApplicationVersion(appId: string, versionId: string, data: { branding?: any, settings?: any, status?: string }): Promise<any> {
+    return this.request<any>(`/admin/applications/${appId}/versions/${versionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+  }
+
+  async publishApplicationVersion(appId: string, versionId: string): Promise<any> {
+    return this.request<any>(`/admin/applications/${appId}/versions/${versionId}/publish`, {
+      method: 'POST'
     })
   }
 
@@ -277,69 +411,76 @@ class AdminService {
   }
 
   // Families Management
-  async getFamilies(): Promise<Family[]> {
-    return this.request<Family[]>('/api/v1/families')
+  async getFamilies(): Promise<Circle[]> {
+    const response = await this.request<{ families: Circle[] }>('/admin/families')
+    return response.families || []
   }
 
-  async getFamily(id: string): Promise<Family> {
-    return this.request<Family>(`/api/v1/families/${id}`)
+  async getCircle(id: string): Promise<Circle> {
+    return this.request<Circle>(`/admin/families/${id}`)
   }
 
-  async createFamily(familyData: {
+  async createCircle(CircleData: {
     name: string
     description?: string
-    type: 'family' | 'friends' | 'sharehouse'
-  }): Promise<Family> {
-    return this.request<Family>('/api/v1/families', {
+    type: 'Circle' | 'friends' | 'sharehouse'
+  }): Promise<Circle> {
+    return this.request<Circle>('/admin/families', {
       method: 'POST',
-      body: JSON.stringify(familyData),
+      body: JSON.stringify(CircleData),
     })
   }
 
-  async updateFamily(id: string, familyData: Partial<Family>): Promise<Family> {
-    return this.request<Family>(`/api/v1/families/${id}`, {
+  async updateCircle(id: string, CircleData: Partial<Circle>): Promise<Circle> {
+    return this.request<Circle>(`/admin/families/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(familyData),
+      body: JSON.stringify(CircleData),
     })
   }
 
-  async deleteFamily(id: string): Promise<void> {
-    return this.request<void>(`/api/v1/families/${id}`, {
+  async deleteCircle(id: string): Promise<void> {
+    return this.request<void>(`/admin/families/${id}`, {
       method: 'DELETE',
     })
   }
 
-  async getFamilyMembers(familyId: string): Promise<FamilyMember[]> {
-    return this.request<FamilyMember[]>(`/api/v1/families/${familyId}/members`)
+  async getCircleMembers(CircleId: string): Promise<CircleMember[]> {
+    return this.request<CircleMember[]>(`/api/v1/circles/${CircleId}/members`)
   }
 
-  async addFamilyMember(familyId: string, memberData: {
+  async addCircleMember(CircleId: string, memberData: {
     user_id: string
     role: 'admin' | 'member'
-  }): Promise<FamilyMember> {
-    return this.request<FamilyMember>(`/api/v1/families/${familyId}/members`, {
+  }): Promise<CircleMember> {
+    return this.request<CircleMember>(`/api/v1/circles/${CircleId}/members`, {
       method: 'POST',
       body: JSON.stringify(memberData),
     })
   }
 
-  async removeFamilyMember(familyId: string, userId: string): Promise<void> {
-    return this.request<void>(`/api/v1/families/${familyId}/members/${userId}`, {
+  async removeCircleMember(CircleId: string, userId: string): Promise<void> {
+    return this.request<void>(`/api/v1/circles/${CircleId}/members/${userId}`, {
       method: 'DELETE',
     })
   }
 
-  async updateFamilyMemberRole(familyId: string, userId: string, role: 'admin' | 'member'): Promise<FamilyMember> {
-    return this.request<FamilyMember>(`/api/v1/families/${familyId}/members/${userId}`, {
+  async updateCircleMemberRole(CircleId: string, userId: string, role: 'admin' | 'member'): Promise<CircleMember> {
+    return this.request<CircleMember>(`/api/v1/circles/${CircleId}/members/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify({ role }),
     })
   }
 
-  // Social Media Families (for admin dashboard)
-  async getSocialMediaFamilies(): Promise<Family[]> {
-    const response = await this.request<{ success: boolean; data: Family[] }>('/api/social-media/families')
-    return response.data || []
+  // Social Posts
+  async getSocialPosts(): Promise<any[]> {
+    const response = await this.request<{ success: boolean; posts: any[] }>('/admin/social-posts')
+    return response.posts || []
+  }
+
+  async deleteSocialPost(id: string): Promise<void> {
+     await this.request<{ success: boolean }>(`/admin/social-posts/${id}`, {
+      method: 'DELETE'
+    })
   }
 
   // Safety Alerts
@@ -354,9 +495,9 @@ class AdminService {
   }
 
   // Safety Incidents
-  async getSafetyIncidents(familyId?: string): Promise<any[]> {
+  async getSafetyIncidents(CircleId?: string): Promise<any[]> {
     try {
-      const endpoint = familyId ? `/api/v1/safety/incidents?family_id=${familyId}` : '/api/v1/safety/incidents'
+      const endpoint = CircleId ? `/api/v1/safety/incidents?Circle_id=${CircleId}` : '/api/v1/safety/incidents'
       const response = await this.request<{ incidents: any[] }>(endpoint)
       return response.incidents || []
     } catch (error) {
@@ -399,12 +540,137 @@ class AdminService {
     }
   }
 
+  // View Preferences
+  async getViewPreference(key: string): Promise<any> {
+    try {
+      return await this.request<any>(`/admin/preferences/${key}`)
+    } catch {
+      return null
+    }
+  }
+
+  async saveViewPreference(key: string, value: any): Promise<any> {
+    return this.request<any>(`/admin/preferences/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value })
+    })
+  }
+
+  // Entity Types (Collection Schemas)
+  async getEntityTypes(applicationId?: string): Promise<any[]> {
+    const params = applicationId ? `?applicationId=${applicationId}` : ''
+    const response = await this.request<{ types: any[] }>(`/admin/entities/types${params}`)
+    return response.types || []
+  }
+
+  async getEntityType(id: string): Promise<any> {
+    const response = await this.request<{ entityType: any }>(`/admin/entities/types/${id}`)
+    return response.entityType
+  }
+
+  async createEntityType(data: {
+    name: string
+    displayName: string
+    description?: string
+    applicationId?: string
+    schema?: any
+    icon?: string
+    category?: string
+  }): Promise<any> {
+    const response = await this.request<{ entityType: any }>('/admin/entities/types', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+    return response.entityType
+  }
+
+  async updateEntityType(id: string, data: {
+    displayName?: string
+    description?: string
+    schema?: any
+    icon?: string
+    category?: string
+  }): Promise<any> {
+    const response = await this.request<{ entityType: any }>(`/admin/entities/types/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+    return response.entityType
+  }
+
+  async deleteEntityType(id: string): Promise<void> {
+    await this.request<{ success: boolean }>(`/admin/entities/types/${id}`, {
+      method: 'DELETE'
+    })
+  }
+
+  // Generic Entity Fetch
+  async getEntities(endpoint: string): Promise<any> {
+    return this.request<any>(endpoint)
+  }
+
   // Tickets (placeholder - no backend endpoint yet)
   async getTicketsCount(): Promise<number> {
     // TODO: Implement when ticket management backend is ready
     // For now, return 0 to hide the badge
     return 0
   }
+  // File Upload
+  async uploadFile(file: File): Promise<{ file: { id: string, url: string, mime_type: string, file_name: string } }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const url = `${API_BASE_URL}/storage/upload`
+    const token = localStorage.getItem('admin_token')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    })
+
+    if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`)
+    }
+
+    return await response.json()
+  }
+
+  async sendBroadcast(payload: {
+      title: string
+      message: string
+      type: 'notification' | 'email' | 'both'
+      target?: 'all' | 'active' | 'premium'
+  }): Promise<any> {
+      return this.request<any>('/admin/broadcast', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+      })
+  }
+
+  // Generic Entity Operations
+  async createEntity(endpoint: string, data: any): Promise<any> {
+      return this.request<any>(endpoint, {
+          method: 'POST',
+          body: JSON.stringify(data)
+      })
+  }
+
+  async updateEntity(endpoint: string, id: string, data: any): Promise<any> {
+      return this.request<any>(`${endpoint}/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data)
+      })
+  }
+
+  async deleteEntity(endpoint: string, id: string): Promise<void> {
+      return this.request<void>(`${endpoint}/${id}`, {
+          method: 'DELETE'
+      })
+  }
 }
 
 export const adminService = new AdminService()
+

@@ -101,7 +101,7 @@ class FinanceService {
             type: row.type,
             date: row.date,
             note: row.note || row.description, // Handle potential DB drift, logic says note
-            is_family_shared: row.is_family_shared || false,
+            is_circle_shared: row.is_circle_shared || false,
             location_label: row.location_label,
             created_at: row.created_at,
             updated_at: row.updated_at,
@@ -125,13 +125,13 @@ class FinanceService {
      * Create transaction and update account balance
      */
     async createTransaction(txData: Partial<FinancialTransaction>): Promise<FinancialTransaction> {
-        const { user_id, account_id, category_id, amount, type, date, note, is_family_shared, location_label } = txData;
+        const { user_id, account_id, category_id, amount, type, date, note, is_circle_shared, location_label } = txData;
 
         const { rows } = await query(`
-            INSERT INTO financial_transactions (user_id, account_id, category_id, amount, type, date, note, is_family_shared, location_label, created_at, updated_at)
+            INSERT INTO financial_transactions (user_id, account_id, category_id, amount, type, date, note, is_circle_shared, location_label, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
             RETURNING *
-        `, [user_id, account_id, category_id, amount, type, date, note, is_family_shared || false, location_label]);
+        `, [user_id, account_id, category_id, amount, type, date, note, is_circle_shared || false, location_label]);
 
         const transaction = rows[0];
 
@@ -190,3 +190,4 @@ class FinanceService {
 }
 
 export default new FinanceService();
+

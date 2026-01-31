@@ -1,0 +1,627 @@
+{
+  "categories": [
+    {
+      "id": "buttons",
+      "name": "Buttons",
+      "icon": "buttons",
+      "components": [
+        {
+          "id": "primary",
+          "name": "Primary Button",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FFB6C1"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FFFFFF"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        },
+        {
+          "id": "secondary",
+          "name": "Secondary Button",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.1)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        },
+        {
+          "id": "outline",
+          "name": "Outline Button",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FF69B4"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "#FFB6C1"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "ghost",
+          "name": "Ghost Button",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#6B7280"
+            },
+            "borderRadius": 8,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "cards",
+      "name": "Cards",
+      "icon": "cards",
+      "components": [
+        {
+          "id": "default",
+          "name": "Default Card",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.8)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 16,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "md",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.1)"
+            },
+            "shadowBlur": 6,
+            "shadowOffsetY": 4
+          }
+        },
+        {
+          "id": "glass",
+          "name": "Glass Card",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.1)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 16,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "lg",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.15)"
+            },
+            "shadowBlur": 15,
+            "shadowOffsetY": 10
+          }
+        },
+        {
+          "id": "modal",
+          "name": "Modal Card",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.95)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 20,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "lg",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.15)"
+            },
+            "shadowBlur": 15,
+            "shadowOffsetY": 10
+          }
+        }
+      ]
+    },
+    {
+      "id": "typography",
+      "name": "Typography",
+      "icon": "typography",
+      "components": [
+        {
+          "id": "heading",
+          "name": "Headings",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "body",
+          "name": "Body Text",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#6B7280"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "caption",
+          "name": "Caption",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#9CA3AF"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "link",
+          "name": "Links",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FF69B4"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        }
+      ]
+    },
+    {
+      "id": "inputs",
+      "name": "Form Inputs",
+      "icon": "inputs",
+      "components": [
+        {
+          "id": "textInput",
+          "name": "Text Input",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.8)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        },
+        {
+          "id": "select",
+          "name": "Select/Dropdown",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.8)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        },
+        {
+          "id": "toggle",
+          "name": "Toggle Switch",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FFB6C1"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FFFFFF"
+            },
+            "borderRadius": 999,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "navigation",
+      "name": "Navigation",
+      "icon": "navigation",
+      "components": [
+        {
+          "id": "tabBar",
+          "name": "Tab Bar",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.1)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#6B7280"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        },
+        {
+          "id": "tabActive",
+          "name": "Active Tab",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FFB6C1"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FFFFFF"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "#FF69B4"
+            },
+            "shadowLevel": "md",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.1)"
+            },
+            "shadowBlur": 6,
+            "shadowOffsetY": 4
+          }
+        },
+        {
+          "id": "header",
+          "name": "Header",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FFB6C1"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FFFFFF"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "layout",
+      "name": "Layout",
+      "icon": "layout",
+      "components": [
+        {
+          "id": "container",
+          "name": "Container",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FAF9F6"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "divider",
+          "name": "Divider",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.3)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "borderRadius": 0,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "none"
+          }
+        },
+        {
+          "id": "section",
+          "name": "Section",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.8)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 16,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "feedback",
+      "name": "Feedback",
+      "icon": "feedback",
+      "components": [
+        {
+          "id": "toast",
+          "name": "Toast",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#FFFFFF"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "transparent"
+            },
+            "shadowLevel": "lg",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.15)"
+            },
+            "shadowBlur": 15,
+            "shadowOffsetY": 10
+          }
+        },
+        {
+          "id": "modal",
+          "name": "Modal",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 255, 255, 0.95)"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#374151"
+            },
+            "borderRadius": 20,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "rgba(255, 182, 193, 0.2)"
+            },
+            "shadowLevel": "lg",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.15)"
+            },
+            "shadowBlur": 15,
+            "shadowOffsetY": 10
+          }
+        },
+        {
+          "id": "alert",
+          "name": "Alert",
+          "styles": {
+            "backgroundColor": {
+              "mode": "solid",
+              "solid": "#FEE2E2"
+            },
+            "textColor": {
+              "mode": "solid",
+              "solid": "#991B1B"
+            },
+            "borderRadius": 12,
+            "borderColor": {
+              "mode": "solid",
+              "solid": "#EF4444"
+            },
+            "shadowLevel": "sm",
+            "shadowColor": {
+              "mode": "solid",
+              "solid": "rgba(0,0,0,0.05)"
+            },
+            "shadowBlur": 2,
+            "shadowOffsetY": 1
+          }
+        }
+      ]
+    }
+  ],
+  "branding": {
+    "appName": "BondarysBondarys Test",
+    "logoUrl": "http://localhost:4000/uploads/system/admin/1768585744865_s-removebg-preview.png",
+    "welcomeBackgroundImage": "http://localhost:4000/uploads/system/admin/1768674022421_1.png",
+    "welcomeBackgroundResizeMode": "cover",
+    "loginBackgroundImage": "http://localhost:4000/uploads/system/admin/1768716871165_1.png",
+    "loginBackgroundResizeMode": "cover",
+    "pinBackgroundImage": "http://localhost:4000/uploads/system/admin/1768716879509_5.png",
+    "pinBackgroundResizeMode": "cover",
+    "onboardingBackgroundImage": "",
+    "onboardingBackgroundResizeMode": "cover",
+    "homeBackgroundImage": "http://localhost:4000/uploads/system/admin/1768716843988_7.png",
+    "homeBackgroundResizeMode": "cover",
+    "familyBackgroundImage": "http://localhost:4000/uploads/system/admin/1768730957260_7.png",
+    "familyBackgroundResizeMode": "cover",
+    "socialBackgroundImage": "http://localhost:4000/uploads/system/admin/1768716850496_1.png",
+    "socialBackgroundResizeMode": "cover",
+    "primaryFont": "Inter",
+    "secondaryFont": "Inter",
+    "chatBackgroundImage": "http://localhost:4000/uploads/system/admin/1768730871946_7.png",
+    "applicationlistBackgroundImage": "http://localhost:4000/uploads/system/admin/1768716882610_15.png"
+  },
+  "updatedAt": "2026-01-18T10:09:19.079Z",
+  "updatedBy": "admin"
+}

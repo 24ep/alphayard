@@ -57,7 +57,7 @@ const LocationMapWidget: React.FC<LocationMapWidgetProps> = ({
     <View style={homeStyles.widgetContainer}>
       <View style={homeStyles.widgetHeader}>
         <View style={homeStyles.widgetTitleContainer}>
-          <Text style={homeStyles.widgetTitle}>hourse Locations</Text>
+          <Text style={homeStyles.widgetTitle}>Circle Locations</Text>
           <Text style={homeStyles.widgetSubtitle}>
             {locations.filter(l => l.isOnline).length} online
           </Text>
@@ -127,3 +127,4 @@ const LocationMapWidget: React.FC<LocationMapWidgetProps> = ({
 };
 
 export default LocationMapWidget;
+

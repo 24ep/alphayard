@@ -6,9 +6,9 @@ const router = Router();
 const cmsController = new CMSController();
 
 // Content Management Routes
-router.get('/families/:familyId/content', authenticateToken as any, cmsController.getContent.bind(cmsController));
+router.get('/families/:circleId/content', authenticateToken as any, cmsController.getContent.bind(cmsController));
 router.get('/content/:contentId', authenticateToken as any, cmsController.getContentById.bind(cmsController));
-router.post('/families/:familyId/content', authenticateToken as any, cmsController.createContent.bind(cmsController));
+router.post('/families/:circleId/content', authenticateToken as any, cmsController.createContent.bind(cmsController));
 router.put('/content/:contentId', authenticateToken as any, cmsController.updateContent.bind(cmsController));
 router.delete('/content/:contentId', authenticateToken as any, cmsController.deleteContent.bind(cmsController));
 
@@ -22,11 +22,12 @@ router.get('/content/:contentId/comments', authenticateToken as any, cmsControll
 router.post('/content/:contentId/comments', authenticateToken as any, cmsController.createComment.bind(cmsController));
 
 // Category Routes
-router.get('/families/:familyId/categories', authenticateToken as any, cmsController.getCategories.bind(cmsController));
-router.post('/families/:familyId/categories', authenticateToken as any, cmsController.createCategory.bind(cmsController));
+router.get('/families/:circleId/categories', authenticateToken as any, cmsController.getCategories.bind(cmsController));
+router.post('/families/:circleId/categories', authenticateToken as any, cmsController.createCategory.bind(cmsController));
 
 // Analytics Routes
-router.get('/families/:familyId/analytics/content', authenticateToken as any, cmsController.getContentAnalytics.bind(cmsController));
-router.get('/families/:familyId/content/popular', authenticateToken as any, cmsController.getPopularContent.bind(cmsController));
+router.get('/families/:circleId/analytics/content', authenticateToken as any, cmsController.getContentAnalytics.bind(cmsController));
+router.get('/families/:circleId/content/popular', authenticateToken as any, cmsController.getPopularContent.bind(cmsController));
 
 export default router;
+

@@ -36,7 +36,8 @@ interface EnvironmentConfig {
 }
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
-  const isDevelopment = __DEV__;
+  // __DEV__ is a React Native global. Provide a fallback for web environments (e.g., Next.js).
+  const isDevelopment = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
   const isProduction = !isDevelopment;
 
   return {
@@ -45,6 +46,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your_supabase_anon_key_here',
 
     // API Configuration
+    // Use LAN IP localhost as robust fallback for emulator connectivity
     apiUrl: process.env.EXPO_PUBLIC_API_URL || (isDevelopment ? 'http://localhost:4000/api/v1' : 'https://your-api-domain.com'),
 
     // Application Configuration
@@ -100,7 +102,7 @@ export const validateEnvironment = (): { isValid: boolean; missingVars: string[]
 };
 
 // Log environment configuration (only in development)
-if (__DEV__) {
+if (typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production') {
   console.log('🔧 Environment Configuration:', {
     appName: config.appName,
     appVersion: config.appVersion,

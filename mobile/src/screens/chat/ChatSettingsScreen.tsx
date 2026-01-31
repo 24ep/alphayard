@@ -19,7 +19,7 @@ import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 interface ChatSettings {
   id: string;
   name: string;
-  type: 'individual' | 'group' | 'hourse';
+  type: 'individual' | 'group' | 'Circle';
   avatar?: string;
   isMuted: boolean;
   isPinned: boolean;

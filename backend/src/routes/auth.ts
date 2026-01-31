@@ -8,46 +8,44 @@ import { emailService } from '../services/emailService';
 import { authenticateToken } from '../middleware/auth';
 import { AuthController } from '../controllers/AuthController';
 import { UserModel } from '../models/UserModel';
+import { config } from '../config/env';
 
 const authController = new AuthController();
+
+// Helper to generate a default avatar
+const generateAvatar = (seed: string) => {
+  return `https://api.dicebear.com/9.x/avataaars/png?seed=${seed}`;
+};
 
 const router = express.Router();
 
 // Validation middleware
 const registerValidation = [
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
   // Password is now optional or auto-generated
   body('firstName').trim().isLength({ min: 1 }).withMessage('First name is required'),
   body('lastName').trim().isLength({ min: 1 }).withMessage('Last name is required'),
 ];
 
 const loginValidation = [
-  body('email').isEmail().normalizeEmail(),
+  body('email').isEmail().normalizeEmail({ gmail_remove_dots: false }),
   body('password').isLength({ min: 1 }).withMessage('Password is required'),
 ];
 
 // Helper function to generate JWT token
 const generateToken = (userId: string, email: string) => {
-  const secret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
-  if ((process.env.NODE_ENV === 'production') && secret === 'bondarys-dev-secret-key') {
-    throw new Error('JWT_SECRET is not set in production');
-  }
   return jwt.sign(
     { id: userId, email },
-    secret,
+    config.JWT_SECRET,
     { expiresIn: '7d' }
   );
 };
 
 // Helper function to generate refresh token
 const generateRefreshToken = (userId: string) => {
-  const secret = process.env.JWT_REFRESH_SECRET || 'bondarys-refresh-secret-key';
-  if ((process.env.NODE_ENV === 'production') && secret === 'bondarys-refresh-secret-key') {
-    throw new Error('JWT_REFRESH_SECRET is not set in production');
-  }
   return jwt.sign(
     { id: userId, type: 'refresh' },
-    secret,
+    config.JWT_REFRESH_SECRET,
     { expiresIn: '30d' }
   );
 };
@@ -62,6 +60,12 @@ router.post('/register', registerValidation, async (req: any, res: any) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ error: 'Validation failed', details: errors.array() });
+  }
+  // Inject default avatar if not provided
+  if (!req.body.avatar) {
+    // Combine names or use email/random for seed
+    const seed = req.body.firstName + '-' + req.body.lastName + '-' + Date.now();
+    req.body.avatar = generateAvatar(seed);
   }
   return authController.register(req, res);
 });
@@ -81,7 +85,7 @@ router.post('/login', loginValidation, async (req: any, res: any) => {
 });
 
 // Email normalization middleware for login flows
-const emailNormalization = [body('email').optional().isEmail().normalizeEmail()];
+const emailNormalization = [body('email').optional().isEmail().normalizeEmail({ gmail_remove_dots: false })];
 
 // Check user existence
 router.post('/check-user', emailNormalization, (req: any, res: any) => authController.checkUserExistence(req, res));
@@ -107,10 +111,10 @@ router.get('/me', authenticateToken as any, (req, res) => authController.getCurr
 router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
   try {
     // Use native pg pool for profile lookup
-    const userResult = await pool.query(`
+      const userResult = await pool.query(`
       SELECT 
         u.id, u.email, first_name, last_name, avatar_url, phone, date_of_birth, 
-        user_type, subscription_tier, family_ids, is_onboarding_complete, 
+        user_type, circle_ids, is_onboarding_complete, 
         preferences, role, is_active, created_at, updated_at
       FROM users u
       WHERE u.id = $1
@@ -125,16 +129,16 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
       });
     }
 
-    // Get user's hourse using native pg pool
-    const familyResult = await pool.query(`
-      SELECT fm.family_id, fm.role, f.name, f.type
-      FROM family_members fm
-      LEFT JOIN families f ON fm.family_id = f.id
+    // Get user's circle using native pg pool
+    const circleResult = await pool.query(`
+      SELECT fm.circle_id, fm.role, f.name, f.type
+      FROM circle_members fm
+      LEFT JOIN circles f ON fm.circle_id = f.id
       WHERE fm.user_id = $1
       LIMIT 1
     `, [user.id]);
 
-    const familyMember = familyResult.rows[0];
+    const circleMember = circleResult.rows[0];
 
     res.json({
       user: {
@@ -145,9 +149,8 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
         avatar: user.avatar_url,
         phone: user.phone,
         dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'hourse',
-        subscriptionTier: user.subscription_tier || 'free',
-        familyIds: user.family_ids || [],
+        userType: user.user_type || 'circle',
+        circleIds: user.circle_ids || [],
         isOnboardingComplete: user.is_onboarding_complete || false,
         preferences: user.preferences || {
           notifications: true,
@@ -163,9 +166,9 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
         status: user.is_active ? 'active' : 'inactive',
         createdAt: user.created_at,
         updatedAt: user.updated_at,
-        familyId: familyMember?.family_id || null,
-        familyName: familyMember?.name || null,
-        familyRole: familyMember?.role || null
+        circleId: circleMember?.circle_id || null,
+        circleName: circleMember?.name || null,
+        circleRole: circleMember?.role || null
       }
     });
 
@@ -208,7 +211,7 @@ router.put('/profile', [
       UPDATE users 
       SET ${fields.join(', ')} 
       WHERE id = $1 
-      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, subscription_tier, family_ids, is_onboarding_complete, preferences, updated_at
+      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, circle_ids, is_onboarding_complete, preferences, updated_at
     `;
 
     const userResult = await pool.query(updateQuery, params);
@@ -221,16 +224,16 @@ router.put('/profile', [
       });
     }
 
-    // Get user's hourse
-    const familyResult = await pool.query(`
-      SELECT fm.family_id, fm.role, f.name, f.type
-      FROM family_members fm
-      LEFT JOIN families f ON fm.family_id = f.id
+    // Get user's circle
+    const circleResult = await pool.query(`
+      SELECT fm.circle_id, fm.role, f.name, f.type
+      FROM circle_members fm
+      LEFT JOIN circles f ON fm.circle_id = f.id
       WHERE fm.user_id = $1
       LIMIT 1
     `, [user.id]);
 
-    const familyMember = familyResult.rows[0];
+    const circleMember = circleResult.rows[0];
 
     res.json({
       message: 'Profile updated successfully',
@@ -242,9 +245,8 @@ router.put('/profile', [
         avatar: user.avatar_url,
         phone: user.phone,
         dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'hourse',
-        subscriptionTier: user.subscription_tier || 'free',
-        familyIds: user.family_ids || [],
+        userType: user.user_type || 'circle',
+        circleIds: user.circle_ids || [],
         isOnboardingComplete: user.is_onboarding_complete || false,
         preferences: user.preferences || {
           notifications: true,
@@ -257,9 +259,9 @@ router.put('/profile', [
           }
         },
         updatedAt: user.updated_at,
-        familyId: familyMember?.family_id || null,
-        familyName: (familyMember?.families as any)?.name || null,
-        familyRole: familyMember?.role || null
+        circleId: circleMember?.circle_id || null,
+        circleName: (circleMember?.families as any)?.name || null,
+        circleRole: circleMember?.role || null
       }
     });
 
@@ -280,7 +282,7 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
       UPDATE users 
       SET is_onboarding_complete = true, updated_at = $1
       WHERE id = $2
-      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, subscription_tier, family_ids, is_onboarding_complete, preferences, created_at, updated_at
+      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, is_onboarding_complete, preferences, created_at, updated_at
     `, [new Date().toISOString(), req.user.id]);
 
     const user = updateResult.rows[0];
@@ -292,16 +294,16 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
       });
     }
 
-    // Get user's hourse
-    const familyResult = await pool.query(`
-      SELECT fm.family_id, fm.role, f.name, f.type
-      FROM family_members fm
-      LEFT JOIN families f ON fm.family_id = f.id
+    // Get user's circle
+    const circleResult = await pool.query(`
+      SELECT fm.circle_id, fm.role, f.name, f.type
+      FROM circle_members fm
+      LEFT JOIN circles f ON fm.circle_id = f.id
       WHERE fm.user_id = $1
       LIMIT 1
     `, [user.id]);
 
-    const familyMember = familyResult.rows[0];
+    const circleMember = circleResult.rows[0];
 
     res.json({
       success: true,
@@ -313,9 +315,8 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
         avatar: user.avatar_url,
         phone: user.phone,
         dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'hourse',
-        subscriptionTier: user.subscription_tier || 'free',
-        familyIds: user.family_ids || [],
+        userType: user.user_type || 'circle',
+        circleIds: circleMember?.circle_id ? [circleMember.circle_id] : [],
         isOnboardingComplete: user.is_onboarding_complete || true,
         preferences: user.preferences || {
           notifications: true,
@@ -329,9 +330,9 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
         },
         createdAt: user.created_at,
         updatedAt: user.updated_at,
-        familyId: familyMember?.family_id || null,
-        familyName: familyMember?.name || null,
-        familyRole: familyMember?.role || null
+        circleId: circleMember?.circle_id || null,
+        circleName: circleMember?.name || null,
+        circleRole: circleMember?.role || null
       }
     });
 
@@ -346,7 +347,7 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
 
 // Forgot password endpoint
 router.post('/forgot-password', [
-  body('email').isEmail().normalizeEmail()
+  body('email').isEmail().normalizeEmail({ gmail_remove_dots: false })
 ], async (req: any, res: any) => {
   try {
     const errors = validationResult(req);
@@ -537,3 +538,4 @@ router.get('/apple', (_req, res) => {
 router.post('/apple/callback', (_req, res) => {
   res.status(501).json({ error: 'Not implemented', message: 'Apple callback not configured' });
 });
+

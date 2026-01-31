@@ -257,7 +257,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     required
                     autoComplete="email"
                     className={`
-                      w-full pl-12 pr-4 py-4 rounded-2xl
+                      w-full pl-16 pr-4 py-4 rounded-2xl
                       bg-white/5 backdrop-blur-md
                       border-2 transition-all duration-300
                       text-white placeholder-white/30
@@ -271,7 +271,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     `}
                     style={{
                       WebkitBackdropFilter: 'blur(12px)',
-                      backdropFilter: 'blur(12px)'
+                      backdropFilter: 'blur(12px)',
+                      paddingLeft: '56px'
                     }}
                     aria-label="Email address"
                     aria-invalid={!!error}
@@ -303,7 +304,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     required
                     autoComplete="current-password"
                     className={`
-                      w-full pl-12 pr-14 py-4 rounded-2xl
+                      w-full pl-16 pr-14 py-4 rounded-2xl
                       bg-white/5 backdrop-blur-md
                       border-2 transition-all duration-300
                       text-white placeholder-white/30
@@ -317,7 +318,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                     `}
                     style={{
                       WebkitBackdropFilter: 'blur(12px)',
-                      backdropFilter: 'blur(12px)'
+                      backdropFilter: 'blur(12px)',
+                      paddingLeft: '56px'
                     }}
                     aria-label="Password"
                     aria-invalid={!!error}
@@ -481,7 +483,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                   <SparklesIcon className="w-5 h-5 text-yellow-400" />
                   <div className="text-sm">
                     <span className="text-white/50">Demo: </span>
-                    <span className="font-mono text-white/80">admin@bondarys.com</span>
+                    <span className="font-mono text-white/80">admin@appkit.com</span>
                     <span className="text-white/50 mx-1">/</span>
                     <span className="font-mono text-white/80">admin123</span>
                   </div>
@@ -525,7 +527,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
         {/* Footer */}
         <div className="mt-8 text-center space-y-2">
           <p className="text-white/30 text-xs">
-            © 2024 Bondarys. Secure Admin Portal
+            © 2024 Appkit. Secure Admin Portal
           </p>
           <div className="flex items-center justify-center gap-4 text-xs">
             <a href="#" className="text-white/40 hover:text-white/70 transition-colors">Privacy</a>

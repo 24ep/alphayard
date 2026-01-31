@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 import { storageService } from '../services/storageService';
 
 export class StorageController {
@@ -8,54 +8,53 @@ export class StorageController {
     try {
       const { limit = 50, offset = 0, type, shared, favorite, search } = req.query;
       const userId = req.user.id;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
-      let query = supabase
-        .from('files')
-        .select('*', { count: 'exact' })
-        .eq('family_id', familyId)
-        .order('created_at', { ascending: false })
-        .range(parseInt(offset as string), parseInt(offset as string) + parseInt(limit as string) - 1);
+      let sql = 'SELECT *, COUNT(*) OVER() as total_count FROM files WHERE circle_id = $1';
+      const params: any[] = [circleId];
+      let paramIndex = 2;
 
       // Apply filters
       if (type === 'folders') {
-        query = query.eq('mime_type', 'folder');
+        sql += ` AND mime_type = 'folder'`;
       } else if (type === 'files') {
-        query = query.neq('mime_type', 'folder');
+        sql += ` AND mime_type != 'folder'`;
       }
 
       if (shared === 'true') {
-        query = query.eq('is_shared', true);
+        sql += ` AND is_shared = true`;
       }
 
       if (favorite === 'true') {
-        query = query.eq('is_favorite', true);
+        sql += ` AND is_favorite = true`;
       }
 
       if (search) {
-        query = query.ilike('original_name', `%${search}%`);
+        sql += ` AND original_name ILIKE $${paramIndex++}`;
+        params.push(`%${search}%`);
       }
 
-      const { data: files, error, count } = await query;
+      sql += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      params.push(parseInt(limit as string), parseInt(offset as string));
 
-      if (error) {
-        throw error;
-      }
+      const { rows } = await pool.query(sql, params);
+      const totalCount = rows.length > 0 ? parseInt(rows[0].total_count) : 0;
 
       // Get storage usage
-      const storageUsage = await storageService.getStorageUsage(userId, familyId);
+      const storageUsage = await storageService.getStorageUsage(userId, circleId);
 
       res.json({
         success: true,
-        files: files || [],
-        total: count || 0,
+        files: rows,
+        total: totalCount,
         storageUsage
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Get files error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to retrieve files'
+        message: 'Failed to retrieve files',
+        details: error.message
       });
     }
   }
@@ -64,16 +63,14 @@ export class StorageController {
   async getFileById(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
-      const { data: file, error } = await supabase
-        .from('files')
-        .select('*')
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM files WHERE id = $1 AND circle_id = $2',
+        [id, circleId]
+      );
 
-      if (error || !file) {
+      if (rows.length === 0) {
         return res.status(404).json({
           error: 'File not found',
           message: 'The requested file could not be found'
@@ -82,13 +79,14 @@ export class StorageController {
 
       res.json({
         success: true,
-        file
+        file: rows[0]
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Get file error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to retrieve file'
+        message: 'Failed to retrieve file',
+        details: error.message
       });
     }
   }
@@ -104,20 +102,47 @@ export class StorageController {
       }
 
       const userId = req.user.id;
-      const familyId = req.user.familyId;
-      const { isShared = false, metadata = {} } = req.body;
+      const circleId = req.user.circleId;
+
+      // Special handling for Admin/System uploads (no circleId)
+      if (!circleId && (req.user.role === 'admin' || req.user.type === 'admin')) {
+        const fileExtension = req.file.originalname.split('.').pop() || 'png';
+        const fileName = `system/${req.user.id}/${Date.now()}_${req.file.originalname}`;
+        const url = await storageService.uploadRawBuffer(
+          req.file.buffer, 
+          fileName, 
+          req.file.mimetype
+        );
+
+        if (!url) throw new Error('Failed to upload system file');
+
+        return res.json({
+          success: true,
+          message: 'System file uploaded successfully',
+          file: {
+            id: 'system-' + Date.now(),
+            url: url,
+            originalName: req.file.originalname,
+            fileName: fileName,
+            mimeType: req.file.mimetype,
+            size: req.file.size
+          }
+        });
+      }
 
       const uploadedFile = await storageService.uploadFile(
         req.file,
         userId,
-        familyId,
+        circleId,
         {
           generateThumbnails: true,
           compressImages: true
         }
       );
 
-      // File metadata is already saved by storageService
+      // Use proxy URL for persistence
+      const baseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+      uploadedFile.url = `${baseUrl}/api/v1/storage/proxy/${uploadedFile.id}`;
 
       res.json({
         success: true,
@@ -128,8 +153,7 @@ export class StorageController {
       console.error('Upload error:', error);
       res.status(500).json({
         success: false,
-        error: error.message || 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error : undefined
+        error: error.message || 'Internal server error'
       });
     }
   }
@@ -138,50 +162,53 @@ export class StorageController {
   async updateFile(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
       const updates = req.body;
 
-      // Check if file exists and user has access
-      const { data: file, error: fetchError } = await supabase
-        .from('files')
-        .select('*')
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .single();
+      // Build update sql
+      const updateFields: string[] = ['updated_at = NOW()'];
+      const params: any[] = [];
+      let paramIndex = 1;
 
-      if (fetchError || !file) {
+      // Allow updating common fields
+      const allowedUpdates = ['original_name', 'is_shared', 'is_favorite', 'metadata'];
+      for (const field of allowedUpdates) {
+        if (updates[field] !== undefined) {
+          updateFields.push(`"${field}" = $${paramIndex++}`);
+          params.push(updates[field]);
+        }
+      }
+
+      if (params.length === 0) {
+        return res.status(400).json({ error: 'No update fields provided' });
+      }
+
+      params.push(id, circleId);
+      const { rows } = await pool.query(
+        `UPDATE files SET ${updateFields.join(', ')} 
+         WHERE id = $${paramIndex++} AND circle_id = $${paramIndex} 
+         RETURNING *`,
+        params
+      );
+
+      if (rows.length === 0) {
         return res.status(404).json({
           error: 'File not found',
           message: 'The requested file could not be found'
         });
       }
 
-      // Update file
-      const { data: updatedFile, error: updateError } = await supabase
-        .from('files')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
       res.json({
         success: true,
         message: 'File updated successfully',
-        file: updatedFile
+        file: rows[0]
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Update file error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to update file'
+        message: 'Failed to update file',
+        details: error.message
       });
     }
   }
@@ -205,11 +232,12 @@ export class StorageController {
           message: 'The requested file could not be found or deleted'
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Delete file error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to delete file'
+        message: 'Failed to delete file',
+        details: error.message
       });
     }
   }
@@ -218,19 +246,20 @@ export class StorageController {
   async getStorageStats(req: any, res: Response) {
     try {
       const userId = req.user.id;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
-      const storageUsage = await storageService.getStorageUsage(userId, familyId);
+      const storageUsage = await storageService.getStorageUsage(userId, circleId);
 
       res.json({
         success: true,
         stats: storageUsage
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Get storage stats error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to retrieve storage statistics'
+        message: 'Failed to retrieve storage statistics',
+        details: error.message
       });
     }
   }
@@ -240,7 +269,7 @@ export class StorageController {
     try {
       const { name, parentId, description } = req.body;
       const userId = req.user.id;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
       if (!name || name.trim() === '') {
         return res.status(400).json({
@@ -249,36 +278,34 @@ export class StorageController {
         });
       }
 
-      const { data: folder, error } = await supabase
-        .from('files')
-        .insert({
-          original_name: name.trim(),
-          file_name: name.trim(),
-          mime_type: 'folder',
-          size: 0,
-          url: '',
-          path: parentId ? `/${parentId}/${name.trim()}` : `/${name.trim()}`,
-          family_id: familyId,
-          uploaded_by: userId,
-          metadata: { description: description || '' }
-        })
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
-      }
+      const { rows } = await pool.query(
+        `INSERT INTO files (
+          original_name, file_name, mime_type, size, url, path, circle_id, uploaded_by, metadata
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          name.trim(), 
+          name.trim(), 
+          'folder', 
+          0, 
+          '', 
+          parentId ? `/${parentId}/${name.trim()}` : `/${name.trim()}`,
+          circleId, 
+          userId, 
+          { description: description || '' }
+        ]
+      );
 
       res.json({
         success: true,
         message: 'Folder created successfully',
-        folder
+        folder: rows[0]
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Create folder error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to create folder'
+        message: 'Failed to create folder',
+        details: error.message
       });
     }
   }
@@ -287,47 +314,32 @@ export class StorageController {
   async toggleFavorite(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
-      const { data: file, error: fetchError } = await supabase
-        .from('files')
-        .select('is_favorite')
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .single();
+      const { rows } = await pool.query(
+        'UPDATE files SET is_favorite = NOT is_favorite, updated_at = NOW() WHERE id = $1 AND circle_id = $2 RETURNING *',
+        [id, circleId]
+      );
 
-      if (fetchError || !file) {
+      if (rows.length === 0) {
         return res.status(404).json({
           error: 'File not found',
           message: 'The requested file could not be found'
         });
       }
 
-      const { data: updatedFile, error: updateError } = await supabase
-        .from('files')
-        .update({
-          is_favorite: !file.is_favorite,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      const updatedFile = rows[0];
       res.json({
         success: true,
         message: `File ${updatedFile.is_favorite ? 'added to' : 'removed from'} favorites`,
         file: updatedFile
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Toggle favorite error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to update favorite status'
+        message: 'Failed to update favorite status',
+        details: error.message
       });
     }
   }
@@ -336,47 +348,32 @@ export class StorageController {
   async toggleShared(req: any, res: Response) {
     try {
       const { id } = req.params;
-      const familyId = req.user.familyId;
+      const circleId = req.user.circleId;
 
-      const { data: file, error: fetchError } = await supabase
-        .from('files')
-        .select('is_shared')
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .single();
+      const { rows } = await pool.query(
+        'UPDATE files SET is_shared = NOT is_shared, updated_at = NOW() WHERE id = $1 AND circle_id = $2 RETURNING *',
+        [id, circleId]
+      );
 
-      if (fetchError || !file) {
+      if (rows.length === 0) {
         return res.status(404).json({
           error: 'File not found',
           message: 'The requested file could not be found'
         });
       }
 
-      const { data: updatedFile, error: updateError } = await supabase
-        .from('files')
-        .update({
-          is_shared: !file.is_shared,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .eq('family_id', familyId)
-        .select()
-        .single();
-
-      if (updateError) {
-        throw updateError;
-      }
-
+      const updatedFile = rows[0];
       res.json({
         success: true,
         message: `File ${updatedFile.is_shared ? 'shared' : 'unshared'} successfully`,
         file: updatedFile
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Toggle shared error:', error);
       res.status(500).json({
         error: 'Internal server error',
-        message: 'Failed to update shared status'
+        message: 'Failed to update shared status',
+        details: error.message
       });
     }
   }

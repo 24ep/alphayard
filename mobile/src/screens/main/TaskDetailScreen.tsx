@@ -21,7 +21,7 @@ interface Task {
   id: string;
   title: string;
   description: string;
-  category: 'work' | 'personal' | 'hourse' | 'urgent';
+  category: 'work' | 'personal' | 'Circle' | 'urgent';
   priority: 'low' | 'medium' | 'high';
   dueDate: string;
   isCompleted: boolean;
@@ -92,7 +92,7 @@ const TaskDetailScreen: React.FC = () => {
         return '#2196F3';
       case 'personal':
         return '#9C27B0';
-      case 'hourse':
+      case 'Circle':
         return '#FF5722';
       case 'urgent':
         return '#F44336';
@@ -107,7 +107,7 @@ const TaskDetailScreen: React.FC = () => {
         return 'briefcase';
       case 'personal':
         return 'account';
-      case 'hourse':
+      case 'Circle':
         return 'home';
       case 'urgent':
         return 'alert';

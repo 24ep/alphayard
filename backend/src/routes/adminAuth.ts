@@ -1,5 +1,6 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { config } from '../config/env';
 
 const router = Router();
 
@@ -12,13 +13,17 @@ const ADMIN_CREDENTIALS = {
 // Simple admin login endpoint
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
+    const userIdentifier = username || email;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+    if (!userIdentifier || !password) {
+      return res.status(400).json({ error: 'Username/Email and password are required' });
     }
 
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+    // Check against username 'admin' OR matching email
+    const isValidUser = userIdentifier === ADMIN_CREDENTIALS.username || userIdentifier === 'admin@bondarys.com';
+
+    if (isValidUser && password === ADMIN_CREDENTIALS.password) {
       // Generate JWT token
       const token = jwt.sign(
         { 
@@ -26,11 +31,11 @@ router.post('/login', async (req, res) => {
           username: 'admin',
           type: 'admin'
         },
-        process.env.JWT_SECRET || 'bondarys-dev-secret-key',
+        config.JWT_SECRET,
         { expiresIn: '24h' }
       );
 
-      res.json({ 
+      return res.json({ 
         success: true,
         token,
         user: {
@@ -39,9 +44,55 @@ router.post('/login', async (req, res) => {
           type: 'admin'
         }
       });
-    } else {
-      res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Fallback: Check database for real admin user
+    try {
+      const { UserModel } = require('../models/UserModel');
+      const bcrypt = require('bcrypt'); // or bcryptjs depending on what's installed
+      
+      const user = await UserModel.findOne({ 
+        $or: [{ email: userIdentifier }, { username: userIdentifier }] 
+      });
+
+      if (user && (user.role === 'admin' || user.role === 'super_admin')) {
+        // Check password (assuming comparePassword method or direct bcrypt)
+        // Adjust based on your User model implementation
+        let isMatch = false;
+        if (user.matchPassword) {
+           isMatch = await user.matchPassword(password);
+        } else if (user.password) {
+           // Fallback to manual compare if method missing
+           isMatch = await bcrypt.compare(password, user.password);
+        }
+
+        if (isMatch) {
+             const token = jwt.sign(
+              { 
+                id: user._id, // Use real ID
+                username: user.username || user.firstName,
+                type: user.role
+              },
+              config.JWT_SECRET,
+              { expiresIn: '24h' }
+            );
+
+            return res.json({ 
+              success: true,
+              token,
+              user: {
+                id: user._id,
+                username: user.username || user.email,
+                type: user.role
+              }
+            });
+        }
+      }
+    } catch (dbError) {
+      console.warn('DB Admin check failed:', dbError);
+    }
+
+    res.status(401).json({ error: 'Invalid credentials' });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -57,7 +108,7 @@ router.get('/verify', async (req, res) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'bondarys-dev-secret-key') as any;
+    const decoded = jwt.verify(token, config.JWT_SECRET) as any;
     
     res.json({ 
       success: true,

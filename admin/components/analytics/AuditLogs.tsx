@@ -78,7 +78,7 @@ export function AuditLogs() {
             <option value="">All categories</option>
             <option value="authentication">Authentication</option>
             <option value="user_management">User Management</option>
-            <option value="family_management">Family Management</option>
+            <option value="Circle_management">Circle Management</option>
             <option value="safety">Safety</option>
             <option value="billing">Billing</option>
             <option value="system">System</option>
@@ -139,5 +139,6 @@ export function AuditLogs() {
     </div>
   )
 }
+
 
 

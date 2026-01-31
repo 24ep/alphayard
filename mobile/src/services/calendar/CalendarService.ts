@@ -9,11 +9,11 @@ export interface Event {
   endDate: string;
   allDay: boolean;
   location?: string;
-  type: 'hourse' | 'personal' | 'work' | 'school' | 'medical' | 'other';
+  type: 'Circle' | 'personal' | 'work' | 'school' | 'medical' | 'other';
   color: string;
   attendees: string[];
   createdBy: string;
-  familyId?: string;
+  circleId?: string;
   recurring?: {
     type: 'daily' | 'weekly' | 'monthly' | 'yearly';
     interval: number;
@@ -47,7 +47,7 @@ export interface CalendarFilters {
   startDate?: string;
   endDate?: string;
   type?: Event['type'];
-  familyId?: string;
+  circleId?: string;
   createdBy?: string;
 }
 
@@ -60,7 +60,7 @@ class CalendarService {
       if (filters?.startDate) params.append('startDate', filters.startDate);
       if (filters?.endDate) params.append('endDate', filters.endDate);
       if (filters?.type) params.append('type', filters.type);
-      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.circleId) params.append('circleId', filters.circleId);
       if (filters?.createdBy) params.append('createdBy', filters.createdBy);
 
       const response = await api.get(`${this.baseUrl}/events?${params.toString()}`);
@@ -135,12 +135,12 @@ class CalendarService {
     }
   }
 
-  async getFamilyEvents(familyId: string): Promise<Event[]> {
+  async getCircleEvents(circleId: string): Promise<Event[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/events/hourse/${familyId}`);
+      const response = await api.get(`${this.baseUrl}/events/Circle/${circleId}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching hourse events:', error);
+      console.error('Error fetching Circle events:', error);
       throw error;
     }
   }

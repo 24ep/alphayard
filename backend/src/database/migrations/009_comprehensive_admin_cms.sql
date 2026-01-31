@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- House Management Table
 CREATE TABLE IF NOT EXISTS house_management (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
     house_name VARCHAR(255) NOT NULL,
     house_type VARCHAR(50) NOT NULL CHECK (house_type IN ('single_family', 'apartment', 'condo', 'townhouse', 'other')),
     address TEXT NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS house_management (
 -- Social Media Accounts Table
 CREATE TABLE IF NOT EXISTS social_media_accounts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL CHECK (platform IN ('facebook', 'twitter', 'instagram', 'linkedin', 'youtube', 'tiktok', 'snapchat', 'other')),
     account_handle VARCHAR(255) NOT NULL,
     account_url TEXT,
@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS social_media_accounts (
 CREATE TABLE IF NOT EXISTS social_media_posts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     social_account_id UUID REFERENCES social_media_accounts(id) ON DELETE CASCADE,
-    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL,
     post_id VARCHAR(255) NOT NULL, -- platform-specific post ID
     content TEXT NOT NULL,
@@ -151,9 +151,9 @@ CREATE TABLE IF NOT EXISTS system_notifications (
 -- Insert default admin roles
 INSERT INTO admin_roles (name, description, permissions, is_system_role) VALUES
 ('Super Admin', 'Full system access', '{"all": true}', true),
-('Admin', 'Administrative access', '{"users": true, "families": true, "content": true, "analytics": true}', false),
+('Admin', 'Administrative access', '{"users": true, "circles": true, "content": true, "analytics": true}', false),
 ('Moderator', 'Content moderation access', '{"content": true, "users": {"view": true, "edit": false}}', false),
-('Support', 'Customer support access', '{"users": {"view": true}, "families": {"view": true}}', false),
+('Support', 'Customer support access', '{"users": {"view": true}, "circles": {"view": true}}', false),
 ('Analyst', 'Analytics and reporting access', '{"analytics": true, "reports": true}', false)
 ON CONFLICT (name) DO NOTHING;
 
@@ -164,7 +164,7 @@ INSERT INTO application_settings (setting_key, setting_value, setting_type, cate
 ('app.description', '"Family Safety Network"', 'string', 'general', 'Application description', true),
 ('app.maintenance_mode', 'false', 'boolean', 'system', 'Maintenance mode status', false),
 ('app.registration_enabled', 'true', 'boolean', 'auth', 'User registration enabled', false),
-('app.max_family_members', '20', 'number', 'families', 'Maximum family members per family', false),
+('app.max_circle_members', '20', 'number', 'circles', 'Maximum family members per family', false),
 ('app.location_tracking_enabled', 'true', 'boolean', 'features', 'Location tracking feature enabled', false),
 ('app.social_features_enabled', 'true', 'boolean', 'features', 'Social media features enabled', false),
 ('app.notification_settings', '{"email": true, "push": true, "sms": false}', 'json', 'notifications', 'Default notification settings', false),
@@ -176,11 +176,11 @@ ON CONFLICT (setting_key) DO NOTHING;
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_admin_users_user ON admin_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_admin_users_role ON admin_users(admin_role_id);
-CREATE INDEX IF NOT EXISTS idx_house_management_family ON house_management(family_id);
+CREATE INDEX IF NOT EXISTS idx_house_management_family ON house_management(circle_id);
 CREATE INDEX IF NOT EXISTS idx_house_management_status ON house_management(house_status);
-CREATE INDEX IF NOT EXISTS idx_social_media_accounts_family ON social_media_accounts(family_id);
+CREATE INDEX IF NOT EXISTS idx_social_media_accounts_family ON social_media_accounts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_social_media_accounts_platform ON social_media_accounts(platform);
-CREATE INDEX IF NOT EXISTS idx_social_media_posts_family ON social_media_posts(family_id);
+CREATE INDEX IF NOT EXISTS idx_social_media_posts_family ON social_media_posts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_social_media_posts_platform ON social_media_posts(platform);
 CREATE INDEX IF NOT EXISTS idx_social_media_posts_posted_at ON social_media_posts(posted_at);
 CREATE INDEX IF NOT EXISTS idx_application_settings_category ON application_settings(category);
@@ -230,7 +230,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION get_admin_dashboard_stats()
 RETURNS TABLE(
     total_users BIGINT,
-    total_families BIGINT,
+    total_circles BIGINT,
     total_houses BIGINT,
     active_social_accounts BIGINT,
     total_posts BIGINT,
@@ -241,7 +241,7 @@ BEGIN
     RETURN QUERY
     SELECT 
         (SELECT COUNT(*) FROM users WHERE is_active = true) as total_users,
-        (SELECT COUNT(*) FROM families WHERE is_active = true) as total_families,
+        (SELECT COUNT(*) FROM circles WHERE is_active = true) as total_circles,
         (SELECT COUNT(*) FROM house_management WHERE house_status = 'active') as total_houses,
         (SELECT COUNT(*) FROM social_media_accounts WHERE connection_status = 'connected') as active_social_accounts,
         (SELECT COUNT(*) FROM social_media_posts WHERE posted_at >= NOW() - INTERVAL '30 days') as total_posts,

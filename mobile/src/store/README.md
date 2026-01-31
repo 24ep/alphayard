@@ -8,7 +8,7 @@ This directory contains the Redux store setup using Redux Toolkit.
 src/store/
 ├── slices/
 │   ├── authSlice.ts          # Authentication state
-│   ├── familySlice.ts        # Family management state
+│   ├── circleSlice.ts        # Circle management state
 │   ├── chatSlice.ts          # Chat and messaging state
 │   ├── locationSlice.ts      # Location tracking state
 │   └── safetySlice.ts        # Safety features state
@@ -56,7 +56,7 @@ import { useAppSelector } from '@store/hooks';
 function MyComponent() {
   // Direct state access
   const auth = useAppSelector((state) => state.auth);
-  const family = useAppSelector((state) => state.family);
+  const circle = useAppSelector((state) => state.circle);
   
   // Or use exported selectors
   const user = useAppSelector(selectUser);
@@ -79,10 +79,10 @@ Currently, the app uses Context API for state management. To gradually migrate t
 - User profile updates
 - Onboarding status
 
-### Family Slice (`familySlice.ts`)
-- Family members management
-- Current family selection
-- Family CRUD operations
+### Circle Slice (`circleSlice.ts`)
+- Circle members management
+- Current circle selection
+- Circle CRUD operations
 
 ### Chat Slice (`chatSlice.ts`)
 - Messages and conversations
@@ -91,7 +91,7 @@ Currently, the app uses Context API for state management. To gradually migrate t
 
 ### Location Slice (`locationSlice.ts`)
 - Current user location
-- Family member locations
+- Circle member locations
 - Location updates
 
 ### Safety Slice (`safetySlice.ts`)
@@ -157,4 +157,5 @@ const rootReducer = combineReducers({
   myFeature: myReducer,
 });
 ```
+
 

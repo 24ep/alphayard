@@ -21,10 +21,11 @@ import {
   CreditCardIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline'
-import { userService, User, Family } from '../../services/userService'
-import { adminService } from '../../services/adminService'
+import { userService, GlobalUser as User, UserAttribute } from '../../services/userService'
+import { adminService, Circle } from '../../services/adminService'
 import { FilterSystem, FilterConfig, SortableHeader } from '../common/FilterSystem'
 import { billingService, BillingPlan, PaymentMethodSummary, InvoiceSummary } from '../../services/billingService'
+import { Modal } from '../../components/ui/Modal'
 
 interface Role {
   id: string
@@ -37,7 +38,7 @@ interface Role {
 export function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
-  const [families, setFamilies] = useState<Family[]>([])
+  const [circles, setCircles] = useState<Circle[]>([])
   const [loading, setLoading] = useState(true)
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
@@ -67,7 +68,7 @@ export function UserManagement() {
     dateOfBirth: '',
     userType: 'hourse' as 'hourse' | 'children' | 'seniors',
     subscriptionTier: 'free' as 'free' | 'premium' | 'elite',
-    familyIds: [] as string[],
+    CircleIds: [] as string[],
     isOnboardingComplete: false,
     preferences: {
       notifications: true,
@@ -79,9 +80,9 @@ export function UserManagement() {
         categories: ['announcement', 'promotion']
       }
     },
-    role: 'user' as 'admin' | 'moderator' | 'user' | 'family_admin',
-    status: 'active' as 'active' | 'inactive' | 'pending' | 'suspended',
-    familyId: '',
+    role: 'user' as 'admin' | 'moderator' | 'user' | 'Circle_admin',
+    status: 'active' as 'active' | 'inactive' | 'pending' | 'suspended' | 'banned',
+    CircleId: '',
     permissions: [] as string[]
   })
 
@@ -101,7 +102,7 @@ export function UserManagement() {
         { id: 'all', label: 'All Roles', value: 'all' },
         { id: 'admin', label: 'Administrator', value: 'admin' },
         { id: 'moderator', label: 'Moderator', value: 'moderator' },
-        { id: 'family_admin', label: 'Family Admin', value: 'family_admin' },
+        { id: 'Circle_admin', label: 'Circle Admin', value: 'Circle_admin' },
         { id: 'user', label: 'User', value: 'user' }
       ]
     },
@@ -114,19 +115,20 @@ export function UserManagement() {
         { id: 'active', label: 'Active', value: 'active' },
         { id: 'inactive', label: 'Inactive', value: 'inactive' },
         { id: 'pending', label: 'Pending', value: 'pending' },
-        { id: 'suspended', label: 'Suspended', value: 'suspended' }
+        { id: 'suspended', label: 'Suspended', value: 'suspended' },
+        { id: 'banned', label: 'Banned', value: 'banned' }
       ]
     },
     {
-      id: 'family',
-      label: 'Family',
+      id: 'Circle',
+      label: 'Circle',
       type: 'select',
       options: [
-        { id: 'all', label: 'All Families', value: 'all' },
-        ...(families || []).map(family => ({
-          id: family.id,
-          label: family.name,
-          value: family.id
+        { id: 'all', label: 'All Circles', value: 'all' },
+        ...(circles || []).map(Circle => ({
+          id: Circle.id,
+          label: Circle.name,
+          value: Circle.id
         }))
       ]
     },
@@ -188,31 +190,31 @@ export function UserManagement() {
     setLoading(true)
     try {
       // Load data from API
-      const [usersData, familiesData] = await Promise.all([
+      const [usersData, circlesData] = await Promise.all([
         userService.getUsers(),
-        userService.getFamilies()
+        userService.getCircles()
       ])
 
       // Define roles locally since they're typically static
       const rolesData: Role[] = [
         { id: 'admin', name: 'Administrator', description: 'Full system access', permissions: ['read', 'write', 'delete', 'admin'], color: '#DC2626' },
         { id: 'moderator', name: 'Moderator', description: 'Content moderation access', permissions: ['read', 'write', 'moderate'], color: '#D97706' },
-        { id: 'family_admin', name: 'Family Admin', description: 'Family management access', permissions: ['read', 'write', 'family_manage'], color: '#059669' },
+        { id: 'Circle_admin', name: 'Circle Admin', description: 'Circle management access', permissions: ['read', 'write', 'Circle_manage'], color: '#059669' },
         { id: 'user', name: 'User', description: 'Basic user access', permissions: ['read'], color: '#2563EB' }
       ]
 
       setUsers(usersData)
       setRoles(rolesData)
-      setFamilies(familiesData)
+      setCircles(circlesData)
     } catch (error) {
       console.error('Error loading user data:', error)
       // Set empty arrays when API fails
       setUsers([])
-      setFamilies([])
+      setCircles([])
       setRoles([
         { id: 'admin', name: 'Administrator', description: 'Full system access', permissions: ['read', 'write', 'delete', 'admin'], color: '#DC2626' },
         { id: 'moderator', name: 'Moderator', description: 'Content moderation access', permissions: ['read', 'write', 'moderate'], color: '#D97706' },
-        { id: 'family_admin', name: 'Family Admin', description: 'Family management access', permissions: ['read', 'write', 'family_manage'], color: '#059669' },
+        { id: 'Circle_admin', name: 'Circle Admin', description: 'Circle management access', permissions: ['read', 'write', 'Circle_manage'], color: '#059669' },
         { id: 'user', name: 'User', description: 'Basic user access', permissions: ['read'], color: '#2563EB' }
       ])
     } finally {
@@ -389,7 +391,7 @@ export function UserManagement() {
 
       const matchesRole = !activeFilters.role || activeFilters.role === 'all' || user.role === activeFilters.role
       const matchesStatus = !activeFilters.status || activeFilters.status === 'all' || user.status === activeFilters.status
-      const matchesFamily = !activeFilters.family || activeFilters.family === 'all' || user.familyId === activeFilters.family
+      const matchesCircle = !activeFilters.Circle || activeFilters.Circle === 'all' || user.CircleId === activeFilters.Circle
       const matchesVerified = !activeFilters.verified || activeFilters.verified === 'all' ||
         (activeFilters.verified === 'verified' && user.isVerified) ||
         (activeFilters.verified === 'unverified' && !user.isVerified)
@@ -399,7 +401,7 @@ export function UserManagement() {
         (activeFilters.onboarding === 'complete' && user.isOnboardingComplete) ||
         (activeFilters.onboarding === 'incomplete' && !user.isOnboardingComplete)
 
-      return matchesSearch && matchesRole && matchesStatus && matchesFamily && matchesVerified && matchesUserType && matchesSubscriptionTier && matchesOnboarding
+      return matchesSearch && matchesRole && matchesStatus && matchesCircle && matchesVerified && matchesUserType && matchesSubscriptionTier && matchesOnboarding
     })
     .sort((a, b) => {
       if (!sortConfig) return 0
@@ -458,7 +460,7 @@ export function UserManagement() {
       dateOfBirth: '',
       userType: 'hourse' as 'hourse' | 'children' | 'seniors',
       subscriptionTier: 'free' as 'free' | 'premium' | 'elite',
-      familyIds: [],
+      CircleIds: [],
       isOnboardingComplete: false,
       preferences: {
         notifications: true,
@@ -470,9 +472,9 @@ export function UserManagement() {
           categories: ['announcement', 'promotion']
         }
       },
-      role: 'user' as 'admin' | 'moderator' | 'user' | 'family_admin',
-      status: 'active' as 'active' | 'inactive' | 'pending' | 'suspended',
-      familyId: '',
+      role: 'user' as 'admin' | 'moderator' | 'user' | 'Circle_admin',
+      status: 'active' as 'active' | 'inactive' | 'pending' | 'suspended' | 'banned',
+      CircleId: '',
       permissions: []
     })
     setShowForm(true)
@@ -488,7 +490,7 @@ export function UserManagement() {
       dateOfBirth: user.dateOfBirth || '',
       userType: user.userType,
       subscriptionTier: user.subscriptionTier,
-      familyIds: user.familyIds || [],
+      CircleIds: user.CircleIds || [],
       isOnboardingComplete: user.isOnboardingComplete,
       preferences: user.preferences || {
         notifications: true,
@@ -502,7 +504,7 @@ export function UserManagement() {
       },
       role: user.role,
       status: user.status,
-      familyId: user.familyId || '',
+      CircleId: user.CircleId || '',
       permissions: user.permissions
     })
     setShowForm(true)
@@ -569,6 +571,7 @@ export function UserManagement() {
       case 'inactive': return 'gray'
       case 'pending': return 'yellow'
       case 'suspended': return 'red'
+      case 'banned': return 'red'
       default: return 'gray'
     }
   }
@@ -579,11 +582,12 @@ export function UserManagement() {
       case 'inactive': return <XMarkIcon className="h-4 w-4 text-gray-500" />
       case 'pending': return <ClockIcon className="h-4 w-4 text-yellow-500" />
       case 'suspended': return <XMarkIcon className="h-4 w-4 text-red-500" />
+      case 'banned': return <ShieldExclamationIcon className="h-4 w-4 text-red-600" />
       default: return null
     }
   }
 
-  if (showForm) {
+  /* if (showForm) {
     return (
       <div className="space-y-8">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -784,23 +788,24 @@ export function UserManagement() {
                   <option value="inactive">Inactive</option>
                   <option value="pending">Pending</option>
                   <option value="suspended">Suspended</option>
+                  <option value="banned">Banned</option>
                 </select>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Family
+                Circle
               </label>
               <select
-                value={formData.familyId}
-                onChange={(e) => setFormData({ ...formData, familyId: e.target.value })}
+                value={formData.CircleId}
+                onChange={(e) => setFormData({ ...formData, CircleId: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
               >
-                <option value="">No Family</option>
-                {families.map(family => (
-                  <option key={family.id} value={family.id}>
-                    {family.name}
+                <option value="">No Circle</option>
+                {families.map(Circle => (
+                  <option key={Circle.id} value={Circle.id}>
+                    {Circle.name}
                   </option>
                 ))}
               </select>
@@ -825,7 +830,7 @@ export function UserManagement() {
         </div>
       </div>
     )
-  }
+  } */
 
   return (
     <div className="space-y-8">
@@ -836,7 +841,13 @@ export function UserManagement() {
             <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">User Management</h1>
             <p className="text-lg text-gray-600 leading-relaxed">Manage users, roles, and permissions across your platform</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex items-center gap-3">
+            <FilterSystem
+              filters={filterConfigs}
+              activeFilters={activeFilters}
+              onFiltersChange={setActiveFilters}
+              onClearAll={() => setActiveFilters({})}
+            />
             <button
               onClick={() => {
                 // Export filtered users to CSV
@@ -866,72 +877,9 @@ export function UserManagement() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Total Users</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">{users.length}</p>
-            </div>
-            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-              <UsersIcon className="h-6 w-6 text-blue-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Active Users</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
-                {users.filter(user => user.status === 'active').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-              <CheckIcon className="h-6 w-6 text-green-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Pending</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
-                {users.filter(user => user.status === 'pending').length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-yellow-50 rounded-xl flex items-center justify-center">
-              <ClockIcon className="h-6 w-6 text-yellow-600" />
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600 uppercase tracking-wide">Verified</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">
-                {users.filter(user => user.isVerified).length}
-              </p>
-            </div>
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
-              <ShieldCheckIcon className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
-          <FilterSystem
-            filters={filterConfigs}
-            activeFilters={activeFilters}
-            onFiltersChange={setActiveFilters}
-            onClearAll={() => setActiveFilters({})}
-          />
-        </div>
-      </div>
+
+
 
       {/* Users Table */}
       {loading ? (
@@ -996,7 +944,7 @@ export function UserManagement() {
                     className="px-6 py-4"
                   />
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Family
+                    Circle
                   </th>
                   <SortableHeader
                     label="Last Login"
@@ -1105,13 +1053,13 @@ export function UserManagement() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {user.familyName ? (
+                      {user.CircleName ? (
                         <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
                           <UserGroupIcon className="h-3 w-3" />
-                          {user.familyName}
+                          {user.CircleName}
                         </span>
                       ) : (
-                        <span className="text-sm text-gray-400">No family</span>
+                        <span className="text-sm text-gray-400">No Circle</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
@@ -1290,7 +1238,7 @@ export function UserManagement() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 mb-1">Seats (family members)</label>
+                      <label className="block text-xs text-gray-600 mb-1">Seats (Circle members)</label>
                       <input
                         type="number"
                         min={1}
@@ -1424,6 +1372,252 @@ export function UserManagement() {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={editingUser ? 'Edit User' : 'Create User'}
+        size="lg"
+        className="!bg-white shadow-2xl"
+      >
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+            <div className="flex gap-3">
+              <UserIcon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <div className="text-sm text-blue-800">
+                <p className="font-semibold mb-1">Mobile Application User</p>
+                <p>This creates a user account for the mobile application. To grant access to this Admin Console, select the <span className="font-semibold">Administrator</span> role below.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                First Name
+              </label>
+              <input
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Last Name
+              </label>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-50 focus:bg-white"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Phone
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={formData.dateOfBirth}
+                onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                User Type
+              </label>
+              <select
+                value={formData.userType}
+                onChange={(e) => setFormData({ ...formData, userType: e.target.value as any })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+              >
+                <option value="hourse">Hourse</option>
+                <option value="children">Children</option>
+                <option value="seniors">Seniors</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Subscription Tier
+              </label>
+              <select
+                value={formData.subscriptionTier}
+                onChange={(e) => setFormData({ ...formData, subscriptionTier: e.target.value as any })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+              >
+                <option value="free">Free</option>
+                <option value="premium">Premium</option>
+                <option value="elite">Elite</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="onboardingComplete"
+                checked={formData.isOnboardingComplete}
+                onChange={(e) => setFormData({ ...formData, isOnboardingComplete: e.target.checked })}
+                className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              />
+              <label htmlFor="onboardingComplete" className="text-sm font-semibold text-gray-700">
+                Onboarding Complete
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="notifications"
+                checked={formData.preferences.notifications}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  preferences: {
+                    ...formData.preferences,
+                    notifications: e.target.checked
+                  }
+                })}
+                className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+              />
+              <label htmlFor="notifications" className="text-sm font-semibold text-gray-700">
+                Notifications Enabled
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <input
+              type="checkbox"
+              id="locationSharing"
+              checked={formData.preferences.locationSharing}
+              onChange={(e) => setFormData({
+                ...formData,
+                preferences: {
+                  ...formData.preferences,
+                  locationSharing: e.target.checked
+                }
+              })}
+              className="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+            />
+            <label htmlFor="locationSharing" className="text-sm font-semibold text-gray-700">
+              Location Sharing Enabled
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Role
+              </label>
+              <select
+                value={formData.role}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+                required
+              >
+                {roles.map(role => (
+                  <option key={role.id} value={role.id}>
+                    {role.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Circle
+            </label>
+            <select
+              value={formData.CircleId}
+              onChange={(e) => setFormData({ ...formData, CircleId: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-100 focus:bg-white"
+            >
+              <option value="">No Circle</option>
+              {circles.map(circle => (
+                <option key={circle.id} value={circle.id}>
+                  {circle.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex justify-end gap-4 pt-6">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-6 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-colors duration-200"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              {editingUser ? 'Update User' : 'Create User'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
     </div>
   )
 }
+

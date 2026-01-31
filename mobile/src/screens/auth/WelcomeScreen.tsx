@@ -1,32 +1,42 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBranding } from '../../contexts/BrandingContext';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { mapScreenConfigToBackground } from '../../utils/brandingUtils';
 import { FONT_STYLES } from '../../utils/fontUtils';
-
-const { width, height } = Dimensions.get('window');
 
 interface WelcomeScreenProps {
   navigation: any;
   route: any;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation, route }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation }) => {
   const { user, isAuthenticated } = useAuth();
+  const { screens } = useBranding();
+  
+  // Find configuration for this screen
+  const screenConfig = useMemo(() => {
+    return screens?.find(s => s.id.toLowerCase() === 'welcome') || screens?.find(s => s.id.toLowerCase() === 'onboarding');
+  }, [screens]);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const iconRotateAnim = useRef(new Animated.Value(0)).current;
   const checkmarkScaleAnim = useRef(new Animated.Value(0)).current;
+
+  // Convert ColorValue to BackgroundConfig for DynamicBackground
+  const backgroundConfig = useMemo(() => {
+    return mapScreenConfigToBackground(screenConfig);
+  }, [screenConfig]);
 
   useEffect(() => {
     // Start animations
@@ -99,22 +109,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation, route }) => {
     if (user?.firstName) {
       return `Welcome, ${user.firstName}!`;
     }
-    return 'Welcome to Bondarys!';
+    return screenConfig?.name ? `${screenConfig.name}` : 'Welcome to Bondarys!';
   };
 
   const getSubMessage = () => {
-    if (user?.firstName) {
-      return `Your hourse is ready to stay connected`;
+    if (screenConfig?.description) {
+        return screenConfig.description;
     }
-    return 'Your hourse connection journey begins now';
+    if (user?.firstName) {
+      return `Your Circle is ready to stay connected`;
+    }
+    return 'Your Circle connection journey begins now';
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient
-        colors={['#FA7272', '#FFBBB4']}
-        style={styles.gradient}
-      >
+      <ScreenBackground background={backgroundConfig} style={styles.background}>
         <Animated.View
           style={[
             styles.content,
@@ -161,7 +171,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation, route }) => {
           <View style={styles.featuresContainer}>
             <View style={styles.featureItem}>
               <Icon name="house-03" size={24} color="#FFFFFF" />
-              <Text style={styles.featureText}>hourse Connected</Text>
+              <Text style={styles.featureText}>Circle Connected</Text>
             </View>
             <View style={styles.featureItem}>
               <Icon name="shield-check" size={24} color="#FFFFFF" />
@@ -191,7 +201,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ navigation, route }) => {
             <Text style={styles.loadingText}>Setting up your account...</Text>
           </View>
         </Animated.View>
-      </LinearGradient>
+      </ScreenBackground>
     </SafeAreaView>
   );
 };
@@ -200,14 +210,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  gradient: {
+  background: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   content: {
     alignItems: 'center',
     paddingHorizontal: 40,
+    width: '100%',
   },
   iconContainer: {
     marginBottom: 30,
@@ -282,3 +295,5 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeScreen;
+
+

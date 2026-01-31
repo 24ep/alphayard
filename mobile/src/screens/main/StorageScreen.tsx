@@ -7,9 +7,9 @@ import { useNavigationAnimation } from '../../contexts/NavigationAnimationContex
 const StorageScreen: React.FC = () => {
   const { cardMarginTopAnim } = useNavigationAnimation();
 
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState('Smith Family');
-  const [familyMembers] = useState<any[]>([]);
+  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
+  const [selectedCircle, setSelectedCircle] = useState('Smith Circle');
+  const [circleMembers] = useState<any[]>([]);
 
   const cardOpacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -23,20 +23,21 @@ const StorageScreen: React.FC = () => {
 
   return (
     <MainScreenLayout
-      selectedFamily={selectedFamily}
-      onToggleFamilyDropdown={() => setShowFamilyDropdown(!showFamilyDropdown)}
-      showFamilyDropdown={showFamilyDropdown}
-      familyMembers={familyMembers}
+      selectedCircle={selectedCircle}
+      onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
+      showCircleDropdown={showCircleDropdown}
+      circleMembers={circleMembers}
       cardMarginTopAnim={cardMarginTopAnim}
       cardOpacityAnim={cardOpacityAnim}
     >
       <View style={{ flex: 1 }}>
-        <StorageApp familyId={selectedFamily} />
+        <StorageApp circleId={selectedCircle} />
       </View>
     </MainScreenLayout>
   );
 };
 
 export default StorageScreen;
+
 
 

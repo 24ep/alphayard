@@ -10,6 +10,7 @@ export interface UserSavedLocation {
     address: string | null;
     created_at: string;
     updated_at: string;
+    location?: any; // PostGIS geography type
 }
 
 export class UserLocationService {
@@ -63,15 +64,18 @@ export class UserLocationService {
         address?: string;
     }): Promise<UserSavedLocation> {
         try {
-            const { rows } = await query(`
-        INSERT INTO user_saved_locations (user_id, location_type, name, latitude, longitude, address)
-        VALUES ($1, $2, $3, $4, $5, $6)
+      const { rows } = await query(`
+        INSERT INTO user_saved_locations (
+          user_id, location_type, name, latitude, longitude, address, location
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, ST_SetSRID(ST_MakePoint($5, $4), 4326))
         ON CONFLICT (user_id, location_type)
         DO UPDATE SET
           name = EXCLUDED.name,
           latitude = EXCLUDED.latitude,
           longitude = EXCLUDED.longitude,
           address = EXCLUDED.address,
+          location = EXCLUDED.location,
           updated_at = NOW()
         RETURNING *
       `, [data.user_id, data.location_type, data.name || null, data.latitude, data.longitude, data.address || null]);
@@ -94,6 +98,30 @@ export class UserLocationService {
       `, [userId, locationType]);
         } catch (error) {
             console.error('Error deleting user location:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Find locations nearby a point using PostGIS
+     * @param latitude Center latitude
+     * @param longitude Center longitude
+     * @param radiusInMeters Search radius
+     */
+    async getNearbyLocations(latitude: number, longitude: number, radiusInMeters: number = 1000): Promise<UserSavedLocation[]> {
+        try {
+            const { rows } = await query(`
+                SELECT id, user_id, location_type, name, latitude, longitude, address, created_at, updated_at,
+                       ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance
+                FROM user_saved_locations
+                WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography, $3)
+                ORDER BY distance ASC
+            `, [latitude, longitude, radiusInMeters]);
+
+            return rows;
+        } catch (error) {
+            console.error('Error finding nearby locations:', error);
+            // Fallback for when PostGIS is not available could be implemented here if needed
             throw error;
         }
     }

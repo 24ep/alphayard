@@ -21,7 +21,7 @@ const AppointmentsWidget: React.FC<AppointmentsWidgetProps> = ({
         return 'medical-bag';
       case 'education':
         return 'school';
-      case 'hourse':
+      case 'Circle':
         return 'home-heart';
       case 'work':
         return 'briefcase';
@@ -36,7 +36,7 @@ const AppointmentsWidget: React.FC<AppointmentsWidgetProps> = ({
         return '#FF5A5A';
       case 'education':
         return '#4F46E5';
-      case 'hourse':
+      case 'Circle':
         return '#10B981';
       case 'work':
         return '#F59E0B';
@@ -93,3 +93,4 @@ const AppointmentsWidget: React.FC<AppointmentsWidgetProps> = ({
 };
 
 export default AppointmentsWidget;
+

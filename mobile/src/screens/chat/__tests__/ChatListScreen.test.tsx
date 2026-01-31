@@ -12,7 +12,7 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 const mockChats = [
     {
         id: 'chat-1',
-        name: 'Family Chat',
+        name: 'Circle Chat',
         lastMessage: 'Hey everyone!',
         unreadCount: 2,
         updatedAt: new Date().toISOString(),
@@ -159,11 +159,11 @@ describe('ChatListScreen', () => {
                 component = renderer.create(<MockChatListScreen />);
             });
 
-            const familyChat = findByTestId(component!.root, 'chat-item-chat-1');
+            const circleChat = findByTestId(component!.root, 'chat-item-chat-1');
             const johnChat = findByTestId(component!.root, 'chat-item-chat-2');
             const groupChat = findByTestId(component!.root, 'chat-item-chat-3');
 
-            expect(familyChat).not.toBeNull();
+            expect(circleChat).not.toBeNull();
             expect(johnChat).not.toBeNull();
             expect(groupChat).not.toBeNull();
         });
@@ -174,10 +174,10 @@ describe('ChatListScreen', () => {
                 component = renderer.create(<MockChatListScreen />);
             });
 
-            const familyName = findTextNode(component!.root, 'Family Chat');
+            const circleName = findTextNode(component!.root, 'Circle Chat');
             const johnName = findTextNode(component!.root, 'John Doe');
 
-            expect(familyName).not.toBeNull();
+            expect(circleName).not.toBeNull();
             expect(johnName).not.toBeNull();
         });
 
@@ -216,13 +216,13 @@ describe('ChatListScreen', () => {
             const searchInput = findByTestId(component!.root, 'search-input');
 
             await act(async () => {
-                searchInput?.props.onChangeText('Family');
+                searchInput?.props.onChangeText('Circle');
             });
 
-            const familyChat = findByTestId(component!.root, 'chat-item-chat-1');
+            const circleChat = findByTestId(component!.root, 'chat-item-chat-1');
             const johnChat = findByTestId(component!.root, 'chat-item-chat-2');
 
-            expect(familyChat).not.toBeNull();
+            expect(circleChat).not.toBeNull();
             expect(johnChat).toBeNull(); // Should be filtered out
         });
 
@@ -246,7 +246,7 @@ describe('ChatListScreen', () => {
     describe('Data Validation', () => {
         it('should have valid mock chat data', () => {
             expect(mockChats.length).toBe(3);
-            expect(mockChats[0].name).toBe('Family Chat');
+            expect(mockChats[0].name).toBe('Circle Chat');
             expect(mockChats[0].unreadCount).toBe(2);
             expect(mockChats[1].lastMessage).toBe('See you tomorrow');
         });
@@ -270,3 +270,4 @@ describe('ChatListScreen', () => {
         });
     });
 });
+

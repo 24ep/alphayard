@@ -1,11 +1,12 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/database';
+import { config } from '../config/env';
 import { setupChatHandlers } from './chat';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
-  familyId?: string;
+  circleId?: string;
 }
 
 // In-memory store for online users (in production, use Redis)
@@ -24,12 +25,12 @@ export const initializeSocket = (io: Server) => {
       // Verify JWT token
       const decoded = jwt.verify(
         token,
-        process.env.JWT_SECRET || 'bondarys-dev-secret-key'
+        config.JWT_SECRET
       ) as any;
 
       console.log('[SOCKET AUTH] Token decoded for user ID:', decoded.id);
 
-      // Verify user exists and get hourse info using native pg pool
+      // Verify user exists and get circle info using native pg pool
       let user = null;
       let userError = null;
 
@@ -50,7 +51,7 @@ export const initializeSocket = (io: Server) => {
         // If user not found in public.users, allow connection anyway (they may have just registered)
         // Their socket will have limited functionality but won't fail completely
         socket.userId = decoded.id;
-        socket.familyId = null;
+        socket.circleId = null;
         console.log('[SOCKET AUTH] Allowing connection despite user lookup error');
         return next();
       }
@@ -60,22 +61,22 @@ export const initializeSocket = (io: Server) => {
         return next(new Error('Invalid token or inactive user'));
       }
 
-      // Get user's hourse using native pg pool
-      let familyMember = null;
+      // Get user's circle using native pg pool
+      let circleMember = null;
       try {
-        const familyResult = await pool.query(
-          'SELECT family_id FROM family_members WHERE user_id = $1 LIMIT 1',
+        const circleResult = await pool.query(
+          'SELECT circle_id FROM circle_members WHERE user_id = $1 LIMIT 1',
           [user.id]
         );
-        familyMember = familyResult.rows[0] || null;
+        circleMember = circleResult.rows[0] || null;
       } catch (err) {
-        console.error('[SOCKET AUTH] Family lookup error:', err);
+        console.error('[SOCKET AUTH] circle lookup error:', err);
       }
 
       socket.userId = user.id;
-      socket.familyId = familyMember?.family_id;
+      socket.circleId = circleMember?.circle_id;
 
-      console.log('[SOCKET AUTH] User authenticated:', { userId: socket.userId, familyId: socket.familyId });
+      console.log('[SOCKET AUTH] User authenticated:', { userId: socket.userId, circleId: socket.circleId });
       next();
     } catch (error) {
       console.error('Socket authentication error:', error);
@@ -91,13 +92,13 @@ export const initializeSocket = (io: Server) => {
       onlineUsers.add(socket.userId);
     }
 
-    // Join hourse room if user has a hourse
-    if (socket.familyId) {
-      socket.join(`hourse:${socket.familyId}`);
-      console.log(`User ${socket.userId} joined hourse room: ${socket.familyId}`);
+    // Join circle room if user has a circle
+    if (socket.circleId) {
+      socket.join(`circle:${socket.circleId}`);
+      console.log(`User ${socket.userId} joined circle room: ${socket.circleId}`);
 
-      // Notify hourse members that user is online
-      socket.to(`hourse:${socket.familyId}`).emit('user:online', {
+      // Notify circle members that user is online
+      socket.to(`circle:${socket.circleId}`).emit('user:online', {
         userId: socket.userId,
         timestamp: new Date().toISOString()
       });
@@ -109,8 +110,8 @@ export const initializeSocket = (io: Server) => {
     // Handle location updates
     socket.on('location:update', async (data) => {
       try {
-        if (!socket.familyId || !socket.userId) {
-          socket.emit('error', { message: 'Not a member of any hourse' });
+        if (!socket.circleId || !socket.userId) {
+          socket.emit('error', { message: 'Not a member of any circle' });
           return;
         }
 
@@ -121,9 +122,9 @@ export const initializeSocket = (io: Server) => {
 
         try {
           await pool.query(
-            `INSERT INTO location_history (user_id, family_id, latitude, longitude, accuracy, address, created_at)
+            `INSERT INTO location_history (user_id, circle_id, latitude, longitude, accuracy, address, created_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [socket.userId, socket.familyId, latitude, longitude, accuracy || null, address || null, timestamp]
+            [socket.userId, socket.circleId, latitude, longitude, accuracy || null, address || null, timestamp]
           );
         } catch (dbError) {
           console.error('Error saving location to database:', dbError);
@@ -139,8 +140,8 @@ export const initializeSocket = (io: Server) => {
           timestamp
         };
 
-        // Broadcast to hourse members
-        socket.to(`hourse:${socket.familyId}`).emit('location:update', locationUpdate);
+        // Broadcast to circle members
+        socket.to(`circle:${socket.circleId}`).emit('location:update', locationUpdate);
 
       } catch (error) {
         console.error('Location update error:', error);
@@ -151,8 +152,8 @@ export const initializeSocket = (io: Server) => {
     // Handle safety alerts
     socket.on('safety:alert', async (data) => {
       try {
-        if (!socket.familyId || !socket.userId) {
-          socket.emit('error', { message: 'Not a member of any hourse' });
+        if (!socket.circleId || !socket.userId) {
+          socket.emit('error', { message: 'Not a member of any circle' });
           return;
         }
 
@@ -164,10 +165,10 @@ export const initializeSocket = (io: Server) => {
         let alertData: any = null;
         try {
           const result = await pool.query(
-            `INSERT INTO safety_alerts (user_id, family_id, type, severity, message, location, is_resolved, created_at, updated_at)
+            `INSERT INTO safety_alerts (user_id, circle_id, type, severity, message, location, is_resolved, created_at, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING *`,
-            [socket.userId, socket.familyId, type || 'custom', severity || 'urgent', message || '', location || null, false, timestamp, timestamp]
+            [socket.userId, socket.circleId, type || 'custom', severity || 'urgent', message || '', location || null, false, timestamp, timestamp]
           );
           alertData = result.rows[0];
         } catch (dbError) {
@@ -182,13 +183,13 @@ export const initializeSocket = (io: Server) => {
           location: location || null,
           severity: severity || 'urgent',
           userId: socket.userId,
-          familyId: socket.familyId,
+          circleId: socket.circleId,
           timestamp,
           status: 'active'
         };
 
-        // Broadcast urgent alert to all hourse members
-        io.to(`hourse:${socket.familyId}`).emit('safety:alert', alert);
+        // Broadcast urgent alert to all circle members
+        io.to(`circle:${socket.circleId}`).emit('safety:alert', alert);
 
       } catch (error) {
         console.error('Safety alert error:', error);
@@ -199,8 +200,8 @@ export const initializeSocket = (io: Server) => {
     // Handle location requests
     socket.on('location:request', async (data) => {
       try {
-        if (!socket.familyId || !socket.userId) {
-          socket.emit('error', { message: 'Not a member of any hourse' });
+        if (!socket.circleId || !socket.userId) {
+          socket.emit('error', { message: 'Not a member of any circle' });
           return;
         }
 
@@ -211,24 +212,24 @@ export const initializeSocket = (io: Server) => {
           return;
         }
 
-        // Verify both users are in the same hourse using native pg pool
+        // Verify both users are in the same circle using native pg pool
         let requesterMember = null;
         let targetMember = null;
 
         try {
           const requesterResult = await pool.query(
-            'SELECT family_id FROM family_members WHERE user_id = $1 AND family_id = $2',
-            [socket.userId, socket.familyId]
+            'SELECT circle_id FROM circle_members WHERE user_id = $1 AND circle_id = $2',
+            [socket.userId, socket.circleId]
           );
           requesterMember = requesterResult.rows[0] || null;
 
           const targetResult = await pool.query(
-            'SELECT family_id FROM family_members WHERE user_id = $1 AND family_id = $2',
-            [targetUserId, socket.familyId]
+            'SELECT circle_id FROM circle_members WHERE user_id = $1 AND circle_id = $2',
+            [targetUserId, socket.circleId]
           );
           targetMember = targetResult.rows[0] || null;
         } catch (err) {
-          console.error('[SOCKET] Error verifying family members:', err);
+          console.error('[SOCKET] Error verifying circle members:', err);
         }
 
         if (!requesterMember || !targetMember) {
@@ -268,8 +269,8 @@ export const initializeSocket = (io: Server) => {
 
     // Handle typing indicators
     socket.on('chat:typing', (data) => {
-      if (socket.familyId) {
-        socket.to(`hourse:${socket.familyId}`).emit('chat:typing', {
+      if (socket.circleId) {
+        socket.to(`circle:${socket.circleId}`).emit('chat:typing', {
           userId: socket.userId,
           isTyping: data.isTyping
         });
@@ -280,9 +281,9 @@ export const initializeSocket = (io: Server) => {
     socket.on('disconnect', () => {
       console.log(`User ${socket.userId} disconnected from socket`);
 
-      // Notify hourse members that user is offline
-      if (socket.familyId) {
-        socket.to(`hourse:${socket.familyId}`).emit('user:offline', {
+      // Notify circle members that user is offline
+      if (socket.circleId) {
+        socket.to(`circle:${socket.circleId}`).emit('user:offline', {
           userId: socket.userId,
           timestamp: new Date().toISOString()
         });
@@ -297,3 +298,4 @@ export const initializeSocket = (io: Server) => {
 
   console.log('Socket.IO server initialized');
 };
+

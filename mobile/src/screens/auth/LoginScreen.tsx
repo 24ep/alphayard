@@ -7,20 +7,20 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Animated,
   ScrollView,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { styles } from './LoginScreen.styles';
-import { DynamicBackground } from '../../components/DynamicBackground';
-import { DynamicLogo } from '../../components/DynamicImage';
-import { useLoginBackground } from '../../hooks/useAppConfig';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { DynamicLogo, DynamicImage } from '../../components/DynamicImage';
+import { useBranding } from '../../contexts/BrandingContext';
 import { CountryPickerModal } from '../../components/CountryPickerModal';
 import { Country } from '../../services/api/config';
+import { ThemedButton } from '../../components/common/ThemedButton';
 
 
 const colors = {
@@ -31,14 +31,8 @@ const colors = {
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const {
-    checkUserExists,
-    requestOtp,
-    loginWithSSO,
-    isLoading,
-    clearLoginError
-  } = useAuth();
-  const { background, loading: backgroundLoading } = useLoginBackground();
+  const { checkUserExists, requestOtp, loginWithSSO, isLoading, clearLoginError } = useAuth();
+  const { logoUrl, flows } = useBranding();
 
   // State
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
@@ -101,19 +95,21 @@ const LoginScreen: React.FC = () => {
         console.log('[LOGIN] Existing user detected. Requesting OTP...');
         try {
           await requestOtp(finalIdentifier);
-          navigation.navigate('OtpVerification', { identifier: finalIdentifier, mode: 'login' });
+          navigation.navigate('TwoFactorMethod', { identifier: finalIdentifier, mode: 'login' });
         } catch (otpErr: any) {
           console.error('[LOGIN] OTP request failed:', otpErr);
           Alert.alert('Error', 'Failed to send verification code. Please try again.');
         }
       } else {
-        // 3. If new, Navigate directly to Family Setup (Signup flow)
-        console.log('[LOGIN] New user detected. Transitioning to signup...');
-        navigation.navigate('Step3Family', {
-          email: loginMethod === 'email' ? finalIdentifier : '',
-          phone: loginMethod === 'phone' ? finalIdentifier : '',
-          password: 'temp_password_123'
-        });
+        // 3. User not found - Redirect to Signup Flow
+        console.log('[LOGIN] User not found. Redirecting to Signup...');
+        try {
+          await requestOtp(finalIdentifier);
+          navigation.navigate('TwoFactorMethod', { identifier: finalIdentifier, mode: 'signup' });
+        } catch (otpErr: any) {
+          console.error('[LOGIN] OTP request failed:', otpErr);
+          Alert.alert('Error', 'Failed to send verification code. Please try again.');
+        }
       }
     } catch (err: any) {
       console.error('Login flow error:', err);
@@ -136,10 +132,8 @@ const LoginScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <DynamicBackground background={background} loading={backgroundLoading} style={styles.background}>
-        {background?.type === 'image' && background?.overlay_opacity === undefined && (
-          <View style={styles.backgroundOverlay} />
-        )}
+      <ScreenBackground screenId="login" style={styles.background}>
+
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardAvoidingView}>
           <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -147,7 +141,17 @@ const LoginScreen: React.FC = () => {
 
               <View style={styles.logoHeader}>
                 <View style={styles.logoContainer}>
-                  <DynamicLogo logoType="white" width={48} height={48} style={styles.logoIconWrapper} />
+                  {logoUrl ? (
+                    <DynamicImage
+                      source={{ uri: logoUrl }}
+                      width={48}
+                      height={48}
+                      style={styles.logoIconWrapper}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <DynamicLogo logoType="white" width={48} height={48} style={styles.logoIconWrapper} />
+                  )}
                   <Text style={styles.logoText}>Bondarys</Text>
                 </View>
               </View>
@@ -242,36 +246,35 @@ const LoginScreen: React.FC = () => {
                     </View>
 
                     {/* Next Button */}
-                    <TouchableOpacity
-                      style={[styles.loginButton, (isLoading || isSubmitting) && styles.loginButtonDisabled, { marginTop: 24 }]}
+                    <ThemedButton
+                      componentId="primary"
+                      label={isLoading || isSubmitting ? "Loading..." : "Continue"}
                       onPress={handleNext}
+                      isLoading={isLoading || isSubmitting}
                       disabled={isLoading || isSubmitting}
-                    >
-                      {isLoading || isSubmitting ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <Text style={styles.loginButtonText}>Continue</Text>
-                      )}
-                    </TouchableOpacity>
+                      style={{ marginTop: 24, marginBottom: 24 }}
+                    />
 
                     {/* Social Login Section */}
-                    <View style={styles.socialSection}>
-                      <Text style={styles.socialSectionText}>Or continue with</Text>
-                      <View style={styles.socialButtons}>
-                        <TouchableOpacity style={[styles.socialButton, styles.facebookButton]} onPress={() => handleSSOLogin('facebook')}>
-                          <Icon name="facebook" size={24} color="#1877F2" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.socialButton, styles.twitterButton]} onPress={() => handleSSOLogin('google')}>
-                          <Icon name="twitter" size={24} color="#1DA1F2" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => handleSSOLogin('google')}>
-                          <Icon name="google" size={24} color="#DB4437" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.socialButton, styles.appleButton]} onPress={() => handleSSOLogin('apple')}>
-                          <Icon name="apple" size={24} color="#000000" />
-                        </TouchableOpacity>
+                    {flows?.login?.allowSocialLogin !== false && (
+                      <View style={styles.socialSection}>
+                        <Text style={styles.socialSectionText}>Or continue with</Text>
+                        <View style={styles.socialButtons}>
+                          <TouchableOpacity style={[styles.socialButton, styles.facebookButton]} onPress={() => handleSSOLogin('facebook')}>
+                            <Icon name="facebook" size={24} color="#1877F2" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.socialButton, styles.twitterButton]} onPress={() => handleSSOLogin('google')}>
+                            <Icon name="twitter" size={24} color="#1DA1F2" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => handleSSOLogin('google')}>
+                            <Icon name="google" size={24} color="#DB4437" />
+                          </TouchableOpacity>
+                          <TouchableOpacity style={[styles.socialButton, styles.appleButton]} onPress={() => handleSSOLogin('apple')}>
+                            <Icon name="apple" size={24} color="#000000" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
-                    </View>
+                    )}
 
                   </View>
                 </View>
@@ -280,7 +283,7 @@ const LoginScreen: React.FC = () => {
             </Animated.View>
           </ScrollView>
         </KeyboardAvoidingView>
-      </DynamicBackground>
+      </ScreenBackground>
 
       {/* Country Picker Modal */}
       <CountryPickerModal

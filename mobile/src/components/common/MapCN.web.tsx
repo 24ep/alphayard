@@ -146,7 +146,7 @@ export const MapCN: React.FC<MapCNProps> = ({ children, style, theme, initialReg
                                 box-shadow: 0 2px 4px rgba(0,0,0,0.3);
                                 color: white;
                                 font-weight: bold;
-                                font-family: system-ui, -apple-system, sans-serif;
+                                font-circle: system-ui, -apple-system, sans-serif;
                             ">
                                 ${avatarLabel}
                             </div>
@@ -236,3 +236,4 @@ const styles = StyleSheet.create({
         minHeight: 300,
     },
 });
+

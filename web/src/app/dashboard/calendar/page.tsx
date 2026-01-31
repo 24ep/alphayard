@@ -59,7 +59,7 @@ export default function CalendarPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
-          <p className="text-gray-600 mt-1">Manage your family events</p>
+          <p className="text-gray-600 mt-1">Manage your Circle events</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => window.location.href = '/dashboard/calendar/advanced'}>
@@ -159,4 +159,5 @@ export default function CalendarPage() {
     </div>
   )
 }
+
 

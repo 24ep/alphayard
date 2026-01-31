@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useRef, useCallback, ReactN
 import { Animated } from 'react-native';
 
 export type MainSection = 'home' | 'gallery' | 'calendar' | 'notes' | 'chat' | 'finance';
-export type HomeTab = 'you' | 'family' | 'social';
+export type HomeTab = 'you' | 'circle' | 'social';
 
 interface MainContentContextValue {
   activeSection: MainSection;
@@ -35,7 +35,7 @@ export const MainContentProvider: React.FC<{ children: ReactNode }> = ({ childre
   const tabContentOpacityAnim = useRef(new Animated.Value(1)).current;
   const tabContentTranslateXAnim = useRef(new Animated.Value(0)).current;
 
-  const tabOrder: HomeTab[] = ['you', 'family', 'social'];
+  const tabOrder: HomeTab[] = ['you', 'circle', 'social'];
 
   const setActiveSection = useCallback((newSection: MainSection) => {
     if (newSection === activeSection) return;
@@ -145,3 +145,4 @@ export const useMainContent = (): MainContentContextValue => {
   if (!ctx) throw new Error('useMainContent must be used within MainContentProvider');
   return ctx;
 };
+

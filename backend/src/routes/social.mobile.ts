@@ -36,14 +36,14 @@ const mapToMobileFormat = (post: any) => ({
  */
 router.get('/posts', async (req: any, res: any) => {
     try {
-        const { familyId, limit, offset } = req.query;
+        const { circleId, limit, offset } = req.query;
         const filters = {
             limit: limit ? parseInt(limit as string) : 20,
             offset: offset ? parseInt(offset as string) : 0,
             status: 'active'
         };
 
-        const posts = await socialMediaService.getPosts(familyId as string, filters);
+        const posts = await socialMediaService.getPosts(circleId as string, filters);
 
         res.json({
             success: true,
@@ -60,17 +60,17 @@ router.get('/posts', async (req: any, res: any) => {
  */
 router.post('/posts', async (req: any, res: any) => {
     try {
-        const { content, familyId, media, location, tags } = req.body;
+        const { content, circleId, media, location, tags } = req.body;
 
         const postData = {
-            family_id: familyId,
+            circle_id: circleId,
             author_id: req.user.id,
             content: content,
             type: media?.type || 'text',
             media_urls: media?.url ? [media.url] : [],
             location: location,
             tags: tags || [],
-            visibility: 'family' as const
+            visibility: 'circle' as const
         };
 
         const post = await socialMediaService.createPost(postData);
@@ -93,7 +93,7 @@ router.get('/trending-tags', async (req: any, res: any) => {
         // For now return hardcoded tags or add a method to service
         res.json({
             success: true,
-            tags: ['family', 'vacation', 'groceries', 'weekend', 'planning']
+            tags: ['circle', 'vacation', 'groceries', 'weekend', 'planning']
         });
     } catch (error) {
         res.status(500).json({ success: false, error: 'Internal server error' });
@@ -101,3 +101,4 @@ router.get('/trending-tags', async (req: any, res: any) => {
 });
 
 export default router;
+

@@ -16,7 +16,7 @@ import { Animated } from 'react-native';
 import CoolIcon from '../../components/common/CoolIcon';
 import NewsDetailDrawer from '../../components/news/NewsDetailDrawer';
 import MainScreenLayout from '../../components/layout/MainScreenLayout';
-import { FamilyDropdown } from '../../components/home/FamilyDropdown';
+import { CircleDropdown } from '../../components/home/CircleDropdown';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
 
 const { width } = Dimensions.get('window');
@@ -113,18 +113,18 @@ const NewsScreen: React.FC = () => {
   const { cardMarginTopAnim } = useNavigationAnimation();
   const cardOpacityAnim = useRef(new Animated.Value(1)).current;
 
-  // Family (hourse) selection to match Home/Calendar/Notes header
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState('Smith Family');
+  // Circle (Circle) selection to match Home/Calendar/Notes header
+  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
+  const [selectedCircle, setSelectedCircle] = useState('Smith Circle');
   const availableFamilies = [
-    { id: '1', name: 'Smith Family', members: 4 },
-    { id: '2', name: 'Johnson Family', members: 3 },
-    { id: '3', name: 'Williams Family', members: 5 },
-    { id: '4', name: 'Brown Family', members: 2 },
+    { id: '1', name: 'Smith Circle', members: 4 },
+    { id: '2', name: 'Johnson Circle', members: 3 },
+    { id: '3', name: 'Williams Circle', members: 5 },
+    { id: '4', name: 'Brown Circle', members: 2 },
   ];
-  const handleFamilySelect = (familyName: string) => {
-    setSelectedFamily(familyName);
-    setShowFamilyDropdown(false);
+  const handleCircleSelect = (circleName: string) => {
+    setSelectedCircle(circleName);
+    setShowCircleDropdown(false);
   };
 
   useEffect(() => {
@@ -180,17 +180,17 @@ const NewsScreen: React.FC = () => {
 
   return (
     <MainScreenLayout
-      selectedFamily={selectedFamily}
-      onToggleFamilyDropdown={() => setShowFamilyDropdown(!showFamilyDropdown)}
-      showFamilyDropdown={showFamilyDropdown}
+      selectedCircle={selectedCircle}
+      onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
+      showCircleDropdown={showCircleDropdown}
       cardMarginTopAnim={cardMarginTopAnim}
       cardOpacityAnim={cardOpacityAnim}
     >
-      <FamilyDropdown
-        visible={showFamilyDropdown}
-        onClose={() => setShowFamilyDropdown(false)}
-        selectedFamily={selectedFamily}
-        onFamilySelect={handleFamilySelect}
+      <CircleDropdown
+        visible={showCircleDropdown}
+        onClose={() => setShowCircleDropdown(false)}
+        selectedCircle={selectedCircle}
+        onCircleSelect={handleCircleSelect}
         availableFamilies={availableFamilies}
       />
 
@@ -469,5 +469,6 @@ const styles = StyleSheet.create({
 });
 
 export default NewsScreen;
+
 
 

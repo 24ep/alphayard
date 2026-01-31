@@ -1,0 +1,39 @@
+# AI Agent Ignore File
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and Output
+dist/
+build/
+.next/
+out/
+.expo/
+.turbo/
+android/
+ios/
+tsconfig.tsbuildinfo
+
+# Version Control
+.git/
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Legacy and Large Documentation
+**/scripts/legacy/
+**/docs/
+temp/
+
+# Artifacts
+.gemini/
+.agent/
+brain/

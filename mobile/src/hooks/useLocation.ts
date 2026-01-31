@@ -26,7 +26,7 @@ interface LocationHistory {
 export const useLocation = () => {
   const { user } = useAuth();
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [familyLocations, setFamilyLocations] = useState<Location[]>([]);
+  const [circleLocations, setCircleLocations] = useState<Location[]>([]);
   const [locationHistory, setLocationHistory] = useState<LocationHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ export const useLocation = () => {
   useEffect(() => {
     if (user && locationPermission) {
       startLocationTracking();
-      loadFamilyLocations();
+      loadCircleLocations();
     }
   }, [user, locationPermission]);
 
@@ -135,18 +135,18 @@ export const useLocation = () => {
     return undefined;
   };
 
-  const loadFamilyLocations = async () => {
+  const loadCircleLocations = async () => {
     if (!user) return;
 
     try {
       setLoading(true);
 
       // Get user's families
-      const families = await locationService.getFamilyLocations(user.id);
-      setFamilyLocations(families);
+      const families = await locationService.getCircleLocations(user.id);
+      setCircleLocations(families);
     } catch (error) {
-      console.error('Error loading hourse locations:', error);
-      setError('Failed to load hourse locations');
+      console.error('Error loading Circle locations:', error);
+      setError('Failed to load Circle locations');
     } finally {
       setLoading(false);
     }
@@ -172,7 +172,7 @@ export const useLocation = () => {
 
     try {
       setLoading(true);
-      await locationService.shareLocation(user.id, user.familyId || '', duration);
+      await locationService.shareLocation(user.id, user.circleId || '', duration);
     } catch (error) {
       console.error('Error sharing location:', error);
       setError('Failed to share location');
@@ -186,7 +186,7 @@ export const useLocation = () => {
 
     try {
       setLoading(true);
-      await locationService.requestLocation(user.id, targetUserId, user.familyId || '');
+      await locationService.requestLocation(user.id, targetUserId, user.circleId || '');
     } catch (error) {
       console.error('Error requesting location:', error);
       setError('Failed to request location');
@@ -200,7 +200,7 @@ export const useLocation = () => {
 
     try {
       setLoading(true);
-      await locationService.createGeofence(user.familyId || '', name, latitude, longitude, radius, type);
+      await locationService.createGeofence(user.circleId || '', name, latitude, longitude, radius, type);
     } catch (error) {
       console.error('Error creating geofence:', error);
       setError('Failed to create geofence');
@@ -213,7 +213,7 @@ export const useLocation = () => {
     if (!user) return null;
 
     try {
-      return await locationService.checkGeofenceStatus(user.id, user.familyId || '');
+      return await locationService.checkGeofenceStatus(user.id, user.circleId || '');
     } catch (error) {
       console.error('Error checking geofence status:', error);
       return null;
@@ -226,13 +226,13 @@ export const useLocation = () => {
 
   return {
     currentLocation,
-    familyLocations,
+    circleLocations,
     locationHistory,
     loading,
     error,
     locationPermission,
     updateLocation,
-    loadFamilyLocations,
+    loadCircleLocations,
     loadLocationHistory,
     shareLocation,
     requestLocation,

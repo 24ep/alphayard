@@ -4,14 +4,14 @@ import { WidgetType } from '../../types/home';
 export interface WidgetFilters {
   category?: string;
   enabled?: boolean;
-  familyId?: string;
+  circleId?: string;
   userId?: string;
 }
 
 export interface WidgetConfiguration {
   widgetId: string;
   userId: string;
-  familyId?: string;
+  circleId?: string;
   enabled: boolean;
   position: number;
   settings: Record<string, any>;
@@ -34,7 +34,7 @@ class WidgetService {
       const params = new URLSearchParams();
       if (filters?.category) params.append('category', filters.category);
       if (filters?.enabled !== undefined) params.append('enabled', filters.enabled.toString());
-      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.circleId) params.append('circleId', filters.circleId);
       if (filters?.userId) params.append('userId', filters.userId);
 
       const response = await api.get(`${this.baseUrl}/types?${params.toString()}`);
@@ -56,9 +56,9 @@ class WidgetService {
     }
   }
 
-  async getUserWidgetConfiguration(userId: string, familyId?: string): Promise<WidgetConfiguration[]> {
+  async getUserWidgetConfiguration(userId: string, circleId?: string): Promise<WidgetConfiguration[]> {
     try {
-      const params = familyId ? `?familyId=${familyId}` : '';
+      const params = circleId ? `?circleId=${circleId}` : '';
       const response = await api.get(`${this.baseUrl}/users/${userId}/configuration${params}`);
       return response.data.configurations || [];
     } catch (error) {
@@ -77,12 +77,12 @@ class WidgetService {
     }
   }
 
-  async enableWidget(widgetId: string, userId: string, familyId?: string): Promise<void> {
+  async enableWidget(widgetId: string, userId: string, circleId?: string): Promise<void> {
     try {
       await api.post(`${this.baseUrl}/enable`, {
         widgetId,
         userId,
-        familyId
+        circleId
       });
     } catch (error) {
       console.error('Error enabling widget:', error);
@@ -90,12 +90,12 @@ class WidgetService {
     }
   }
 
-  async disableWidget(widgetId: string, userId: string, familyId?: string): Promise<void> {
+  async disableWidget(widgetId: string, userId: string, circleId?: string): Promise<void> {
     try {
       await api.post(`${this.baseUrl}/disable`, {
         widgetId,
         userId,
-        familyId
+        circleId
       });
     } catch (error) {
       console.error('Error disabling widget:', error);
@@ -103,12 +103,12 @@ class WidgetService {
     }
   }
 
-  async reorderWidgets(userId: string, widgetIds: string[], familyId?: string): Promise<void> {
+  async reorderWidgets(userId: string, widgetIds: string[], circleId?: string): Promise<void> {
     try {
       await api.post(`${this.baseUrl}/reorder`, {
         userId,
         widgetIds,
-        familyId
+        circleId
       });
     } catch (error) {
       console.error('Error reordering widgets:', error);
@@ -116,11 +116,11 @@ class WidgetService {
     }
   }
 
-  async getWidgetData(widgetId: string, userId: string, familyId?: string): Promise<any> {
+  async getWidgetData(widgetId: string, userId: string, circleId?: string): Promise<any> {
     try {
       const params = new URLSearchParams();
       params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
 
       const response = await api.get(`${this.baseUrl}/${widgetId}/data?${params.toString()}`);
       return response.data;
@@ -130,12 +130,12 @@ class WidgetService {
     }
   }
 
-  async updateWidgetSettings(widgetId: string, userId: string, settings: Record<string, any>, familyId?: string): Promise<void> {
+  async updateWidgetSettings(widgetId: string, userId: string, settings: Record<string, any>, circleId?: string): Promise<void> {
     try {
       await api.put(`${this.baseUrl}/${widgetId}/settings`, {
         userId,
         settings,
-        familyId
+        circleId
       });
     } catch (error) {
       console.error('Error updating widget settings:', error);
@@ -145,10 +145,10 @@ class WidgetService {
 
   private getDefaultWidgetTypes(): WidgetType[] {
     return [
-      // hourse Category
-      { id: 'hourse-members', name: 'hourse Members', icon: 'account-group', enabled: true, category: 'hourse' },
-      { id: 'hourse-status', name: 'hourse Status', icon: 'heart-pulse', enabled: true, category: 'hourse' },
-      { id: 'location-map', name: 'Location Map', icon: 'map', enabled: true, category: 'hourse' },
+      // Circle Category
+      { id: 'Circle-members', name: 'Circle Members', icon: 'account-group', enabled: true, category: 'Circle' },
+      { id: 'Circle-status', name: 'Circle Status', icon: 'heart-pulse', enabled: true, category: 'Circle' },
+      { id: 'location-map', name: 'Location Map', icon: 'map', enabled: true, category: 'Circle' },
       
       // Productivity Category
       { id: 'appointments', name: 'Appointments', icon: 'calendar', enabled: true, category: 'productivity' },
@@ -157,7 +157,7 @@ class WidgetService {
       
       // Social Category
       { id: 'social-posts', name: 'Social Posts', icon: 'account-multiple', enabled: true, category: 'social' },
-      { id: 'hourse-chat', name: 'hourse Chat', icon: 'chat', enabled: false, category: 'social' },
+      { id: 'Circle-chat', name: 'Circle Chat', icon: 'chat', enabled: false, category: 'social' },
       
       // Health Category
       { id: 'health-metrics', name: 'Health Metrics', icon: 'heart-pulse', enabled: false, category: 'health' },
@@ -171,7 +171,7 @@ class WidgetService {
 
   private getDefaultWidgetCategories(): WidgetCategory[] {
     return [
-      { id: 'hourse', name: 'hourse', icon: 'home', color: '#4F46E5', description: 'hourse-related widgets', order: 1 },
+      { id: 'Circle', name: 'Circle', icon: 'home', color: '#4F46E5', description: 'Circle-related widgets', order: 1 },
       { id: 'productivity', name: 'Productivity', icon: 'briefcase', color: '#10B981', description: 'Productivity and organization widgets', order: 2 },
       { id: 'social', name: 'Social', icon: 'account-multiple', color: '#F59E0B', description: 'Social and communication widgets', order: 3 },
       { id: 'health', name: 'Health', icon: 'heart', color: '#EF4444', description: 'Health and wellness widgets', order: 4 },
@@ -181,3 +181,4 @@ class WidgetService {
 }
 
 export const widgetService = new WidgetService();
+

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ReportPostModal } from '../social/ReportPostModal';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView, RefreshControl, Modal, Pressable, StyleSheet, Share, Image } from 'react-native';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { homeStyles } from '../../styles/homeStyles';
@@ -14,7 +15,7 @@ const CURRENT_USER_ID = 'f739edde-45f8-4aa9-82c8-c1876f434683';
 
 interface SocialTabProps {
   onCommentPress: (postId: string) => void;
-  familyId?: string;
+  circleId?: string;
   refreshKey?: number;
   // Filter Props
   geoScope?: GeoScope;
@@ -25,7 +26,7 @@ interface SocialTabProps {
 }
 
 export const SocialTab: React.FC<SocialTabProps> = ({
-  familyId,
+  circleId,
   refreshKey,
   geoScope = 'nearby',
   distanceKm = 5,
@@ -36,9 +37,11 @@ export const SocialTab: React.FC<SocialTabProps> = ({
   const [menuVisible, setMenuVisible] = React.useState(false);
   const [selectedPost, setSelectedPost] = React.useState<SocialPost | null>(null);
 
-  // Filter state REMOVED (now via props)
+  // Report State
+  const [reportModalVisible, setReportModalVisible] = React.useState(false);
+  const [reportLoading, setReportLoading] = React.useState(false);
 
-  // Comment State
+  // Filter state REMOVED (now via props)
 
   // Comment State
   const [commentDrawerVisible, setCommentDrawerVisible] = React.useState(false);
@@ -48,7 +51,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({
   const [newComment, setNewComment] = React.useState('');
 
   const fetchPosts = React.useCallback(async () => {
-    // If no family selected (and we require it contextually), we might return empty.
+    // If no circle selected (and we require it contextually), we might return empty.
     // However, backend supports global feed. 
     // To prevent "stuck" loading if backend hangs on empty filter, we can enforce a timeout here.
 
@@ -57,13 +60,36 @@ export const SocialTab: React.FC<SocialTabProps> = ({
       setTimeout(() => reject(new Error('Request timed out')), 10000)
     );
 
-    const apiCall = socialService.getPosts({
-      familyId,
-      limit: 20
-    });
+    const filters: any = {
+      circleId,
+      limit: 20,
+      sortBy: sortOrder,
+    };
 
+    if (geoScope === 'nearby' && distanceKm) {
+       // Ideally we need current location here. 
+       // For now, if customCoordinates is NOT set, we can't filter by nearby truly unless we get location.
+       // But if we have customCoordinates (from map):
+    }
+    
+    if (geoScope === 'following') {
+        filters.following = true;
+    } else if (customCoordinates) {
+        filters.latitude = customCoordinates.latitude;
+        filters.longitude = customCoordinates.longitude;
+        filters.distanceKm = distanceKm;
+    } else if (geoScope === 'nearby') {
+        // TODO: Get current location?
+        // For now, let's leave location filter off if no coords, relying on backend fallback.
+        // Or if we want to support 'nearby' using current location, we need to ask for it here or pass it in.
+        // Assuming for now current behavior (fallback to all) is safer than broken query.
+        filters.sortBy = 'nearby'; 
+    }
+
+    const apiCall = socialService.getPosts(filters);
+    
     return Promise.race([apiCall, timeout]);
-  }, [familyId, geoScope, distanceKm, selectedCountry, customCoordinates, sortOrder]);
+  }, [circleId, geoScope, distanceKm, selectedCountry, customCoordinates, sortOrder]);
 
   const {
     data: posts = [],
@@ -76,7 +102,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({
   } = useDataServiceWithRefresh(
     fetchPosts,
     {
-      dependencies: [familyId, refreshKey, geoScope, distanceKm, selectedCountry, customCoordinates, sortOrder]
+      dependencies: [circleId, refreshKey, geoScope, distanceKm, selectedCountry, customCoordinates, sortOrder]
     }
   );
 
@@ -132,11 +158,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({
     }
   };
 
-  // Handle report post (for non-owners)
-  const handleReportPost = () => {
-    setMenuVisible(false);
-    Alert.alert('Report', 'Report feature coming soon');
-  };
+
 
   // Handle like post
   // Handle like post with optimistic update
@@ -199,10 +221,10 @@ export const SocialTab: React.FC<SocialTabProps> = ({
     }
   };
 
-  const handleAddComment = async (media?: { type: string; url: string }) => {
+  const handleAddComment = async (media?: { type: string; url: string }, parentId?: string) => {
     if (!currentPostId || (!newComment.trim() && !media)) return;
     try {
-      const result = await socialService.addComment(currentPostId, newComment, media);
+      const result = await socialService.addComment(currentPostId, newComment, media, parentId);
       if (result) {
         setNewComment('');
         // Refresh comments
@@ -278,15 +300,37 @@ export const SocialTab: React.FC<SocialTabProps> = ({
     }
   };
 
+  // Handle report post (for non-owners)
+  const handleReportPost = () => {
+    setMenuVisible(false);
+    setReportModalVisible(true);
+  };
+
+  const handleSubmitReport = async (reason: string, description: string) => {
+    if (!selectedPost) return;
+    
+    setReportLoading(true);
+    try {
+      await socialService.reportPost(selectedPost.id, reason, description);
+      Alert.alert('Report Submitted', 'Thank you for your report. We will review this post shortly.');
+      setReportModalVisible(false);
+    } catch (error) {
+       Alert.alert('Error', 'Failed to submit report. Please try again.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   return (
     <ScrollView
       style={{ flex: 1 }}
+      contentContainerStyle={{ paddingHorizontal: 0, paddingBottom: 100 }}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
       showsVerticalScrollIndicator={false}
     >
-      <View style={homeStyles.section}>
+      <View style={[homeStyles.section, { paddingHorizontal: 20 }]}>
 
 
         <View style={{ marginTop: 12 }}>
@@ -298,7 +342,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({
           <View style={{ padding: 20, alignItems: 'center' }}>
             <IconMC name="chat-outline" size={48} color="#9CA3AF" />
             <Text style={{ marginTop: 10, color: '#666', textAlign: 'center' }}>
-              No posts yet. Start a conversation in hourse chat!
+              No posts yet. Start a conversation in Circle chat!
             </Text>
           </View>
         ) : (
@@ -447,6 +491,12 @@ export const SocialTab: React.FC<SocialTabProps> = ({
         </Pressable>
       </Modal>
 
+      <ReportPostModal 
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        onSubmit={handleSubmitReport}
+        loading={reportLoading}
+      />
 
       <CommentDrawer
         visible={commentDrawerVisible}
@@ -514,3 +564,4 @@ const actionMenuStyles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+

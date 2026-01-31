@@ -38,7 +38,7 @@ interface Contact {
   avatar?: string;
   phone: string;
   isOnline: boolean;
-  isFamily: boolean;
+  isCircle: boolean;
   lastSeen?: string;
 }
 
@@ -86,7 +86,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=1',
         phone: '+1 (555) 123-4567',
         isOnline: true,
-        isFamily: true,
+        isCircle: true,
         lastSeen: '2 minutes ago',
       },
       {
@@ -95,7 +95,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=2',
         phone: '+1 (555) 234-5678',
         isOnline: false,
-        isFamily: true,
+        isCircle: true,
         lastSeen: '1 hour ago',
       },
       {
@@ -104,7 +104,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=3',
         phone: '+1 (555) 345-6789',
         isOnline: true,
-        isFamily: true,
+        isCircle: true,
         lastSeen: 'Online',
       },
       {
@@ -113,7 +113,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=4',
         phone: '+1 (555) 456-7890',
         isOnline: false,
-        isFamily: true,
+        isCircle: true,
         lastSeen: '3 hours ago',
       },
       {
@@ -122,7 +122,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=5',
         phone: '+1 (555) 567-8901',
         isOnline: true,
-        isFamily: true,
+        isCircle: true,
         lastSeen: 'Online',
       },
       {
@@ -131,7 +131,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
         avatar: 'https://picsum.photos/200/200?random=6',
         phone: '+1 (555) 678-9012',
         isOnline: false,
-        isFamily: true,
+        isCircle: true,
         lastSeen: 'Yesterday',
       },
     ];
@@ -271,9 +271,9 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
               <Text style={textStyles.h4} color={textColor} fontWeight="600">
                 {item.name}
               </Text>
-              {item.isFamily && (
+              {item.isCircle && (
                 <Badge colorScheme="primary" variant="subtle" size="sm">
-                  hourse
+                  Circle
                 </Badge>
               )}
             </HStack>
@@ -361,7 +361,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
   );
 
   const renderFavorites = () => {
-    const favorites = contacts.filter(contact => contact.isFamily);
+    const favorites = contacts.filter(contact => contact.isCircle);
     return (
       <VStack space={4}>
         <Text style={textStyles.h3} color={textColor} fontWeight="600">
@@ -405,7 +405,7 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
               Calls
             </Text>
             <Text style={textStyles.caption} color={colors.white[400]}>
-              hourse communication
+              Circle communication
             </Text>
           </VStack>
           <IconButton
@@ -521,10 +521,10 @@ const CallApplicationScreen: React.FC<CallApplicationScreenProps> = ({ route }) 
                 {renderFavorites()}
                 <Box mt={6}>
                   <Text style={textStyles.h3} color={textColor} fontWeight="600" mb={4}>
-                    hourse Members
+                    Circle Members
                   </Text>
                   <FlatList
-                    data={getFilteredContacts().filter(c => c.isFamily)}
+                    data={getFilteredContacts().filter(c => c.isCircle)}
                     renderItem={renderContact}
                     keyExtractor={(item) => item.id}
                     scrollEnabled={false}

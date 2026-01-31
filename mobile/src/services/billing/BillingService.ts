@@ -4,8 +4,8 @@ import { analyticsService } from '../analytics/AnalyticsService';
 export interface Subscription {
   id: string;
   userId: string;
-  familyId: string;
-  plan: 'free' | 'basic' | 'premium' | 'hourse';
+  circleId: string;
+  plan: 'free' | 'basic' | 'premium' | 'Circle';
   status: 'active' | 'inactive' | 'cancelled' | 'expired' | 'past_due';
   startDate: Date;
   endDate?: Date;
@@ -16,13 +16,13 @@ export interface Subscription {
   billingCycle: 'monthly' | 'yearly';
   features: string[];
   limits: {
-    familyMembers: number;
+    circleMembers: number;
     storage: number; // in GB
     apiCalls: number;
     customFeatures: number;
   };
   usage: {
-    familyMembers: number;
+    circleMembers: number;
     storageUsed: number;
     apiCallsUsed: number;
     customFeaturesUsed: number;
@@ -96,7 +96,7 @@ export interface PricingPlan {
     limit?: number;
   }>;
   limits: {
-    familyMembers: number;
+    circleMembers: number;
     storage: number;
     apiCalls: number;
     customFeatures: number;
@@ -106,9 +106,9 @@ export interface PricingPlan {
 }
 
 class BillingService {
-  async getSubscription(userId: string, familyId: string): Promise<Subscription> {
+  async getSubscription(userId: string, circleId: string): Promise<Subscription> {
     try {
-      const response = await apiClient.get(`/billing/subscription?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/billing/subscription?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get subscription:', error);
@@ -362,8 +362,8 @@ class BillingService {
     }
   }
 
-  async getUsageStats(userId: string, familyId: string): Promise<{
-    familyMembers: {
+  async getUsageStats(userId: string, circleId: string): Promise<{
+    circleMembers: {
       current: number;
       limit: number;
       percentage: number;
@@ -385,7 +385,7 @@ class BillingService {
     };
   }> {
     try {
-      const response = await apiClient.get(`/billing/usage?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/billing/usage?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get usage stats:', error);

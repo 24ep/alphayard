@@ -1,6 +1,6 @@
 export interface Content {
   id: string;
-  familyId: string;
+  circleId: string;
   contentTypeId: string;
   categoryId?: string;
   title: string;
@@ -93,7 +93,7 @@ export interface ContentFile {
 }
 
 export interface CreateContentRequest {
-  familyId: string;
+  circleId: string;
   contentTypeId: string;
   categoryId?: string;
   title: string;
@@ -126,7 +126,7 @@ export interface UpdateContentRequest {
 }
 
 export interface ContentQuery {
-  familyId: string;
+  circleId: string;
   contentTypeId?: string;
   categoryId?: string;
   status?: 'draft' | 'published' | 'archived';

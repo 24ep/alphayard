@@ -1,6 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  X, 
+  Utensils, 
+  Bus, 
+  Banknote, 
+  ShoppingCart, 
+  Lightbulb, 
+  Layers,
+  Star
+} from 'lucide-react-native';
+
+const XIcon = X as any;
+const UtensilsIcon = Utensils as any;
+const BusIcon = Bus as any;
+const BanknoteIcon = Banknote as any;
+const ShoppingCartIcon = ShoppingCart as any;
+const LightbulbIcon = Lightbulb as any;
+const LayersIcon = Layers as any;
+const StarIcon = Star as any;
+
+const ICON_MAP: Record<string, any> = {
+    'food': UtensilsIcon,
+    'bus': BusIcon,
+    'cash': BanknoteIcon,
+    'shopping': ShoppingCartIcon,
+    'lightbulb': LightbulbIcon,
+    'shape': LayersIcon,
+};
 import { financeService, FinancialAccount, FinancialCategory } from '../../services/financeService';
 
 interface AddTransactionModalProps {
@@ -95,7 +122,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ visibl
                     <View style={styles.header}>
                         <Text style={styles.title}>Add Transaction</Text>
                         <TouchableOpacity onPress={onClose}>
-                            <MaterialCommunityIcons name="close" size={24} color="#333" />
+                            <XIcon size={24} color="#333" />
                         </TouchableOpacity>
                     </View>
 
@@ -156,7 +183,16 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({ visibl
                                         style={[styles.chip, selectedCategoryId === cat.id && styles.activeChip]}
                                         onPress={() => setSelectedCategoryId(cat.id)}
                                     >
-                                        <MaterialCommunityIcons name={cat.icon as any || 'shape'} size={16} color={selectedCategoryId === cat.id ? '#fff' : '#555'} style={{ marginRight: 4 }} />
+                                        {(() => {
+                                            const Icon = ICON_MAP[cat.icon || ''] || StarIcon;
+                                            return (
+                                                <Icon
+                                                    size={16}
+                                                    color={selectedCategoryId === cat.id ? '#fff' : '#555'}
+                                                    style={{ marginRight: 4 }}
+                                                />
+                                            );
+                                        })()}
                                         <Text style={[styles.chipText, selectedCategoryId === cat.id && styles.activeChipText]}>
                                             {cat.name}
                                         </Text>

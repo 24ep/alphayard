@@ -20,7 +20,7 @@ const mockPosts = [
     id: '1',
     content: 'Just arrived at the vacation home! 🏠☀️',
     authorId: 'user_123', // Will be overwritten by req.user.id in the endpoint if we want to simulate logged in user ownership
-    familyId: '1',
+    circleId: '1',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     author: {
@@ -35,13 +35,13 @@ const mockPosts = [
       shares: 0
     },
     isLiked: false,
-    tags: ['vacation', 'family']
+    tags: ['vacation', 'circle']
   },
   {
     id: '2',
     content: 'Does anyone need anything from the grocery store? 🍎🥦',
     authorId: 'system_user',
-    familyId: '1',
+    circleId: '1',
     createdAt: new Date(Date.now() - 3600000).toISOString(),
     updatedAt: new Date(Date.now() - 3600000).toISOString(),
     author: {
@@ -60,9 +60,9 @@ const mockPosts = [
   },
   {
     id: '3',
-    content: 'Family picnic weekend! The weather was perfect. 🌳🧺',
+    content: 'circle picnic weekend! The weather was perfect. 🌳🧺',
     authorId: 'user_456',
-    familyId: '1',
+    circleId: '1',
     createdAt: new Date(Date.now() - 7200000).toISOString(),
     updatedAt: new Date(Date.now() - 7200000).toISOString(),
     author: {
@@ -77,7 +77,7 @@ const mockPosts = [
       shares: 1
     },
     isLiked: false,
-    tags: ['weekend', 'picnic', 'family'],
+    tags: ['weekend', 'picnic', 'circle'],
     media: {
       type: 'image',
       url: 'https://images.unsplash.com/photo-1542038784456-1ea8e935640e?w=800&auto=format&fit=crop&q=60'
@@ -124,7 +124,7 @@ router.post('/posts', async (req: any, res: any) => {
       id: Date.now().toString(),
       content: content,
       authorId: req.user.id,
-      familyId: '1',
+      circleId: '1',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       author: {
@@ -175,8 +175,8 @@ router.get('/families', async (req: any, res: any) => {
       data: [
         {
           id: '1',
-          name: 'My Family',
-          description: 'The best family ever',
+          name: 'My circle',
+          description: 'The best circle ever',
           member_count: 4
         }
       ]
@@ -198,7 +198,7 @@ router.get('/trending-tags', async (req: any, res: any) => {
   try {
     res.json({
       success: true,
-      tags: ['family', 'vacation', 'groceries', 'weekend', 'planning']
+      tags: ['circle', 'vacation', 'groceries', 'weekend', 'planning']
     });
   } catch (error) {
     console.error('Get trending tags error:', error);
@@ -265,5 +265,6 @@ router.get('/profile-filters', async (_req: any, res: any) => {
 });
 
 export default router;
+
 
 

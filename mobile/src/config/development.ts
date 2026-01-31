@@ -16,7 +16,7 @@ export const DEVELOPMENT_CONFIG = {
     VIDEO_CALLS: false, // Disabled in dev
     FILE_SHARING: true,
     EMERGENCY_ALERTS: false, // Disabled in dev
-    FAMILY_CHAT: true,
+    CIRCLE_CHAT: true,
     CALENDAR: true,
     EXPENSES: true,
     PHOTOS: true,

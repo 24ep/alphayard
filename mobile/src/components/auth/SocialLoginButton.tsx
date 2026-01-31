@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Button, HStack, Icon, Text, useColorModeValue } from 'native-base';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as IconMC } from '@expo/vector-icons';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';
 

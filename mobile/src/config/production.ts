@@ -1,6 +1,6 @@
 export const PRODUCTION_CONFIG = {
   // API Configuration
-  API_BASE_URL: 'https://api.bondarys.com',
+  API_BASE_URL: 'https://api.bondarys.com/api/v1',
   API_TIMEOUT: 30000,
   
   // App Configuration
@@ -16,7 +16,7 @@ export const PRODUCTION_CONFIG = {
     VIDEO_CALLS: true,
     FILE_SHARING: true,
     EMERGENCY_ALERTS: true,
-    FAMILY_CHAT: true,
+    CIRCLE_CHAT: true,
     CALENDAR: true,
     EXPENSES: true,
     PHOTOS: true,

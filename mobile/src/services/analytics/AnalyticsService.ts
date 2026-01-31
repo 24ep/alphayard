@@ -9,7 +9,7 @@ interface AnalyticsEvent {
 
 interface UserProperties {
   userId: string;
-  familyId?: string;
+  circleId?: string;
   subscription?: string;
   deviceType: string;
   appVersion: string;
@@ -149,6 +149,36 @@ export class AnalyticsService {
   // Check if analytics is enabled
   isAnalyticsEnabled(): boolean {
     return this.isEnabled;
+  }
+
+  private sentryDsn?: string;
+  private mixpanelToken?: string;
+  private googleAnalyticsId?: string;
+
+  // Update configuration from dynamic branding
+  updateConfig(config: { sentryDsn?: string; mixpanelToken?: string; googleAnalyticsId?: string; enableDebugLogs?: boolean }): void {
+    if (config.sentryDsn) this.sentryDsn = config.sentryDsn;
+    if (config.mixpanelToken) this.mixpanelToken = config.mixpanelToken;
+    if (config.googleAnalyticsId) this.googleAnalyticsId = config.googleAnalyticsId;
+    
+    if (config.enableDebugLogs !== undefined) {
+        // Logging in production if enabled in admin
+        if (config.enableDebugLogs) {
+            console.log('[AnalyticsService] Dynamic Debug Logs Enabled');
+        }
+    }
+    
+    console.log('[AnalyticsService] Config updated:', {
+        hasSentry: !!this.sentryDsn,
+        hasMixpanel: !!this.mixpanelToken,
+        hasGoogleAnalytics: !!this.googleAnalyticsId,
+        googleAnalyticsId: this.googleAnalyticsId
+    });
+
+    if (this.googleAnalyticsId) {
+        // Initialize GA tracker here (e.g., set tracker ID if using a library)
+        console.log(`[AnalyticsService] Initializing Google Analytics with ID: ${this.googleAnalyticsId}`);
+    }
   }
 }
 

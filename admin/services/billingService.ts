@@ -80,7 +80,7 @@ class BillingService {
     return this.request<{ subscription: any }>(`/subscription`)
   }
 
-  async createSubscription(params: { planId: string; paymentMethodId?: string; familyId?: string }): Promise<{ subscription: SubscriptionSummary; clientSecret?: string }>{
+  async createSubscription(params: { planId: string; paymentMethodId?: string; CircleId?: string }): Promise<{ subscription: SubscriptionSummary; clientSecret?: string }>{
     return this.request<{ subscription: SubscriptionSummary; clientSecret?: string }>(`/create-subscription`, {
       method: 'POST',
       body: JSON.stringify(params),
@@ -143,5 +143,6 @@ class BillingService {
 }
 
 export const billingService = new BillingService()
+
 
 

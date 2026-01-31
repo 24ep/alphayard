@@ -2,7 +2,7 @@ import { api } from './index';
 import { LocationData } from '../../types/home';
 
 export interface LocationFilters {
-  familyId?: string;
+  circleId?: string;
   userId?: string;
   type?: LocationData['type'];
   isOnline?: boolean;
@@ -44,7 +44,7 @@ export const locationDataApi = {
   // Get locations
   getLocations: async (filters?: LocationFilters): Promise<{ success: boolean; locations: LocationData[] }> => {
     const params = new URLSearchParams();
-    if (filters?.familyId) params.append('familyId', filters.familyId);
+    if (filters?.circleId) params.append('circleId', filters.circleId);
     if (filters?.userId) params.append('userId', filters.userId);
     if (filters?.type) params.append('type', filters.type);
     if (filters?.isOnline !== undefined) params.append('isOnline', filters.isOnline.toString());
@@ -67,9 +67,9 @@ export const locationDataApi = {
     return response.data;
   },
 
-  // Get family locations
-  getFamilyLocations: async (familyId: string): Promise<{ success: boolean; locations: LocationData[] }> => {
-    const response = await api.get(`/locations/families/${familyId}`);
+  // Get circle locations
+  getCircleLocations: async (circleId: string): Promise<{ success: boolean; locations: LocationData[] }> => {
+    const response = await api.get(`/locations/families/${circleId}`);
     return response.data;
   },
 
@@ -80,8 +80,8 @@ export const locationDataApi = {
   },
 
   // Get location stats
-  getLocationStats: async (familyId?: string): Promise<{ success: boolean; stats: LocationStats }> => {
-    const params = familyId ? `?familyId=${familyId}` : '';
+  getLocationStats: async (circleId?: string): Promise<{ success: boolean; stats: LocationStats }> => {
+    const params = circleId ? `?circleId=${circleId}` : '';
     const response = await api.get(`/locations/stats${params}`);
     return response.data;
   },
@@ -117,8 +117,8 @@ export const locationDataApi = {
   },
 
   // Get geofence alerts
-  getGeofenceAlerts: async (familyId: string): Promise<{ success: boolean; alerts: any[] }> => {
-    const response = await api.get(`/locations/families/${familyId}/geofence-alerts`);
+  getGeofenceAlerts: async (circleId: string): Promise<{ success: boolean; alerts: any[] }> => {
+    const response = await api.get(`/locations/families/${circleId}/geofence-alerts`);
     return response.data;
   },
 
@@ -128,7 +128,7 @@ export const locationDataApi = {
     latitude: number;
     longitude: number;
     radius: number;
-    familyId: string;
+    circleId: string;
     notifications: {
       enter: boolean;
       exit: boolean;
@@ -139,8 +139,8 @@ export const locationDataApi = {
   },
 
   // Get geofences
-  getGeofences: async (familyId: string): Promise<{ success: boolean; geofences: any[] }> => {
-    const response = await api.get(`/locations/families/${familyId}/geofences`);
+  getGeofences: async (circleId: string): Promise<{ success: boolean; geofences: any[] }> => {
+    const response = await api.get(`/locations/families/${circleId}/geofences`);
     return response.data;
   },
 
@@ -150,3 +150,4 @@ export const locationDataApi = {
     return response.data;
   }
 };
+

@@ -332,7 +332,7 @@ const EmergencyContactsScreen: React.FC<EmergencyContactsScreenProps> = ({ route
         <EmptyState
           icon="account-group-outline"
           title="No emergency contacts"
-          subtitle="Add emergency contacts to ensure your hourse's safety"
+          subtitle="Add emergency contacts to ensure your Circle's safety"
           actionText="Add Contact"
           onAction={handleAddContact}
         />

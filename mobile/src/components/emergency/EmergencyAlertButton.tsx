@@ -17,8 +17,8 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface EmergencyAlertButtonProps {
   onPress?: () => void;
-  familyId?: string;
-  familyMembers?: Array<{
+  circleId?: string;
+  circleMembers?: Array<{
     id: string;
     name: string;
     avatar?: string;
@@ -28,8 +28,8 @@ interface EmergencyAlertButtonProps {
 
 const EmergencyAlertButton: React.FC<EmergencyAlertButtonProps> = ({
   onPress,
-  familyId,
-  familyMembers = [],
+  circleId,
+  circleMembers = [],
 }) => {
   const { user } = useAuth();
   const [isTriggering, setIsTriggering] = useState(false);
@@ -126,7 +126,7 @@ const EmergencyAlertButton: React.FC<EmergencyAlertButtonProps> = ({
       // Simulate emergency alert
       Alert.alert(
         'Emergency Alert Sent',
-        'All hourse members will receive an emergency alert and their phones will ring.',
+        'All Circle members will receive an emergency alert and their phones will ring.',
         [{ text: 'OK' }]
       );
       
@@ -145,7 +145,7 @@ const EmergencyAlertButton: React.FC<EmergencyAlertButtonProps> = ({
       setTimeout(() => {
         Alert.alert(
           'Emergency Alert Sent',
-          'Your hourse members have been notified of the emergency.',
+          'Your Circle members have been notified of the emergency.',
           [{ text: 'OK' }]
         );
         setIsModalVisible(false);
@@ -229,7 +229,7 @@ const EmergencyAlertButton: React.FC<EmergencyAlertButtonProps> = ({
             
             <ScrollView style={styles.modalBody}>
               <Text style={styles.modalDescription}>
-                Choose the type of emergency alert to send to your hourse members:
+                Choose the type of emergency alert to send to your Circle members:
               </Text>
               
               <View style={styles.emergencyTypesContainer}>
@@ -263,7 +263,7 @@ const EmergencyAlertButton: React.FC<EmergencyAlertButtonProps> = ({
               <View style={styles.warningBox}>
                 <IconMC name="information" size={20} color="#FD7E14" />
                 <Text style={styles.warningText}>
-                  Emergency alerts will notify all hourse members and can trigger phone ringing.
+                  Emergency alerts will notify all Circle members and can trigger phone ringing.
                 </Text>
               </View>
             </ScrollView>

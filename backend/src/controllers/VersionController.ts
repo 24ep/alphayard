@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 
 export class VersionController {
   /**
@@ -10,22 +10,18 @@ export class VersionController {
       const { pageId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
 
-      const { data, error } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .order('version_number', { ascending: false })
-        .range(parseInt(String(offset)), parseInt(String(offset)) + parseInt(String(limit)) - 1);
+      const { rows } = await pool.query(
+        `SELECT * FROM page_versions 
+         WHERE page_id = $1 
+         ORDER BY version_number DESC 
+         LIMIT $2 OFFSET $3`,
+        [pageId, parseInt(String(limit)), parseInt(String(offset))]
+      );
 
-      if (error) {
-        console.error('Error fetching version history:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ versions: data });
-    } catch (error) {
+      res.json({ versions: rows });
+    } catch (error: any) {
       console.error('Error fetching version history:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -36,22 +32,19 @@ export class VersionController {
     try {
       const { pageId, versionId } = req.params;
 
-      const { data, error } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .eq('id', versionId)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
+        [pageId, versionId]
+      );
 
-      if (error) {
-        console.error('Error fetching version:', error);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
       }
 
-      res.json({ version: data });
-    } catch (error) {
+      res.json({ version: rows[0] });
+    } catch (error: any) {
       console.error('Error fetching version:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -62,22 +55,19 @@ export class VersionController {
     try {
       const { pageId, versionNumber } = req.params;
 
-      const { data, error } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .eq('version_number', parseInt(versionNumber))
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM page_versions WHERE page_id = $1 AND version_number = $2',
+        [pageId, parseInt(versionNumber)]
+      );
 
-      if (error) {
-        console.error('Error fetching version:', error);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
       }
 
-      res.json({ version: data });
-    } catch (error) {
+      res.json({ version: rows[0] });
+    } catch (error: any) {
       console.error('Error fetching version:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -89,29 +79,28 @@ export class VersionController {
       const { pageId, versionId } = req.params;
 
       // Get version
-      const { data: version, error: versionError } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .eq('id', versionId)
-        .single();
+      const { rows: versionRows } = await pool.query(
+        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
+        [pageId, versionId]
+      );
 
-      if (versionError) {
-        console.error('Error fetching version:', versionError);
+      if (versionRows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
       }
 
-      // Get page metadata
-      const { data: page, error: pageError } = await supabase
-        .from('pages')
-        .select('id, title, slug, description, metadata, seo_config')
-        .eq('id', pageId)
-        .single();
+      const version = versionRows[0];
 
-      if (pageError) {
-        console.error('Error fetching page:', pageError);
+      // Get page metadata
+      const { rows: pageRows } = await pool.query(
+        'SELECT id, title, slug, description, metadata, seo_config FROM pages WHERE id = $1',
+        [pageId]
+      );
+
+      if (pageRows.length === 0) {
         return res.status(404).json({ error: 'Page not found' });
       }
+
+      const page = pageRows[0];
 
       // Combine page metadata with version components
       const preview = {
@@ -123,9 +112,9 @@ export class VersionController {
       };
 
       res.json({ preview });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error previewing version:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -133,6 +122,7 @@ export class VersionController {
    * Restore a previous version (creates a new version based on the selected one)
    */
   async restoreVersion(req: any, res: Response) {
+    const client = await pool.connect();
     try {
       const { pageId, versionId } = req.params;
       const { changeDescription } = req.body;
@@ -142,84 +132,83 @@ export class VersionController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // Get the version to restore
-      const { data: version, error: versionError } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .eq('id', versionId)
-        .single();
+      await client.query('BEGIN');
 
-      if (versionError) {
-        console.error('Error fetching version:', versionError);
+      // Get the version to restore
+      const { rows: versionRows } = await client.query(
+        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
+        [pageId, versionId]
+      );
+
+      if (versionRows.length === 0) {
+        await client.query('ROLLBACK');
         return res.status(404).json({ error: 'Version not found' });
       }
 
+      const version = versionRows[0];
+
       // Delete current page components
-      await supabase
-        .from('page_components')
-        .delete()
-        .eq('page_id', pageId);
+      await client.query('DELETE FROM page_components WHERE page_id = $1', [pageId]);
 
       // Insert components from the version
       if (version.components && Array.isArray(version.components) && version.components.length > 0) {
-        const componentData = version.components.map((comp: any) => ({
-          page_id: pageId,
-          component_type: comp.componentType || comp.component_type,
-          position: comp.position,
-          props: comp.props || {},
-          styles: comp.styles || {},
-          responsive_config: comp.responsiveConfig || comp.responsive_config || {}
-        }));
-
-        const { error: insertError } = await supabase
-          .from('page_components')
-          .insert(componentData);
-
-        if (insertError) {
-          console.error('Error restoring components:', insertError);
-          return res.status(400).json({ error: 'Failed to restore version components' });
+        for (const comp of version.components) {
+          await client.query(
+            `INSERT INTO page_components (
+              page_id, component_type, position, props, styles, responsive_config
+            ) VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+              pageId, 
+              comp.componentType || comp.component_type, 
+              comp.position, 
+              comp.props || {}, 
+              comp.styles || {}, 
+              comp.responsiveConfig || comp.responsive_config || {}
+            ]
+          );
         }
       }
 
-      // Update page to trigger version creation
-      const { data: updatedPage, error: updateError } = await supabase
-        .from('pages')
-        .update({
-          updated_by: userId,
-          updated_at: new Date().toISOString(),
-          metadata: {
+      // Update page to trigger version creation (assuming there's a trigger or we create version manually)
+      const { rows: updatedPageRows } = await client.query(
+        `UPDATE pages SET 
+          updated_by = $1, 
+          updated_at = NOW(),
+          metadata = $2
+         WHERE id = $3 RETURNING *`,
+        [
+          userId, 
+          {
             ...version.metadata,
             restored_from_version: version.version_number,
             restore_description: changeDescription || `Restored from version ${version.version_number}`
-          }
-        })
-        .eq('id', pageId)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error updating page:', updateError);
-        return res.status(400).json({ error: 'Failed to update page' });
-      }
+          },
+          pageId
+        ]
+      );
 
       // Get the newly created version
-      const { data: newVersion } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .single();
+      const { rows: newVersionRows } = await client.query(
+        `SELECT * FROM page_versions 
+         WHERE page_id = $1 
+         ORDER BY version_number DESC 
+         LIMIT 1`,
+        [pageId]
+      );
+
+      await client.query('COMMIT');
 
       res.json({ 
-        page: updatedPage,
-        newVersion,
+        page: updatedPageRows[0],
+        newVersion: newVersionRows[0],
         message: `Successfully restored version ${version.version_number}`
       });
-    } catch (error) {
+    } catch (error: any) {
+      await client.query('ROLLBACK');
       console.error('Error restoring version:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
+    } finally {
+      client.release();
     }
   }
 
@@ -236,14 +225,12 @@ export class VersionController {
       }
 
       // Get both versions
-      const { data: versions, error } = await supabase
-        .from('page_versions')
-        .select('*')
-        .eq('page_id', pageId)
-        .in('id', [version1, version2]);
+      const { rows: versions } = await pool.query(
+        'SELECT * FROM page_versions WHERE page_id = $1 AND id = ANY($2)',
+        [pageId, [version1, version2]]
+      );
 
-      if (error || !versions || versions.length !== 2) {
-        console.error('Error fetching versions:', error);
+      if (versions.length !== 2) {
         return res.status(404).json({ error: 'One or both versions not found' });
       }
 
@@ -255,7 +242,7 @@ export class VersionController {
       }
 
       // Compare components
-      const comparison = this.compareComponents(v1.components, v2.components);
+      const comparison = this.compareComponents(v1.components || [], v2.components || []);
 
       res.json({
         version1: {
@@ -272,9 +259,9 @@ export class VersionController {
         },
         comparison
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error comparing versions:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -412,44 +399,35 @@ export class VersionController {
       const { pageId, versionId } = req.params;
 
       // Get the latest version number
-      const { data: latestVersion } = await supabase
-        .from('page_versions')
-        .select('version_number')
-        .eq('page_id', pageId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .single();
+      const { rows: latestVersionRows } = await pool.query(
+        'SELECT version_number FROM page_versions WHERE page_id = $1 ORDER BY version_number DESC LIMIT 1',
+        [pageId]
+      );
 
       // Get the version to delete
-      const { data: versionToDelete } = await supabase
-        .from('page_versions')
-        .select('version_number')
-        .eq('id', versionId)
-        .single();
+      const { rows: versionToDeleteRows } = await pool.query(
+        'SELECT version_number FROM page_versions WHERE id = $1',
+        [versionId]
+      );
 
-      if (!versionToDelete) {
+      if (versionToDeleteRows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
       }
+
+      const versionToDelete = versionToDeleteRows[0];
+      const latestVersion = latestVersionRows[0];
 
       // Prevent deletion of the current version
       if (latestVersion && versionToDelete.version_number === latestVersion.version_number) {
         return res.status(400).json({ error: 'Cannot delete the current version' });
       }
 
-      const { error } = await supabase
-        .from('page_versions')
-        .delete()
-        .eq('id', versionId);
-
-      if (error) {
-        console.error('Error deleting version:', error);
-        return res.status(400).json({ error: error.message });
-      }
+      await pool.query('DELETE FROM page_versions WHERE id = $1', [versionId]);
 
       res.json({ message: 'Version deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting version:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 }

@@ -221,7 +221,7 @@ INSERT INTO app_screens (screen_key, screen_name, screen_type, configuration, is
     "animation": "fade-in"
   },
   "tagline": {
-    "text": "Connecting families, building communities",
+    "text": "Connecting circles, building communities",
     "font_size": 18,
     "color": "#FFFFFF",
     "animation": "fade-in-up"
@@ -234,7 +234,7 @@ ON CONFLICT (screen_key) DO NOTHING;
 INSERT INTO app_configuration (config_key, config_value, description, category, is_active) VALUES
 ('app_branding', '{
   "app_name": "Bondarys",
-  "tagline": "Connecting families, building communities",
+  "tagline": "Connecting circles, building communities",
   "primary_color": "#FA7272",
   "secondary_color": "#FFD700",
   "logo_url": "/assets/logo.png",

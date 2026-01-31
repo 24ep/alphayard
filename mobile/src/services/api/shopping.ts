@@ -2,7 +2,7 @@ import { api } from './index';
 import { ShoppingItem } from '../../types/home';
 
 export interface ShoppingListFilters {
-  familyId?: string;
+  circleId?: string;
   assignedTo?: string;
   category?: string;
   completed?: boolean;
@@ -16,7 +16,7 @@ export interface CreateShoppingItemRequest {
   category: string;
   quantity: string;
   assignedTo: string;
-  familyId: string;
+  circleId: string;
   priority?: 'low' | 'medium' | 'high';
   notes?: string;
   estimatedCost?: number;
@@ -54,7 +54,7 @@ export const shoppingApi = {
   // Get shopping items
   getShoppingItems: async (filters?: ShoppingListFilters): Promise<{ success: boolean; items: ShoppingItem[] }> => {
     const params = new URLSearchParams();
-    if (filters?.familyId) params.append('familyId', filters.familyId);
+    if (filters?.circleId) params.append('circleId', filters.circleId);
     if (filters?.assignedTo) params.append('assignedTo', filters.assignedTo);
     if (filters?.category) params.append('category', filters.category);
     if (filters?.completed !== undefined) params.append('completed', filters.completed.toString());
@@ -118,41 +118,42 @@ export const shoppingApi = {
   },
 
   // Get shopping stats
-  getShoppingStats: async (familyId?: string): Promise<{ success: boolean; stats: ShoppingListStats }> => {
-    const params = familyId ? `?familyId=${familyId}` : '';
+  getShoppingStats: async (circleId?: string): Promise<{ success: boolean; stats: ShoppingListStats }> => {
+    const params = circleId ? `?circleId=${circleId}` : '';
     const response = await api.get(`/shopping/stats${params}`);
     return response.data;
   },
 
   // Get items by assignee
-  getItemsByAssignee: async (familyId: string, assigneeId: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
-    const response = await api.get(`/shopping/families/${familyId}/assignees/${assigneeId}/items`);
+  getItemsByAssignee: async (circleId: string, assigneeId: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
+    const response = await api.get(`/shopping/families/${circleId}/assignees/${assigneeId}/items`);
     return response.data;
   },
 
   // Get items by category
-  getItemsByCategory: async (familyId: string, category: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
-    const response = await api.get(`/shopping/families/${familyId}/categories/${category}/items`);
+  getItemsByCategory: async (circleId: string, category: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
+    const response = await api.get(`/shopping/families/${circleId}/categories/${category}/items`);
     return response.data;
   },
 
   // Clear completed items
-  clearCompletedItems: async (familyId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/shopping/families/${familyId}/completed`);
+  clearCompletedItems: async (circleId: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/shopping/families/${circleId}/completed`);
     return response.data;
   },
 
   // Duplicate shopping list
-  duplicateShoppingList: async (sourceFamilyId: string, targetFamilyId: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
-    const response = await api.post(`/shopping/families/${sourceFamilyId}/duplicate`, {
-      targetFamilyId
+  duplicateShoppingList: async (sourceCircleId: string, targetCircleId: string): Promise<{ success: boolean; items: ShoppingItem[] }> => {
+    const response = await api.post(`/shopping/families/${sourceCircleId}/duplicate`, {
+      targetCircleId
     });
     return response.data;
   },
 
   // Export shopping list
-  exportShoppingList: async (familyId: string, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<{ success: boolean; downloadUrl: string }> => {
-    const response = await api.get(`/shopping/families/${familyId}/export?format=${format}`);
+  exportShoppingList: async (circleId: string, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<{ success: boolean; downloadUrl: string }> => {
+    const response = await api.get(`/shopping/families/${circleId}/export?format=${format}`);
     return response.data;
   }
 };
+

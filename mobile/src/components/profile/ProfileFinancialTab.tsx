@@ -24,7 +24,7 @@ export const ProfileFinancialTab: React.FC<ProfileFinancialTabProps> = ({
         walletBalance: 12500.00,
         currency: 'THB',
         transactions: [
-            { id: '1', type: 'credit', amount: 5000, description: 'Family contribution', date: '2024-01-03' },
+            { id: '1', type: 'credit', amount: 5000, description: 'Circle contribution', date: '2024-01-03' },
             { id: '2', type: 'debit', amount: 1200, description: 'Groceries', date: '2024-01-02' },
             { id: '3', type: 'credit', amount: 800, description: 'Allowance', date: '2024-01-01' },
         ],
@@ -156,7 +156,6 @@ export const ProfileFinancialTab: React.FC<ProfileFinancialTabProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F9FAFB',
     },
     privacyCard: {
         flexDirection: 'row',
@@ -338,3 +337,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileFinancialTab;
+

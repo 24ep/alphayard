@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 
 export class ComponentController {
   /**
@@ -9,36 +9,34 @@ export class ComponentController {
     try {
       const { category, isActive, search } = req.query;
 
-      let query = supabase
-        .from('component_definitions')
-        .select('*');
+      let sql = 'SELECT * FROM component_definitions WHERE 1=1';
+      const params: any[] = [];
+      let paramIndex = 1;
 
       // Apply filters
       if (category) {
-        query = query.eq('category', category);
+        sql += ` AND category = $${paramIndex++}`;
+        params.push(category);
       }
       if (isActive !== undefined) {
-        query = query.eq('is_active', isActive === 'true');
+        sql += ` AND is_active = $${paramIndex++}`;
+        params.push(isActive === 'true');
       }
       if (search) {
-        query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+        sql += ` AND (name ILIKE $${paramIndex} OR description ILIKE $${paramIndex})`;
+        params.push(`%${search}%`);
+        paramIndex++;
       }
 
       // Order by category and name
-      query = query.order('category', { ascending: true });
-      query = query.order('name', { ascending: true });
+      sql += ' ORDER BY category ASC, name ASC';
 
-      const { data, error } = await query;
+      const { rows } = await pool.query(sql, params);
 
-      if (error) {
-        console.error('Error fetching components:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ components: data });
-    } catch (error) {
+      res.json({ components: rows });
+    } catch (error: any) {
       console.error('Error fetching components:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -49,21 +47,19 @@ export class ComponentController {
     try {
       const { id } = req.params;
 
-      const { data, error } = await supabase
-        .from('component_definitions')
-        .select('*')
-        .eq('id', id)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM component_definitions WHERE id = $1',
+        [id]
+      );
 
-      if (error) {
-        console.error('Error fetching component:', error);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
       }
 
-      res.json({ component: data });
-    } catch (error) {
+      res.json({ component: rows[0] });
+    } catch (error: any) {
       console.error('Error fetching component:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -74,21 +70,19 @@ export class ComponentController {
     try {
       const { name } = req.params;
 
-      const { data, error } = await supabase
-        .from('component_definitions')
-        .select('*')
-        .eq('name', name)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM component_definitions WHERE name = $1',
+        [name]
+      );
 
-      if (error) {
-        console.error('Error fetching component:', error);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
       }
 
-      res.json({ component: data });
-    } catch (error) {
+      res.json({ component: rows[0] });
+    } catch (error: any) {
       console.error('Error fetching component:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -114,41 +108,29 @@ export class ComponentController {
       }
 
       // Check if component name already exists
-      const { data: existing } = await supabase
-        .from('component_definitions')
-        .select('id')
-        .eq('name', name)
-        .single();
+      const { rows: existing } = await pool.query(
+        'SELECT id FROM component_definitions WHERE name = $1',
+        [name]
+      );
 
-      if (existing) {
+      if (existing.length > 0) {
         return res.status(400).json({ error: 'Component with this name already exists' });
       }
 
-      const { data, error } = await supabase
-        .from('component_definitions')
-        .insert({
-          name,
-          category,
-          icon: icon || null,
-          description: description || null,
-          schema,
-          default_props: defaultProps || {},
-          is_system: isSystem || false,
-          is_active: true,
-          created_by: userId
-        })
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `INSERT INTO component_definitions (
+          name, category, icon, description, schema, default_props, is_system, is_active, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [
+          name, category, icon || null, description || null, schema, 
+          defaultProps || {}, isSystem || false, true, userId
+        ]
+      );
 
-      if (error) {
-        console.error('Error creating component:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.status(201).json({ component: data });
-    } catch (error) {
+      res.status(201).json({ component: rows[0] });
+    } catch (error: any) {
       console.error('Error creating component:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -166,55 +148,67 @@ export class ComponentController {
       }
 
       // Check if component exists and is not a system component
-      const { data: existing } = await supabase
-        .from('component_definitions')
-        .select('is_system')
-        .eq('id', id)
-        .single();
+      const { rows: existingRows } = await pool.query(
+        'SELECT is_system FROM component_definitions WHERE id = $1',
+        [id]
+      );
 
-      if (!existing) {
+      if (existingRows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
       }
 
-      if (existing.is_system) {
+      const existing = existingRows[0];
+      if (existing.is_system && !req.admin) { // Only admins can modify system components potentially, or block entirely
         return res.status(403).json({ error: 'Cannot modify system components' });
       }
 
-      // Build update object
-      const updateData: any = {
-        updated_at: new Date().toISOString()
-      };
+      // Build dynamic update
+      const updates: string[] = ['updated_at = NOW()'];
+      const params: any[] = [];
+      let paramIndex = 1;
 
-      if (name !== undefined) updateData.name = name;
-      if (category !== undefined) updateData.category = category;
-      if (icon !== undefined) updateData.icon = icon;
-      if (description !== undefined) updateData.description = description;
+      if (name !== undefined) {
+        updates.push(`name = $${paramIndex++}`);
+        params.push(name);
+      }
+      if (category !== undefined) {
+        updates.push(`category = $${paramIndex++}`);
+        params.push(category);
+      }
+      if (icon !== undefined) {
+        updates.push(`icon = $${paramIndex++}`);
+        params.push(icon);
+      }
+      if (description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        params.push(description);
+      }
       if (schema !== undefined) {
-        // Validate schema structure
         if (!schema.properties || typeof schema.properties !== 'object') {
           return res.status(400).json({ error: 'Schema must contain a properties object' });
         }
-        updateData.schema = schema;
+        updates.push(`schema = $${paramIndex++}`);
+        params.push(schema);
       }
-      if (defaultProps !== undefined) updateData.default_props = defaultProps;
-      if (isActive !== undefined) updateData.is_active = isActive;
-
-      const { data, error } = await supabase
-        .from('component_definitions')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating component:', error);
-        return res.status(400).json({ error: error.message });
+      if (defaultProps !== undefined) {
+        updates.push(`default_props = $${paramIndex++}`);
+        params.push(defaultProps);
+      }
+      if (isActive !== undefined) {
+        updates.push(`is_active = $${paramIndex++}`);
+        params.push(isActive);
       }
 
-      res.json({ component: data });
-    } catch (error) {
+      params.push(id);
+      const { rows } = await pool.query(
+        `UPDATE component_definitions SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+        params
+      );
+
+      res.json({ component: rows[0] });
+    } catch (error: any) {
       console.error('Error updating component:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -226,48 +220,39 @@ export class ComponentController {
       const { id } = req.params;
 
       // Check if component exists and is not a system component
-      const { data: existing } = await supabase
-        .from('component_definitions')
-        .select('is_system, name')
-        .eq('id', id)
-        .single();
+      const { rows: existingRows } = await pool.query(
+        'SELECT is_system, name FROM component_definitions WHERE id = $1',
+        [id]
+      );
 
-      if (!existing) {
+      if (existingRows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
       }
 
+      const existing = existingRows[0];
       if (existing.is_system) {
         return res.status(403).json({ error: 'Cannot delete system components' });
       }
 
       // Check if component is being used in any pages
-      const { data: usages } = await supabase
-        .from('page_components')
-        .select('id')
-        .eq('component_type', existing.name)
-        .limit(1);
+      const { rows: usages } = await pool.query(
+        'SELECT id FROM page_components WHERE component_type = $1 LIMIT 1',
+        [existing.name]
+      );
 
-      if (usages && usages.length > 0) {
+      if (usages.length > 0) {
         return res.status(400).json({ 
           error: 'Cannot delete component that is being used in pages',
           message: 'Remove this component from all pages before deleting'
         });
       }
 
-      const { error } = await supabase
-        .from('component_definitions')
-        .delete()
-        .eq('id', id);
-
-      if (error) {
-        console.error('Error deleting component:', error);
-        return res.status(400).json({ error: error.message });
-      }
+      await pool.query('DELETE FROM component_definitions WHERE id = $1', [id]);
 
       res.json({ message: 'Component deleted successfully' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting component:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -276,23 +261,16 @@ export class ComponentController {
    */
   async getCategories(req: any, res: Response) {
     try {
-      const { data, error } = await supabase
-        .from('component_definitions')
-        .select('category')
-        .eq('is_active', true);
+      const { rows } = await pool.query(
+        'SELECT DISTINCT category FROM component_definitions WHERE is_active = true ORDER BY category ASC'
+      );
 
-      if (error) {
-        console.error('Error fetching categories:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      // Get unique categories
-      const categories = [...new Set(data.map(item => item.category))].sort();
+      const categories = rows.map(item => item.category);
 
       res.json({ categories });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching categories:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 

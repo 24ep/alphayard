@@ -45,11 +45,11 @@ CREATE OR REPLACE FUNCTION fn_social_nearby_posts(
   p_lng NUMERIC,
   p_radius_m NUMERIC,
   p_limit INTEGER DEFAULT 50,
-  p_family_id UUID DEFAULT NULL
+  p_circle_id UUID DEFAULT NULL
 )
 RETURNS TABLE(
   id UUID,
-  family_id UUID,
+  circle_id UUID,
   author_id UUID,
   content TEXT,
   type VARCHAR(20),
@@ -74,7 +74,7 @@ BEGIN
   RETURN QUERY
   SELECT 
     sp.id,
-    sp.family_id,
+    sp.circle_id,
     sp.author_id,
     sp.content,
     sp.type,
@@ -101,7 +101,7 @@ BEGIN
     AND sp.is_hidden = FALSE
     AND sp.status = 'active'
     AND ST_DistanceSphere(ST_MakePoint(sp.longitude::numeric, sp.latitude::numeric), ST_MakePoint(p_lng, p_lat)) <= p_radius_m
-    AND (p_family_id IS NULL OR sp.family_id = p_family_id)
+    AND (p_circle_id IS NULL OR sp.circle_id = p_circle_id)
   ORDER BY distance_m ASC
   LIMIT COALESCE(p_limit, 50);
 END;

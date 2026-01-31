@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { configService } from '../../../services/configService'
+import { configService } from '../../../../services/configService'
 
 export default function ManagerSignupSettingsPage() {
     const [loading, setLoading] = useState(true)

@@ -1,7 +1,8 @@
 'use client'
 
-import { FamilySafetyIncidents } from '../families/FamilySafetyIncidents'
+import { CircleSafetyIncidents } from '../circles/CircleSafetyIncidents'
 
 export function Safety() {
-  return <FamilySafetyIncidents />
+  return <CircleSafetyIncidents />
 }
+

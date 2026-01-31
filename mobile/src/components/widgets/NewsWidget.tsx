@@ -26,7 +26,7 @@ interface NewsItem {
   source: string;
   url: string;
   isLocal: boolean;
-  isFamily: boolean;
+  isCircle: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   readCount: number;
   shareCount: number;
@@ -71,17 +71,17 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
         {
           id: '1',
           title: 'New Community Center Opening This Weekend',
-          summary: 'The long-awaited community center will open its doors this Saturday with hourse activities and workshops.',
+          summary: 'The long-awaited community center will open its doors this Saturday with Circle activities and workshops.',
           content: 'The new community center, located at 123 Main Street, will feature a library, fitness center, and meeting rooms for local organizations.',
           author: 'Sarah Johnson',
           publishedAt: Date.now() - 3600000,
           category: 'local',
-          tags: ['community', 'events', 'hourse'],
+          tags: ['community', 'events', 'Circle'],
           imageUrl: 'https://via.placeholder.com/300x200',
           source: 'Local News',
           url: 'https://example.com/news/1',
           isLocal: true,
-          isFamily: false,
+          isCircle: false,
           priority: 'high',
           readCount: 45,
           shareCount: 12,
@@ -99,25 +99,25 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
           source: 'Weather Alert',
           url: 'https://example.com/news/2',
           isLocal: true,
-          isFamily: false,
+          isCircle: false,
           priority: 'urgent',
           readCount: 128,
           shareCount: 34,
         },
         {
           id: '3',
-          title: 'hourse Picnic at Central Park This Sunday',
-          summary: 'Join your neighbors for a hourse-friendly picnic with games, food, and activities for all ages.',
+          title: 'Circle Picnic at Central Park This Sunday',
+          summary: 'Join your neighbors for a Circle-friendly picnic with games, food, and activities for all ages.',
           content: 'The annual neighborhood picnic will feature live music, children\'s games, and a potluck dinner.',
           author: 'Community Events',
           publishedAt: Date.now() - 10800000,
           category: 'events',
-          tags: ['hourse', 'picnic', 'community'],
+          tags: ['Circle', 'picnic', 'community'],
           imageUrl: 'https://via.placeholder.com/300x200',
           source: 'Community Events',
           url: 'https://example.com/news/3',
           isLocal: true,
-          isFamily: true,
+          isCircle: true,
           priority: 'medium',
           readCount: 67,
           shareCount: 23,
@@ -135,7 +135,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
           source: 'Neighborhood Watch',
           url: 'https://example.com/news/4',
           isLocal: true,
-          isFamily: false,
+          isCircle: false,
           priority: 'high',
           readCount: 89,
           shareCount: 18,
@@ -153,7 +153,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
           source: 'School District',
           url: 'https://example.com/news/5',
           isLocal: true,
-          isFamily: true,
+          isCircle: true,
           priority: 'medium',
           readCount: 156,
           shareCount: 45,
@@ -166,7 +166,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
         { id: 'events', name: 'Events', icon: 'party-popper', color: '#FF9800', count: 12 },
         { id: 'safety', name: 'Safety', icon: 'shield', color: '#F44336', count: 6 },
         { id: 'education', name: 'Education', icon: 'school', color: '#9C27B0', count: 9 },
-        { id: 'hourse', name: 'hourse', icon: 'account-group', color: '#E91E63', count: 11 },
+        { id: 'Circle', name: 'Circle', icon: 'account-group', color: '#E91E63', count: 11 },
       ];
 
       setNewsItems(mockNewsItems.slice(0, maxItems));
@@ -191,7 +191,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
       category: newsItem.category,
       priority: newsItem.priority,
       isLocal: newsItem.isLocal,
-      isFamily: newsItem.isFamily,
+      isCircle: newsItem.isCircle,
     });
     
     if (onPress) {
@@ -307,9 +307,9 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
             Local
           </Badge>
         )}
-        {item.isFamily && (
+        {item.isCircle && (
           <Badge colorScheme="purple" rounded="full" variant="solid">
-            hourse
+            Circle
           </Badge>
         )}
       </View>
@@ -324,8 +324,8 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
     return newsItems.filter(item => item.isLocal).length;
   };
 
-  const getFamilyNewsCount = () => {
-    return newsItems.filter(item => item.isFamily).length;
+  const getCircleNewsCount = () => {
+    return newsItems.filter(item => item.isCircle).length;
   };
 
   if (loading) {
@@ -404,7 +404,7 @@ const NewsWidget: React.FC<NewsWidgetProps> = ({
         <View style={styles.footer}>
           <View style={styles.statsContainer}>
             <Text style={styles.statsText}>
-              {getLocalNewsCount()} local • {getFamilyNewsCount()} hourse
+              {getLocalNewsCount()} local • {getCircleNewsCount()} Circle
             </Text>
             {getUrgentNewsCount() > 0 && (
               <Text style={styles.urgentText}>

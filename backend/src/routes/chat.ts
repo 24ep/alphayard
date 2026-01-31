@@ -1,16 +1,16 @@
 import express from 'express';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember } from '../middleware/auth';
 import { ChatController } from '../controllers/ChatController';
 
 const router = express.Router();
 
-// All routes require authentication and hourse membership
+// All routes require authentication and circle membership
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+router.use(requireCircleMember as any);
 
 // Chat Rooms Routes
-router.get('/families/:familyId/rooms', ChatController.getChatRooms as any);
-router.post('/families/:familyId/rooms', ChatController.createChatRoom as any);
+router.get('/families/:circleId/rooms', ChatController.getChatRooms as any);
+router.post('/families/:circleId/rooms', ChatController.createChatRoom as any);
 router.get('/rooms/:chatId', ChatController.getChatRoom as any);
 router.put('/rooms/:chatId', ChatController.updateChatRoom as any);
 router.delete('/rooms/:chatId', ChatController.deleteChatRoom as any);
@@ -30,3 +30,4 @@ router.post('/messages/:messageId/reactions', ChatController.addReaction as any)
 router.delete('/messages/:messageId/reactions', ChatController.removeReaction as any);
 
 export default router;
+

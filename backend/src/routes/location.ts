@@ -1,18 +1,33 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember, optionalCircleMember } from '../middleware/auth';
 import { pool } from '../config/database';
 import { validateRequest } from '../middleware/validation';
 
 const router = express.Router();
 
-// All routes require authentication and hourse membership
+// All routes require authentication
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+router.use(optionalCircleMember as any);
 
 // Get location statistics
 router.get('/stats', async (req: any, res: any) => {
   try {
+    const circleId = (req as any).circleId;
+
+    if (!circleId) {
+      return res.json({
+        success: true,
+        stats: {
+          totalLocationsTracked: 0,
+          membersSharing: 0,
+          lastUpdated: null,
+          geofencesActive: 0,
+          alertsTriggered: 0,
+        }
+      });
+    }
+
     // Return empty stats for now
     res.json({
       success: true,
@@ -34,17 +49,24 @@ router.get('/stats', async (req: any, res: any) => {
 });
 router.get('/', async (req: any, res: any) => {
   try {
-    const familyId = (req as any).familyId as string;
+    const circleId = (req as any).circleId as string;
 
-    // Get latest location for each family member
+    if (!circleId) {
+       return res.json({
+        locations: [],
+        lastUpdated: new Date().toISOString()
+      });
+    }
+
+    // Get latest location for each circle member
     const { rows: locations } = await pool.query(
       `SELECT lh.id, lh.user_id, lh.latitude, lh.longitude, lh.accuracy, lh.address, lh.created_at,
               u.id as u_id, u.first_name, u.last_name, u.email, u.avatar_url
        FROM location_history lh
        LEFT JOIN users u ON lh.user_id = u.id
-       WHERE lh.family_id = $1
+       WHERE lh.circle_id = $1
        ORDER BY lh.created_at DESC`,
-      [familyId]
+      [circleId]
     );
 
     // Group by user_id and get latest for each
@@ -88,18 +110,18 @@ router.post('/', [
   body('longitude').isFloat({ min: -180, max: 180 }),
   body('accuracy').optional().isFloat({ min: 0 }),
   body('address').optional().isString().trim(),
-], validateRequest, async (req: any, res: any) => {
+], requireCircleMember as any, validateRequest, async (req: any, res: any) => { // Strictly require circle for updating location
   try {
-    const familyId = (req as any).familyId as string;
+    const circleId = (req as any).circleId as string;
     const userId = req.user.id;
     const { latitude, longitude, accuracy, address } = req.body;
 
     // Save location to database
     const { rows } = await pool.query(
-      `INSERT INTO location_history (user_id, family_id, latitude, longitude, accuracy, address, is_shared, created_at)
+      `INSERT INTO location_history (user_id, circle_id, latitude, longitude, accuracy, address, is_shared, created_at)
        VALUES ($1, $2, $3, $4, $5, $6, true, NOW())
        RETURNING *`,
-      [userId, familyId, latitude, longitude, accuracy || null, address || null]
+      [userId, circleId, latitude, longitude, accuracy || null, address || null]
     );
 
     const location = rows[0];
@@ -125,3 +147,4 @@ router.post('/', [
 });
 
 export default router;
+

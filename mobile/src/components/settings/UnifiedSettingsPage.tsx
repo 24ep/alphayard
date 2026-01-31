@@ -18,17 +18,21 @@ import { colors } from '../../theme/colors';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { NotificationSettingsModal } from '../profile/NotificationSettingsModal';
 import { PrivacySettingsModal } from '../profile/PrivacySettingsModal';
-import { FamilySettingsModal } from '../profile/FamilySettingsModal';
+import { CircleSettingsModal } from '../profile/CircleSettingsModal';
 import LanguageSettings from './LanguageSettings';
 import TranslationKeysViewer from './TranslationKeysViewer';
 import { usePin } from '../../contexts/PinContext';
+import { useBranding } from '../../contexts/BrandingContext';
+import { Linking } from 'react-native';
+
+const IconMC = Icon as any;
 
 // Types for all settings
 interface NotificationPreferences {
   push: boolean;
   email: boolean;
   sms: boolean;
-  hourse?: {
+  circle?: {
     locationUpdates: boolean;
     emergencyAlerts: boolean;
     eventReminders: boolean;
@@ -55,7 +59,7 @@ interface NotificationPreferences {
 
 interface PrivacyPreferences {
   locationSharing: boolean;
-  profileVisibility: 'public' | 'hourse' | 'private';
+  profileVisibility: 'public' | 'circle' | 'private';
   dataSharing: boolean;
   analytics?: boolean;
   crashReports?: boolean;
@@ -68,15 +72,15 @@ interface PrivacyPreferences {
   lastSeenStatus?: boolean;
 }
 
-interface FamilySettings {
+interface CircleSettings {
   locationSharing: boolean;
-  familyChat: boolean;
+  circleChat: boolean;
   emergencyAlerts: boolean;
-  familyCalendar: boolean;
-  familyExpenses: boolean;
-  familyShopping: boolean;
-  familyHealth: boolean;
-  familyEntertainment: boolean;
+  circleCalendar: boolean;
+  circleExpenses: boolean;
+  circleShopping: boolean;
+  circleHealth: boolean;
+  circleEntertainment: boolean;
 }
 
 interface AppPreferences {
@@ -108,13 +112,14 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const { hasPin, resetPin } = usePin();
+  const branding = useBranding();
 
   // State for all settings
   const [notificationSettings, setNotificationSettings] = useState<NotificationPreferences>({
     push: true,
     email: true,
     sms: false,
-    hourse: {
+    circle: {
       locationUpdates: true,
       emergencyAlerts: true,
       eventReminders: true,
@@ -141,7 +146,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
 
   const [privacySettings, setPrivacySettings] = useState<PrivacyPreferences>({
     locationSharing: true,
-    profileVisibility: 'hourse',
+    profileVisibility: 'circle',
     dataSharing: true,
     analytics: true,
     crashReports: true,
@@ -154,15 +159,15 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
     lastSeenStatus: true,
   });
 
-  const [familySettings, setFamilySettings] = useState<FamilySettings>({
+  const [, setCircleSettings] = useState<CircleSettings>({
     locationSharing: true,
-    familyChat: true,
+    circleChat: true,
     emergencyAlerts: true,
-    familyCalendar: true,
-    familyExpenses: false,
-    familyShopping: true,
-    familyHealth: false,
-    familyEntertainment: true,
+    circleCalendar: true,
+    circleExpenses: false,
+    circleShopping: true,
+    circleHealth: false,
+    circleEntertainment: true,
   });
 
   const [appPreferences, setAppPreferences] = useState<AppPreferences>({
@@ -175,7 +180,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
     dataUsage: 'medium',
   });
 
-  const [subscription, setSubscription] = useState<Subscription>({
+  const [subscription] = useState<Subscription>({
     plan: 'free',
     status: 'active',
     expiresAt: '2024-12-31',
@@ -184,7 +189,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
   // Modal states
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-  const [showFamilyModal, setShowFamilyModal] = useState(false);
+  const [showCircleModal, setShowCircleModal] = useState(false);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showTranslationKeysModal, setShowTranslationKeysModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -197,8 +202,11 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // In a real app, load from storage/API
-      // For now, using default values
+      setPrivacySettings(prev => ({
+          ...prev,
+          analytics: branding.analytics?.enableDebugLogs ?? prev.analytics,
+          // We can't really force change user's local preference, but we can align them initially
+      }));
     } catch (error) {
       console.error('Error loading settings:', error);
     } finally {
@@ -224,8 +232,8 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
     switch (subscription.plan) {
       case 'premium':
         return { text: t('subscription.premium'), color: '#FFD700' };
-      case 'hourse':
-        return { text: t('subscription.hourse'), color: '#FF6B6B' };
+      case 'circle':
+        return { text: t('subscription.circle'), color: '#FF6B6B' };
       case 'basic':
         return { text: t('subscription.basic'), color: '#4ECDC4' };
       default:
@@ -259,7 +267,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
 
   const renderSectionHeader = (title: string, icon: string) => (
     <View style={styles.sectionHeader}>
-      <Icon name={icon} size={20} color={colors.primary[500]} />
+      <IconMC name={icon} size={20} color={colors.primary[500]} />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
@@ -285,7 +293,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
         styles.iconContainer,
         isDestructive && styles.destructiveIcon
       ]}>
-        <Icon
+        <IconMC
           name={icon}
           size={20}
           color={isDestructive ? colors.error : colors.gray[500]}
@@ -302,7 +310,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
         {subtitle && (
           <Text style={[
             styles.settingSubtitle,
-            textColor && { color: textColor }
+            textColor ? { color: textColor } : undefined
           ]}>
             {subtitle}
           </Text>
@@ -318,7 +326,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
         />
       ) : (
         <View style={styles.chevronContainer}>
-          <Icon name="chevron-right" size={16} color={colors.gray[500]} />
+          <IconMC name="chevron-right" size={16} color={colors.gray[500]} />
         </View>
       )}
     </TouchableOpacity>
@@ -364,7 +372,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color={colors.gray[800]} />
+          <IconMC name="arrow-left" size={24} color={colors.gray[800]} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('settings.title')}</Text>
         <View style={styles.headerSpacer} />
@@ -384,9 +392,9 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
             },
             {
               icon: 'account-group',
-              title: 'hourse settings',
-              subtitle: 'Open hourse settings',
-              onPress: () => setShowFamilyModal(true),
+              title: 'Circle settings',
+              subtitle: 'Open circle settings',
+              onPress: () => setShowCircleModal(true),
             },
             {
               icon: 'map-marker',
@@ -415,9 +423,9 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
             },
             {
               icon: 'account-group',
-              title: t('profile.familySettings'),
-              subtitle: t('profile.familySettingsDesc'),
-              onPress: () => setShowFamilyModal(true),
+              title: t('profile.circleSettings'),
+              subtitle: t('profile.circleSettingsDesc'),
+              onPress: () => setShowCircleModal(true),
             },
             {
               icon: 'crown-outline',
@@ -470,7 +478,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               subtitle: t('settings.hapticFeedbackDesc'),
               hasSwitch: true,
               switchValue: appPreferences.hapticFeedback,
-              onSwitchChange: (value) => setAppPreferences(prev => ({ ...prev, hapticFeedback: value })),
+              onSwitchChange: (value: boolean) => setAppPreferences(prev => ({ ...prev, hapticFeedback: value })),
             },
             {
               icon: 'volume-high',
@@ -478,7 +486,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               subtitle: t('settings.soundEffectsDesc'),
               hasSwitch: true,
               switchValue: appPreferences.soundEffects,
-              onSwitchChange: (value) => setAppPreferences(prev => ({ ...prev, soundEffects: value })),
+              onSwitchChange: (value: boolean) => setAppPreferences(prev => ({ ...prev, soundEffects: value })),
             },
             {
               icon: 'cellphone-cog',
@@ -500,7 +508,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               subtitle: t('settings.autoBackupDesc'),
               hasSwitch: true,
               switchValue: appPreferences.autoBackup,
-              onSwitchChange: (value) => setAppPreferences(prev => ({ ...prev, autoBackup: value })),
+              onSwitchChange: (value: boolean) => setAppPreferences(prev => ({ ...prev, autoBackup: value })),
             },
             {
               icon: 'sync',
@@ -568,7 +576,14 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               icon: 'file-document-outline',
               title: 'Terms & policy',
               subtitle: 'View terms of service and privacy policy',
-              onPress: () => Alert.alert(t('info'), 'Terms & policy coming soon'),
+              onPress: () => {
+                const url = branding.legal?.termsOfServiceUrl || branding.legal?.privacyPolicyUrl;
+                if (url) {
+                    Linking.openURL(url);
+                } else {
+                    Alert.alert(t('info'), 'Terms & policy not configured by administrator.');
+                }
+              },
             },
           ]
         )}
@@ -662,12 +677,12 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
         }}
       />
 
-      <FamilySettingsModal
-        visible={showFamilyModal}
-        onClose={() => setShowFamilyModal(false)}
+      <CircleSettingsModal
+        visible={showCircleModal}
+        onClose={() => setShowCircleModal(false)}
         onSave={async (settings) => {
-          setFamilySettings(settings);
-          await saveSettings('hourse', settings);
+          setCircleSettings(settings);
+          await saveSettings('circle', settings);
         }}
       />
 
@@ -683,7 +698,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               onPress={() => setShowLanguageModal(false)}
               style={styles.modalCloseButton}
             >
-              <Icon name="close" size={24} color={colors.gray[800]} />
+              <IconMC name="close" size={24} color={colors.gray[800]} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>{t('profile.language')}</Text>
             <View style={styles.modalSpacer} />
@@ -712,7 +727,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               style={styles.modalCloseButton}
               onPress={() => setShowTranslationKeysModal(false)}
             >
-              <Icon name="close" size={24} color={colors.gray[800]} />
+              <IconMC name="close" size={24} color={colors.gray[800]} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>{t('settings.translationKeys')}</Text>
             <View style={styles.modalSpacer} />
@@ -734,13 +749,13 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.white[500],
+    backgroundColor: '#FFFFFF', // Fixed colors.white[500] -> #FFFFFF
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.white[500],
+    backgroundColor: '#FFFFFF', // Fixed colors.white[500]
   },
   loadingText: {
     marginTop: 16,
@@ -815,7 +830,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.white[500],
+    backgroundColor: '#FFFFFF', // Fixed colors.white[500]
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -857,7 +872,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: colors.white[500],
+    backgroundColor: '#FFFFFF', // Fixed colors.white[500]
   },
   modalHeader: {
     flexDirection: 'row',

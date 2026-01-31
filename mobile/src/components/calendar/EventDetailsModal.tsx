@@ -21,11 +21,11 @@ interface Event {
   endDate: string;
   allDay: boolean;
   location?: string;
-  type: 'hourse' | 'personal' | 'work' | 'school' | 'medical' | 'other';
+  type: 'Circle' | 'personal' | 'work' | 'school' | 'medical' | 'other';
   color: string;
   attendees: string[];
   createdBy: string;
-  familyId?: string;
+  circleId?: string;
   recurring?: {
     type: 'daily' | 'weekly' | 'monthly' | 'yearly';
     interval: number;
@@ -80,7 +80,7 @@ export const EventDetailsModal: React.FC<EventDetailsModalProps> = ({
 
   const getEventTypeColor = (type: string) => {
     const colors = {
-      hourse: '#EF4444',
+      Circle: '#EF4444',
       personal: '#3B82F6',
       work: '#10B981',
       school: '#F59E0B',

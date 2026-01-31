@@ -1,8 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { 
+  Wallet, 
+  TrendingUp, 
+  Nfc, 
+  PieChart 
+} from 'lucide-react-native';
 import { typography } from '../../styles/typography';
+
+const WalletIcon = Wallet as any;
+const TrendingUpIcon = TrendingUp as any;
+const NfcIcon = Nfc as any;
+const PieChartIcon = PieChart as any;
 import { ProgressChart } from 'react-native-chart-kit';
 
 interface FinanceSummaryProps {
@@ -30,7 +40,7 @@ export const FinanceSummary: React.FC<FinanceSummaryProps> = ({ onGoToFinance })
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <IconMC name="wallet" size={24} color="#4F46E5" />
+                    <WalletIcon size={24} color="#4F46E5" />
                     <Text style={styles.title}>My Wallet</Text>
                 </View>
             </View>
@@ -58,7 +68,7 @@ export const FinanceSummary: React.FC<FinanceSummaryProps> = ({ onGoToFinance })
                                 <Text style={styles.accountName}>Main Wallet</Text>
                             </View>
                             <View style={styles.trendBadge}>
-                                <IconMC name="trending-up" size={16} color="#34D399" />
+                                <TrendingUpIcon size={16} color="#34D399" />
                                 <Text style={styles.trendText}>+12%</Text>
                             </View>
                         </View>
@@ -70,7 +80,7 @@ export const FinanceSummary: React.FC<FinanceSummaryProps> = ({ onGoToFinance })
 
                         <View style={styles.cardFooterRow}>
                             <Text style={styles.centsText}>.00</Text>
-                            <IconMC name="contactless-payment" size={24} color="rgba(255,255,255,0.4)" />
+                            <NfcIcon size={24} color="rgba(255,255,255,0.4)" />
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
@@ -88,7 +98,7 @@ export const FinanceSummary: React.FC<FinanceSummaryProps> = ({ onGoToFinance })
                                 <Text style={styles.labelMetadata}>Monthly Budget</Text>
                                 <Text style={styles.accountName}>October</Text>
                             </View>
-                            <IconMC name="chart-pie" size={24} color="#10B981" />
+                            <PieChartIcon size={24} color="#10B981" />
                         </View>
 
                         <View style={[styles.balanceContainer, { flexDirection: 'row', alignItems: 'center', gap: 20 }]}>
@@ -127,7 +137,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontFamily: typography.heading,
+        fontCIRCLE: typography.heading,
         color: '#1F2937',
     },
     button: {
@@ -206,14 +216,14 @@ const styles = StyleSheet.create({
         fontSize: 42,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        fontFamily: typography.heading,
+        fontCIRCLE: typography.heading,
         letterSpacing: -1,
     },
     balanceAmountSmall: {
         fontSize: 32,
         fontWeight: 'bold',
         color: '#FFFFFF',
-        fontFamily: typography.heading,
+        fontCIRCLE: typography.heading,
     },
     cardFooterRow: {
         flexDirection: 'row',
@@ -227,3 +237,4 @@ const styles = StyleSheet.create({
         transform: [{ translateY: -6 }]
     },
 });
+

@@ -17,7 +17,7 @@ interface GroupManagementProps {
   groupId?: string;
   groupName?: string;
   members: GroupMember[];
-  allFamilyMembers: any[];
+  allCircleMembers: any[];
   onCreateGroup: (groupName: string, selectedMembers: string[]) => void;
   onInviteMembers: (groupId: string, memberIds: string[]) => void;
   onRemoveMember: (groupId: string, memberId: string) => void;
@@ -30,7 +30,7 @@ export const GroupManagement: React.FC<GroupManagementProps> = ({
   groupId,
   groupName,
   members,
-  allFamilyMembers,
+  allCircleMembers,
   onCreateGroup,
   onInviteMembers,
   onRemoveMember,
@@ -110,7 +110,7 @@ export const GroupManagement: React.FC<GroupManagementProps> = ({
     );
   };
 
-  const filteredFamilyMembers = allFamilyMembers.filter(member =>
+  const filteredCircleMembers = allCircleMembers.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     !members.some(groupMember => groupMember.id === member.id)
   );
@@ -186,7 +186,7 @@ export const GroupManagement: React.FC<GroupManagementProps> = ({
                   <IconIon name="search" size={20} color="#6B7280" />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search hourse members..."
+                    placeholder="Search Circle members..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                   />
@@ -199,9 +199,9 @@ export const GroupManagement: React.FC<GroupManagementProps> = ({
                   </Text>
                 )}
 
-                {/* hourse Members List */}
+                {/* Circle Members List */}
                 <View style={styles.membersList}>
-                  {filteredFamilyMembers.map((member) => (
+                  {filteredCircleMembers.map((member) => (
                     <TouchableOpacity
                       key={member.id}
                       style={[
@@ -543,3 +543,4 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+

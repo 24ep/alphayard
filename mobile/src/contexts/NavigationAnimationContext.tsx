@@ -8,7 +8,7 @@ interface NavigationAnimationContextType {
   cardMarginTopAnim: Animated.Value;
   
   // Header animations
-  familyNameScaleAnim: Animated.Value;
+  circleNameScaleAnim: Animated.Value;
   welcomeOpacityAnim: Animated.Value;
   chatOpacityAnim: Animated.Value;
   
@@ -37,7 +37,7 @@ export const NavigationAnimationProvider: React.FC<NavigationAnimationProviderPr
   const cardOpacityAnim = useRef(new Animated.Value(1)).current;
   const cardMarginTopAnim = useRef(new Animated.Value(16)).current;
   
-  const familyNameScaleAnim = useRef(new Animated.Value(1)).current;
+  const circleNameScaleAnim = useRef(new Animated.Value(1)).current;
   const welcomeOpacityAnim = useRef(new Animated.Value(1)).current;
   const chatOpacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -49,8 +49,8 @@ export const NavigationAnimationProvider: React.FC<NavigationAnimationProviderPr
         duration: 600,
         useNativeDriver: false,
       }),
-      // hourse name scale down
-      Animated.timing(familyNameScaleAnim, {
+      // Circle name scale down
+      Animated.timing(circleNameScaleAnim, {
         toValue: 0.8,
         duration: 600,
         useNativeDriver: true,
@@ -78,8 +78,8 @@ export const NavigationAnimationProvider: React.FC<NavigationAnimationProviderPr
         duration: 600,
         useNativeDriver: false,
       }),
-      // hourse name scale back to normal
-      Animated.timing(familyNameScaleAnim, {
+      // Circle name scale back to normal
+      Animated.timing(circleNameScaleAnim, {
         toValue: 1,
         duration: 600,
         useNativeDriver: true,
@@ -103,7 +103,7 @@ export const NavigationAnimationProvider: React.FC<NavigationAnimationProviderPr
     cardScaleAnim,
     cardOpacityAnim,
     cardMarginTopAnim,
-    familyNameScaleAnim,
+    circleNameScaleAnim,
     welcomeOpacityAnim,
     chatOpacityAnim,
     animateToGallery,
@@ -116,3 +116,4 @@ export const NavigationAnimationProvider: React.FC<NavigationAnimationProviderPr
     </NavigationAnimationContext.Provider>
   );
 };
+

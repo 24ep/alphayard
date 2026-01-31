@@ -52,20 +52,20 @@ export const ApplicationsDrawer: React.FC<ApplicationsDrawerProps> = ({ visible,
   }, []);
 
   const apps: App[] = [
-    { id: 'gallery', name: 'Gallery', description: 'hourse photo sharing', icon: 'image', color: '#FF6B6B', route: 'Gallery', category: 'communication', gradient: ['#FF6B6B', '#FF8E8E'] },
+    { id: 'gallery', name: 'Gallery', description: 'Circle photo sharing', icon: 'image', color: '#FF6B6B', route: 'Gallery', category: 'communication', gradient: ['#FF6B6B', '#FF8E8E'] },
     { id: 'secondhand', name: 'Second Hand Shop', description: 'Buy & sell used items', icon: 'wallet', color: '#F59E0B', route: 'SecondHandShop', category: 'utilities', gradient: ['#F59E0B', '#FBBF24'] },
     { id: 'communication', name: 'Communication', description: 'Chat, calls & voice', icon: 'chatbubbles', color: '#4ECDC4', route: 'Communication', category: 'communication', gradient: ['#4ECDC4', '#6EDDD6'] },
-    { id: 'social', name: 'Social', description: 'hourse social network', icon: 'people', color: '#FFA07A', route: 'Social', category: 'communication', gradient: ['#FFA07A', '#FFB08C'] },
+    { id: 'social', name: 'Social', description: 'Circle social network', icon: 'people', color: '#FFA07A', route: 'Social', category: 'communication', gradient: ['#FFA07A', '#FFB08C'] },
     { id: 'storage', name: 'Storage', description: 'File management', icon: 'folder', color: '#DDA0DD', route: 'Storage', category: 'productivity', gradient: ['#DDA0DD', '#E5B3E5'] },
     { id: 'notes', name: 'Note & To Do', description: 'Notes and tasks', icon: 'document-text', color: '#98D8C8', route: 'Notes', category: 'productivity', gradient: ['#98D8C8', '#A8E0D0'] },
     { id: 'calendar', name: 'Calendar', description: 'Event planning', icon: 'calendar', color: '#F7DC6F', route: 'Calendar', category: 'productivity', gradient: ['#F7DC6F', '#F8E07F'] },
-    { id: 'location', name: 'Location', description: 'hourse tracking', icon: 'location', color: '#3498DB', route: 'Location', category: 'safety', gradient: ['#3498DB', '#44A8EB'] },
+    { id: 'location', name: 'Location', description: 'Circle tracking', icon: 'location', color: '#3498DB', route: 'Location', category: 'safety', gradient: ['#3498DB', '#44A8EB'] },
     { id: 'health', name: 'Health', description: 'Health records', icon: 'medical', color: '#2ECC71', route: 'Health', category: 'safety', gradient: ['#2ECC71', '#3EDC81'] },
-    { id: 'budget', name: 'Budget', description: 'hourse budget', icon: 'wallet', color: '#27AE60', route: 'Budget', category: 'finance', gradient: ['#27AE60', '#37BE70'] },
+    { id: 'budget', name: 'Budget', description: 'Circle budget', icon: 'wallet', color: '#27AE60', route: 'Budget', category: 'finance', gradient: ['#27AE60', '#37BE70'] },
     { id: 'expenses', name: 'Expenses', description: 'Track spending', icon: 'card', color: '#8E44AD', route: 'Expenses', category: 'finance', gradient: ['#8E44AD', '#9E54BD'] },
     { id: 'savings', name: 'Savings', description: 'Save money', icon: 'trending-up', color: '#16A085', route: 'Savings', category: 'finance', gradient: ['#16A085', '#26B095'] },
     { id: 'investments', name: 'Investments', description: 'Investment tracking', icon: 'analytics', color: '#D68910', route: 'Investments', category: 'finance', gradient: ['#D68910', '#E69920'] },
-    { id: 'hourse', name: 'hourse', description: 'hourse settings', icon: 'people-circle', color: '#9B59B6', route: 'hourse', category: 'settings', gradient: ['#9B59B6', '#AB69C6'] },
+    { id: 'Circle', name: 'Circle', description: 'Circle settings', icon: 'people-circle', color: '#9B59B6', route: 'Circle', category: 'settings', gradient: ['#9B59B6', '#AB69C6'] },
     { id: 'profile', name: 'Profile', description: 'Your account profile', icon: 'person-circle', color: '#2563EB', route: 'Profile', category: 'settings', gradient: ['#60A5FA', '#2563EB'] },
   ];
 
@@ -95,8 +95,8 @@ export const ApplicationsDrawer: React.FC<ApplicationsDrawerProps> = ({ visible,
 
   const handleAppPress = (app: App) => {
     onClose();
-    if (app.route === 'hourse') {
-      navigation.navigate('FamilySettings');
+    if (app.route === 'Circle') {
+      navigation.navigate('CircleSettings');
       return;
     }
     navigation.navigate(app.route as never);
@@ -144,7 +144,7 @@ export const ApplicationsDrawer: React.FC<ApplicationsDrawerProps> = ({ visible,
       { title: 'General', apps: appsList.filter(app => ['communication', 'social', 'location', 'health'].includes(app.id)) },
       { title: 'Utilities', apps: appsList.filter(app => ['secondhand'].includes(app.id)) },
       { title: 'Finance', apps: appsList.filter(app => ['budget', 'expenses', 'savings', 'investments'].includes(app.id)) },
-      { title: 'Settings', apps: appsList.filter(app => ['hourse', 'profile'].includes(app.id)) },
+      { title: 'Settings', apps: appsList.filter(app => ['Circle', 'profile'].includes(app.id)) },
     ];
 
     return sections.map((section, sectionIndex) => (
@@ -228,5 +228,6 @@ export const ApplicationsDrawer: React.FC<ApplicationsDrawerProps> = ({ visible,
     </Modal>
   );
 };
+
 
 

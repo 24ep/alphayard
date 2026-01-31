@@ -3,7 +3,7 @@ export const APP_STRINGS = {
   // App Info
   APP_NAME: 'Bondarys',
   APP_TAGLINE: 'Connecting Families, Ensuring Safety',
-  APP_DESCRIPTION: 'The ultimate hourse safety and communication platform',
+  APP_DESCRIPTION: 'The ultimate Circle safety and communication platform',
   
   // Navigation
   NAVIGATION: {
@@ -12,7 +12,7 @@ export const APP_STRINGS = {
     APPLICATIONS: 'Apps',
     PROFILE: 'Profile',
     SETTINGS: 'Settings',
-    hourse: 'hourse',
+    Circle: 'Circle',
     SAFETY: 'Safety',
     CHAT: 'Chat',
   },
@@ -93,22 +93,22 @@ export const APP_STRINGS = {
     ACCEPT_TERMS: 'By creating an account, you agree to our',
   },
 
-  // hourse
-  hourse: {
-    hourse: 'hourse',
+  // Circle
+  Circle: {
+    Circle: 'Circle',
     FAMILIES: 'Families',
-    FAMILY_NAME: 'hourse Name',
-    FAMILY_DESCRIPTION: 'hourse Description',
-    FAMILY_MEMBERS: 'hourse Members',
-    FAMILY_SETTINGS: 'hourse Settings',
-    FAMILY_INVITATIONS: 'hourse Invitations',
-    CREATE_FAMILY: 'Create hourse',
-    JOIN_FAMILY: 'Join hourse',
-    LEAVE_FAMILY: 'Leave hourse',
+    CIRCLE_NAME: 'Circle Name',
+    CIRCLE_DESCRIPTION: 'Circle Description',
+    CIRCLE_MEMBERS: 'Circle Members',
+    CIRCLE_SETTINGS: 'Circle Settings',
+    CIRCLE_INVITATIONS: 'Circle Invitations',
+    CREATE_CIRCLE: 'Create Circle',
+    JOIN_CIRCLE: 'Join Circle',
+    LEAVE_CIRCLE: 'Leave Circle',
     INVITE_MEMBER: 'Invite Member',
     REMOVE_MEMBER: 'Remove Member',
     UPDATE_ROLE: 'Update Role',
-    FAMILY_ROLE: 'hourse Role',
+    CIRCLE_ROLE: 'Circle Role',
     ADMIN: 'Admin',
     MODERATOR: 'Moderator',
     MEMBER: 'Member',
@@ -117,11 +117,11 @@ export const APP_STRINGS = {
     INVITATION_ACCEPTED: 'Invitation accepted',
     INVITATION_DECLINED: 'Invitation declined',
     INVITATION_EXPIRED: 'Invitation expired',
-    ALREADY_MEMBER: 'You are already a member of this hourse',
-    NOT_FAMILY_MEMBER: 'You are not a member of this hourse',
-    FAMILY_CREATED: 'hourse created successfully',
-    FAMILY_JOINED: 'Successfully joined hourse',
-    FAMILY_LEFT: 'Successfully left hourse',
+    ALREADY_MEMBER: 'You are already a member of this Circle',
+    NOT_CIRCLE_MEMBER: 'You are not a member of this Circle',
+    CIRCLE_CREATED: 'Circle created successfully',
+    CIRCLE_JOINED: 'Successfully joined Circle',
+    CIRCLE_LEFT: 'Successfully left Circle',
     MEMBER_ADDED: 'Member added successfully',
     MEMBER_REMOVED: 'Member removed successfully',
     ROLE_UPDATED: 'Role updated successfully',
@@ -278,7 +278,7 @@ export const APP_STRINGS = {
     EMAIL_NOTIFICATIONS: 'Email Notifications',
     SMS_NOTIFICATIONS: 'SMS Notifications',
     IN_APP_NOTIFICATIONS: 'In-App Notifications',
-    FAMILY_NOTIFICATIONS: 'hourse Notifications',
+    CIRCLE_NOTIFICATIONS: 'Circle Notifications',
     MESSAGE_NOTIFICATIONS: 'Message Notifications',
     SAFETY_NOTIFICATIONS: 'Safety Notifications',
     EMERGENCY_NOTIFICATIONS: 'Emergency Notifications',
@@ -305,7 +305,7 @@ export const APP_STRINGS = {
     PUBLIC: 'Public',
     PRIVATE: 'Private',
     FRIENDS_ONLY: 'Friends Only',
-    FAMILY_ONLY: 'hourse Only',
+    CIRCLE_ONLY: 'Circle Only',
     LOCATION_SHARING: 'Location Sharing',
     ACTIVITY_SHARING: 'Activity Sharing',
     DATA_SHARING: 'Data Sharing',
@@ -470,7 +470,7 @@ export const APP_STRINGS = {
   CONFIRMATIONS: {
     DELETE_CONFIRMATION: 'Are you sure you want to delete this?',
     LOGOUT_CONFIRMATION: 'Are you sure you want to logout?',
-    LEAVE_FAMILY_CONFIRMATION: 'Are you sure you want to leave this hourse?',
+    LEAVE_CIRCLE_CONFIRMATION: 'Are you sure you want to leave this Circle?',
     REMOVE_MEMBER_CONFIRMATION: 'Are you sure you want to remove this member?',
     DELETE_ACCOUNT_CONFIRMATION: 'Are you sure you want to delete your account? This action cannot be undone.',
     CLEAR_CACHE_CONFIRMATION: 'Are you sure you want to clear the cache?',
@@ -512,3 +512,4 @@ export const APP_STRINGS = {
     NO_SHARED: 'No shared items yet',
   },
 }; 
+

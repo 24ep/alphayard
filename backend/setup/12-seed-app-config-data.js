@@ -202,19 +202,19 @@ async function main() {
         asset_key: 'logo_white',
         asset_name: 'White Logo',
         asset_type: 'logo',
-        asset_url: '/assets/logo-white.png',
+        asset_url: '/assets/logo.png',
         platform: 'all',
         category: 'branding',
-        metadata: { description: 'White version of app logo' }
+        metadata: { description: 'App logo' }
       },
       {
         asset_key: 'logo_color',
         asset_name: 'Color Logo',
         asset_type: 'logo',
-        asset_url: '/assets/logo-color.png',
+        asset_url: '/assets/logo.png',
         platform: 'all',
         category: 'branding',
-        metadata: { description: 'Color version of app logo' }
+        metadata: { description: 'App logo' }
       },
       {
         asset_key: 'login_background',

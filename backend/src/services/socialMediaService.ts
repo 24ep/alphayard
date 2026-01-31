@@ -2,14 +2,14 @@ import { query } from '../config/database';
 
 export interface SocialPost {
   id: string;
-  family_id: string;
+  circle_id: string;
   author_id: string;
   content: string;
   type: 'text' | 'image' | 'video' | 'event';
   media_urls?: string[];
   tags?: string[];
   location?: string;
-  visibility: 'public' | 'family' | 'friends';
+  visibility: 'public' | 'circle' | 'friends';
   status: 'active' | 'hidden' | 'deleted' | 'under_review';
   likes_count: number;
   shares_count: number;
@@ -28,7 +28,7 @@ export interface SocialPost {
     last_name: string;
     avatar_url?: string;
   };
-  family?: {
+  circle?: {
     id: string;
     name: string;
   };
@@ -87,7 +87,7 @@ export interface SocialActivity {
   };
 }
 
-export interface Family {
+export interface circle {
   id: string;
   name: string;
   description?: string;
@@ -101,20 +101,20 @@ export class SocialMediaService {
   // FAMILIES
   // =============================================
 
-  async getFamilies(): Promise<Family[]> {
+  async getFamilies(): Promise<circle[]> {
     try {
       const { rows } = await query(`
         SELECT f.id, f.name, f.description, 
-               (SELECT count(*)::int FROM family_members WHERE family_id = f.id) as member_count
-        FROM families f
+               (SELECT count(*)::int FROM circle_members WHERE circle_id = f.id) as member_count
+        FROM circles f
         ORDER BY f.name
       `);
 
-      return rows.map(family => ({
-        id: family.id,
-        name: family.name,
-        description: family.description,
-        member_count: family.member_count || 0
+      return rows.map(circle => ({
+        id: circle.id,
+        name: circle.name,
+        description: circle.description,
+        member_count: circle.member_count || 0
       }));
     } catch (error) {
       console.error('Error fetching families:', error);
@@ -126,7 +126,7 @@ export class SocialMediaService {
   // SOCIAL POSTS
   // =============================================
 
-  async getPosts(familyId?: string, filters?: {
+  async getPosts(circleId?: string, filters?: {
     status?: string;
     type?: string;
     reported?: boolean;
@@ -156,14 +156,14 @@ export class SocialMediaService {
           SELECT sp.*,
                  u.id as author_id, u.email as author_email,
                  u.first_name as author_first_name, u.last_name as author_last_name, u.avatar_url as author_avatar,
-                 f.id as family_id, f.name as family_name,
+                 f.id as circle_id, f.name as circle_name,
                  ST_DistanceSphere(
                    ST_MakePoint(sp.longitude::numeric, sp.latitude::numeric),
                    ST_MakePoint($1, $2)
                  ) / 1000 as distance_km
           FROM social_posts sp
           JOIN public.users u ON sp.author_id = u.id
-          JOIN families f ON sp.family_id = f.id
+          JOIN circles f ON sp.circle_id = f.id
           WHERE sp.latitude IS NOT NULL 
             AND sp.longitude IS NOT NULL
             AND sp.is_deleted = FALSE
@@ -181,18 +181,18 @@ export class SocialMediaService {
           SELECT sp.*,
                  u.id as author_id, u.email as author_email,
                  u.first_name as author_first_name, u.last_name as author_last_name, u.avatar_url as author_avatar,
-                 f.id as family_id, f.name as family_name
+                 f.id as circle_id, f.name as circle_name
           FROM social_posts sp
           JOIN public.users u ON sp.author_id = u.id
-          JOIN families f ON sp.family_id = f.id
+          JOIN circles f ON sp.circle_id = f.id
           WHERE sp.is_deleted = FALSE AND sp.is_hidden = FALSE
         `;
       }
 
-      // Filter by family
-      if (familyId && familyId !== 'all') {
-        sql += ` AND sp.family_id = $${paramIdx++}`;
-        values.push(familyId);
+      // Filter by circle
+      if (circleId && circleId !== 'all') {
+        sql += ` AND sp.circle_id = $${paramIdx++}`;
+        values.push(circleId);
       }
 
       // Apply filters
@@ -252,10 +252,10 @@ export class SocialMediaService {
         SELECT sp.*,
                u.id as author_id, u.email as author_email,
                u.first_name as author_first_name, u.last_name as author_last_name, u.avatar_url as author_avatar,
-               f.id as family_id, f.name as family_name
+               f.id as circle_id, f.name as circle_name
         FROM social_posts sp
         LEFT JOIN public.users u ON sp.author_id = u.id
-        JOIN families f ON sp.family_id = f.id
+        JOIN families f ON sp.circle_id = f.id
         WHERE sp.id = $1
       `;
 
@@ -270,7 +270,7 @@ export class SocialMediaService {
   }
 
   async createPost(postData: {
-    family_id: string;
+    circle_id: string;
     author_id: string;
     content: string;
     type?: 'text' | 'image' | 'video' | 'event';
@@ -279,14 +279,14 @@ export class SocialMediaService {
     location?: string;
     latitude?: number;
     longitude?: number;
-    visibility?: 'public' | 'family' | 'friends';
+    visibility?: 'public' | 'circle' | 'friends';
   }): Promise<SocialPost> {
     try {
       // Use RETURNING to get the ID, but we need full object, so allow query to finish then fetchById or map the returned row
       // Simple insert
       const sql = `
         INSERT INTO social_posts (
-            family_id, author_id, content, type, media_urls, tags, location, latitude, longitude, visibility
+            circle_id, author_id, content, type, media_urls, tags, location, latitude, longitude, visibility
         ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
         )
@@ -294,7 +294,7 @@ export class SocialMediaService {
       `;
 
       const values = [
-        postData.family_id,
+        postData.circle_id,
         postData.author_id,
         postData.content,
         postData.type || 'text',
@@ -303,7 +303,7 @@ export class SocialMediaService {
         postData.location || null,
         postData.latitude || null,
         postData.longitude || null,
-        postData.visibility || 'family'
+        postData.visibility || 'circle'
       ];
 
       const { rows } = await query(sql, values);
@@ -313,7 +313,7 @@ export class SocialMediaService {
       // Better to re-fetch to return consistent structure with getPosts
       const newPost = await this.getPostById(newId);
       if (!newPost) {
-        console.error(`Failed to retrieve created post: ${newId}. Author: ${postData.author_id}, Family: ${postData.family_id}`);
+        console.error(`Failed to retrieve created post: ${newId}. Author: ${postData.author_id}, circle: ${postData.circle_id}`);
         throw new Error('Failed to retrieve created post');
       }
       return newPost;
@@ -372,7 +372,7 @@ export class SocialMediaService {
 
     return {
       id: row.id,
-      family_id: row.family_id,
+      circle_id: row.circle_id,
       author_id: row.author_id,
       content: row.content,
       type: row.type,
@@ -404,9 +404,9 @@ export class SocialMediaService {
         avatar: row.author_avatar || 'https://i.pravatar.cc/150',
         isVerified: false
       },
-      family: {
-        id: row.family_id,
-        name: row.family_name
+      circle: {
+        id: row.circle_id,
+        name: row.circle_name
       },
       // Mobile-compatible field aliases
       likes: row.likes_count || 0,
@@ -482,12 +482,11 @@ export class SocialMediaService {
       const sql = `
         SELECT sc.*,
                u.id as author_id, u.email as author_email, u.raw_user_meta_data as author_meta,
-               p.full_name as author_full_name, p.avatar_url as author_avatar,
+               u.avatar_url as author_avatar,
                (SELECT count(*)::int FROM social_comments WHERE parent_id = sc.id) as reply_count,
                EXISTS(SELECT 1 FROM social_comment_likes scl WHERE scl.comment_id = sc.id AND scl.user_id = $2) as is_liked
         FROM social_comments sc
-        JOIN auth.users u ON sc.author_id = u.id
-        LEFT JOIN public.profiles p ON u.id = p.id
+        JOIN public.users u ON sc.author_id = u.id
         WHERE sc.post_id = $1
         ORDER BY sc.created_at ASC
       `;
@@ -496,9 +495,8 @@ export class SocialMediaService {
 
       return rows.map(row => {
         const meta = row.author_meta || {};
-        const profileName = row.author_full_name || '';
-        const firstName = meta.firstName || profileName.split(' ')[0] || 'Unknown';
-        const lastName = meta.lastName || profileName.split(' ').slice(1).join(' ') || '';
+        const firstName = meta.firstName || 'Unknown';
+        const lastName = meta.lastName || '';
 
         return {
           id: row.id,
@@ -599,11 +597,9 @@ export class SocialMediaService {
     try {
       let sql = `
         SELECT sr.*,
-               u.id as reporter_id, u.email as reporter_email, u.raw_user_meta_data as reporter_meta,
-               p.full_name as reporter_full_name
+               u.id as reporter_id, u.email as reporter_email, u.raw_user_meta_data as reporter_meta
         FROM social_reports sr
-        JOIN auth.users u ON sr.reporter_id = u.id
-        LEFT JOIN public.profiles p ON u.id = p.id
+        JOIN public.users u ON sr.reporter_id = u.id
         WHERE 1=1
       `;
       const values: any[] = [];
@@ -619,9 +615,8 @@ export class SocialMediaService {
 
       return rows.map(row => {
         const meta = row.reporter_meta || {};
-        const profileName = row.reporter_full_name || '';
-        const firstName = meta.firstName || profileName.split(' ')[0] || 'Unknown';
-        const lastName = meta.lastName || profileName.split(' ').slice(1).join(' ') || '';
+        const firstName = meta.firstName || 'Unknown';
+        const lastName = meta.lastName || '';
 
         return {
           id: row.id,
@@ -693,11 +688,9 @@ export class SocialMediaService {
 
       const sql = `
         SELECT sr.*,
-               u.id as reporter_id, u.email as reporter_email, u.raw_user_meta_data as reporter_meta,
-               p.full_name as reporter_full_name
+               u.id as reporter_id, u.email as reporter_email, u.raw_user_meta_data as reporter_meta
         FROM social_reports sr
-        JOIN auth.users u ON sr.reporter_id = u.id
-        LEFT JOIN public.profiles p ON u.id = p.id
+        JOIN public.users u ON sr.reporter_id = u.id
         WHERE sr.id = $1
       `;
       const { rows } = await query(sql, [reportId]);
@@ -706,9 +699,8 @@ export class SocialMediaService {
 
       const row = rows[0];
       const meta = row.reporter_meta || {};
-      const profileName = row.reporter_full_name || '';
-      const firstName = meta.firstName || profileName.split(' ')[0] || 'Unknown';
-      const lastName = meta.lastName || profileName.split(' ').slice(1).join(' ') || '';
+      const firstName = meta.firstName || 'Unknown';
+      const lastName = meta.lastName || '';
 
       return {
         id: row.id,
@@ -741,11 +733,9 @@ export class SocialMediaService {
     try {
       const sql = `
         SELECT sa.*,
-               u.id as user_id, u.email as user_email, u.raw_user_meta_data as user_meta,
-               p.full_name as user_full_name
+               u.id as user_id, u.email as user_email, u.raw_user_meta_data as user_meta
         FROM social_activities sa
-        JOIN auth.users u ON sa.user_id = u.id
-        LEFT JOIN public.profiles p ON u.id = p.id
+        JOIN public.users u ON sa.user_id = u.id
         WHERE sa.post_id = $1
         ORDER BY sa.created_at DESC
       `;
@@ -753,9 +743,8 @@ export class SocialMediaService {
 
       return rows.map(row => {
         const meta = row.user_meta || {};
-        const profileName = row.user_full_name || '';
-        const firstName = meta.firstName || profileName.split(' ')[0] || 'Unknown';
-        const lastName = meta.lastName || profileName.split(' ').slice(1).join(' ') || '';
+        const firstName = meta.firstName || 'Unknown';
+        const lastName = meta.lastName || '';
 
         return {
           id: row.id,
@@ -887,7 +876,7 @@ export class SocialMediaService {
     }
   }
 
-  async getFamilyAnalytics(familyId: string): Promise<{
+  async getcircleAnalytics(circleId: string): Promise<{
     total_posts: number;
     active_posts: number;
     reported_posts: number;
@@ -895,8 +884,8 @@ export class SocialMediaService {
   }> {
     try {
       const { rows } = await query(
-        'SELECT status, is_reported, likes_count, shares_count, comments_count FROM social_posts WHERE family_id = $1',
-        [familyId]
+        'SELECT status, is_reported, likes_count, shares_count, comments_count FROM social_posts WHERE circle_id = $1',
+        [circleId]
       );
 
       const totalPosts = rows.length;
@@ -912,10 +901,11 @@ export class SocialMediaService {
         total_engagement: totalEngagement
       };
     } catch (error) {
-      console.error('Error fetching family analytics:', error);
+      console.error('Error fetching circle analytics:', error);
       throw error;
     }
   }
 }
 
 export const socialMediaService = new SocialMediaService();
+

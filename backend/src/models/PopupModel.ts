@@ -15,7 +15,7 @@ export interface IPopup {
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate: Date;
   endDate: Date;
-  targetAudience: 'all' | 'premium' | 'hourse' | 'children' | 'seniors';
+  targetAudience: 'all' | 'premium' | 'circle' | 'children' | 'seniors';
   isActive: boolean;
   showCount: number;
   maxShows: number;
@@ -88,7 +88,7 @@ const PopupSchema: any = new Schema({
   },
   targetAudience: {
     type: String,
-    enum: ['all', 'premium', 'hourse', 'children', 'seniors'],
+    enum: ['all', 'premium', 'circle', 'children', 'seniors'],
     default: 'all',
     index: true,
   },

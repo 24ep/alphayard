@@ -188,7 +188,7 @@ router.get('/admin/content', async (req, res) => {
         slug: 'welcome',
         type: 'page',
         status: 'published',
-        content: 'Welcome to the Bondarys family management platform!',
+        content: 'Welcome to the Bondarys circle management platform!',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         created_by: 'admin',
@@ -208,11 +208,11 @@ router.get('/admin/content', async (req, res) => {
       },
       {
         id: '3',
-        title: 'Family Safety Tips',
+        title: 'circle Safety Tips',
         slug: 'safety-tips',
         type: 'article',
         status: 'draft',
-        content: 'Important safety tips for your family.',
+        content: 'Important safety tips for your circle.',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         created_by: 'admin',
@@ -434,3 +434,4 @@ router.get('/by-route/:route', async (req, res) => {
 });
 
 export default router;
+

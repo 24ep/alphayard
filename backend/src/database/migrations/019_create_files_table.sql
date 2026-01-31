@@ -9,14 +9,14 @@ CREATE TABLE IF NOT EXISTS files (
   thumbnail_url TEXT,
   uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   uploaded_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  family_id UUID REFERENCES families(id) ON DELETE SET NULL,
+  circle_id UUID REFERENCES circles(id) ON DELETE SET NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_files_uploaded_by ON files(uploaded_by);
-CREATE INDEX IF NOT EXISTS idx_files_family_id ON files(family_id);
+CREATE INDEX IF NOT EXISTS idx_files_circle_id ON files(circle_id);
 
 -- Expose to PostgREST (grant permissions)
 GRANT ALL ON files TO postgres;

@@ -3,14 +3,7 @@ module.exports = function (api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      [
-        'module-resolver',
-        {
-          alias: {
-            'react-native': 'react-native-web',
-          },
-        },
-      ],
+
       // Add react-native-reanimated plugin (must be last)
       'react-native-reanimated/plugin',
     ],

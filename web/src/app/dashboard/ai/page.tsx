@@ -47,7 +47,7 @@ export default function AIPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">AI Assistant</h1>
-        <p className="text-gray-600 mt-1">Get help with your family management</p>
+        <p className="text-gray-600 mt-1">Get help with your Circle management</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -58,7 +58,7 @@ export default function AIPage() {
                 <div className="text-center py-12">
                   <SparklesIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
-                  <p className="text-gray-600">Ask me anything about your family management</p>
+                  <p className="text-gray-600">Ask me anything about your Circle management</p>
                 </div>
               ) : (
                 messages.map((message) => (
@@ -114,8 +114,8 @@ export default function AIPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Capabilities</h2>
           <div className="space-y-3">
             <div className="p-3 bg-gray-50 rounded-macos">
-              <p className="font-medium text-gray-900 text-sm">Family Management</p>
-              <p className="text-xs text-gray-600 mt-1">Help with family organization</p>
+              <p className="font-medium text-gray-900 text-sm">Circle Management</p>
+              <p className="text-xs text-gray-600 mt-1">Help with Circle organization</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-macos">
               <p className="font-medium text-gray-900 text-sm">Calendar Planning</p>
@@ -131,4 +131,5 @@ export default function AIPage() {
     </div>
   )
 }
+
 

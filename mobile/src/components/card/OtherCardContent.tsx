@@ -21,16 +21,17 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 24,
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
         color: theme.colors.text.primary,
         marginBottom: 8,
     },
     subtitle: {
         fontSize: 16,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
         color: theme.colors.text.secondary,
         textAlign: 'center',
     },
 });
 
 export default OtherCardContent;
+

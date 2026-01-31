@@ -52,7 +52,7 @@ export const ProfileSocialTab: React.FC<ProfileSocialTabProps> = ({ userId }) =>
             <View style={styles.emptyContainer}>
                 <IconMC name="post-outline" size={64} color="#D1D5DB" />
                 <Text style={styles.emptyTitle}>No Posts Yet</Text>
-                <Text style={styles.emptySubtitle}>Share your first moment with family and friends</Text>
+                <Text style={styles.emptySubtitle}>Share your first moment with circle and friends</Text>
             </View>
         );
     }
@@ -230,3 +230,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileSocialTab;
+

@@ -35,6 +35,7 @@ module.exports = {
             900: '#171717',
           },
         },
+        border: "hsl(var(--border, 0 0% 89.8%))", // Added border color
         primary: {
           50: '#f0f7ff',
           500: '#0d7eff',
@@ -42,7 +43,7 @@ module.exports = {
           700: '#0050b8',
         },
       },
-      fontFamily: {
+      fontCircle: {
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',
@@ -135,4 +136,5 @@ module.exports = {
   },
   plugins: [],
 }
+
 

@@ -8,7 +8,7 @@ interface HomeHeaderProps {
   onNotificationPress: () => void;
   onAssignedTaskPress: () => void;
   _onCustomizePress?: () => void;
-  _onCreateFamilyPress?: () => void;
+  _onCreateCirclePress?: () => void;
   notificationCount: number;
 }
 
@@ -16,7 +16,7 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
   onNotificationPress,
   onAssignedTaskPress,
   _onCustomizePress,
-  _onCreateFamilyPress,
+  _onCreateCirclePress,
   notificationCount,
 }) => {
   return (
@@ -54,3 +54,4 @@ const HomeHeader: React.FC<HomeHeaderProps> = ({
 };
 
 export default HomeHeader;
+

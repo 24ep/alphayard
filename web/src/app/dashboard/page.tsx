@@ -40,7 +40,7 @@ export default function DashboardPage() {
     try {
       // Load stats from various endpoints
       const [familiesRes, socialRes, calendarRes, tasksRes, galleryRes] = await Promise.allSettled([
-        apiClient.get(API_ENDPOINTS.FAMILY.LIST),
+        apiClient.get(API_ENDPOINTS.Circle.LIST),
         apiClient.get(API_ENDPOINTS.SOCIAL.POSTS),
         apiClient.get(API_ENDPOINTS.CALENDAR.EVENTS),
         apiClient.get(API_ENDPOINTS.TASKS.LIST),
@@ -67,7 +67,7 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}!
         </h1>
-        <p className="text-gray-600">Here's what's happening with your family</p>
+        <p className="text-gray-600">Here's what's happening with your Circle</p>
       </div>
 
       {loading ? (
@@ -140,4 +140,5 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 

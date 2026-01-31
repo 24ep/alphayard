@@ -18,13 +18,13 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
     setError('')
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
       const response = await fetch(`${apiBase}/api/admin/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email: username, password })
       })
 
       if (response.ok) {
@@ -43,35 +43,35 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen flex items-center justify-center bg-supabase-black">
+      <div className="max-w-md w-full space-y-8 p-8 bg-supabase-dark rounded-xl border border-supabase-border shadow-2xl">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+          <h2 className="mt-2 text-center text-3xl font-extrabold text-white">
             Admin Login
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          <p className="mt-2 text-center text-sm text-gray-400">
             Sign in to access the admin panel
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="sr-only">
-                Username
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-400 mb-1">
+                Email Address
               </label>
               <input
                 id="username"
                 name="username"
-                type="text"
+                type="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Username"
+                className="appearance-none relative block w-full px-3 py-2 bg-supabase-black border border-supabase-border placeholder-gray-500 text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="admin@appkit.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-400 mb-1">
                 Password
               </label>
               <input
@@ -79,8 +79,8 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="appearance-none relative block w-full px-3 py-2 bg-supabase-black border border-supabase-border placeholder-gray-500 text-white rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -88,26 +88,29 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin }) => {
           </div>
 
           {error && (
-            <div className="text-red-600 text-sm text-center">{error}</div>
+            <div className="text-red-400 text-sm text-center bg-red-900/20 p-2 rounded border border-red-900/50">{error}</div>
           )}
 
           <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-navy-start to-navy-end hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 shadow-lg shadow-blue-900/20"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
 
-          <div className="text-center text-sm text-gray-600">
-            <p>Default credentials:</p>
-            <p>Username: <code>admin</code></p>
-            <p>Password: <code>admin123</code></p>
+          <div className="text-center text-sm text-gray-500 border-t border-supabase-border pt-4 mt-6">
+            <p className="mb-2">System credentials:</p>
+            <div className="flex flex-col items-center gap-1">
+                <p>Email: <code className="text-gray-300 bg-supabase-black px-2 py-0.5 rounded border border-supabase-border">admin@appkit.com</code></p>
+                <p>Pass: <code className="text-gray-300 bg-supabase-black px-2 py-0.5 rounded border border-supabase-border">admin123</code></p>
+            </div>
           </div>
         </form>
       </div>
     </div>
   )
 }
+

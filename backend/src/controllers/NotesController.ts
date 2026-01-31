@@ -4,11 +4,11 @@ import { pool } from '../config/database';
 export class NotesController {
   static async list(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
 
       const { rows } = await pool.query(
-        'SELECT * FROM notes WHERE family_id = $1 ORDER BY updated_at DESC',
-        [familyId]
+        'SELECT * FROM notes WHERE circle_id = $1 ORDER BY updated_at DESC',
+        [circleId]
       );
 
       return res.json({ success: true, data: rows });
@@ -20,7 +20,7 @@ export class NotesController {
 
   static async create(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const userId = req.user.id;
       const { title, content, category, is_pinned, color } = req.body;
 
@@ -29,11 +29,11 @@ export class NotesController {
       }
 
       const { rows } = await pool.query(
-        `INSERT INTO notes (family_id, user_id, title, content, category, is_pinned, color)
+        `INSERT INTO notes (circle_id, user_id, title, content, category, is_pinned, color)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
         [
-          familyId,
+          circleId,
           userId,
           title || null,
           content || '',
@@ -52,17 +52,17 @@ export class NotesController {
 
   static async update(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const { id } = req.params;
       const { title, content, category, is_pinned, color } = req.body;
 
       // First check existence and permissions
       const { rows: existing } = await pool.query(
-        'SELECT id, family_id FROM notes WHERE id = $1 LIMIT 1',
+        'SELECT id, circle_id FROM notes WHERE id = $1 LIMIT 1',
         [id]
       );
 
-      if (existing.length === 0 || existing[0].family_id !== familyId) {
+      if (existing.length === 0 || existing[0].circle_id !== circleId) {
         return res.status(404).json({ error: 'Note not found' });
       }
 
@@ -108,16 +108,16 @@ export class NotesController {
 
   static async remove(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const { id } = req.params;
 
       // Check permissions
       const { rows: existing } = await pool.query(
-        'SELECT id, family_id FROM notes WHERE id = $1 LIMIT 1',
+        'SELECT id, circle_id FROM notes WHERE id = $1 LIMIT 1',
         [id]
       );
 
-      if (existing.length === 0 || existing[0].family_id !== familyId) {
+      if (existing.length === 0 || existing[0].circle_id !== circleId) {
         return res.status(404).json({ error: 'Note not found' });
       }
 
@@ -130,3 +130,4 @@ export class NotesController {
     }
   }
 }
+

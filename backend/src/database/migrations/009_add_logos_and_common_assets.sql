@@ -188,7 +188,7 @@ VALUES (
   'all',
   true,
   30,
-  '{"screen": "family_list", "message": "You havent joined any families yet"}'::jsonb
+  '{"screen": "family_list", "message": "You havent joined any circles yet"}'::jsonb
 )
 ON CONFLICT (asset_key) DO UPDATE 
 SET 

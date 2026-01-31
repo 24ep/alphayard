@@ -56,7 +56,7 @@ export interface NewsSource {
 
 export interface NewsPreferences {
   userId: string;
-  familyId: string;
+  circleId: string;
   categories: string[];
   sources: string[];
   countries: string[];
@@ -252,9 +252,9 @@ class NewsService {
     }
   }
 
-  async getUserPreferences(userId: string, familyId: string): Promise<NewsPreferences> {
+  async getUserPreferences(userId: string, circleId: string): Promise<NewsPreferences> {
     try {
-      const response = await apiClient.get(`/news/preferences?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/news/preferences?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get user preferences:', error);
@@ -262,9 +262,9 @@ class NewsService {
     }
   }
 
-  async updateUserPreferences(userId: string, familyId: string, preferences: Partial<NewsPreferences>): Promise<NewsPreferences> {
+  async updateUserPreferences(userId: string, circleId: string, preferences: Partial<NewsPreferences>): Promise<NewsPreferences> {
     try {
-      const response = await apiClient.put(`/news/preferences?userId=${userId}&familyId=${familyId}`, preferences);
+      const response = await apiClient.put(`/news/preferences?userId=${userId}&circleId=${circleId}`, preferences);
       
       analyticsService.trackEvent('news_preferences_updated', {
         userId,

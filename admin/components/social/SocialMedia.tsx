@@ -23,7 +23,7 @@ import {
   BellIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline'
-import { socialMediaService, Family, SocialPost, SocialComment, SocialReport, SocialActivity } from '../../services/socialMediaService'
+import { socialMediaService, Circle, SocialPost, SocialComment, SocialReport, SocialActivity } from '../../services/socialMediaService'
 import { Card, CardBody, CardHeader } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -36,8 +36,8 @@ import { EmptyState } from '../ui/EmptyState'
 // Interfaces are now imported from the service
 
 export function SocialMedia() {
-  const [families, setFamilies] = useState<Family[]>([])
-  const [selectedFamily, setSelectedFamily] = useState<string>('all')
+  const [families, setFamilies] = useState<Circle[]>([])
+  const [selectedCircle, setSelectedCircle] = useState<string>('all')
   const [posts, setPosts] = useState<SocialPost[]>([])
   const [comments, setComments] = useState<SocialComment[]>([])
   const [reports, setReports] = useState<SocialReport[]>([])
@@ -59,23 +59,23 @@ export function SocialMedia() {
   }, [])
 
   useEffect(() => {
-    if (selectedFamily) {
+    if (selectedCircle) {
       loadSocialMediaData()
     }
-  }, [selectedFamily])
+  }, [selectedCircle])
 
   const loadData = async () => {
     setLoading(true)
     try {
       const familiesData = await socialMediaService.getFamilies()
-      const allFamiliesOption: Family = { 
+      const allFamiliesOption: Circle = { 
         id: 'all', 
         name: 'All Families', 
         description: 'View all families', 
         member_count: 0 
       }
       setFamilies([allFamiliesOption, ...familiesData])
-      setSelectedFamily('all')
+      setSelectedCircle('all')
     } catch (error) {
       console.error('Error loading families:', error)
     } finally {
@@ -87,7 +87,7 @@ export function SocialMedia() {
     try {
       // Load posts with filters
       const postsData = await socialMediaService.getPosts({
-        familyId: selectedFamily,
+        CircleId: selectedCircle,
         status: filterStatus !== 'all' ? filterStatus : undefined,
         type: filterType !== 'all' ? filterType : undefined,
         reported: filterReported === 'reported' ? true : filterReported === 'not_reported' ? false : undefined,
@@ -113,7 +113,7 @@ export function SocialMedia() {
   }
 
   const filteredPosts = posts.filter(post => {
-    const matchesFamily = selectedFamily === 'all' || post.family_id === selectedFamily
+    const matchesCircle = selectedCircle === 'all' || post.Circle_id === selectedCircle
     const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (post.author?.first_name + ' ' + post.author?.last_name).toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (post.tags || []).some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -122,7 +122,7 @@ export function SocialMedia() {
     const matchesReported = filterReported === 'all' || 
                            (filterReported === 'reported' && post.is_reported) ||
                            (filterReported === 'not_reported' && !post.is_reported)
-    return matchesFamily && matchesSearch && matchesStatus && matchesType && matchesReported
+    return matchesCircle && matchesSearch && matchesStatus && matchesType && matchesReported
   })
 
   const handleModeratePost = (post: SocialPost, action: 'hide' | 'delete' | 'approve') => {
@@ -187,9 +187,9 @@ export function SocialMedia() {
     }
   }
 
-  const getSelectedFamilyName = () => {
-    const family = families.find(f => f.id === selectedFamily)
-    return family?.name || 'All Families'
+  const getSelectedCircleName = () => {
+    const Circle = families.find(f => f.id === selectedCircle)
+    return Circle?.name || 'All Families'
   }
 
   if (loading) {
@@ -211,16 +211,16 @@ export function SocialMedia() {
         </CardBody>
       </Card>
 
-      {/* Family Selection */}
+      {/* Circle Selection */}
       <Card variant="frosted">
         <CardBody>
           <Select
-            label="Select Family"
-            value={selectedFamily}
-            onChange={(e) => setSelectedFamily(e.target.value)}
-            options={families.map(family => ({
-              value: family.id,
-              label: `${family.name}${family.member_count > 0 ? ` (${family.member_count} members)` : ''}`
+            label="Select Circle"
+            value={selectedCircle}
+            onChange={(e) => setSelectedCircle(e.target.value)}
+            options={families.map(Circle => ({
+              value: Circle.id,
+              label: `${Circle.name}${Circle.member_count > 0 ? ` (${Circle.member_count} members)` : ''}`
             }))}
           />
         </CardBody>
@@ -342,7 +342,7 @@ export function SocialMedia() {
         <EmptyState
           icon={<ShareIcon className="h-12 w-12" />}
           title="No posts found"
-          description={searchTerm ? 'Try adjusting your search terms.' : 'No posts available for the selected family.'}
+          description={searchTerm ? 'Try adjusting your search terms.' : 'No posts available for the selected Circle.'}
         />
       ) : (
         <Card variant="frosted">
@@ -364,7 +364,7 @@ export function SocialMedia() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h4 className="text-base font-semibold text-gray-900 truncate">{post.author?.first_name} {post.author?.last_name}</h4>
-                              <Badge variant="info" size="sm">{post.family?.name}</Badge>
+                              <Badge variant="info" size="sm">{post.Circle?.name}</Badge>
                               <Badge variant={getStatusColor(post.status) === 'green' ? 'success' : getStatusColor(post.status) === 'yellow' ? 'warning' : getStatusColor(post.status) === 'red' ? 'error' : 'default'} size="sm">
                                 {post.status.replace('_', ' ')}
                               </Badge>
@@ -494,8 +494,8 @@ export function SocialMedia() {
                   <span>{selectedPost.author?.first_name} {selectedPost.author?.last_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Family:</span>
-                  <span>{selectedPost.family?.name}</span>
+                  <span className="text-gray-500">Circle:</span>
+                  <span>{selectedPost.Circle?.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Type:</span>
@@ -645,3 +645,4 @@ export function SocialMedia() {
     </div>
   );
 }
+

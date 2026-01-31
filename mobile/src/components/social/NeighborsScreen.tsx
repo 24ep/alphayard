@@ -51,7 +51,7 @@ interface Neighbor {
     longitude: number;
     address: string;
   };
-  familySize: number;
+  circleSize: number;
   interests: string[];
   isOnline: boolean;
   lastSeen: Date;
@@ -133,14 +133,14 @@ interface CommunityPost {
 }
 
 interface NeighborsScreenProps {
-  familyId: string;
+  circleId: string;
   onNeighborPress?: (neighbor: Neighbor) => void;
   onGroupPress?: (group: VillageGroup) => void;
   onEventPress?: (event: LocalEvent) => void;
 }
 
 const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
-  familyId,
+  circleId,
   onNeighborPress,
   onGroupPress,
   onEventPress,
@@ -206,7 +206,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
     const mockNeighbors: Neighbor[] = [
       {
         id: '1',
-        name: 'Somchai hourse',
+        name: 'Somchai Circle',
         avatar: 'https://picsum.photos/200/200?random=1',
         distance: 150,
         location: {
@@ -214,7 +214,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
           longitude: 100.5018,
           address: '123 Sukhumvit Road, Bangkok',
         },
-        familySize: 4,
+        circleSize: 4,
         interests: ['gardening', 'cooking', 'music'],
         isOnline: true,
         lastSeen: new Date(),
@@ -225,7 +225,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
       },
       {
         id: '2',
-        name: 'Pim hourse',
+        name: 'Pim Circle',
         avatar: 'https://picsum.photos/200/200?random=2',
         distance: 300,
         location: {
@@ -233,7 +233,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
           longitude: 100.5019,
           address: '456 Silom Road, Bangkok',
         },
-        familySize: 3,
+        circleSize: 3,
         interests: ['sports', 'reading', 'travel'],
         isOnline: false,
         lastSeen: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
@@ -244,7 +244,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
       },
       {
         id: '3',
-        name: 'Nong hourse',
+        name: 'Nong Circle',
         avatar: 'https://picsum.photos/200/200?random=3',
         distance: 500,
         location: {
@@ -252,7 +252,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
           longitude: 100.5020,
           address: '789 Rama 9 Road, Bangkok',
         },
-        familySize: 5,
+        circleSize: 5,
         interests: ['art', 'photography', 'technology'],
         isOnline: true,
         lastSeen: new Date(),
@@ -335,7 +335,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
         category: 'community',
         organizer: {
           id: 'user1',
-          name: 'Somchai hourse',
+          name: 'Somchai Circle',
           avatar: 'https://picsum.photos/200/200?random=1',
         },
         attendees: [
@@ -388,7 +388,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
         content: 'Does anyone know a good plumber in the area? Our kitchen sink is clogged and we need help ASAP!',
         author: {
           id: 'user1',
-          name: 'Somchai hourse',
+          name: 'Somchai Circle',
           avatar: 'https://picsum.photos/200/200?random=1',
         },
         createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
@@ -405,7 +405,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
         images: ['https://picsum.photos/400/300?random=9'],
         author: {
           id: 'user2',
-          name: 'Pim hourse',
+          name: 'Pim Circle',
           avatar: 'https://picsum.photos/200/200?random=2',
         },
         createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
@@ -595,7 +595,7 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
             </HStack>
             
             <Text style={textStyles.caption} color={colors.gray[600]}>
-              {formatDistance(neighbor.distance)} away • {neighbor.familySize} hourse members
+              {formatDistance(neighbor.distance)} away • {neighbor.circleSize} Circle members
             </Text>
             
             <HStack space={2} mt={1} flexWrap="wrap">
@@ -1047,10 +1047,10 @@ const NeighborsScreen: React.FC<NeighborsScreenProps> = ({
               <VStack space={4}>
                 <Box>
                   <Text style={textStyles.h4} color={textColor} fontWeight="600" mb={2}>
-                    hourse Info
+                    Circle Info
                   </Text>
                   <Text style={textStyles.body} color={textColor}>
-                    {selectedNeighbor.familySize} hourse members
+                    {selectedNeighbor.circleSize} Circle members
                   </Text>
                   <Text style={textStyles.body} color={textColor}>
                     {formatDistance(selectedNeighbor.distance)} away

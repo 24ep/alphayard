@@ -24,7 +24,7 @@ interface UploadedFile {
   thumbnailUrl?: string;
   uploadedAt: string;
   uploadedBy: string;
-  familyId?: string;
+  circleId?: string;
 }
 
 class StorageService {
@@ -33,7 +33,7 @@ class StorageService {
   private uploadPath: string;
 
   constructor() {
-    this.bucketName = process.env.AWS_S3_BUCKET || 'bondarys-files';
+    this.bucketName = (process.env.AWS_S3_BUCKET || 'bondarys-files').trim();
     this.uploadPath = process.env.UPLOAD_PATH || 'uploads';
     this.initializeS3();
   }
@@ -42,8 +42,17 @@ class StorageService {
     const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
+    console.log('[StorageService] Checking S3 config...');
+    console.log(`[StorageService] Bucket: '${this.bucketName}'`);
+    console.log(`[StorageService] KeyID starts with: ${accessKeyId?.substring(0, 5)}`);
+    console.log(`[StorageService] Bucket check: ${this.bucketName !== 'your-backup-bucket-name'}`);
+
     // Check if credentials are valid (not placeholders)
-    if (accessKeyId && secretAccessKey && !accessKeyId.startsWith('your-') && accessKeyId !== 'you') {
+    if (accessKeyId && secretAccessKey && 
+        !accessKeyId.startsWith('your-') && 
+        accessKeyId !== 'you' &&
+        this.bucketName !== 'your-backup-bucket-name' &&
+        this.bucketName !== 's3-bucket-name') {
       try {
         const s3Config: any = {
           region: process.env.AWS_REGION || 'us-east-1',
@@ -103,7 +112,7 @@ class StorageService {
   async uploadFile(
     file: Express.Multer.File,
     userId: string,
-    familyId?: string,
+    circleId?: string,
     options: FileUploadOptions = {}
   ): Promise<UploadedFile> {
     try {
@@ -126,20 +135,31 @@ class StorageService {
         }
       }
 
-      let fileUrl: string;
+      let fileUrl: string = '';
       let thumbnailUrl: string | undefined;
 
-      if (this.s3Client) {
-        // Upload to S3
-        await this.uploadToS3(processedBuffer, filePath, file.mimetype);
-        fileUrl = await this.getSignedUrl(filePath);
+      let uploadSuccess = false;
 
-        if (thumbnailBuffer) {
-          const thumbnailPath = `${this.uploadPath}/${userId}/thumbnails/${fileName}`;
-          await this.uploadToS3(thumbnailBuffer, thumbnailPath, 'image/jpeg');
-          thumbnailUrl = await this.getSignedUrl(thumbnailPath);
+      if (this.s3Client) {
+        try {
+            // Upload to S3
+            await this.uploadToS3(processedBuffer, filePath, file.mimetype);
+            fileUrl = await this.getSignedUrl(filePath);
+
+            if (thumbnailBuffer) {
+            const thumbnailPath = `${this.uploadPath}/${userId}/thumbnails/${fileName}`;
+            await this.uploadToS3(thumbnailBuffer, thumbnailPath, 'image/jpeg');
+            thumbnailUrl = await this.getSignedUrl(thumbnailPath);
+            }
+            uploadSuccess = true;
+        } catch (s3Error) {
+            console.error('CRITICAL: S3 upload failed!', s3Error);
+            throw new Error(`S3 upload failed: ${(s3Error as any).message}`);
         }
-      } else {
+      } 
+      
+      // If no S3 client, use local storage (or if we fell through - but we throw now)
+      if (!this.s3Client) {
         // Local storage fallback
         fileUrl = await this.uploadToLocal(processedBuffer, filePath);
 
@@ -160,7 +180,7 @@ class StorageService {
         thumbnailUrl,
         uploadedAt: new Date().toISOString(),
         uploadedBy: userId,
-        familyId
+        circleId
       });
 
       return uploadedFile;
@@ -194,12 +214,14 @@ class StorageService {
     }
 
     fs.writeFileSync(fullPath, buffer);
-    return `/uploads/${filePath}`;
+    const baseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+    return `${baseUrl}/uploads/${filePath.replace(/\\/g, '/')}`;
   }
 
   private async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
     if (!this.s3Client) {
-      return `${process.env.BASE_URL || 'http://localhost:3000'}/uploads/${key}`;
+      const baseUrl = process.env.API_BASE_URL || 'http://localhost:4000';
+      return `${baseUrl}/uploads/${key}`;
     }
 
     const command = new GetObjectCommand({
@@ -262,7 +284,7 @@ class StorageService {
   private async saveFileMetadata(fileData: UploadedFile): Promise<UploadedFile> {
     try {
       const { rows } = await pool.query(
-        `INSERT INTO files (id, original_name, file_name, mime_type, size, url, thumbnail_url, uploaded_at, uploaded_by, family_id)
+        `INSERT INTO files (id, original_name, file_name, mime_type, size, url, thumbnail_url, uploaded_at, uploaded_by, circle_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING *`,
         [
@@ -275,7 +297,7 @@ class StorageService {
           fileData.thumbnailUrl,
           fileData.uploadedAt,
           fileData.uploadedBy,
-          fileData.familyId
+          fileData.circleId
         ]
       );
 
@@ -290,7 +312,7 @@ class StorageService {
         thumbnailUrl: data.thumbnail_url,
         uploadedAt: data.uploaded_at,
         uploadedBy: data.uploaded_by,
-        familyId: data.family_id
+        circleId: data.circle_id
       };
     } catch (error: any) {
       console.error('Failed to save file metadata:', error);
@@ -298,8 +320,8 @@ class StorageService {
     }
   }
 
-  // Get files for a user or family
-  async getFiles(userId: string, familyId?: string, limit: number = 50, offset: number = 0): Promise<{
+  // Get files for a user or circle
+  async getFiles(userId: string, circleId?: string, limit: number = 50, offset: number = 0): Promise<{
     files: UploadedFile[];
     total: number;
   }> {
@@ -308,17 +330,17 @@ class StorageService {
       let countQuery = `SELECT COUNT(*) FROM files WHERE uploaded_by = $1`;
       const params: any[] = [userId];
 
-      if (familyId) {
-        query += ` AND family_id = $2`;
-        countQuery += ` AND family_id = $2`;
-        params.push(familyId);
+      if (circleId) {
+        query += ` AND circle_id = $2`;
+        countQuery += ` AND circle_id = $2`;
+        params.push(circleId);
       }
 
       query += ` ORDER BY uploaded_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(limit, offset);
 
       const { rows } = await pool.query(query, params);
-      const countResult = await pool.query(countQuery, familyId ? [userId, familyId] : [userId]);
+      const countResult = await pool.query(countQuery, circleId ? [userId, circleId] : [userId]);
 
       const files: UploadedFile[] = rows.map((file: any) => ({
         id: file.id,
@@ -330,7 +352,7 @@ class StorageService {
         thumbnailUrl: file.thumbnail_url,
         uploadedAt: file.uploaded_at,
         uploadedBy: file.uploaded_by,
-        familyId: file.family_id
+        circleId: file.circle_id
       }));
 
       return {
@@ -405,7 +427,7 @@ class StorageService {
   }
 
   // Get storage usage for a user
-  async getStorageUsage(userId: string, familyId?: string): Promise<{
+  async getStorageUsage(userId: string, circleId?: string): Promise<{
     totalSize: number;
     fileCount: number;
     limit: number;
@@ -414,9 +436,9 @@ class StorageService {
       let query = `SELECT COALESCE(SUM(size), 0) as total_size, COUNT(*) as file_count FROM files WHERE uploaded_by = $1`;
       const params: any[] = [userId];
 
-      if (familyId) {
-        query += ` AND family_id = $2`;
-        params.push(familyId);
+      if (circleId) {
+        query += ` AND circle_id = $2`;
+        params.push(circleId);
       }
 
       const { rows } = await pool.query(query, params);
@@ -430,6 +452,63 @@ class StorageService {
     } catch (error: any) {
       console.error('Failed to get storage usage:', error);
       throw new Error('Failed to get storage usage');
+    }
+  }
+
+  // Download file from S3 or local storage
+  async downloadFile(key: string): Promise<Buffer | null> {
+    try {
+      if (this.s3Client) {
+        // Download from S3
+        const command = new GetObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+        });
+        
+        const response = await this.s3Client.send(command);
+        if (!response.Body) return null;
+        
+        // Convert stream to buffer
+        const chunks: Uint8Array[] = [];
+        // @ts-ignore - Body can be a stream
+        for await (const chunk of response.Body) {
+          chunks.push(chunk);
+        }
+        return Buffer.concat(chunks);
+      } else {
+        // Read from local storage
+        const fullPath = path.join(process.cwd(), 'uploads', key);
+        if (fs.existsSync(fullPath)) {
+          return fs.readFileSync(fullPath);
+        }
+        return null;
+      }
+    } catch (error: any) {
+      if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+        return null; // File doesn't exist
+      }
+      console.error('File download error:', error);
+      throw new Error(`Failed to download file: ${error.message}`);
+    }
+  }
+
+  // Upload raw buffer to S3 with custom path (no metadata tracking)
+  async uploadRawBuffer(buffer: Buffer, key: string, contentType: string): Promise<string | null> {
+    try {
+      if (this.s3Client) {
+        try {
+            await this.uploadToS3(buffer, key, contentType);
+            return await this.getSignedUrl(key);
+        } catch (s3Error) {
+            console.error('CRITICAL: S3 raw upload failed!', s3Error);
+            throw new Error(`S3 raw upload failed: ${(s3Error as any).message}`);
+        }
+      } else {
+        return await this.uploadToLocal(buffer, key);
+      }
+    } catch (error: any) {
+      console.error('Raw buffer upload error:', error);
+      return null;
     }
   }
 
@@ -459,3 +538,4 @@ class StorageService {
 // Export singleton instance
 export const storageService = new StorageService();
 export default storageService;
+

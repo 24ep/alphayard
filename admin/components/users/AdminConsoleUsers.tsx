@@ -16,7 +16,8 @@ import {
   ClockIcon,
   KeyIcon,
   UserGroupIcon,
-  PlusIcon
+  PlusIcon,
+  LockClosedIcon
 } from '@heroicons/react/24/outline'
 import { adminService, AdminUser, Role, Permission, UserGroup } from '../../services/adminService'
 import { Card, CardBody } from '../ui/Card'
@@ -48,7 +49,8 @@ export function AdminConsoleUsers() {
     role: 'viewer',
     status: 'active',
     department: '',
-    permissions: [] as string[]
+    permissions: [] as string[],
+    password: ''
   })
 
   useEffect(() => {
@@ -98,7 +100,8 @@ export function AdminConsoleUsers() {
       role: 'viewer',
       status: 'active',
       department: '',
-      permissions: []
+      permissions: [],
+      password: ''
     })
     setShowForm(true)
   }
@@ -113,7 +116,8 @@ export function AdminConsoleUsers() {
       role: user.role,
       status: user.status,
       department: user.department || '',
-      permissions: user.permissions
+      permissions: user.permissions,
+      password: ''
     })
     setShowForm(true)
   }
@@ -128,7 +132,7 @@ export function AdminConsoleUsers() {
         ))
       } else {
         // Create new user
-        const newUser = await adminService.createAdminUser(formData as Omit<AdminUser, 'id' | 'created_at' | 'updated_at'>)
+        const newUser = await adminService.createAdminUser(formData as any)
         setUsers(prev => [...prev, newUser])
       }
       setShowForm(false)
@@ -649,6 +653,17 @@ export function AdminConsoleUsers() {
                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
               />
 
+              {!editingUser && (
+                <Input
+                  label="Password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required={!editingUser}
+                  placeholder="At least 8 characters"
+                />
+              )}
+
               <div className="flex gap-3 pt-4 border-t border-gray-200/50">
                 <Button type="submit" variant="primary">
                   {editingUser ? 'Update Admin User' : 'Create Admin User'}
@@ -683,7 +698,10 @@ export function AdminConsoleUsers() {
         <CardBody>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">🔐 Admin Console Users</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+              <LockClosedIcon className="w-8 h-8 text-gray-900" />
+              Admin Console Users
+            </h2>
               <p className="text-sm text-gray-500">Manage admin console users, roles, and permissions</p>
             </div>
             {activeTab === 'users' && (

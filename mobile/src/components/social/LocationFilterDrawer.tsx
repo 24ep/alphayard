@@ -132,6 +132,7 @@ export const LocationFilterDrawer: React.FC<LocationFilterDrawerProps> = ({
                                 { value: 'worldwide', label: 'Worldwide', icon: 'earth' },
                                 { value: 'country', label: selectedCountry || 'Select Country', icon: 'flag' },
                                 { value: 'nearby', label: 'Nearby', icon: 'map-marker-radius' },
+                                { value: 'following', label: 'Following', icon: 'account-group' },
                                 { value: 'custom', label: customCoordinates?.name || 'Custom Location', icon: 'crosshairs-gps' },
                             ].map((option) => (
                                 <TouchableOpacity

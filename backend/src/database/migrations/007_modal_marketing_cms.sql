@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS modal_marketing_analytics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     modal_id UUID REFERENCES modal_marketing_content(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    family_id UUID REFERENCES families(id) ON DELETE SET NULL,
+    circle_id UUID REFERENCES circles(id) ON DELETE SET NULL,
     action_type VARCHAR(50) NOT NULL CHECK (action_type IN ('view', 'click', 'close', 'dismiss', 'interact')),
     action_data JSONB, -- additional data about the action
     device_info JSONB, -- device, browser, OS info
@@ -43,14 +43,14 @@ CREATE TABLE IF NOT EXISTS modal_marketing_interactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     modal_id UUID REFERENCES modal_marketing_content(id) ON DELETE CASCADE,
     user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    family_id UUID REFERENCES families(id) ON DELETE SET NULL,
+    circle_id UUID REFERENCES circles(id) ON DELETE SET NULL,
     interaction_count INTEGER DEFAULT 1,
     first_viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     last_viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     dismissed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(modal_id, user_id, family_id)
+    UNIQUE(modal_id, user_id, circle_id)
 );
 
 -- Insert default modal content types
@@ -96,20 +96,20 @@ INSERT INTO content_types (name, description, schema) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert default modal categories
-INSERT INTO categories (family_id, name, description, color, icon) VALUES
+INSERT INTO categories (circle_id, name, description, color, icon) VALUES
 (NULL, 'Modal Popups', 'Marketing popup modals', '#FF6B6B', '💬'),
 (NULL, 'Banner Alerts', 'Banner notifications and alerts', '#4ECDC4', '📢'),
 (NULL, 'Promotions', 'Promotional content modals', '#45B7D1', '🎯'),
 (NULL, 'Announcements', 'Important announcements', '#96CEB4', '📢'),
 (NULL, 'System Notifications', 'System-generated notifications', '#FFEAA7', '🔔')
-ON CONFLICT (family_id, name) DO NOTHING;
+ON CONFLICT (circle_id, name) DO NOTHING;
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_modal_marketing_content_active ON modal_marketing_content(is_active, start_date, end_date);
 CREATE INDEX IF NOT EXISTS idx_modal_marketing_content_trigger ON modal_marketing_content(trigger_type, trigger_delay);
 CREATE INDEX IF NOT EXISTS idx_modal_marketing_analytics_modal ON modal_marketing_analytics(modal_id, created_at);
-CREATE INDEX IF NOT EXISTS idx_modal_marketing_analytics_user ON modal_marketing_analytics(user_id, family_id);
-CREATE INDEX IF NOT EXISTS idx_modal_marketing_interactions_user ON modal_marketing_interactions(user_id, family_id, modal_id);
+CREATE INDEX IF NOT EXISTS idx_modal_marketing_analytics_user ON modal_marketing_analytics(user_id, circle_id);
+CREATE INDEX IF NOT EXISTS idx_modal_marketing_interactions_user ON modal_marketing_interactions(user_id, circle_id, modal_id);
 
 -- Insert sample modal content
 INSERT INTO modal_marketing_content (
@@ -131,7 +131,7 @@ INSERT INTO modal_marketing_content (
     'immediate',
     0,
     '{"width": "90%", "height": "auto", "position": "center", "animation": "fadeIn", "overlay": true}',
-    '{"user_types": ["new_user"], "families": "all"}',
+    '{"user_types": ["new_user"], "circles": "all"}',
     10,
     true,
     NOW(),
@@ -144,7 +144,7 @@ INSERT INTO modal_marketing_content (
     'delayed',
     5,
     '{"position": "top", "color": "#4ECDC4", "text_color": "#FFFFFF", "animation": "slideDown"}',
-    '{"user_types": ["existing_user"], "families": "all"}',
+    '{"user_types": ["existing_user"], "circles": "all"}',
     5,
     true,
     NOW(),

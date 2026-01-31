@@ -203,7 +203,7 @@ export default function AdvancedCalendarPage() {
                 <div className="flex items-start gap-4">
                   <CalendarIcon className="w-5 h-5 text-macos-blue-600 mt-1" />
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">Family Meeting</h3>
+                    <h3 className="font-semibold text-gray-900">Circle Meeting</h3>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
                         <ClockIcon className="w-4 h-4" />
@@ -235,7 +235,7 @@ export default function AdvancedCalendarPage() {
                 </div>
               </div>
               {[
-                { name: 'Family Vacation', start: 2, duration: 2 },
+                { name: 'Circle Vacation', start: 2, duration: 2 },
                 { name: 'Home Renovation', start: 5, duration: 3 },
                 { name: 'Birthday Party', start: 8, duration: 1 },
               ].map((event, idx) => (
@@ -264,7 +264,7 @@ export default function AdvancedCalendarPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Event Templates</h2>
           <div className="space-y-2">
             <div className="p-3 bg-gray-50 rounded-macos hover:bg-gray-100 cursor-pointer transition-macos">
-              <p className="font-medium text-gray-900">Weekly Family Meeting</p>
+              <p className="font-medium text-gray-900">Weekly Circle Meeting</p>
               <p className="text-sm text-gray-600">Recurring every Monday</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-macos hover:bg-gray-100 cursor-pointer transition-macos">
@@ -291,4 +291,5 @@ export default function AdvancedCalendarPage() {
     </div>
   )
 }
+
 

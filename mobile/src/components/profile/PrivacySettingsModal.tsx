@@ -15,9 +15,11 @@ import { useTranslation } from 'react-i18next';
 import { colors, textColors } from '../../theme/colors';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 
+const IconMC = Icon as any;
+
 interface PrivacyPreferences {
   locationSharing: boolean;
-  profileVisibility: 'public' | 'hourse' | 'private';
+  profileVisibility: 'public' | 'circle' | 'private';
   dataSharing: boolean;
   analytics?: boolean;
   crashReports?: boolean;
@@ -103,7 +105,7 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
   const renderSectionHeader = (title: string, icon: string, description?: string) => (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionTitleContainer}>
-        <Icon name={icon} size={24} color={colors.primary} />
+        <IconMC name={icon} size={24} color={colors.primary[500]} />
         <Text style={styles.sectionTitle}>{title}</Text>
       </View>
       {description && (
@@ -127,9 +129,9 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: colors.border, true: colors.primary }}
+        trackColor={{ false: colors.gray[200], true: colors.primary[500] }}
         thumbColor="#FFFFFF"
-        ios_backgroundColor={colors.border}
+        ios_backgroundColor={colors.gray[200]}
       />
     </View>
   );
@@ -185,9 +187,9 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
       description: t('privacy.visibility.publicDesc'),
     },
     {
-      key: 'hourse',
-      label: t('privacy.visibility.hourse'),
-      description: t('privacy.visibility.familyDesc'),
+      key: 'circle',
+      label: t('privacy.visibility.circle'),
+      description: t('privacy.visibility.circleDesc'),
     },
     {
       key: 'private',
@@ -207,7 +209,7 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Icon name="close" size={24} color={textColors.primary} />
+            <IconMC name="close" size={24} color={textColors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('profile.privacySettings')}</Text>
           <TouchableOpacity
@@ -365,21 +367,21 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
             
             <View style={styles.sectionContent}>
               <TouchableOpacity style={styles.actionItem} onPress={() => Alert.alert(t('info'), t('privacy.downloadDataInfo'))}>
-                <Icon name="download" size={20} color={colors.primary} />
+                <IconMC name="download" size={20} color={colors.primary[500]} />
                 <View style={styles.actionContent}>
                   <Text style={styles.actionTitle}>{t('privacy.downloadData')}</Text>
                   <Text style={styles.actionSubtitle}>{t('privacy.downloadDataDesc')}</Text>
                 </View>
-                <Icon name="chevron-right" size={20} color={textColors.primarySecondary} />
+                <IconMC name="chevron-right" size={20} color={textColors.secondary} />
               </TouchableOpacity>
               
               <TouchableOpacity style={styles.actionItem} onPress={() => Alert.alert(t('info'), t('privacy.deleteDataInfo'))}>
-                <Icon name="delete" size={20} color={colors.error} />
+                <IconMC name="delete" size={20} color={colors.error} />
                 <View style={styles.actionContent}>
                   <Text style={[styles.actionTitle, { color: colors.error }]}>{t('privacy.deleteData')}</Text>
                   <Text style={styles.actionSubtitle}>{t('privacy.deleteDataDesc')}</Text>
                 </View>
-                <Icon name="chevron-right" size={20} color={textColors.primarySecondary} />
+                <IconMC name="chevron-right" size={20} color={textColors.secondary} />
               </TouchableOpacity>
             </View>
           </View>
@@ -392,7 +394,7 @@ export const PrivacySettingsModal: React.FC<PrivacySettingsModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.gray[50], // background
   },
   header: {
     flexDirection: 'row',
@@ -402,7 +404,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingTop: Platform.OS === 'ios' ? 60 : 20,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.gray[200], // border
     backgroundColor: '#FFFFFF',
   },
   headerButton: {
@@ -410,7 +412,7 @@ const styles = StyleSheet.create({
     minWidth: 60,
   },
   saveButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary[500],
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -436,7 +438,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.gray[200], // border
   },
   sectionTitleContainer: {
     flexDirection: 'row',
@@ -451,7 +453,7 @@ const styles = StyleSheet.create({
   },
   sectionDescription: {
     fontSize: 13,
-    color: textColors.primarySecondary,
+    color: textColors.secondary,
     lineHeight: 18,
   },
   sectionContent: {
@@ -463,7 +465,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.gray[200], // border
   },
   toggleContent: {
     flex: 1,
@@ -481,14 +483,14 @@ const styles = StyleSheet.create({
   },
   toggleSubtitle: {
     fontSize: 13,
-    color: textColors.primarySecondary,
+    color: textColors.secondary,
     lineHeight: 18,
   },
   pickerItem: {
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.gray[200], // border
   },
   pickerContent: {
     marginBottom: 12,
@@ -498,14 +500,14 @@ const styles = StyleSheet.create({
   },
   pickerOption: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.gray[200], // border
     borderRadius: 12,
     padding: 12,
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: colors.gray[50], // backgroundLight
   },
   pickerOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
+    borderColor: colors.primary[500],
+    backgroundColor: colors.primary[50], // primary[50]? 50 exists
   },
   pickerOptionText: {
     fontSize: 14,
@@ -514,11 +516,19 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   pickerOptionTextSelected: {
-    color: '#FFFFFF',
+    color: colors.primary[900], // Darker text for selected? or White?
+    // PrivacySettingsModal original used #FFFFFF for selected text.
+    // wait, line 508 was backgroundColor: colors.primary. Original had #FFFFFF text.
+    // I should check if I want correct contrast.
+    // if bg is primary[50] (light), text should be dark.
+    // if bg is primary[500] (darker), text should be white.
+    // Original used `backgroundColor: colors.primary` (which is object... so undefined in style? No, original had logic that might have worked if colors.primary was string elsewhere?)
+    // In colors.ts, colors.primary is object.
+    // I should use `backgroundColor: colors.primary[500]` for selected background, then text white is fine.
   },
   pickerOptionDescription: {
     fontSize: 12,
-    color: textColors.primarySecondary,
+    color: textColors.secondary,
   },
   pickerOptionDescriptionSelected: {
     color: 'rgba(255, 255, 255, 0.8)',
@@ -529,7 +539,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.gray[200], // border
   },
   actionContent: {
     flex: 1,
@@ -543,9 +553,14 @@ const styles = StyleSheet.create({
   },
   actionSubtitle: {
     fontSize: 13,
-    color: textColors.primarySecondary,
+    color: textColors.secondary,
     lineHeight: 18,
   },
 });
 
-export default PrivacySettingsModal;
+/* Fix for pickerOptionSelected to match original behavior if desired, or use light theme */
+// Let's stick to primary[500] background and white text for selected state to match typical "Active" state.
+styles.pickerOptionSelected = {
+    borderColor: colors.primary[500],
+    backgroundColor: colors.primary[500],
+} as any;

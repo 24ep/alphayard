@@ -10,6 +10,13 @@ import {
   TextStyle,
 } from 'react-native';
 import { colors } from '../../theme/colors';
+import { useBranding } from '../../contexts/BrandingContext';
+
+// Helper to resolve color
+const resolveColor = (colorValue: any, defaultColor: string) => {
+  if (!colorValue) return defaultColor;
+  return colorValue.solid || defaultColor;
+};
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -50,6 +57,28 @@ export const Input = forwardRef<TextInput, InputProps>(({
   ...props
 }, ref) => {
   const [isFocused, setIsFocused] = useState(false);
+  const { categories } = useBranding();
+
+  // Extract config
+  const inputConfig = React.useMemo(() => {
+    if (!categories) return null;
+    for (const cat of categories) {
+        const comp = cat.components.find(c => c.id === 'text'); // Assuming standard text input
+        if (comp) return comp;
+    }
+    return null;
+  }, [categories]);
+
+  const brandingStyles = inputConfig?.styles;
+  const config = inputConfig?.config || {};
+  
+  const brandingBg = resolveColor(brandingStyles?.backgroundColor, colors.white[500]);
+  const brandingBorder = resolveColor(brandingStyles?.borderColor, colors.gray[300]);
+  const brandingText = resolveColor(brandingStyles?.textColor, colors.gray[700]);
+  const brandingRadius = brandingStyles?.borderRadius ?? 8;
+  const brandingFocusBorder = resolveColor(brandingStyles?.focusBorderColor, colors.primary[500]);
+  const brandingErrorBorder = resolveColor(brandingStyles?.invalidBorderColor, colors.error);
+  const placeholderColor = config?.placeholderColor || colors.gray[400];
 
   const handleFocus = (e: any) => {
     setIsFocused(true);
@@ -63,27 +92,47 @@ export const Input = forwardRef<TextInput, InputProps>(({
 
   const inputContainerStyle = [
     styles.inputContainer,
-    isFocused && styles.inputContainerFocused,
-    error && styles.inputContainerError,
+    { 
+        backgroundColor: brandingBg,
+        borderColor: brandingBorder,
+        borderRadius: brandingRadius,
+        borderTopWidth: brandingStyles?.borderTopWidth,
+        borderRightWidth: brandingStyles?.borderRightWidth,
+        borderBottomWidth: brandingStyles?.borderBottomWidth,
+        borderLeftWidth: brandingStyles?.borderLeftWidth,
+    },
+    isFocused && { borderColor: (brandingStyles as any)?.focusBorderColor || colors.primary[500], borderWidth: 2 },
+    error && { borderColor: (brandingStyles as any)?.invalidBorderColor || colors.error, borderWidth: 2 },
     disabled && styles.inputContainerDisabled,
     containerStyle,
   ];
+  
+  // ... existing styles arrays
 
-  const inputStyleArray = [
-    styles.input,
-    multiline && styles.inputMultiline,
-    inputStyle,
+  const labelStyleArray = [
+    styles.label,
+    disabled && styles.labelDisabled,
+    error && styles.labelRequired, // Or dedicated error style for label if needed
+    labelStyle,
   ];
 
   const labelStyleArray = [
     styles.label,
-    required && styles.labelRequired,
     disabled && styles.labelDisabled,
+    error && styles.labelRequired,
     labelStyle,
+  ];
+
+  const inputStyleArray = [
+    styles.input,
+    { color: brandingText },
+    multiline && styles.inputMultiline,
+    inputStyle,
   ];
 
   return (
     <View style={styles.container}>
+      {/* ... label rendering ... */}
       {label && (
         <Text style={labelStyleArray}>
           {label}
@@ -99,7 +148,7 @@ export const Input = forwardRef<TextInput, InputProps>(({
         <TextInput
           ref={ref}
           style={inputStyleArray}
-          placeholderTextColor={colors.gray[400]}
+          placeholderTextColor={placeholderColor}
           editable={!disabled}
           multiline={multiline}
           numberOfLines={numberOfLines}

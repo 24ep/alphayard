@@ -1,5 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 
 export class ScheduledPublishingService {
   private cronJob: ScheduledTask | null = null;
@@ -47,31 +47,38 @@ export class ScheduledPublishingService {
 
     try {
       // Auto-publish scheduled pages
-      const { data: publishData, error: publishError } = await supabase.rpc(
-        'auto_publish_scheduled_pages'
-      );
-
-      if (publishError) {
-        console.error('Error auto-publishing pages:', publishError);
-      } else {
-        publishedCount = publishData || 0;
-        if (publishedCount > 0) {
-          console.log(`📅 Auto-published ${publishedCount} scheduled page(s)`);
-        }
+      // Replicating logic of 'auto_publish_scheduled_pages' RPC
+      const publishResult = await pool.query(`
+        UPDATE pages 
+        SET status = 'published', 
+            published_at = NOW(),
+            updated_at = NOW()
+        WHERE status = 'scheduled' 
+          AND scheduled_for <= NOW()
+          AND (scheduled_for IS NOT NULL)
+        RETURNING id
+      `);
+      
+      publishedCount = publishResult.rowCount || 0;
+      if (publishedCount > 0) {
+        console.log(`📅 Auto-published ${publishedCount} scheduled page(s)`);
       }
 
       // Auto-unpublish expired pages
-      const { data: unpublishData, error: unpublishError } = await supabase.rpc(
-        'auto_unpublish_expired_pages'
-      );
+      // Replicating logic of 'auto_unpublish_expired_pages' RPC
+      const unpublishResult = await pool.query(`
+        UPDATE pages 
+        SET status = 'draft',
+            updated_at = NOW()
+        WHERE status = 'published' 
+          AND unpublish_at <= NOW()
+          AND (unpublish_at IS NOT NULL)
+        RETURNING id
+      `);
 
-      if (unpublishError) {
-        console.error('Error auto-unpublishing pages:', unpublishError);
-      } else {
-        unpublishedCount = unpublishData || 0;
-        if (unpublishedCount > 0) {
-          console.log(`⏰ Auto-unpublished ${unpublishedCount} expired page(s)`);
-        }
+      unpublishedCount = unpublishResult.rowCount || 0;
+      if (unpublishedCount > 0) {
+        console.log(`⏰ Auto-unpublished ${unpublishedCount} expired page(s)`);
       }
     } catch (error) {
       console.error('Error processing scheduled pages:', error);
@@ -95,3 +102,4 @@ export class ScheduledPublishingService {
 
 // Export singleton instance
 export const scheduledPublishingService = new ScheduledPublishingService();
+export default scheduledPublishingService;

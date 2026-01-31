@@ -80,7 +80,7 @@ export function Modal({
       <div
         ref={modalRef}
         className={clsx(
-          'relative z-10 w-full frosted-glass-strong rounded-2xl shadow-macos-xl border border-gray-200/50',
+          'relative z-10 w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-macos-xl border border-gray-200/50 dark:border-zinc-800',
           'animate-scale-in',
           sizeClasses[size],
           className

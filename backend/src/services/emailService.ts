@@ -19,7 +19,7 @@ interface EmailOptions {
 
 interface InvitationEmailData {
   inviterName: string;
-  familyName: string;
+  circleName: string;
   inviteCode: string;
   inviteUrl: string;
   message?: string;
@@ -27,7 +27,7 @@ interface InvitationEmailData {
 
 interface WelcomeEmailData {
   userName: string;
-  familyName: string;
+  circleName: string;
   loginUrl: string;
 }
 
@@ -182,7 +182,7 @@ class EmailService {
           <meta charset="utf-8">
           <title>${subject}</title>
           <style>
-            body { font-hourse: Arial, sans-serif; line-height: 1.6; color: #333; }
+            body { font-circle: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: #FA7272; color: white; padding: 20px; text-align: center; }
             .content { padding: 20px; background: #f9f9f9; }
@@ -210,21 +210,21 @@ class EmailService {
   private generateContentFromData(data: Record<string, any>): string {
     let content = '';
 
-    if (data.inviterName && data.familyName) {
+    if (data.inviterName && data.circleName) {
       content = `
-        <h2>You're invited to join ${data.familyName}!</h2>
+        <h2>You're invited to join ${data.circleName}!</h2>
         <p>Hello!</p>
-        <p>${data.inviterName} has invited you to join their hourse group "${data.familyName}" on Bondarys.</p>
+        <p>${data.inviterName} has invited you to join their circle group "${data.circleName}" on Bondarys.</p>
         ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ''}
         <p>Click the button below to accept the invitation:</p>
-        <p><a href="${data.inviteUrl}" class="button">Join hourse</a></p>
+        <p><a href="${data.inviteUrl}" class="button">Join circle</a></p>
         <p>Or use this code: <strong>${data.inviteCode}</strong></p>
       `;
     } else if (data.userName) {
       content = `
         <h2>Welcome to Bondarys, ${data.userName}!</h2>
         <p>Your account has been created successfully.</p>
-        ${data.familyName ? `<p>You've joined the hourse group: <strong>${data.familyName}</strong></p>` : ''}
+        ${data.circleName ? `<p>You've joined the circle group: <strong>${data.circleName}</strong></p>` : ''}
         <p>Click the button below to get started:</p>
         <p><a href="${data.loginUrl}" class="button">Get Started</a></p>
       `;
@@ -271,11 +271,11 @@ class EmailService {
   }
 
   // Public methods
-  async sendFamilyInvitation(data: InvitationEmailData, toEmail: string): Promise<boolean> {
+  async sendCircleInvitation(data: InvitationEmailData, toEmail: string): Promise<boolean> {
     return this.sendEmail({
       to: toEmail,
-      subject: `You're invited to join ${data.familyName} on Bondarys`,
-      template: 'hourse-invitation',
+      subject: `You're invited to join ${data.circleName} on Bondarys`,
+      template: 'circle-invitation',
       data
     });
   }
@@ -350,3 +350,4 @@ class EmailService {
 // Export singleton instance
 export const emailService = new EmailService();
 export default emailService;
+

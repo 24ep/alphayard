@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import {
-  View,
   Dimensions,
   FlatList,
   Animated,
@@ -15,8 +14,7 @@ import {
   useToast,
 } from 'native-base';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -32,38 +30,36 @@ const onboardingData: OnboardingItem[] = [
   {
     id: '1',
     title: 'Welcome to Bondarys',
-    description: 'Connect with your hourse and stay safe together with our comprehensive hourse safety app.',
+    description: 'Connect with your Circle and stay safe together with our comprehensive Circle safety app.',
     icon: 'home-heart',
     color: '#4A90E2',
   },
   {
     id: '2',
     title: 'Real-time Location',
-    description: 'Know where your hourse members are and get notified when they arrive safely.',
+    description: 'Know where your Circle members are and get notified when they arrive safely.',
     icon: 'map-marker-radius',
     color: '#7ED321',
   },
   {
     id: '3',
     title: 'Emergency Alerts',
-    description: 'Send instant alerts to hourse members in case of emergencies.',
+    description: 'Send instant alerts to Circle members in case of emergencies.',
     icon: 'alert-circle',
     color: '#D0021B',
   },
   {
     id: '4',
-    title: 'hourse Communication',
-    description: 'Stay connected with group chats, voice calls, and hourse events.',
+    title: 'Circle Communication',
+    description: 'Stay connected with group chats, voice calls, and Circle events.',
     icon: 'message-text',
     color: '#F5A623',
   },
 ];
 
 const OnboardingScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const toast = useToast();
+  const { completeOnboarding } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
   const scrollX = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
 
@@ -93,23 +89,18 @@ const OnboardingScreen: React.FC = () => {
     }
   };
 
-  const handleSkip = () => {
-    handleGetStarted();
+  const handleSkip = async () => {
+    await handleGetStarted();
   };
 
   const handleGetStarted = async () => {
-    setLoading(true);
     try {
-      // Navigate to hourse setup
-      navigation.navigate('FamilySetup' as never);
+      console.log('[Onboarding] Completing onboarding...');
+      // Complete onboarding directly, skipping house type selection
+      await completeOnboarding();
     } catch (error) {
-      console.error('Navigation error:', error);
-      toast.show({
-        description: 'An error occurred. Please try again.',
-        status: 'error',
-      });
-    } finally {
-      setLoading(false);
+      console.error('[Onboarding] Failed to complete onboarding:', error);
+      // Fail silently to the user as they might already be logged out by AuthContext if it was a 401
     }
   };
 
@@ -191,9 +182,7 @@ const OnboardingScreen: React.FC = () => {
     );
   };
 
-  if (loading) {
-    return <LoadingSpinner fullScreen />;
-  }
+
 
   return (
     <Box flex={1} bg="white">

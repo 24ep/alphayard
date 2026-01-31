@@ -8,17 +8,18 @@ import {
   Modal,
   Animated,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
 import { useFocusEffect } from '@react-navigation/native';
-import { FamilyDropdown } from '../../components/home/FamilyDropdown';
+import { CircleDropdown } from '../../components/home/CircleDropdown';
 import { brandColors } from '../../theme/colors';
 import { notesApi, todosApi } from '../../services/api';
 import MainScreenLayout from '../../components/layout/MainScreenLayout';
 import { CardSkeleton } from '../../components/common/SkeletonLoader';
 import { ShoppingDrawer } from '../../components/home/ShoppingDrawer';
-import { familyApi } from '../../services/api';
+import { circleApi } from '../../services/api';
 
 import { ScalePressable } from '../../components/common/ScalePressable';
 
@@ -33,7 +34,7 @@ interface Note {
   content: string;
   createdAt: string;
   updatedAt: string;
-  category: 'personal' | 'work' | 'family' | 'ideas';
+  category: 'personal' | 'work' | 'circle' | 'ideas';
   isPinned: boolean;
   color: string;
 }
@@ -42,7 +43,7 @@ interface TaskItem {
   id: string;
   title: string;
   description: string;
-  category: 'work' | 'personal' | 'family' | 'urgent';
+  category: 'work' | 'personal' | 'circle' | 'urgent';
   priority: 'low' | 'medium' | 'high';
   dueDate: string; // ISO
   isCompleted: boolean;
@@ -52,7 +53,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   console.log('[UI] NotesScreen (main) using MainScreenLayout');
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'personal' | 'work' | 'family' | 'ideas'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'personal' | 'work' | 'circle' | 'ideas'>('all');
   const [showCreateNote, setShowCreateNote] = useState(false);
   const [showNoteDetail, setShowNoteDetail] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -62,7 +63,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   const [showTodoDrawer, setShowTodoDrawer] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
-  const [taskForm, setTaskForm] = useState<{ title: string; description: string; category: 'work' | 'personal' | 'family' | 'urgent'; priority: 'low' | 'medium' | 'high'; dueDate: string }>({
+  const [taskForm, setTaskForm] = useState<{ title: string; description: string; category: 'work' | 'personal' | 'circle' | 'urgent'; priority: 'low' | 'medium' | 'high'; dueDate: string }>({
     title: '',
     description: '',
     category: 'work',
@@ -73,19 +74,20 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   // Shopping List
   const [shoppingItems, setShoppingItems] = useState<any[]>([]);
   const [showShoppingDrawer, setShowShoppingDrawer] = useState(false);
+  const [showShoppingList, setShowShoppingList] = useState(false);
 
-  // hourse selection state
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState('Smith hourse');
+  // Circle selection state
+  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
+  const [selectedCircle, setSelectedCircle] = useState('Smith Circle');
   const availableFamilies = [
-    { id: '1', name: 'Smith hourse', members: 4 },
-    { id: '2', name: 'Johnson hourse', members: 3 },
-    { id: '3', name: 'Williams hourse', members: 5 },
-    { id: '4', name: 'Brown hourse', members: 2 },
+    { id: '1', name: 'Smith Circle', members: 4 },
+    { id: '2', name: 'Johnson Circle', members: 3 },
+    { id: '3', name: 'Williams Circle', members: 5 },
+    { id: '4', name: 'Brown Circle', members: 2 },
   ];
 
   // Form state
-  const [noteForm, setNoteForm] = useState<{ title: string; content: string; category: 'personal' | 'work' | 'family' | 'ideas'; color: string }>({
+  const [noteForm, setNoteForm] = useState<{ title: string; content: string; category: 'personal' | 'work' | 'circle' | 'ideas'; color: string }>({
     title: '',
     content: '',
     category: 'personal',
@@ -160,7 +162,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
 
   const loadShoppingList = async () => {
     try {
-      const shoppingResponse = await familyApi.getShoppingList();
+      const shoppingResponse = await circleApi.getShoppingList();
       if (shoppingResponse.items) {
         const activeItems = shoppingResponse.items.filter((item: any) => !item.completed);
         setShoppingItems(activeItems);
@@ -203,9 +205,9 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     }
   };
 
-  const handleFamilySelect = (familyName: string) => {
-    setSelectedFamily(familyName);
-    setShowFamilyDropdown(false);
+  const handleCircleSelect = (circleName: string) => {
+    setSelectedCircle(circleName);
+    setShowCircleDropdown(false);
   };
 
   const handleCreateNote = () => {
@@ -295,7 +297,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     switch (category) {
       case 'work': return '#2196F3';
       case 'personal': return '#9C27B0';
-      case 'family': return '#4CAF50';
+      case 'circle': return '#4CAF50';
       case 'ideas': return '#FF9800';
       default: return '#FFB6C1';
     }
@@ -305,7 +307,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     switch (category) {
       case 'work': return 'briefcase';
       case 'personal': return 'account';
-      case 'family': return 'home';
+      case 'circle': return 'home';
       case 'ideas': return 'lightbulb';
       default: return 'note';
     }
@@ -438,7 +440,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
           {/* Shopping Widget */}
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => setShowShoppingDrawer(true)}
+            onPress={() => setShowShoppingList(true)}
             style={{
               flex: 1,
               backgroundColor: '#FFFFFF',
@@ -471,7 +473,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         {/* Category Filter Pills */}
         <View style={{ paddingHorizontal: H_PADDING, marginBottom: 20 }}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {(['all', 'personal', 'work', 'family', 'ideas'] as const).map(category => (
+            {(['all', 'personal', 'work', 'circle', 'ideas'] as const).map(category => (
               <TouchableOpacity
                 key={category}
                 onPress={() => setSelectedCategory(category)}
@@ -633,7 +635,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 {/* Category selector in header */}
                 <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {(['personal', 'work', 'family', 'ideas'] as const).map(category => (
+                  {(['personal', 'work', 'circle', 'ideas'] as const).map(category => (
                     <TouchableOpacity
                       key={category}
                       onPress={() => setNoteForm(prev => ({ ...prev, category }))}
@@ -722,18 +724,17 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         </View>
       </Modal>
 
-      {/* Shopping Drawer */}
+      {/* Shopping Drawer (Add Item) */}
       <ShoppingDrawer
         visible={showShoppingDrawer}
         onClose={() => setShowShoppingDrawer(false)}
         onAddItem={async (item) => {
           try {
-            // simplified without family check for note screen context, or default
-            await familyApi.createShoppingItem({
+            await circleApi.createShoppingItem({
               item: item.item,
               quantity: item.quantity,
               category: item.category,
-              list: item.location || 'Groceries'
+              list: 'Groceries'
             });
             await loadShoppingList();
             setShowShoppingDrawer(false);
@@ -742,6 +743,122 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
           }
         }}
       />
+
+      {/* Shopping List Modal */}
+      <Modal visible={showShoppingList} transparent animationType="slide" onRequestClose={() => setShowShoppingList(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 12, paddingBottom: 24, maxHeight: '85%' }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 8 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>Shopping List</Text>
+              <TouchableOpacity onPress={() => setShowShoppingList(false)} style={{ padding: 8 }}>
+                <IconMC name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Shopping List */}
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
+              {shoppingItems.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: '#6B7280' }}>Your shopping list is empty.</Text>
+                </View>
+              ) : (
+                shoppingItems
+                  .sort((a, b) => (Number(a.completed) - Number(b.completed))) // Active first
+                  .map((item) => (
+                    <View
+                      key={item.id}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingVertical: 12,
+                        paddingHorizontal: 4,
+                        borderBottomWidth: 1,
+                        borderBottomColor: '#F3F4F6',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                         {/* Toggle Complete */}
+                        <TouchableOpacity
+                          onPress={async () => {
+                            try {
+                              // Optimistic update
+                              setShoppingItems(prev => prev.map(i => i.id === item.id ? { ...i, completed: !i.completed } : i));
+                              await circleApi.updateShoppingItem(item.id, { completed: !item.completed });
+                              await loadShoppingList();
+                            } catch (e) {
+                              // Revert on error - mostly likely just reload
+                              await loadShoppingList();
+                            }
+                          }}
+                          style={{ marginRight: 12 }}
+                        >
+                          <IconMC
+                            name={item.completed ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                            size={24}
+                            color={item.completed ? '#10B981' : '#D1D5DB'}
+                          />
+                        </TouchableOpacity>
+
+                        <View style={{ flex: 1 }}>
+                          <Text style={{
+                            fontSize: 16,
+                            fontWeight: '500',
+                            color: item.completed ? '#9CA3AF' : '#111827',
+                            textDecorationLine: item.completed ? 'line-through' : 'none',
+                          }}>
+                            {item.quantity && item.quantity !== '1' ? `${item.quantity}x ` : ''}{item.item}
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#6B7280', textTransform: 'capitalize' }}>
+                            {item.category}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Delete Button */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          Alert.alert(
+                            'Delete Item',
+                            'Are you sure you want to delete this item?',
+                            [
+                              { text: 'Cancel', style: 'cancel' },
+                              {
+                                text: 'Delete',
+                                style: 'destructive',
+                                onPress: async () => {
+                                  try {
+                                    setShoppingItems(prev => prev.filter(i => i.id !== item.id)); // Optimistic delete
+                                    await circleApi.deleteShoppingItem(item.id);
+                                    await loadShoppingList();
+                                  } catch (e) {
+                                    await loadShoppingList();
+                                  }
+                                }
+                              }
+                            ]
+                          );
+                        }}
+                        style={{ padding: 8 }}
+                      >
+                         <IconMC name="trash-can-outline" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  ))
+              )}
+            </ScrollView>
+
+            {/* FAB to Add Item - Opens existing drawer */}
+            <TouchableOpacity
+              onPress={() => { setShowShoppingDrawer(true); }}
+              style={{ position: 'absolute', right: 20, bottom: 24, width: 56, height: 56, borderRadius: 28, backgroundColor: '#10B981', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}
+            >
+              <IconMC name="plus" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* To-Do Drawer */}
       <Modal visible={showTodoDrawer} transparent animationType="slide" onRequestClose={() => setShowTodoDrawer(false)}>
@@ -867,7 +984,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                   <TextInput value={taskForm.description} onChangeText={(text) => setTaskForm(prev => ({ ...prev, description: text }))} placeholder="Task description" multiline numberOfLines={4} style={{ borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, padding: 12, fontSize: 16, textAlignVertical: 'top' }} />
                 </View>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  {(['work', 'personal', 'family', 'urgent'] as const).map(cat => (
+                  {(['work', 'personal', 'circle', 'urgent'] as const).map(cat => (
                     <TouchableOpacity key={cat} onPress={() => setTaskForm(prev => ({ ...prev, category: cat }))} style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: taskForm.category === cat ? getCategoryColor(cat) : '#F3F4F6' }}>
                       <Text style={{ color: taskForm.category === cat ? '#FFFFFF' : '#6B7280', fontWeight: '600' }}>{cat}</Text>
                     </TouchableOpacity>
@@ -950,12 +1067,12 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
       cardMarginTopAnim={cardMarginTopAnim}
       cardOpacityAnim={cardOpacityAnim}
     >
-      {/* hourse Selection Modal */}
-      <FamilyDropdown
-        visible={showFamilyDropdown}
-        onClose={() => setShowFamilyDropdown(false)}
-        selectedFamily={selectedFamily}
-        onFamilySelect={handleFamilySelect}
+      {/* Circle Selection Modal */}
+      <CircleDropdown
+        visible={showCircleDropdown}
+        onClose={() => setShowCircleDropdown(false)}
+        selectedCircle={selectedCircle}
+        onCircleSelect={handleCircleSelect}
         availableFamilies={availableFamilies}
       />
       {Content}
@@ -964,3 +1081,4 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
 };
 
 export default NotesScreen;
+

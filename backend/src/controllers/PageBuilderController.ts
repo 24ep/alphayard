@@ -1,7 +1,10 @@
 import { Response } from 'express';
-import { supabase } from '../config/supabase';
-import pool from '../config/database';
+import { pool } from '../config/database';
 
+/**
+ * Page Builder Controller
+ * REFACTORED: Using direct PostgreSQL pool instead of Supabase client
+ */
 export class PageBuilderController {
   // ==================== PAGE CRUD OPERATIONS ====================
 
@@ -12,64 +15,81 @@ export class PageBuilderController {
     try {
       const query = req.query;
 
-      let supabaseQuery = supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(
-            id,
-            component_type,
-            position,
-            props,
-            styles,
-            responsive_config
-          )
-        `);
+      // Build SQL query with optional filters
+      let sql = `
+        SELECT p.*, 
+               COALESCE(
+                 json_agg(
+                   json_build_object(
+                     'id', pc.id,
+                     'component_type', pc.component_type,
+                     'position', pc.position,
+                     'props', pc.props,
+                     'styles', pc.styles,
+                     'responsive_config', pc.responsive_config
+                   ) ORDER BY pc.position
+                 ) FILTER (WHERE pc.id IS NOT NULL), '[]'
+               ) as page_components
+        FROM pages p
+        LEFT JOIN page_components pc ON p.id = pc.page_id
+        WHERE 1=1
+      `;
+      const params: any[] = [];
+      let paramIndex = 1;
 
       // Apply filters
       if (query.status) {
-        supabaseQuery = supabaseQuery.eq('status', query.status);
+        sql += ` AND p.status = $${paramIndex++}`;
+        params.push(query.status);
       }
       if (query.parentId) {
-        supabaseQuery = supabaseQuery.eq('parent_id', query.parentId);
+        sql += ` AND p.parent_id = $${paramIndex++}`;
+        params.push(query.parentId);
       }
       if (query.templateId) {
-        supabaseQuery = supabaseQuery.eq('template_id', query.templateId);
+        sql += ` AND p.template_id = $${paramIndex++}`;
+        params.push(query.templateId);
       }
       if (query.search) {
-        supabaseQuery = supabaseQuery.or(`title.ilike.%${query.search}%,description.ilike.%${query.search}%`);
+        sql += ` AND (p.title ILIKE $${paramIndex} OR p.description ILIKE $${paramIndex})`;
+        params.push(`%${query.search}%`);
+        paramIndex++;
       }
       if (query.createdBy) {
-        supabaseQuery = supabaseQuery.eq('created_by', query.createdBy);
+        sql += ` AND p.created_by = $${paramIndex++}`;
+        params.push(query.createdBy);
       }
+
+      // Group by page
+      sql += ` GROUP BY p.id`;
 
       // Apply sorting
       const sortBy = String(query.sortBy || 'updated_at');
-      const sortOrder = String(query.sortOrder || 'desc');
-      supabaseQuery = supabaseQuery.order(sortBy, { ascending: sortOrder === 'asc' });
-
-      // Apply pagination
-      const limit = parseInt(String(query.limit || 50), 10);
-      const offset = parseInt(String(query.offset || 0), 10);
-      supabaseQuery = supabaseQuery.range(offset, offset + limit - 1);
-
-      const { data, error } = await supabaseQuery;
-
-      if (error) {
-        console.error('Error fetching pages:', error);
-        return res.status(400).json({ error: error.message });
+      const sortOrder = String(query.sortOrder || 'desc').toUpperCase();
+      const validSortColumns = ['title', 'slug', 'status', 'created_at', 'updated_at', 'published_at'];
+      const validSortOrders = ['ASC', 'DESC'];
+      
+      if (validSortColumns.includes(sortBy) && validSortOrders.includes(sortOrder)) {
+        sql += ` ORDER BY p.${sortBy} ${sortOrder}`;
+      } else {
+        sql += ` ORDER BY p.updated_at DESC`;
       }
 
-      // Sort components by position
-      const pages = data.map(page => ({
-        ...page,
-        page_components: page.page_components?.sort((a: any, b: any) => a.position - b.position) || []
-      }));
+      // Apply pagination
+      const limit = Math.min(parseInt(String(query.limit || 50), 10), 100);
+      const offset = parseInt(String(query.offset || 0), 10);
+      sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      params.push(limit, offset);
+
+      const { rows: pages } = await pool.query(sql, params);
 
       res.json({ pages });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching pages:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(400).json({ 
+        error: 'Failed to fetch pages',
+        message: error.message || String(error)
+      });
     }
   }
 
@@ -80,36 +100,35 @@ export class PageBuilderController {
     try {
       const { id } = req.params;
 
-      const { data, error } = await supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(
-            id,
-            component_type,
-            position,
-            props,
-            styles,
-            responsive_config,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('id', id)
-        .single();
+      const sql = `
+        SELECT p.*, 
+               COALESCE(
+                 json_agg(
+                   json_build_object(
+                     'id', pc.id,
+                     'component_type', pc.component_type,
+                     'position', pc.position,
+                     'props', pc.props,
+                     'styles', pc.styles,
+                     'responsive_config', pc.responsive_config,
+                     'created_at', pc.created_at,
+                     'updated_at', pc.updated_at
+                   ) ORDER BY pc.position
+                 ) FILTER (WHERE pc.id IS NOT NULL), '[]'
+               ) as page_components
+        FROM pages p
+        LEFT JOIN page_components pc ON p.id = pc.page_id
+        WHERE p.id = $1
+        GROUP BY p.id
+      `;
 
-      if (error) {
-        console.error('Error fetching page:', error);
+      const { rows } = await pool.query(sql, [id]);
+
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Page not found' });
       }
 
-      // Sort components by position
-      const page = {
-        ...data,
-        page_components: data.page_components?.sort((a: any, b: any) => a.position - b.position) || []
-      };
-
-      res.json({ page });
+      res.json({ page: rows[0] });
     } catch (error) {
       console.error('Error fetching page:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -123,8 +142,7 @@ export class PageBuilderController {
     try {
       const { slug } = req.params;
 
-      // Use direct PG connection since Supabase API might be unavailable
-      const query = `
+      const sql = `
         SELECT p.*, 
                COALESCE(json_agg(pc.* ORDER BY pc.position) FILTER (WHERE pc.id IS NOT NULL), '[]') as page_components
         FROM pages p
@@ -133,14 +151,13 @@ export class PageBuilderController {
         GROUP BY p.id
       `;
 
-      const { rows } = await pool.query(query, [slug]);
-      const page = rows[0];
+      const { rows } = await pool.query(sql, [slug]);
 
-      if (!page) {
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Page not found' });
       }
 
-      res.json({ page });
+      res.json({ page: rows[0] });
     } catch (error: any) {
       console.error('Error fetching page by slug:', error);
       res.status(500).json({ error: 'Internal server error', details: error.message || String(error) });
@@ -151,6 +168,7 @@ export class PageBuilderController {
    * Create a new page
    */
   async createPage(req: any, res: Response) {
+    const client = await pool.connect();
     try {
       const { title, slug, description, parentId, templateId, metadata, seoConfig, components } = req.body;
       const userId = req.user?.id || req.admin?.id;
@@ -163,84 +181,67 @@ export class PageBuilderController {
         return res.status(400).json({ error: 'Title and slug are required' });
       }
 
-      // Generate slug if not provided or sanitize provided slug
+      // Sanitize slug
       const sanitizedSlug = slug
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
 
-      // Check if slug already exists for published pages
-      const { data: existingPage } = await supabase
-        .from('pages')
-        .select('id, status')
-        .eq('slug', sanitizedSlug)
-        .eq('status', 'published')
-        .single();
+      await client.query('BEGIN');
 
-      if (existingPage) {
+      // Check if slug already exists for published pages
+      const { rows: existingPages } = await client.query(
+        "SELECT id FROM pages WHERE slug = $1 AND status = 'published' LIMIT 1",
+        [sanitizedSlug]
+      );
+
+      if (existingPages.length > 0) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'A published page with this URL already exists' });
       }
 
       // Create page
-      const { data: page, error: pageError } = await supabase
-        .from('pages')
-        .insert({
-          title,
-          slug: sanitizedSlug,
-          description: description || null,
-          parent_id: parentId || null,
-          template_id: templateId || null,
-          status: 'draft',
-          metadata: metadata || {},
-          seo_config: seoConfig || {},
-          created_by: userId,
-          updated_by: userId
-        })
-        .select()
-        .single();
+      const { rows: pageRows } = await client.query(
+        `INSERT INTO pages (title, slug, description, parent_id, template_id, status, metadata, seo_config, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9)
+         RETURNING *`,
+        [title, sanitizedSlug, description || null, parentId || null, templateId || null, metadata || {}, seoConfig || {}, userId, userId]
+      );
 
-      if (pageError) {
-        console.error('Error creating page:', pageError);
-        return res.status(400).json({ error: pageError.message });
-      }
+      const page = pageRows[0];
 
       // Add components if provided
       if (components && Array.isArray(components) && components.length > 0) {
-        const componentData = components.map((comp: any, index: number) => ({
-          page_id: page.id,
-          component_type: comp.componentType,
-          position: comp.position !== undefined ? comp.position : index,
-          props: comp.props || {},
-          styles: comp.styles || {},
-          responsive_config: comp.responsiveConfig || {}
-        }));
-
-        const { error: componentsError } = await supabase
-          .from('page_components')
-          .insert(componentData);
-
-        if (componentsError) {
-          console.error('Error creating components:', componentsError);
-          // Rollback page creation
-          await supabase.from('pages').delete().eq('id', page.id);
-          return res.status(400).json({ error: 'Failed to create page components' });
+        for (let i = 0; i < components.length; i++) {
+          const comp = components[i];
+          await client.query(
+            `INSERT INTO page_components (page_id, component_type, position, props, styles, responsive_config)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [page.id, comp.componentType, comp.position !== undefined ? comp.position : i, comp.props || {}, comp.styles || {}, comp.responsiveConfig || {}]
+          );
         }
       }
 
-      // Fetch complete page with components
-      const { data: completePage } = await supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(*)
-        `)
-        .eq('id', page.id)
-        .single();
+      await client.query('COMMIT');
 
-      res.status(201).json({ page: completePage });
-    } catch (error) {
+      // Fetch complete page with components
+      const { rows: completePageRows } = await pool.query(
+        `SELECT p.*, 
+                COALESCE(json_agg(pc.* ORDER BY pc.position) FILTER (WHERE pc.id IS NOT NULL), '[]') as page_components
+         FROM pages p
+         LEFT JOIN page_components pc ON p.id = pc.page_id
+         WHERE p.id = $1
+         GROUP BY p.id`,
+        [page.id]
+      );
+
+      res.status(201).json({ page: completePageRows[0] });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
       console.error('Error creating page:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(400).json({ error: error.message || 'Failed to create page' });
+    } finally {
+      client.release();
     }
   }
 
@@ -248,6 +249,7 @@ export class PageBuilderController {
    * Update an existing page
    */
   async updatePage(req: any, res: Response) {
+    const client = await pool.connect();
     try {
       const { id } = req.params;
       const { title, slug, description, parentId, templateId, status, metadata, seoConfig, scheduledFor, expiresAt, components } = req.body;
@@ -257,85 +259,103 @@ export class PageBuilderController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // Build update object
-      const updateData: any = {
-        updated_by: userId,
-        updated_at: new Date().toISOString()
-      };
+      await client.query('BEGIN');
 
-      if (title !== undefined) updateData.title = title;
-      if (slug !== undefined) {
-        updateData.slug = slug
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/(^-|-$)/g, '');
+      // Build dynamic update
+      const updates: string[] = ['updated_by = $1', 'updated_at = NOW()'];
+      const params: any[] = [userId];
+      let paramIndex = 2;
+
+      if (title !== undefined) {
+        updates.push(`title = $${paramIndex++}`);
+        params.push(title);
       }
-      if (description !== undefined) updateData.description = description;
-      if (parentId !== undefined) updateData.parent_id = parentId;
-      if (templateId !== undefined) updateData.template_id = templateId;
-      if (status !== undefined) updateData.status = status;
-      if (metadata !== undefined) updateData.metadata = metadata;
-      if (seoConfig !== undefined) updateData.seo_config = seoConfig;
-      if (scheduledFor !== undefined) updateData.scheduled_for = scheduledFor;
-      if (expiresAt !== undefined) updateData.expires_at = expiresAt;
+      if (slug !== undefined) {
+        const sanitizedSlug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        updates.push(`slug = $${paramIndex++}`);
+        params.push(sanitizedSlug);
+      }
+      if (description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        params.push(description);
+      }
+      if (parentId !== undefined) {
+        updates.push(`parent_id = $${paramIndex++}`);
+        params.push(parentId);
+      }
+      if (templateId !== undefined) {
+        updates.push(`template_id = $${paramIndex++}`);
+        params.push(templateId);
+      }
+      if (status !== undefined) {
+        updates.push(`status = $${paramIndex++}`);
+        params.push(status);
+      }
+      if (metadata !== undefined) {
+        updates.push(`metadata = $${paramIndex++}`);
+        params.push(metadata);
+      }
+      if (seoConfig !== undefined) {
+        updates.push(`seo_config = $${paramIndex++}`);
+        params.push(seoConfig);
+      }
+      if (scheduledFor !== undefined) {
+        updates.push(`scheduled_for = $${paramIndex++}`);
+        params.push(scheduledFor);
+      }
+      if (expiresAt !== undefined) {
+        updates.push(`expires_at = $${paramIndex++}`);
+        params.push(expiresAt);
+      }
 
-      // Update page
-      const { data: page, error: pageError } = await supabase
-        .from('pages')
-        .update(updateData)
-        .eq('id', id)
-        .select()
-        .single();
+      params.push(id);
 
-      if (pageError) {
-        console.error('Error updating page:', pageError);
-        return res.status(400).json({ error: pageError.message });
+      const { rows: pageRows } = await client.query(
+        `UPDATE pages SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+        params
+      );
+
+      if (pageRows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Page not found' });
       }
 
       // Update components if provided
       if (components && Array.isArray(components)) {
         // Delete existing components
-        await supabase
-          .from('page_components')
-          .delete()
-          .eq('page_id', id);
+        await client.query('DELETE FROM page_components WHERE page_id = $1', [id]);
 
         // Insert new components
-        if (components.length > 0) {
-          const componentData = components.map((comp: any, index: number) => ({
-            page_id: id,
-            component_type: comp.componentType,
-            position: comp.position !== undefined ? comp.position : index,
-            props: comp.props || {},
-            styles: comp.styles || {},
-            responsive_config: comp.responsiveConfig || {}
-          }));
-
-          const { error: componentsError } = await supabase
-            .from('page_components')
-            .insert(componentData);
-
-          if (componentsError) {
-            console.error('Error updating components:', componentsError);
-            return res.status(400).json({ error: 'Failed to update page components' });
-          }
+        for (let i = 0; i < components.length; i++) {
+          const comp = components[i];
+          await client.query(
+            `INSERT INTO page_components (page_id, component_type, position, props, styles, responsive_config)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, comp.componentType, comp.position !== undefined ? comp.position : i, comp.props || {}, comp.styles || {}, comp.responsiveConfig || {}]
+          );
         }
       }
 
-      // Fetch complete page with components
-      const { data: completePage } = await supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(*)
-        `)
-        .eq('id', id)
-        .single();
+      await client.query('COMMIT');
 
-      res.json({ page: completePage });
-    } catch (error) {
+      // Fetch complete page with components
+      const { rows: completePageRows } = await pool.query(
+        `SELECT p.*, 
+                COALESCE(json_agg(pc.* ORDER BY pc.position) FILTER (WHERE pc.id IS NOT NULL), '[]') as page_components
+         FROM pages p
+         LEFT JOIN page_components pc ON p.id = pc.page_id
+         WHERE p.id = $1
+         GROUP BY p.id`,
+        [id]
+      );
+
+      res.json({ page: completePageRows[0] });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
       console.error('Error updating page:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(400).json({ error: error.message || 'Failed to update page' });
+    } finally {
+      client.release();
     }
   }
 
@@ -347,26 +367,22 @@ export class PageBuilderController {
       const { id } = req.params;
 
       // Check if page has children
-      const { data: children } = await supabase
-        .from('pages')
-        .select('id')
-        .eq('parent_id', id);
+      const { rows: children } = await pool.query(
+        'SELECT id FROM pages WHERE parent_id = $1',
+        [id]
+      );
 
-      if (children && children.length > 0) {
+      if (children.length > 0) {
         return res.status(400).json({
           error: 'Cannot delete page with child pages',
           childCount: children.length
         });
       }
 
-      const { error } = await supabase
-        .from('pages')
-        .delete()
-        .eq('id', id);
+      const { rowCount } = await pool.query('DELETE FROM pages WHERE id = $1', [id]);
 
-      if (error) {
-        console.error('Error deleting page:', error);
-        return res.status(400).json({ error: error.message });
+      if (rowCount === 0) {
+        return res.status(404).json({ error: 'Page not found' });
       }
 
       res.json({ message: 'Page deleted successfully' });
@@ -380,6 +396,7 @@ export class PageBuilderController {
    * Duplicate a page
    */
   async duplicatePage(req: any, res: Response) {
+    const client = await pool.connect();
     try {
       const { id } = req.params;
       const { newSlug } = req.body;
@@ -393,71 +410,86 @@ export class PageBuilderController {
         return res.status(400).json({ error: 'New slug is required' });
       }
 
-      // Call the duplicate_page function
-      const { data, error } = await supabase
-        .rpc('duplicate_page', {
-          p_source_page_id: id,
-          p_new_slug: newSlug,
-          p_user_id: userId
-        });
+      await client.query('BEGIN');
 
-      if (error) {
-        console.error('Error duplicating page:', error);
-        return res.status(400).json({ error: error.message });
+      // Get source page
+      const { rows: sourcePages } = await client.query('SELECT * FROM pages WHERE id = $1', [id]);
+      if (sourcePages.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Source page not found' });
       }
 
-      // Fetch the duplicated page
-      const { data: duplicatedPage } = await supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(*)
-        `)
-        .eq('id', data)
-        .single();
+      const source = sourcePages[0];
 
-      res.status(201).json({ page: duplicatedPage });
-    } catch (error) {
+      // Create duplicate page
+      const { rows: newPages } = await client.query(
+        `INSERT INTO pages (title, slug, description, parent_id, template_id, status, metadata, seo_config, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8, $9)
+         RETURNING *`,
+        [`${source.title} (Copy)`, newSlug, source.description, source.parent_id, source.template_id, source.metadata, source.seo_config, userId, userId]
+      );
+
+      const newPage = newPages[0];
+
+      // Copy components
+      const { rows: sourceComponents } = await client.query(
+        'SELECT * FROM page_components WHERE page_id = $1 ORDER BY position',
+        [id]
+      );
+
+      for (const comp of sourceComponents) {
+        await client.query(
+          `INSERT INTO page_components (page_id, component_type, position, props, styles, responsive_config)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [newPage.id, comp.component_type, comp.position, comp.props, comp.styles, comp.responsive_config]
+        );
+      }
+
+      await client.query('COMMIT');
+
+      // Fetch complete duplicated page
+      const { rows: completePageRows } = await pool.query(
+        `SELECT p.*, 
+                COALESCE(json_agg(pc.* ORDER BY pc.position) FILTER (WHERE pc.id IS NOT NULL), '[]') as page_components
+         FROM pages p
+         LEFT JOIN page_components pc ON p.id = pc.page_id
+         WHERE p.id = $1
+         GROUP BY p.id`,
+        [newPage.id]
+      );
+
+      res.status(201).json({ page: completePageRows[0] });
+    } catch (error: any) {
+      await client.query('ROLLBACK');
       console.error('Error duplicating page:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(400).json({ error: error.message || 'Failed to duplicate page' });
+    } finally {
+      client.release();
     }
   }
 
   /**
-   * Preview a page (returns page data without requiring published status)
+   * Preview a page
    */
   async previewPage(req: any, res: Response) {
     try {
       const { id } = req.params;
 
-      const { data, error } = await supabase
-        .from('pages')
-        .select(`
-          *,
-          page_components(
-            id,
-            component_type,
-            position,
-            props,
-            styles,
-            responsive_config
-          )
-        `)
-        .eq('id', id)
-        .single();
+      const { rows } = await pool.query(
+        `SELECT p.*, 
+                COALESCE(json_agg(pc.* ORDER BY pc.position) FILTER (WHERE pc.id IS NOT NULL), '[]') as page_components
+         FROM pages p
+         LEFT JOIN page_components pc ON p.id = pc.page_id
+         WHERE p.id = $1
+         GROUP BY p.id`,
+        [id]
+      );
 
-      if (error) {
-        console.error('Error previewing page:', error);
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Page not found' });
       }
 
-      // Sort components by position
-      const page = {
-        ...data,
-        page_components: data.page_components?.sort((a: any, b: any) => a.position - b.position) || []
-      };
-
-      res.json({ page });
+      res.json({ page: rows[0] });
     } catch (error) {
       console.error('Error previewing page:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -478,23 +510,17 @@ export class PageBuilderController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { data: page, error } = await supabase
-        .from('pages')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString(),
-          updated_by: userId
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE pages SET status = 'published', published_at = NOW(), updated_by = $1, updated_at = NOW()
+         WHERE id = $2 RETURNING *`,
+        [userId, id]
+      );
 
-      if (error) {
-        console.error('Error publishing page:', error);
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Page not found' });
       }
 
-      res.json({ page, message: 'Page published successfully' });
+      res.json({ page: rows[0], message: 'Page published successfully' });
     } catch (error) {
       console.error('Error publishing page:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -513,22 +539,17 @@ export class PageBuilderController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const { data: page, error } = await supabase
-        .from('pages')
-        .update({
-          status: 'draft',
-          updated_by: userId
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE pages SET status = 'draft', updated_by = $1, updated_at = NOW()
+         WHERE id = $2 RETURNING *`,
+        [userId, id]
+      );
 
-      if (error) {
-        console.error('Error unpublishing page:', error);
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Page not found' });
       }
 
-      res.json({ page, message: 'Page unpublished successfully' });
+      res.json({ page: rows[0], message: 'Page unpublished successfully' });
     } catch (error) {
       console.error('Error unpublishing page:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -552,24 +573,17 @@ export class PageBuilderController {
         return res.status(400).json({ error: 'Scheduled date is required' });
       }
 
-      const { data: page, error } = await supabase
-        .from('pages')
-        .update({
-          status: 'scheduled',
-          scheduled_for: scheduledFor,
-          expires_at: expiresAt || null,
-          updated_by: userId
-        })
-        .eq('id', id)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE pages SET status = 'scheduled', scheduled_for = $1, expires_at = $2, updated_by = $3, updated_at = NOW()
+         WHERE id = $4 RETURNING *`,
+        [scheduledFor, expiresAt || null, userId, id]
+      );
 
-      if (error) {
-        console.error('Error scheduling page:', error);
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Page not found' });
       }
 
-      res.json({ page, message: 'Page scheduled successfully' });
+      res.json({ page: rows[0], message: 'Page scheduled successfully' });
     } catch (error) {
       console.error('Error scheduling page:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -582,20 +596,16 @@ export class PageBuilderController {
   async processScheduledPages(req: any, res: Response) {
     try {
       // Auto-publish scheduled pages
-      const { data: publishCount, error: publishError } = await supabase
-        .rpc('auto_publish_scheduled_pages');
-
-      if (publishError) {
-        console.error('Error auto-publishing pages:', publishError);
-      }
+      const { rowCount: publishCount } = await pool.query(
+        `UPDATE pages SET status = 'published', published_at = NOW()
+         WHERE status = 'scheduled' AND scheduled_for <= NOW()`
+      );
 
       // Auto-unpublish expired pages
-      const { data: unpublishCount, error: unpublishError } = await supabase
-        .rpc('auto_unpublish_expired_pages');
-
-      if (unpublishError) {
-        console.error('Error auto-unpublishing pages:', unpublishError);
-      }
+      const { rowCount: unpublishCount } = await pool.query(
+        `UPDATE pages SET status = 'expired'
+         WHERE status = 'published' AND expires_at IS NOT NULL AND expires_at <= NOW()`
+      );
 
       res.json({
         message: 'Scheduled pages processed',

@@ -49,7 +49,8 @@ import {
   EnvelopeIcon,
   RectangleStackIcon,
   ClockIcon,
-  ChatBubbleLeftRightIcon
+  ChatBubbleLeftRightIcon,
+  LightBulbIcon
 } from '@heroicons/react/24/outline'
 import { v4 as uuidv4 } from '../../utils/uuid'
 import { ContentPage, ContentComponent } from '../../services/productionCmsService'
@@ -401,8 +402,9 @@ const PropertyPanel: React.FC<{
                 rows={3}
               />
             </div>
-            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md">
-              <p>💡 Use the toolbar above to adjust styling (font size, colors, alignment, etc.)</p>
+            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md flex items-start gap-2">
+              <LightBulbIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <p>Use the toolbar above to adjust styling (font size, colors, alignment, etc.)</p>
             </div>
           </div>
         )
@@ -429,8 +431,9 @@ const PropertyPanel: React.FC<{
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md">
-              <p>💡 Use the toolbar above to adjust styling (size, effects, borders, etc.)</p>
+            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md flex items-start gap-2">
+              <LightBulbIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <p>Use the toolbar above to adjust styling (size, effects, borders, etc.)</p>
             </div>
           </div>
         )
@@ -456,8 +459,9 @@ const PropertyPanel: React.FC<{
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
-            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md">
-              <p>💡 Use the toolbar above to adjust styling (colors, size, effects, etc.)</p>
+            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md flex items-start gap-2">
+              <LightBulbIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <p>Use the toolbar above to adjust styling (colors, size, effects, etc.)</p>
             </div>
           </div>
         )
@@ -468,8 +472,9 @@ const PropertyPanel: React.FC<{
             <div className="text-center text-gray-500 py-8">
               <p>No content properties available for this component type</p>
             </div>
-            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md">
-              <p>💡 Use the toolbar above to adjust styling and effects</p>
+            <div className="text-sm text-gray-500 p-3 bg-blue-50 rounded-md flex items-start gap-2">
+              <LightBulbIcon className="w-5 h-5 text-blue-500 flex-shrink-0" />
+              <p>Use the toolbar above to adjust styling and effects</p>
             </div>
           </div>
         )

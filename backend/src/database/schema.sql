@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Families table
-CREATE TABLE IF NOT EXISTS families (
+-- Circles table
+CREATE TABLE IF NOT EXISTS circles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   description TEXT,
@@ -31,14 +31,14 @@ CREATE TABLE IF NOT EXISTS families (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Family members table
-CREATE TABLE IF NOT EXISTS family_members (
+-- Circle members table
+CREATE TABLE IF NOT EXISTS circle_members (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   role VARCHAR(50) DEFAULT 'member',
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(family_id, user_id)
+  UNIQUE(circle_id, user_id)
 );
 
 -- Additional tables and indexes moved directly from supabase/schema.sql

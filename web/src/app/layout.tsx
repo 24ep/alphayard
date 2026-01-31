@@ -4,8 +4,8 @@ import { Providers } from './providers'
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration'
 
 export const metadata: Metadata = {
-  title: 'Bondarys - Family Management Platform',
-  description: 'Ultra-clean and premium family management platform with deep planning and socializing capabilities',
+  title: 'Bondarys - Circle Management Platform',
+  description: 'Ultra-clean and premium Circle management platform with deep planning and socializing capabilities',
 }
 
 export default function RootLayout({
@@ -24,4 +24,5 @@ export default function RootLayout({
     </html>
   )
 }
+
 

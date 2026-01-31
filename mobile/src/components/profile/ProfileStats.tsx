@@ -13,14 +13,14 @@ import { colors, textColors } from '../../theme/colors';
 
 interface ProfileStatsProps {
   postsCount: number;
-  familyMembers: number;
+  circleMembers: number;
   emergencyContacts: number;
   accountAge: Date;
 }
 
 export const ProfileStats: React.FC<ProfileStatsProps> = ({
   postsCount,
-  familyMembers,
+  circleMembers,
   emergencyContacts,
   accountAge,
 }) => {
@@ -57,10 +57,10 @@ export const ProfileStats: React.FC<ProfileStatsProps> = ({
     },
     {
       icon: 'account-group',
-      value: formatNumber(familyMembers),
-      label: t('profile.hourse'),
+      value: formatNumber(circleMembers),
+      label: t('profile.Circle'),
       gradient: ['#4ECDC4', '#6ED5D5'],
-      description: t('profile.familyDesc'),
+      description: t('profile.circleDesc'),
     },
     {
       icon: 'phone-alert',

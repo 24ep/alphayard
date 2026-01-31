@@ -13,14 +13,14 @@ interface ProfileActionsProps {
   onEditProfile: () => void;
   onChangePassword: () => void;
   onEmergencyContacts: () => void;
-  onFamilySettings: () => void;
+  onCircleSettings: () => void;
 }
 
 export const ProfileActions: React.FC<ProfileActionsProps> = ({
   onEditProfile,
   onChangePassword,
   onEmergencyContacts,
-  onFamilySettings,
+  onCircleSettings,
 }) => {
   const { t } = useTranslation();
 
@@ -48,9 +48,9 @@ export const ProfileActions: React.FC<ProfileActionsProps> = ({
     },
     {
       icon: 'account-group-outline',
-      title: t('profile.familySettings'),
-      subtitle: t('profile.familySettingsDesc'),
-      onPress: onFamilySettings,
+      title: t('profile.circleSettings'),
+      subtitle: t('profile.circleSettingsDesc'),
+      onPress: onCircleSettings,
       color: '#4ECDC4',
     },
   ];

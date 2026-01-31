@@ -19,7 +19,7 @@ router.post('/change-password', authenticateAdmin as any, adminUserController.ch
 
 // List all admin users (requires users:read permission)
 router.get(
-    '/users',
+    '/admin-users',
     authenticateAdmin as any,
     requirePermission('users:read') as any,
     adminUserController.listUsers.bind(adminUserController)
@@ -27,7 +27,7 @@ router.get(
 
 // Create new admin user (requires users:write permission)
 router.post(
-    '/users',
+    '/admin-users',
     authenticateAdmin as any,
     requirePermission('users:write') as any,
     adminUserController.createUser.bind(adminUserController)
@@ -35,7 +35,7 @@ router.post(
 
 // Update admin user (requires users:write permission)
 router.put(
-    '/users/:id',
+    '/admin-users/:id',
     authenticateAdmin as any,
     requirePermission('users:write') as any,
     adminUserController.updateUser.bind(adminUserController)
@@ -43,7 +43,7 @@ router.put(
 
 // Delete admin user (requires users:write permission)
 router.delete(
-    '/users/:id',
+    '/admin-users/:id',
     authenticateAdmin as any,
     requirePermission('users:write') as any,
     adminUserController.deleteUser.bind(adminUserController)

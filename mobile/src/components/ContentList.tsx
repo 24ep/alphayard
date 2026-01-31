@@ -19,7 +19,7 @@ import { ContentCard } from './ContentCard';
 import { Content, cmsService } from '../services/cmsService';
 
 interface ContentListProps {
-  familyId: string;
+  circleId: string;
   onContentPress?: (content: Content) => void;
   onContentLike?: (contentId: string) => void;
   onContentShare?: (contentId: string) => void;
@@ -35,7 +35,7 @@ interface ContentListProps {
 }
 
 export const ContentList: React.FC<ContentListProps> = ({
-  familyId,
+  circleId,
   onContentPress,
   onContentLike,
   onContentShare,
@@ -69,7 +69,7 @@ export const ContentList: React.FC<ContentListProps> = ({
     fetchContent();
     fetchCategories();
     fetchContentTypes();
-  }, [familyId, selectedCategory, selectedContentType, sortBy, sortOrder]);
+  }, [circleId, selectedCategory, selectedContentType, sortBy, sortOrder]);
 
   const fetchContent = async () => {
     try {
@@ -86,7 +86,7 @@ export const ContentList: React.FC<ContentListProps> = ({
       if (featured !== undefined) params.isFeatured = featured;
       if (pinned !== undefined) params.isPinned = pinned;
 
-      const data = await cmsService.getContent(familyId, params);
+      const data = await cmsService.getContent(circleId, params);
       setContent(data);
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -97,7 +97,7 @@ export const ContentList: React.FC<ContentListProps> = ({
 
   const fetchCategories = async () => {
     try {
-      const data = await cmsService.getCategories(familyId);
+      const data = await cmsService.getCategories(circleId);
       setCategories(data);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -109,12 +109,12 @@ export const ContentList: React.FC<ContentListProps> = ({
       // This would need to be implemented in the backend
       // For now, we'll use a static list
       setContentTypes([
-        { id: 'family_news', name: 'Family News' },
-        { id: 'family_events', name: 'Family Events' },
-        { id: 'family_memories', name: 'Family Memories' },
+        { id: 'circle_news', name: 'Circle News' },
+        { id: 'circle_events', name: 'Circle Events' },
+        { id: 'circle_memories', name: 'Circle Memories' },
         { id: 'safety_alerts', name: 'Safety Alerts' },
-        { id: 'family_recipes', name: 'Family Recipes' },
-        { id: 'family_tips', name: 'Family Tips' },
+        { id: 'circle_recipes', name: 'Circle Recipes' },
+        { id: 'circle_tips', name: 'Circle Tips' },
       ]);
     } catch (error) {
       console.error('Error fetching content types:', error);
@@ -310,3 +310,4 @@ export const ContentList: React.FC<ContentListProps> = ({
     </VStack>
   );
 };
+

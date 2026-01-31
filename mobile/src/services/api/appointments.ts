@@ -2,7 +2,7 @@ import { api } from './index';
 import { Appointment } from '../../types/home';
 
 export interface AppointmentFilters {
-  familyId?: string;
+  circleId?: string;
   userId?: string;
   type?: Appointment['type'];
   dateFrom?: string;
@@ -18,7 +18,7 @@ export interface CreateAppointmentRequest {
   location: string;
   type: Appointment['type'];
   attendees: string[];
-  familyId: string;
+  circleId: string;
   description?: string;
   duration?: number; // in minutes
   reminders?: {
@@ -45,7 +45,7 @@ export interface AppointmentResponse {
   location: string;
   type: Appointment['type'];
   attendees: string[];
-  familyId: string;
+  circleId: string;
   description?: string;
   duration?: number;
   status: 'upcoming' | 'completed' | 'cancelled';
@@ -65,7 +65,7 @@ export const appointmentApi = {
   // Get appointments
   getAppointments: async (filters?: AppointmentFilters): Promise<{ success: boolean; appointments: AppointmentResponse[] }> => {
     const params = new URLSearchParams();
-    if (filters?.familyId) params.append('familyId', filters.familyId);
+    if (filters?.circleId) params.append('circleId', filters.circleId);
     if (filters?.userId) params.append('userId', filters.userId);
     if (filters?.type) params.append('type', filters.type);
     if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
@@ -103,19 +103,19 @@ export const appointmentApi = {
   },
 
   // Get today's appointments
-  getTodaysAppointments: async (familyId?: string): Promise<{ success: boolean; appointments: AppointmentResponse[] }> => {
+  getTodaysAppointments: async (circleId?: string): Promise<{ success: boolean; appointments: AppointmentResponse[] }> => {
     const today = new Date().toISOString().split('T')[0];
     const params = new URLSearchParams();
     params.append('dateFrom', today);
     params.append('dateTo', today);
-    if (familyId) params.append('familyId', familyId);
+    if (circleId) params.append('circleId', circleId);
 
     const response = await api.get(`/appointments?${params.toString()}`);
     return response.data;
   },
 
   // Get upcoming appointments
-  getUpcomingAppointments: async (familyId?: string, days: number = 7): Promise<{ success: boolean; appointments: AppointmentResponse[] }> => {
+  getUpcomingAppointments: async (circleId?: string, days: number = 7): Promise<{ success: boolean; appointments: AppointmentResponse[] }> => {
     const today = new Date();
     const futureDate = new Date(today.getTime() + (days * 24 * 60 * 60 * 1000));
     
@@ -123,7 +123,7 @@ export const appointmentApi = {
     params.append('dateFrom', today.toISOString().split('T')[0]);
     params.append('dateTo', futureDate.toISOString().split('T')[0]);
     params.append('status', 'upcoming');
-    if (familyId) params.append('familyId', familyId);
+    if (circleId) params.append('circleId', circleId);
 
     const response = await api.get(`/appointments?${params.toString()}`);
     return response.data;
@@ -157,9 +157,9 @@ export const appointmentApi = {
   },
 
   // Get appointment stats
-  getAppointmentStats: async (familyId?: string, dateFrom?: string, dateTo?: string): Promise<{ success: boolean; stats: any }> => {
+  getAppointmentStats: async (circleId?: string, dateFrom?: string, dateTo?: string): Promise<{ success: boolean; stats: any }> => {
     const params = new URLSearchParams();
-    if (familyId) params.append('familyId', familyId);
+    if (circleId) params.append('circleId', circleId);
     if (dateFrom) params.append('dateFrom', dateFrom);
     if (dateTo) params.append('dateTo', dateTo);
 
@@ -167,3 +167,4 @@ export const appointmentApi = {
     return response.data;
   }
 };
+

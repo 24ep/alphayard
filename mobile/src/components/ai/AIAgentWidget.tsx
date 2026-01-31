@@ -17,7 +17,7 @@ const AIAgentWidget: React.FC<AIAgentWidgetProps> = ({ onPress }) => {
         
         <View style={styles.textContainer}>
           <Text style={styles.title}>AI Assistant</Text>
-          <Text style={styles.subtitle}>Ask me anything about your hourse</Text>
+          <Text style={styles.subtitle}>Ask me anything about your Circle</Text>
         </View>
         
         <IconMC name="chevron-right" size={20} color="#666" />

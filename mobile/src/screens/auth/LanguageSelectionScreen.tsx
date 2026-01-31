@@ -103,14 +103,14 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 24,
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
         color: '#FFFFFF',
         marginBottom: 8,
         textAlign: 'center',
     },
     subtitle: {
         fontSize: 16,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
         color: 'rgba(255, 255, 255, 0.9)',
         textAlign: 'center',
     },
@@ -150,12 +150,12 @@ const styles = StyleSheet.create({
     },
     languageTitle: {
         fontSize: 18,
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
         color: '#1F2937',
     },
     languageSubtitle: {
         fontSize: 14,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
         color: '#6B7280',
         marginTop: 2,
     },
@@ -166,8 +166,9 @@ const styles = StyleSheet.create({
     footerText: {
         color: 'rgba(255,255,255, 0.7)',
         fontSize: 12,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
     },
 });
 
 export default LanguageSelectionScreen;
+

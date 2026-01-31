@@ -1,5 +1,6 @@
-// export const appointmentsStyles = StyleSheet.create({ -> changed to plain object
-export const appointmentsStyles = {
+import { StyleSheet } from 'react-native';
+
+export const appointmentsStyles = StyleSheet.create({
   appointmentsScrollView: {
     marginTop: 12,
   },
@@ -71,6 +72,4 @@ export const appointmentsStyles = {
     color: '#6B7280',
     flex: 1,
   },
-};
-
-
+});

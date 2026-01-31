@@ -6,14 +6,9 @@ import {
   Text,
   Button,
   Input,
-  Textarea,
+  TextArea,
   Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  useDisclosure,
+  useDisclose,
   useToast,
   ScrollView,
   Image,
@@ -23,18 +18,19 @@ import {
   Divider,
   useColorModeValue,
 } from 'native-base';
-import { Heart, MessageCircle, Share, Send, ArrowLeft, Star, Pin, Newspaper, PartyPopper, Camera, AlertTriangle, ChefHat, Lightbulb, FileText } from 'lucide-react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Content, cmsService } from '../services/cmsService';
-import { ContentCard } from '../components/ContentCard';
 import { ContentList } from '../components/ContentList';
 
+// Comment interface removed as it was unused
+
 interface CMSContentScreenProps {
-  familyId: string;
+  circleId: string;
   onBack?: () => void;
 }
 
 export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
-  familyId,
+  circleId,
   onBack,
 }) => {
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
@@ -46,10 +42,10 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
     title: '',
     content: '',
     excerpt: '',
-    content_type_id: 'family_news',
+    content_type_id: 'circle_news',
   });
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclose();
   const toast = useToast();
 
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -69,13 +65,12 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
     try {
       setLoading(true);
       const data = await cmsService.getComments(selectedContent.id);
-      setComments(data);
+      setComments(data || []);
     } catch (error) {
       console.error('Error fetching comments:', error);
       toast.show({
         title: 'Error',
         description: 'Failed to load comments',
-        status: 'error',
       });
     } finally {
       setLoading(false);
@@ -93,14 +88,12 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
       toast.show({
         title: 'Success',
         description: 'Content liked!',
-        status: 'success',
       });
     } catch (error) {
       console.error('Error liking content:', error);
       toast.show({
         title: 'Error',
         description: 'Failed to like content',
-        status: 'error',
       });
     }
   };
@@ -111,19 +104,17 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
       toast.show({
         title: 'Success',
         description: 'Content shared!',
-        status: 'success',
       });
     } catch (error) {
       console.error('Error sharing content:', error);
       toast.show({
         title: 'Error',
         description: 'Failed to share content',
-        status: 'error',
       });
     }
   };
 
-  const handleContentComment = (contentId: string) => {
+  const handleContentComment = (_contentId: string) => {
     // This will be handled by the modal
   };
 
@@ -138,14 +129,12 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
       toast.show({
         title: 'Success',
         description: 'Comment added!',
-        status: 'success',
       });
     } catch (error) {
       console.error('Error creating comment:', error);
       toast.show({
         title: 'Error',
         description: 'Failed to add comment',
-        status: 'error',
       });
     } finally {
       setLoading(false);
@@ -155,25 +144,23 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
   const handleCreateContent = async () => {
     try {
       setLoading(true);
-      await cmsService.createContent(familyId, createContent);
+      await cmsService.createContent(circleId, createContent);
       setShowCreateModal(false);
       setCreateContent({
         title: '',
         content: '',
         excerpt: '',
-        content_type_id: 'family_news',
+        content_type_id: 'circle_news',
       });
       toast.show({
         title: 'Success',
         description: 'Content created!',
-        status: 'success',
       });
     } catch (error) {
       console.error('Error creating content:', error);
       toast.show({
         title: 'Error',
         description: 'Failed to create content',
-        status: 'error',
       });
     } finally {
       setLoading(false);
@@ -181,15 +168,16 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
   };
 
   const getContentTypeIcon = (type: string) => {
+    const iconSize = 18;
     const iconColor = textColor as string;
     switch (type) {
-      case 'family_news': return <Newspaper size={18} color={iconColor} />;
-      case 'family_events': return <PartyPopper size={18} color={iconColor} />;
-      case 'family_memories': return <Camera size={18} color={iconColor} />;
-      case 'safety_alerts': return <AlertTriangle size={18} color={iconColor} />;
-      case 'family_recipes': return <ChefHat size={18} color={iconColor} />;
-      case 'family_tips': return <Lightbulb size={18} color={iconColor} />;
-      default: return <FileText size={18} color={iconColor} />;
+      case 'circle_news': return <MaterialCommunityIcons name="newspaper-variant-outline" size={iconSize} color={iconColor} />;
+      case 'circle_events': return <MaterialCommunityIcons name="party-popper" size={iconSize} color={iconColor} />;
+      case 'circle_memories': return <MaterialCommunityIcons name="camera-outline" size={iconSize} color={iconColor} />;
+      case 'safety_alerts': return <MaterialCommunityIcons name="alert-outline" size={iconSize} color={iconColor} />;
+      case 'circle_recipes': return <MaterialCommunityIcons name="chef-hat" size={iconSize} color={iconColor} />;
+      case 'circle_tips': return <MaterialCommunityIcons name="lightbulb-outline" size={iconSize} color={iconColor} />;
+      default: return <MaterialCommunityIcons name="file-document-outline" size={iconSize} color={iconColor} />;
     }
   };
 
@@ -217,11 +205,11 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
       >
         <HStack alignItems="center" space={3}>
           <IconButton
-            icon={<ArrowLeft size={24} color={textColor} />}
+            icon={<Ionicons name="arrow-back" size={24} color={textColor} />}
             onPress={onBack}
           />
           <Text fontSize="xl" fontWeight="bold" color={textColor}>
-            Family Content
+            Circle Content
           </Text>
         </HStack>
 
@@ -236,7 +224,7 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
 
       {/* Content List */}
       <ContentList
-        familyId={familyId}
+        circleId={circleId}
         onContentPress={handleContentPress}
         onContentLike={handleContentLike}
         onContentShare={handleContentShare}
@@ -247,9 +235,8 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
 
       {/* Content Detail Modal */}
       <Modal isOpen={isOpen} onClose={onClose} size="full">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>
+        <Modal.Content>
+          <Modal.Header>
             <HStack alignItems="center" space={3}>
               {getContentTypeIcon(selectedContent?.content_types?.name || '')}
               <VStack>
@@ -261,9 +248,9 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
                 </Text>
               </VStack>
             </HStack>
-          </ModalHeader>
+          </Modal.Header>
 
-          <ModalBody>
+          <Modal.Body>
             <ScrollView>
               <VStack space={4}>
                 {/* Featured Image */}
@@ -338,74 +325,82 @@ export const CMSContentScreen: React.FC<CMSContentScreenProps> = ({
                       onChangeText={setNewComment}
                     />
                     <IconButton
-                      icon={<Send size={20} color="#3B82F6" />}
+                      icon={<Ionicons name="send" size={20} color="#3B82F6" />}
                       onPress={handleCreateComment}
-                      disabled={!newComment.trim() || loading}
+                      isDisabled={!newComment.trim() || loading}
                     />
                   </HStack>
                 </VStack>
               </VStack>
             </ScrollView>
-          </ModalBody>
+          </Modal.Body>
 
-          <ModalFooter>
+          <Modal.Footer>
             <HStack space={3}>
               <IconButton
-                icon={<Heart size={20} color="#FF1744" />}
+                icon={<Ionicons name="heart" size={20} color="#FF1744" />}
                 onPress={() => handleContentLike(selectedContent?.id || '')}
               />
               <IconButton
-                icon={<Share size={20} color="#3B82F6" />}
+                icon={<Ionicons name="share-social" size={20} color="#3B82F6" />}
                 onPress={() => handleContentShare(selectedContent?.id || '')}
               />
               <Button variant="ghost" onPress={onClose}>
                 Close
               </Button>
             </HStack>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Content>
       </Modal>
 
       {/* Create Content Modal */}
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} size="lg">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Create New Content</ModalHeader>
-          <ModalBody>
+        <Modal.Content>
+          <Modal.Header>Create New Content</Modal.Header>
+          <Modal.Body>
             <VStack space={4}>
               <Input
                 placeholder="Title"
                 value={createContent.title}
-                onChangeText={(text) => setCreateContent({ ...createContent, title: text })}
+                onChangeText={(text: string) => setCreateContent({ ...createContent, title: text })}
               />
-              <Textarea
-                placeholder="Excerpt"
-                value={createContent.excerpt}
-                onChangeText={(text) => setCreateContent({ ...createContent, excerpt: text })}
-                numberOfLines={2}
+              <TextArea
+                {...({
+                  placeholder: 'Excerpt',
+                  value: createContent.excerpt,
+                  onChangeText: (text: string) =>
+                    setCreateContent({ ...createContent, excerpt: text }),
+                  totalLines: 2,
+                  autoCompleteType: 'off',
+                } as any)}
               />
-              <Textarea
-                placeholder="Content"
-                value={createContent.content}
-                onChangeText={(text) => setCreateContent({ ...createContent, content: text })}
-                numberOfLines={6}
+              <TextArea
+                {...({
+                  placeholder: 'Content',
+                  value: createContent.content,
+                  onChangeText: (text: string) =>
+                    setCreateContent({ ...createContent, content: text }),
+                  totalLines: 6,
+                  autoCompleteType: 'off',
+                } as any)}
               />
             </VStack>
-          </ModalBody>
-          <ModalFooter>
+          </Modal.Body>
+          <Modal.Footer>
             <Button variant="ghost" mr={3} onPress={() => setShowCreateModal(false)}>
               Cancel
             </Button>
             <Button
               colorScheme="blue"
               onPress={handleCreateContent}
-              disabled={loading || !createContent.title.trim()}
+              isDisabled={loading || !createContent.title.trim()}
             >
               {loading ? 'Creating...' : 'Create'}
             </Button>
-          </ModalFooter>
-        </ModalContent>
+          </Modal.Footer>
+        </Modal.Content>
       </Modal>
     </Box>
   );
 };
+

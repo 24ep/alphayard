@@ -19,7 +19,7 @@ export interface Photo {
     tags?: string[];
   };
   uploadedBy: string;
-  familyId: string;
+  circleId: string;
   albumId?: string;
   isShared: boolean;
   isFavorite: boolean;
@@ -36,7 +36,7 @@ export interface Album {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  familyId: string;
+  circleId: string;
   isShared: boolean;
   members: string[];
   date?: string; // For backward compatibility
@@ -64,8 +64,8 @@ export interface GalleryState {
 }
 
 export interface GalleryActions {
-  loadPhotos: (familyId: string) => Promise<void>;
-  loadAlbums: (familyId: string) => Promise<void>;
+  loadPhotos: (circleId: string) => Promise<void>;
+  loadAlbums: (circleId: string) => Promise<void>;
   uploadPhoto: (photoData: Partial<Photo>) => Promise<void>;
   createAlbum: (albumData: Partial<Album>) => Promise<void>;
   deletePhoto: (photoId: string) => Promise<void>;

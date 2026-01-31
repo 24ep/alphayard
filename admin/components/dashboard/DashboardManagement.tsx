@@ -71,10 +71,10 @@ export const DashboardManagement: React.FC<DashboardManagementProps> = ({ onBack
         {
           id: '1',
           name: 'Main Dashboard',
-          description: 'Primary dashboard for family management',
+          description: 'Primary dashboard for Circle management',
           isDefault: true,
           widgets: [
-            { id: 'w1', type: 'stats', title: 'Family Stats', position: { x: 0, y: 0, w: 6, h: 4 }, config: {} },
+            { id: 'w1', type: 'stats', title: 'Circle Stats', position: { x: 0, y: 0, w: 6, h: 4 }, config: {} },
             { id: 'w2', type: 'chart', title: 'Activity Chart', position: { x: 6, y: 0, w: 6, h: 4 }, config: {} }
           ],
           createdAt: '2024-01-01',
@@ -95,7 +95,7 @@ export const DashboardManagement: React.FC<DashboardManagementProps> = ({ onBack
         {
           id: '3',
           name: 'Content Management',
-          description: 'Manage family content and media',
+          description: 'Manage Circle content and media',
           isDefault: false,
           widgets: [
             { id: 'w5', type: 'table', title: 'Content Library', position: { x: 0, y: 0, w: 8, h: 5 }, config: {} },
@@ -572,3 +572,4 @@ const DashboardForm: React.FC<DashboardFormProps> = ({ dashboard, onSave, onCanc
     </div>
   )
 }
+

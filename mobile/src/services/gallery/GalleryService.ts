@@ -4,10 +4,10 @@ import { apiClient } from '../api/apiClient';
 class GalleryService {
   private baseUrl = '/gallery';
 
-  async getPhotos(familyId: string, filters?: Partial<GalleryFilters>): Promise<Photo[]> {
+  async getPhotos(circleId: string, filters?: Partial<GalleryFilters>): Promise<Photo[]> {
     try {
       const params = new URLSearchParams();
-      params.append('familyId', familyId);
+      params.append('circleId', circleId);
       
       if (filters?.type && filters.type !== 'all') {
         params.append('type', filters.type);
@@ -26,18 +26,18 @@ class GalleryService {
     } catch (error) {
       console.error('Error fetching photos:', error);
       // Return mock data for now
-      return this.getMockPhotos(familyId);
+      return this.getMockPhotos(circleId);
     }
   }
 
-  async getAlbums(familyId: string): Promise<Album[]> {
+  async getAlbums(circleId: string): Promise<Album[]> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/albums?familyId=${familyId}`);
+      const response = await apiClient.get(`${this.baseUrl}/albums?circleId=${circleId}`);
       return response.data.map(this.transformAlbum);
     } catch (error) {
       console.error('Error fetching albums:', error);
       // Return mock data for now
-      return this.getMockAlbums(familyId);
+      return this.getMockAlbums(circleId);
     }
   }
 
@@ -122,7 +122,7 @@ class GalleryService {
       location: data.location,
       metadata: data.metadata,
       uploadedBy: data.uploadedBy,
-      familyId: data.familyId,
+      circleId: data.circleId,
       albumId: data.albumId,
       isShared: data.isShared,
       isFavorite: data.isFavorite,
@@ -140,26 +140,26 @@ class GalleryService {
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
       createdBy: data.createdBy,
-      familyId: data.familyId,
+      circleId: data.circleId,
       isShared: data.isShared,
       members: data.members,
     };
   }
 
-  private getMockPhotos(familyId: string): Photo[] {
+  private getMockPhotos(circleId: string): Photo[] {
     return [
       {
         id: '1',
         uri: 'https://picsum.photos/400/400?random=1',
         thumbnail: 'https://picsum.photos/200/200?random=1',
-        filename: 'family_photo_1.jpg',
-        title: 'hourse Vacation',
+        filename: 'circle_photo_1.jpg',
+        title: 'Circle Vacation',
         size: 2048576,
         width: 400,
         height: 400,
         createdAt: new Date('2024-01-15'),
         uploadedBy: 'user1',
-        familyId,
+        circleId,
         isShared: true,
         isFavorite: false,
       },
@@ -179,7 +179,7 @@ class GalleryService {
           address: 'Bangkok, Thailand',
         },
         uploadedBy: 'user1',
-        familyId,
+        circleId,
         albumId: 'vacation',
         isShared: true,
         isFavorite: true,
@@ -195,18 +195,18 @@ class GalleryService {
         height: 800,
         createdAt: new Date('2024-01-05'),
         uploadedBy: 'user1',
-        familyId,
+        circleId,
         isShared: false,
         isFavorite: false,
       },
     ];
   }
 
-  private getMockAlbums(familyId: string): Album[] {
+  private getMockAlbums(circleId: string): Album[] {
     return [
       {
         id: 'vacation',
-        name: 'hourse Vacation',
+        name: 'Circle Vacation',
         description: 'Our trip to the beach',
         coverPhoto: 'https://picsum.photos/200/200?random=2',
         coverImage: 'https://picsum.photos/200/200?random=2',
@@ -214,7 +214,7 @@ class GalleryService {
         createdAt: new Date('2024-01-10'),
         updatedAt: new Date('2024-01-15'),
         createdBy: 'user1',
-        familyId,
+        circleId,
         isShared: true,
         members: ['user1'],
       },
@@ -228,7 +228,7 @@ class GalleryService {
         createdAt: new Date('2024-01-05'),
         updatedAt: new Date('2024-01-12'),
         createdBy: 'user1',
-        familyId,
+        circleId,
         isShared: true,
         members: ['user1'],
       },

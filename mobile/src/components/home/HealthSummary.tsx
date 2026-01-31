@@ -1,8 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { 
+  HeartPulse, 
+  Footprints, 
+  Heart, 
+  Bed, 
+  Flame 
+} from 'lucide-react-native';
 import { typography } from '../../styles/typography';
+
+const HeartPulseIcon = HeartPulse as any;
+const FootprintsIcon = Footprints as any;
+const HeartIcon = Heart as any;
+const BedIcon = Bed as any;
+const FlameIcon = Flame as any;
 
 interface HealthSummaryProps {
     onGoToHealth?: () => void;
@@ -14,7 +26,7 @@ export const HealthSummary: React.FC<HealthSummaryProps> = ({ onGoToHealth }) =>
         <View style={styles.container}>
             <View style={styles.header}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <IconMC name="heart-pulse" size={24} color="#EC4899" />
+                    <HeartPulseIcon size={24} color="#EC4899" />
                     <Text style={styles.title}>Health</Text>
                 </View>
                 <TouchableOpacity onPress={onGoToHealth}>
@@ -31,7 +43,7 @@ export const HealthSummary: React.FC<HealthSummaryProps> = ({ onGoToHealth }) =>
                     style={styles.gridItem}
                 >
                     <View style={styles.iconCircle}>
-                        <IconMC name="shoe-print" size={16} color="#EA580C" />
+                        <FootprintsIcon size={16} color="#EA580C" />
                     </View>
                     <View>
                         <Text style={styles.gridValue}>8,432</Text>
@@ -45,7 +57,7 @@ export const HealthSummary: React.FC<HealthSummaryProps> = ({ onGoToHealth }) =>
                     style={styles.gridItem}
                 >
                     <View style={styles.iconCircle}>
-                        <IconMC name="heart" size={16} color="#DB2777" />
+                        <HeartIcon size={16} color="#DB2777" />
                     </View>
                     <View>
                         <Text style={styles.gridValue}>72</Text>
@@ -59,7 +71,7 @@ export const HealthSummary: React.FC<HealthSummaryProps> = ({ onGoToHealth }) =>
                     style={styles.gridItem}
                 >
                     <View style={styles.iconCircle}>
-                        <IconMC name="bed" size={16} color="#4F46E5" />
+                        <BedIcon size={16} color="#4F46E5" />
                     </View>
                     <View>
                         <Text style={styles.gridValue}>7h 20m</Text>
@@ -73,7 +85,7 @@ export const HealthSummary: React.FC<HealthSummaryProps> = ({ onGoToHealth }) =>
                     style={styles.gridItem}
                 >
                     <View style={styles.iconCircle}>
-                        <IconMC name="fire" size={16} color="#0D9488" />
+                        <FlameIcon size={16} color="#0D9488" />
                     </View>
                     <View>
                         <Text style={styles.gridValue}>480</Text>
@@ -99,7 +111,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontFamily: typography.heading,
+        fontCIRCLE: typography.heading,
         color: '#1F2937',
     },
     seeAll: {
@@ -139,7 +151,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 18,
         fontWeight: 'bold',
-        fontFamily: typography.heading,
+        fontCIRCLE: typography.heading,
     },
     gridLabel: {
         color: 'rgba(255,255,255,0.9)',
@@ -147,3 +159,4 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     }
 });
+

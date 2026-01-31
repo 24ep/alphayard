@@ -47,7 +47,7 @@ interface CalendarEvent {
   endTime: Date;
   allDay: boolean;
   location?: string;
-  type: 'personal' | 'hourse' | 'work' | 'school' | 'medical' | 'social';
+  type: 'personal' | 'Circle' | 'work' | 'school' | 'medical' | 'social';
   priority: 'low' | 'medium' | 'high';
   attendees: Array<{
     id: string;
@@ -62,7 +62,7 @@ interface CalendarEvent {
   recurringEndDate?: Date;
   color: string;
   createdBy: string;
-  familyId: string;
+  circleId: string;
   isShared: boolean;
   notes?: string;
 }
@@ -76,13 +76,13 @@ interface CalendarDay {
 }
 
 interface CalendarAppProps {
-  familyId: string;
+  circleId: string;
   onEventPress?: (event: CalendarEvent) => void;
   onDatePress?: (date: Date) => void;
 }
 
 const CalendarApp: React.FC<CalendarAppProps> = ({
-  familyId,
+  circleId,
   onEventPress,
   onDatePress,
 }) => {
@@ -93,7 +93,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
-  const [filterType, setFilterType] = useState<'all' | 'personal' | 'hourse' | 'work' | 'school'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'personal' | 'Circle' | 'work' | 'school'>('all');
   
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
@@ -132,13 +132,13 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
       const mockEvents: CalendarEvent[] = [
         {
           id: '1',
-          title: 'hourse Dinner',
-          description: 'Weekly hourse dinner at home',
+          title: 'Circle Dinner',
+          description: 'Weekly Circle dinner at home',
           startTime: new Date('2024-01-20T18:00:00'),
           endTime: new Date('2024-01-20T20:00:00'),
           allDay: false,
           location: 'Home',
-          type: 'hourse',
+          type: 'Circle',
           priority: 'medium',
           attendees: [
             { id: '1', name: 'John Doe', isConfirmed: true, response: 'accepted' },
@@ -146,7 +146,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
           ],
           color: colors.primary[500],
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
           isRecurring: true,
           recurringPattern: 'weekly',
@@ -166,7 +166,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
           ],
           color: colors.red[500],
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: false,
           reminderTime: new Date('2024-01-22T09:45:00'),
         },
@@ -186,7 +186,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
           ],
           color: colors.blue[500],
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
         },
         {
@@ -197,7 +197,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
           endTime: new Date('2024-01-28T20:00:00'),
           allDay: false,
           location: 'Home',
-          type: 'hourse',
+          type: 'Circle',
           priority: 'high',
           attendees: [
             { id: '1', name: 'John Doe', isConfirmed: true, response: 'accepted' },
@@ -206,7 +206,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
           ],
           color: colors.purple[500],
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
         },
       ];
@@ -271,7 +271,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
         attendees: [{ id: user?.id || '', name: user?.name || '', isConfirmed: true, response: 'accepted' }],
         color: getEventColor(eventForm.type),
         createdBy: user?.id || '',
-        familyId,
+        circleId,
         isShared: eventForm.isShared,
         notes: eventForm.notes.trim(),
         isRecurring: eventForm.isRecurring,
@@ -310,7 +310,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
   const getEventColor = (type: string) => {
     switch (type) {
       case 'personal': return colors.gray[500];
-      case 'hourse': return colors.primary[500];
+      case 'Circle': return colors.primary[500];
       case 'work': return colors.orange[500];
       case 'school': return colors.blue[500];
       case 'medical': return colors.red[500];
@@ -322,7 +322,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'personal': return 'account';
-      case 'hourse': return 'account-group';
+      case 'Circle': return 'account-group';
       case 'work': return 'briefcase';
       case 'school': return 'school';
       case 'medical': return 'medical-bag';
@@ -385,8 +385,8 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
       case 'personal':
         filtered = events.filter(event => event.type === 'personal');
         break;
-      case 'hourse':
-        filtered = events.filter(event => event.type === 'hourse');
+      case 'Circle':
+        filtered = events.filter(event => event.type === 'Circle');
         break;
       case 'work':
         filtered = events.filter(event => event.type === 'work');
@@ -514,7 +514,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
         />
         <VStack flex={1}>
           <Text style={textStyles.h3} color={textColor} fontWeight="600">
-            hourse Calendar
+            Circle Calendar
           </Text>
           <Text style={textStyles.caption} color={colors.gray[600]}>
             {events.length} events • {formatDate(selectedDate)}
@@ -543,7 +543,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
         {[
           { key: 'all', label: 'All', icon: 'calendar' },
           { key: 'personal', label: 'Personal', icon: 'account' },
-          { key: 'hourse', label: 'hourse', icon: 'account-group' },
+          { key: 'Circle', label: 'Circle', icon: 'account-group' },
           { key: 'work', label: 'Work', icon: 'briefcase' },
           { key: 'school', label: 'School', icon: 'school' },
         ].map((filter) => (
@@ -857,7 +857,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
                     borderRadius={12}
                   >
                     <Select.Item label="Personal" value="personal" />
-                    <Select.Item label="hourse" value="hourse" />
+                    <Select.Item label="Circle" value="Circle" />
                     <Select.Item label="Work" value="work" />
                     <Select.Item label="School" value="school" />
                     <Select.Item label="Medical" value="medical" />
@@ -908,7 +908,7 @@ const CalendarApp: React.FC<CalendarAppProps> = ({
 
               <FormControl>
                 <FormControl.Label>
-                  <Text style={textStyles.h4} color={textColor}>Share with hourse</Text>
+                  <Text style={textStyles.h4} color={textColor}>Share with Circle</Text>
                 </FormControl.Label>
                 <Switch
                   isChecked={eventForm.isShared}

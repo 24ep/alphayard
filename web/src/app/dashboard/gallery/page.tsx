@@ -47,7 +47,7 @@ export default function GalleryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Gallery</h1>
-          <p className="text-gray-600 mt-1">Family photos and memories</p>
+          <p className="text-gray-600 mt-1">Circle photos and memories</p>
         </div>
         <Button variant="primary">
           <PlusIcon className="w-5 h-5 mr-2" />
@@ -60,7 +60,7 @@ export default function GalleryPage() {
           <div className="text-center py-12">
             <PhotoIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No photos yet</h3>
-            <p className="text-gray-600 mb-4">Start building your family gallery</p>
+            <p className="text-gray-600 mb-4">Start building your Circle gallery</p>
             <Button variant="primary">Upload Photo</Button>
           </div>
         </Card>
@@ -85,4 +85,5 @@ export default function GalleryPage() {
     </div>
   )
 }
+
 

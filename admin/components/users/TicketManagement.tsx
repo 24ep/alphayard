@@ -42,8 +42,8 @@ interface Ticket {
     id: string
     name: string
     email: string
-    familyId: string
-    familyName: string
+    CircleId: string
+    CircleName: string
   }
   assignedTo?: {
     id: string
@@ -402,7 +402,7 @@ export function TicketManagement() {
                           </div>
                           <div className="min-w-0">
                             <div className="font-medium text-sm text-gray-900 truncate">{ticket.reporter.name}</div>
-                            <div className="text-xs text-gray-500 truncate">{ticket.reporter.familyName}</div>
+                            <div className="text-xs text-gray-500 truncate">{ticket.reporter.CircleName}</div>
                           </div>
                         </div>
                       </td>
@@ -568,7 +568,7 @@ export function TicketManagement() {
                     <div className="space-y-1">
                       <div className="font-medium text-gray-900">{selectedTicket.reporter.name}</div>
                       <div className="text-sm text-gray-600">{selectedTicket.reporter.email}</div>
-                      <div className="text-sm text-gray-500">{selectedTicket.reporter.familyName}</div>
+                      <div className="text-sm text-gray-500">{selectedTicket.reporter.CircleName}</div>
                     </div>
                   </div>
 
@@ -653,3 +653,4 @@ export function TicketManagement() {
     </div>
   )
 }
+

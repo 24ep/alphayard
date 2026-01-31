@@ -19,6 +19,17 @@ import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+import { useBranding } from '../../contexts/BrandingContext';
+import { ScreenBackground } from '../ScreenBackground';
+import { WelcomeSection } from './WelcomeSection';
+import { homeStyles } from '../../styles/homeStyles';
+import CoolIcon from '../common/CoolIcon';
+
+const resolveColor = (colorValue: any, defaultColor: string) => {
+  if (!colorValue) return defaultColor;
+  return colorValue.solid || defaultColor;
+};
+
 interface SearchDrawerProps {
     visible: boolean;
     onClose: () => void;
@@ -26,7 +37,7 @@ interface SearchDrawerProps {
 
 // Mock recent searches
 const RECENT_SEARCHES = [
-    { id: '1', query: 'Family photos', type: 'gallery' },
+    { id: '1', query: 'Circle photos', type: 'gallery' },
     { id: '2', query: 'Mom', type: 'contact' },
     { id: '3', query: 'Birthday party', type: 'event' },
     { id: '4', query: 'Grocery list', type: 'note' },
@@ -43,7 +54,7 @@ const CATEGORIES = [
 
 // Mock recent items (like the cat images in the reference)
 const RECENT_ITEMS = [
-    { id: '1', title: 'Family Dinner', image: 'https://i.pravatar.cc/200?img=1', category: 'photos' },
+    { id: '1', title: 'Circle Dinner', image: 'https://i.pravatar.cc/200?img=1', category: 'photos' },
     { id: '2', title: 'Mom', image: 'https://i.pravatar.cc/200?img=2', category: 'contacts' },
     { id: '3', title: 'Dad', image: 'https://i.pravatar.cc/200?img=3', category: 'contacts' },
     { id: '4', title: 'Birthday', image: 'https://i.pravatar.cc/200?img=4', category: 'events' },
@@ -56,6 +67,20 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ visible, onClose }) 
     const [activeCategory, setActiveCategory] = useState('all');
     const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    const { categories } = useBranding();
+
+    const componentConfig = React.useMemo(() => {
+        if (!categories) return null;
+        for (const cat of categories) {
+            const comp = cat.components.find(c => c.id === 'search-overlay');
+            if (comp) return comp;
+        }
+        return null;
+    }, [categories]);
+
+    const brandingStyles = componentConfig?.styles;
+    const overlayBg = resolveColor(brandingStyles?.backgroundColor, '#FFFFFF'); 
 
     useEffect(() => {
         if (visible) {
@@ -176,93 +201,103 @@ export const SearchDrawer: React.FC<SearchDrawerProps> = ({ visible, onClose }) 
                     { transform: [{ translateY: slideAnim }] },
                 ]}
             >
-                <LinearGradient
-                    colors={['#FA7272', '#FFBBB4']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.headerGradient}
-                >
-                    <SafeAreaView edges={['top']}>
-                        <View style={styles.header}>
-                            <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                                <IconMC name="arrow-left" size={24} color="#FFFFFF" />
-                            </TouchableOpacity>
-                            <Text style={styles.headerTitle}>Search</Text>
-                            <View style={{ width: 40 }} />
-                        </View>
+                <ScreenBackground screenId="search-drawer">
+                    <SafeAreaView style={homeStyles.container}>
+                        <WelcomeSection
+                            mode="social"
+                            title="Search"
+                            labelAbove="Find"
+                            leftIcon="arrow-left"
+                            onTitlePress={onClose}
+                            hideSearch={true}
+                        >
+                            <View style={{ height: 20 }} />
+                        </WelcomeSection>
+
+                        <Animated.View style={[
+                            homeStyles.mainContentCard,
+                            { 
+                                flex: 1, 
+                                marginTop: -20,
+                                backgroundColor: 'transparent'
+                            }
+                        ]}>
+                            <KeyboardAvoidingView
+                                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                                style={{ flex: 1 }}
+                            >
+                                {/* Search Input */}
+                                <View style={styles.searchContainer}>
+                                    <View style={styles.searchInputWrapper}>
+                                        <CoolIcon name="search" size={20} color="#9CA3AF" />
+                                        <TextInput
+                                            style={styles.searchInput}
+                                            placeholder="Search anything..."
+                                            placeholderTextColor="#9CA3AF"
+                                            value={searchQuery}
+                                            onChangeText={setSearchQuery}
+                                            autoFocus
+                                        />
+                                        {searchQuery.length > 0 && (
+                                            <TouchableOpacity onPress={handleClearSearch}>
+                                                <CoolIcon name="close-circle" size={18} color="#9CA3AF" />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                </View>
+
+                                {/* Category Tabs */}
+                                <View style={styles.categoriesContainer}>
+                                    <FlatList
+                                        horizontal
+                                        data={CATEGORIES}
+                                        renderItem={({ item }) => renderCategory(item)}
+                                        keyExtractor={(item) => item.id}
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.categoriesList}
+                                    />
+                                </View>
+
+                                {/* Content Scroll */}
+                                <View style={{ flex: 1 }}>
+                                    {/* Recent Searches */}
+                                    {searchQuery.length === 0 && (
+                                        <View style={styles.recentSection}>
+                                            <View style={styles.sectionHeader}>
+                                                <Text style={styles.sectionTitle}>Recent Searches</Text>
+                                                <TouchableOpacity>
+                                                    <Text style={styles.clearAllText}>Clear All</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                            <FlatList
+                                                data={RECENT_SEARCHES}
+                                                renderItem={renderRecentSearch}
+                                                keyExtractor={(item) => item.id}
+                                                showsVerticalScrollIndicator={false}
+                                            />
+                                        </View>
+                                    )}
+
+                                    {/* Results Grid */}
+                                    <View style={styles.resultsSection}>
+                                        <Text style={styles.sectionTitle}>
+                                            {searchQuery ? 'Results' : 'Recent Items'}
+                                        </Text>
+                                        <FlatList
+                                            data={filteredItems}
+                                            renderItem={renderItem}
+                                            keyExtractor={(item) => item.id}
+                                            numColumns={2}
+                                            showsVerticalScrollIndicator={false}
+                                            contentContainerStyle={styles.gridContainer}
+                                            columnWrapperStyle={styles.gridRow}
+                                        />
+                                    </View>
+                                </View>
+                            </KeyboardAvoidingView>
+                        </Animated.View>
                     </SafeAreaView>
-                </LinearGradient>
-
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={styles.content}
-                >
-                    {/* Search Input */}
-                    <View style={styles.searchContainer}>
-                        <View style={styles.searchInputWrapper}>
-                            <IconMC name="magnify" size={20} color="#9CA3AF" />
-                            <TextInput
-                                style={styles.searchInput}
-                                placeholder="Search anything..."
-                                placeholderTextColor="#9CA3AF"
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                autoFocus
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={handleClearSearch}>
-                                    <IconMC name="close-circle" size={18} color="#9CA3AF" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-                    </View>
-
-                    {/* Category Tabs */}
-                    <View style={styles.categoriesContainer}>
-                        <FlatList
-                            horizontal
-                            data={CATEGORIES}
-                            renderItem={({ item }) => renderCategory(item)}
-                            keyExtractor={(item) => item.id}
-                            showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={styles.categoriesList}
-                        />
-                    </View>
-
-                    {/* Recent Searches */}
-                    {searchQuery.length === 0 && (
-                        <View style={styles.recentSection}>
-                            <View style={styles.sectionHeader}>
-                                <Text style={styles.sectionTitle}>Recent Searches</Text>
-                                <TouchableOpacity>
-                                    <Text style={styles.clearAllText}>Clear All</Text>
-                                </TouchableOpacity>
-                            </View>
-                            <FlatList
-                                data={RECENT_SEARCHES}
-                                renderItem={renderRecentSearch}
-                                keyExtractor={(item) => item.id}
-                                showsVerticalScrollIndicator={false}
-                            />
-                        </View>
-                    )}
-
-                    {/* Results Grid (like the cat images in reference) */}
-                    <View style={styles.resultsSection}>
-                        <Text style={styles.sectionTitle}>
-                            {searchQuery ? 'Results' : 'Recent'}
-                        </Text>
-                        <FlatList
-                            data={filteredItems}
-                            renderItem={renderItem}
-                            keyExtractor={(item) => item.id}
-                            numColumns={2}
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={styles.gridContainer}
-                            columnWrapperStyle={styles.gridRow}
-                        />
-                    </View>
-                </KeyboardAvoidingView>
+                </ScreenBackground>
             </Animated.View>
         </Modal>
     );
@@ -282,39 +317,12 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: '#FFFFFF',
-    },
-    headerGradient: {
-        paddingBottom: 16,
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: 8,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    content: {
-        flex: 1,
-        backgroundColor: '#FAF9F6',
+        backgroundColor: 'transparent',
     },
     searchContainer: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        backgroundColor: 'transparent',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
@@ -333,13 +341,13 @@ const styles = StyleSheet.create({
         color: '#1F2937',
     },
     categoriesContainer: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: 'transparent',
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
     },
     categoriesList: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         gap: 8,
     },
     categoryTab: {
@@ -364,7 +372,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     recentSection: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingTop: 16,
     },
     sectionHeader: {
@@ -378,7 +386,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
         marginBottom: 12,
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
+        marginTop: 10,
     },
     clearAllText: {
         fontSize: 14,
@@ -406,19 +415,20 @@ const styles = StyleSheet.create({
     },
     resultsSection: {
         flex: 1,
-        paddingTop: 16,
+        paddingTop: 0,
     },
     gridContainer: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingBottom: 20,
     },
     gridRow: {
         justifyContent: 'space-between',
         marginBottom: 12,
+        gap: 12
     },
     gridItem: {
-        width: (SCREEN_WIDTH - 48) / 2,
-        height: (SCREEN_WIDTH - 48) / 2,
+        width: (SCREEN_WIDTH - 52) / 2,
+        height: (SCREEN_WIDTH - 52) / 2,
         borderRadius: 16,
         overflow: 'hidden',
         backgroundColor: '#F3F4F6',
@@ -442,5 +452,3 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
 });
-
-export default SearchDrawer;

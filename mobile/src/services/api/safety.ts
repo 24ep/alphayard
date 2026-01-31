@@ -3,7 +3,7 @@ import { api } from './index';
 export interface SafetyAlert {
   id: string;
   userId: string;
-  familyId: string;
+  circleId: string;
   alertType: 'panic' | 'inactivity' | 'geofence_exit' | 'geofence_enter' | 'low_battery' | 'device_offline';
   title: string;
   message: string;
@@ -85,9 +85,9 @@ export const safetyApi = {
     return response.data;
   },
 
-  // Get hourse alerts
-  getFamilyAlerts: async (params?: { status?: string; limit?: number; offset?: number }): Promise<{ success: boolean; alerts: SafetyAlert[]; pagination: any }> => {
-    const response = await api.get('/safety/alerts/hourse', { params });
+  // Get Circle alerts
+  getCircleAlerts: async (params?: { status?: string; limit?: number; offset?: number }): Promise<{ success: boolean; alerts: SafetyAlert[]; pagination: any }> => {
+    const response = await api.get('/safety/alerts/Circle', { params });
     return response.data;
   },
 
@@ -145,3 +145,4 @@ export const safetyApi = {
     return response.data;
   },
 };
+

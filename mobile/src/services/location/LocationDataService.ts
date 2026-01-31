@@ -2,7 +2,7 @@ import { api } from '../api/apiClient';
 import { LocationData } from '../../types/home';
 
 export interface LocationFilters {
-  familyId?: string;
+  circleId?: string;
   userId?: string;
   type?: LocationData['type'];
   isOnline?: boolean;
@@ -46,7 +46,7 @@ class LocationDataService {
   async getLocations(filters?: LocationFilters): Promise<LocationData[]> {
     try {
       const params = new URLSearchParams();
-      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.circleId) params.append('circleId', filters.circleId);
       if (filters?.userId) params.append('userId', filters.userId);
       if (filters?.type) params.append('type', filters.type);
       if (filters?.isOnline !== undefined) params.append('isOnline', filters.isOnline.toString());
@@ -81,12 +81,12 @@ class LocationDataService {
     }
   }
 
-  async getFamilyLocations(familyId: string): Promise<LocationData[]> {
+  async getCircleLocations(circleId: string): Promise<LocationData[]> {
     try {
-      const response = await api.get(`${this.baseUrl}/families/${familyId}`);
+      const response = await api.get(`${this.baseUrl}/families/${circleId}`);
       return response.data.locations || [];
     } catch (error) {
-      console.error('Error fetching family locations:', error);
+      console.error('Error fetching circle locations:', error);
       return [];
     }
   }
@@ -101,9 +101,9 @@ class LocationDataService {
     }
   }
 
-  async getLocationStats(familyId?: string): Promise<LocationStats> {
+  async getLocationStats(circleId?: string): Promise<LocationStats> {
     try {
-      const params = familyId ? `?familyId=${familyId}` : '';
+      const params = circleId ? `?circleId=${circleId}` : '';
       const response = await api.get(`${this.baseUrl}/stats${params}`);
       return response.data;
     } catch (error) {
@@ -162,12 +162,12 @@ class LocationDataService {
     }
   }
 
-  async subscribeToLocationUpdates(familyId: string, callback: (data: any) => void): Promise<() => void> {
+  async subscribeToLocationUpdates(circleId: string, callback: (data: any) => void): Promise<() => void> {
     // This would typically use WebSocket or Server-Sent Events
     // For now, we'll implement a polling mechanism
     const interval = setInterval(async () => {
       try {
-        const locations = await this.getFamilyLocations(familyId);
+        const locations = await this.getCircleLocations(circleId);
         callback({ type: 'locations_update', data: locations });
       } catch (error) {
         console.error('Error in location updates subscription:', error);
@@ -177,7 +177,7 @@ class LocationDataService {
     return () => clearInterval(interval);
   }
 
-  async getGeofenceAlerts(familyId: string): Promise<Array<{
+  async getGeofenceAlerts(circleId: string): Promise<Array<{
     id: string;
     userId: string;
     userName: string;
@@ -191,7 +191,7 @@ class LocationDataService {
     };
   }>> {
     try {
-      const response = await api.get(`${this.baseUrl}/families/${familyId}/geofence-alerts`);
+      const response = await api.get(`${this.baseUrl}/families/${circleId}/geofence-alerts`);
       return response.data.alerts || [];
     } catch (error) {
       console.error('Error fetching geofence alerts:', error);
@@ -204,7 +204,7 @@ class LocationDataService {
     latitude: number;
     longitude: number;
     radius: number;
-    familyId: string;
+    circleId: string;
     notifications: {
       enter: boolean;
       exit: boolean;
@@ -218,7 +218,7 @@ class LocationDataService {
     }
   }
 
-  async getGeofences(familyId: string): Promise<Array<{
+  async getGeofences(circleId: string): Promise<Array<{
     id: string;
     name: string;
     latitude: number;
@@ -232,7 +232,7 @@ class LocationDataService {
     createdAt: string;
   }>> {
     try {
-      const response = await api.get(`${this.baseUrl}/families/${familyId}/geofences`);
+      const response = await api.get(`${this.baseUrl}/families/${circleId}/geofences`);
       return response.data.geofences || [];
     } catch (error) {
       console.error('Error fetching geofences:', error);
@@ -251,3 +251,4 @@ class LocationDataService {
 }
 
 export const locationDataService = new LocationDataService();
+

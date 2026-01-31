@@ -54,8 +54,8 @@ jest.mock('expo-linear-gradient', () => ({
 
 jest.mock('react-native-vector-icons/MaterialCommunityIcons', () => 'Icon');
 
-jest.mock('../../../components/DynamicBackground', () => ({
-    DynamicBackground: ({ children }: any) => children,
+jest.mock('../../../components/ScreenBackground', () => ({
+    ScreenBackground: ({ children }: any) => children,
 }));
 
 jest.mock('../../../components/DynamicImage', () => ({

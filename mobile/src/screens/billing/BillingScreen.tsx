@@ -28,7 +28,7 @@ interface BillingScreenProps {
 
 const BillingScreen: React.FC<BillingScreenProps> = ({ route }) => {
   const navigation = useNavigation();
-  const { user, hourse } = useAuth();
+  const { user, Circle } = useAuth();
   const [subscription, setSubscription] = useState<any>(null);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -44,13 +44,13 @@ const BillingScreen: React.FC<BillingScreenProps> = ({ route }) => {
   const loadBillingData = async () => {
     try {
       setLoading(true);
-      if (user && hourse) {
+      if (user && Circle) {
         const [sub, payments, invs, plans, usage] = await Promise.all([
-          billingService.getSubscription(user.id, hourse.id),
+          billingService.getSubscription(user.id, Circle.id),
           billingService.getPaymentMethods(user.id),
           billingService.getInvoices(user.id, 1, 10),
           billingService.getPricingPlans(),
-          billingService.getUsageStats(user.id, hourse.id)
+          billingService.getUsageStats(user.id, Circle.id)
         ]);
         
         setSubscription(sub);
@@ -178,7 +178,7 @@ const BillingScreen: React.FC<BillingScreenProps> = ({ route }) => {
     switch (plan) {
       case 'premium':
         return '#FFD700';
-      case 'hourse':
+      case 'Circle':
         return '#4CAF50';
       case 'basic':
         return '#2196F3';
@@ -315,15 +315,15 @@ const BillingScreen: React.FC<BillingScreenProps> = ({ route }) => {
                     color="primary.500"
                   />
                   <VStack flex={1}>
-                    <Text style={styles.usageLabel}>hourse Members</Text>
+                    <Text style={styles.usageLabel}>Circle Members</Text>
                     <Text style={styles.usageValue}>
-                      {usageStats.familyMembers.current} / {usageStats.familyMembers.limit}
+                      {usageStats.circleMembers.current} / {usageStats.circleMembers.limit}
                     </Text>
                   </VStack>
                 </HStack>
                 <Progress
-                  value={getUsagePercentage(usageStats.familyMembers.current, usageStats.familyMembers.limit)}
-                  colorScheme={getUsageColor(getUsagePercentage(usageStats.familyMembers.current, usageStats.familyMembers.limit)) === '#F44336' ? 'red' : 'green'}
+                  value={getUsagePercentage(usageStats.circleMembers.current, usageStats.circleMembers.limit)}
+                  colorScheme={getUsageColor(getUsagePercentage(usageStats.circleMembers.current, usageStats.circleMembers.limit)) === '#F44336' ? 'red' : 'green'}
                   size="sm"
                 />
               </Box>

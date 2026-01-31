@@ -1,5 +1,6 @@
 import { query } from '../config/database';
 import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface IUser {
   _id?: string; // Compatibility
@@ -10,8 +11,8 @@ export interface IUser {
   lastName: string;
   avatar?: string;
   phone?: string;
-  userType: 'hourse' | 'children' | 'seniors';
-  familyIds: string[];
+  userType: 'circle' | 'children' | 'seniors';
+  circleIds: string[];
   isEmailVerified: boolean;
   preferences: any;
   metadata?: any; // Added for generic metadata access
@@ -21,6 +22,7 @@ export interface IUser {
   createdAt: Date;
   updatedAt: Date;
   isActive: boolean;
+  role?: string;
   // Methods
   comparePassword?: (candidate: string) => Promise<boolean>;
   save?: () => Promise<IUser>;
@@ -43,8 +45,9 @@ export class UserModel {
   get firstName() { return this.data.firstName; }
   get lastName() { return this.data.lastName; }
   get password() { return this.data.password; }
-  get familyIds() { return this.data.familyIds; }
+  get circleIds() { return this.data.circleIds; }
   get isActive() { return this.data.isActive; }
+  get role() { return this.data.role; }
   get metadata() { return this.data.metadata; } // Expose metadata generic getter
 
   // Compatibility getters
@@ -56,28 +59,33 @@ export class UserModel {
   // ... existing code ...
 
   private static mapRowToModel(row: any): UserModel {
-    const meta = row.metadata || {};
+    let meta = row.raw_user_meta_data || {};
+    if (typeof meta === 'string') {
+      try { meta = JSON.parse(meta); } catch (e) { meta = {}; }
+    }
+    
     const names = (row.full_name || '').split(' ');
 
     const user: IUser = {
       id: row.id,
       email: row.email,
       password: row.password,
-      firstName: names[0] || meta.firstName || '',
-      lastName: names.slice(1).join(' ') || meta.lastName || '',
+      firstName: row.first_name || names[0] || '',
+      lastName: row.last_name || names.slice(1).join(' ') || '',
       avatar: row.avatar_url,
       phone: row.phone,
-      userType: meta.userType || 'hourse',
-      familyIds: row.family_ids || [],
-      isEmailVerified: !!row.email_confirmed_at,
-      preferences: meta.preferences || {},
-      metadata: meta, // Store raw metadata
+      userType: row.user_type || 'circle',
+      circleIds: row.circle_ids || [],
+      isEmailVerified: !!row.email_verified || !!row.email_confirmed_at,
+      preferences: row.preferences || {},
+      metadata: meta, 
       deviceTokens: meta.deviceTokens || [],
       refreshTokens: meta.refreshTokens || [],
-      isOnboardingComplete: !!meta.isOnboardingComplete,
+      isOnboardingComplete: !!row.is_onboarding_complete,
       createdAt: row.created_at,
       updatedAt: row.updated_at || row.created_at,
-      isActive: true
+      isActive: !!row.is_active,
+      role: row.role
     };
 
     return new UserModel(user);
@@ -109,12 +117,12 @@ export class UserModel {
 
   static async findById(id: string): Promise<UserModel | null> {
     const res = await query(`
-      SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at,
-             p.full_name, p.avatar_url, p.phone,
-             (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids,
-             u.raw_user_meta_data as metadata
-      FROM auth.users u
-      LEFT JOIN public.profiles p ON u.id = p.id
+      SELECT u.id, u.email, u.password_hash as password, u.created_at, u.updated_at,
+             u.first_name, u.last_name, u.avatar_url, u.phone,
+             (SELECT json_agg(circle_id) FROM circle_members WHERE user_id = u.id) as circle_ids,
+             u.is_active, u.is_onboarding_complete,
+             u.email_verified, u.role, u.raw_user_meta_data
+      FROM public.users u
       WHERE u.id = $1
     `, [id]);
 
@@ -129,12 +137,12 @@ export class UserModel {
   static async findOne(criteria: any): Promise<UserModel | null> {
     // Basic support for finding by email or id
     let sql = `
-      SELECT u.id, u.email, u.encrypted_password as password, u.created_at, u.email_confirmed_at,
-             p.full_name, p.avatar_url, p.phone,
-             (SELECT json_agg(family_id) FROM family_members WHERE user_id = u.id) as family_ids,
-             u.raw_user_meta_data as metadata
-      FROM auth.users u
-      LEFT JOIN public.profiles p ON u.id = p.id
+      SELECT u.id, u.email, u.password_hash as password, u.created_at, u.updated_at,
+             u.first_name, u.last_name, u.avatar_url, u.phone,
+             (SELECT json_agg(circle_id) FROM circle_members WHERE user_id = u.id) as circle_ids,
+             u.is_active, u.is_onboarding_complete,
+             u.email_verified, u.role, u.raw_user_meta_data
+      FROM public.users u
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -145,7 +153,7 @@ export class UserModel {
       params.push(criteria.email);
     }
     if (criteria.phone) {
-      sql += ` AND p.phone = $${paramIdx++}`;
+      sql += ` AND u.phone = $${paramIdx++}`;
       params.push(criteria.phone);
     }
     if (criteria._id || criteria.id) {
@@ -168,37 +176,26 @@ export class UserModel {
   }
 
   static async create(userData: any): Promise<UserModel> {
-    // Simplified creation
     const client = await import('../config/database').then(m => m.pool.connect());
     try {
       await client.query('BEGIN');
 
-      // 1. Insert into auth.users (simulated)
-      const userId = userData.id || crypto.randomUUID(); // Requires node 19+ or polyfill for crypto global
+      const userId = userData.id || uuidv4();
       const hashedPassword = await bcrypt.hash(userData.password, 12);
 
+      // Insert into public.users (native PostgreSQL)
       await client.query(`
-         INSERT INTO auth.users (id, email, encrypted_password, created_at, updated_at, raw_user_meta_data)
-         VALUES ($1, $2, $3, NOW(), NOW(), $4)
-       `, [userId, userData.email, hashedPassword, userData]);
-
-      // 2. Insert into profiles
-      await client.query(`
-         INSERT INTO public.profiles (id, full_name, avatar_url, phone)
-         VALUES ($1, $2, $3, $4)
-       `, [userId, `${userData.firstName} ${userData.lastName}`, userData.avatar, userData.phone]);
-
-      // 3. Insert into public.users (Required for social FK constraints)
-      await client.query(`
-         INSERT INTO public.users (id, email, password_hash, first_name, last_name, avatar_url, is_active, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, true, NOW(), NOW())
+         INSERT INTO public.users (id, email, password_hash, first_name, last_name, avatar_url, phone, is_active, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       `, [
         userId,
         userData.email,
         hashedPassword,
-        userData.firstName,
-        userData.lastName,
-        userData.avatar
+        userData.firstName || 'New',
+        userData.lastName || 'User',
+        userData.avatar || null,
+        userData.phone || null,
+        userData.isActive !== undefined ? userData.isActive : true
       ]);
 
       await client.query('COMMIT');
@@ -215,48 +212,62 @@ export class UserModel {
     const sets: string[] = [];
     const params: any[] = [id];
     let idx = 2;
-    const metadataUpdates: any = {};
+
+    const columnMap: Record<string, string> = {
+      email: 'email',
+      firstName: 'first_name',
+      lastName: 'last_name',
+      firstName_lower: 'first_name',
+      lastName_lower: 'last_name',
+      avatarUrl: 'avatar_url',
+      avatar: 'avatar_url',
+      phone: 'phone',
+      phoneNumber: 'phone',
+      isActive: 'is_active',
+      isActive_lower: 'is_active',
+      isEmailVerified: 'email_verified',
+      isEmailVerified_lower: 'email_verified',
+      isOnboardingComplete: 'is_onboarding_complete',
+      isOnboardingComplete_lower: 'is_onboarding_complete',
+      userType: 'user_type',
+      role: 'role'
+    };
+
+    // Generic metadata fields to be updated in JSONB
+    const metadataUpdates: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(update)) {
-      if (key === 'lastSeen' || key === 'lastLogin') {
-        sets.push(`last_sign_in_at = $${idx++}`);
+      if (columnMap[key]) {
+        sets.push(`${columnMap[key]} = $${idx++}`);
         params.push(value);
-      } else if (key === 'email' || key === 'encrypted_password') {
-        sets.push(`${key} = $${idx++}`);
+      } else if (key === 'password_hash' || key === 'password') {
+        sets.push(`password_hash = $${idx++}`);
         params.push(value);
-      } else if (key === 'password_hash') {
-        sets.push(`encrypted_password = $${idx++}`);
-        params.push(value);
-      } else if (key === '$pull') {
-        // Special handling for Mongoose-style $pull (specifically for refreshTokens)
-        const pullData = value as any;
-        if (pullData.refreshTokens) {
-          sets.push(`raw_user_meta_data = (COALESCE(raw_user_meta_data, '{}'::jsonb) - 'refreshTokens') || jsonb_build_object('refreshTokens', (COALESCE(raw_user_meta_data->'refreshTokens', '[]'::jsonb) - $${idx++}))`);
-          params.push(pullData.refreshTokens);
-        }
-      } else if (key === '$push') {
-        // Special handling for Mongoose-style $push
-        const pushData = value as any;
-        if (pushData.refreshTokens) {
-          sets.push(`raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('refreshTokens', COALESCE(raw_user_meta_data->'refreshTokens', '[]'::jsonb) || jsonb_build_array($${idx++}))`);
-          params.push(pushData.refreshTokens);
-        }
-      } else {
-        // Collect metadata updates to merge efficiently
+      } else if (key === 'raw_user_meta_data' || key === 'metadata') {
+        sets.push(`raw_user_meta_data = $${idx++}`);
+        params.push(typeof value === 'object' ? JSON.stringify(value) : value);
+      } else if (key === 'loginOtp' || key === 'loginOtpExpiry' || key === 'emailVerificationCode' || key === 'emailVerificationExpiry' || key === 'refreshTokens' || key === 'lastLogin' || key === 'deviceTokens' || key === 'isEmailVerified') {
+        // These are typically stored in metadata in our current setup
         metadataUpdates[key] = value;
       }
     }
 
+    // If we have metadata updates, handle them
     if (Object.keys(metadataUpdates).length > 0) {
-      // Use Postgres JSONB merge operator || to update multiple keys at once
-      sets.push(`raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $${idx++}::jsonb`);
+      sets.push(`raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || $${idx++}`);
       params.push(JSON.stringify(metadataUpdates));
     }
 
     if (sets.length === 0) return UserModel.findById(id);
 
-    await query(`UPDATE auth.users SET ${sets.join(', ')} WHERE id = $1`, params);
-    return UserModel.findById(id);
+    const sql = `UPDATE public.users SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $1`;
+    try {
+      await query(sql, params);
+      return UserModel.findById(id);
+    } catch (error) {
+      console.error('[UserModel.findByIdAndUpdate] Update failed:', error);
+      throw error;
+    }
   }
 
   // Instance methods
@@ -273,7 +284,7 @@ export class UserModel {
     delete updateData.id;
     delete updateData._id;
     delete updateData.password;
-    delete updateData.familyIds;
+    delete updateData.circleIds;
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.metadata; // Remove redundant metadata object to prevent nesting

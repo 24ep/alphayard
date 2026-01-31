@@ -16,6 +16,7 @@ import { HStack, VStack, Input, Icon, IconButton, Avatar, Badge, Box } from 'nat
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
+import { useUserData } from '../../contexts/UserDataContext';
 import { aiAgentService, AIAgentRequest, AIAgentResponse } from '../../services/ai/AIAgentService';
 import { analyticsService } from '../../services/analytics/AnalyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -41,7 +42,9 @@ interface AIAgentScreenProps {
 
 const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
   const navigation = useNavigation();
-  const { user, hourse } = useAuth();
+  const { user } = useAuth();
+  const { families } = useUserData();
+  const Circle = families && families.length > 0 ? families[0] : null;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -68,8 +71,8 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
       setCapabilities(caps);
       
       // Load conversation history
-      if (user && hourse) {
-        const history = await aiAgentService.getConversationHistory(user.id, hourse.id);
+      if (user && Circle) {
+        const history = await aiAgentService.getConversationHistory(user.id, Circle.id);
         if (history && history.messages.length > 0) {
           setMessages(history.messages.map(msg => ({
             id: `${msg.timestamp}_${msg.role}`,
@@ -84,11 +87,11 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
           setMessages([{
             id: 'welcome',
             role: 'assistant',
-            content: `Hello! I'm your AI assistant for Bondarys. I can help you manage your hourse, send messages, track expenses, and much more. What would you like to do today?`,
+            content: `Hello! I'm your AI assistant for Bondarys. I can help you manage your Circle, send messages, track expenses, and much more. What would you like to do today?`,
             timestamp: Date.now(),
             suggestions: [
-              'Add a hourse member',
-              'Send a message to hourse',
+              'Add a Circle member',
+              'Send a message to Circle',
               'Share my location',
               'Add an expense',
               'Create a shopping list'
@@ -105,7 +108,7 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
   };
 
   const handleSendMessage = async (message: string) => {
-    if (!message.trim() || !user || !hourse) return;
+    if (!message.trim() || !user || !Circle) return;
 
     const userMessage: ChatMessage = {
       id: `user_${Date.now()}`,
@@ -123,7 +126,7 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
         message,
         context: {
           userId: user.id,
-          familyId: hourse.id,
+          circleId: Circle.id,
           userRole: user.role || 'member',
           permissions: user.permissions || [],
           deviceInfo: {
@@ -194,16 +197,16 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
           text: 'Clear',
           style: 'destructive',
           onPress: async () => {
-            if (user && hourse) {
-              await aiAgentService.clearConversationHistory(user.id, hourse.id);
+            if (user && Circle) {
+              await aiAgentService.clearConversationHistory(user.id, Circle.id);
               setMessages([{
                 id: 'welcome',
                 role: 'assistant',
                 content: 'Chat history cleared. How can I help you today?',
                 timestamp: Date.now(),
                 suggestions: [
-                  'Add a hourse member',
-                  'Send a message to hourse',
+                  'Add a Circle member',
+                  'Send a message to Circle',
                   'Share my location',
                   'Add an expense',
                   'Create a shopping list'
@@ -389,7 +392,7 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
 
   const getCapabilityIcon = (service: string) => {
     const iconMap: { [key: string]: string } = {
-      hourse: 'account-group',
+      Circle: 'account-group',
       user: 'account',
       chat: 'chat',
       location: 'map-marker',
@@ -429,7 +432,7 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
           />
           <VStack flex={1}>
             <Text style={styles.title}>AI Assistant</Text>
-            <Text style={styles.subtitle}>Your hourse management helper</Text>
+            <Text style={styles.subtitle}>Your Circle management helper</Text>
           </VStack>
         </HStack>
         <HStack space={2}>

@@ -24,7 +24,7 @@ interface EntertainmentItem {
   description: string;
   imageUrl?: string;
   trailerUrl?: string;
-  isFamilyFriendly: boolean;
+  isCircleFriendly: boolean;
   ageRating: string;
   language: string;
   cast?: string[];
@@ -88,7 +88,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
           description: 'A young lion prince flees his kingdom only to learn the true meaning of responsibility and bravery.',
           imageUrl: 'https://via.placeholder.com/200x300',
           trailerUrl: 'https://example.com/trailer/1',
-          isFamilyFriendly: true,
+          isCircleFriendly: true,
           ageRating: 'G',
           language: 'English',
           cast: ['Donald Glover', 'Beyoncé', 'James Earl Jones'],
@@ -109,7 +109,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
           description: 'When a young boy disappears, his mother must confront terrifying forces to get him back.',
           imageUrl: 'https://via.placeholder.com/200x300',
           trailerUrl: 'https://example.com/trailer/2',
-          isFamilyFriendly: false,
+          isCircleFriendly: false,
           ageRating: 'TV-14',
           language: 'English',
           cast: ['Millie Bobby Brown', 'Finn Wolfhard', 'Winona Ryder'],
@@ -130,7 +130,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
           releaseYear: 2011,
           description: 'A 3D sandbox game where players can build, explore, and survive in a blocky world.',
           imageUrl: 'https://via.placeholder.com/200x300',
-          isFamilyFriendly: true,
+          isCircleFriendly: true,
           ageRating: 'E',
           language: 'Multi',
           platform: 'PC, Mobile, Console',
@@ -153,7 +153,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
           releaseYear: 1997,
           description: 'The first book in the Harry Potter series follows the young wizard\'s first year at Hogwarts.',
           imageUrl: 'https://via.placeholder.com/200x300',
-          isFamilyFriendly: true,
+          isCircleFriendly: true,
           ageRating: 'All Ages',
           language: 'English',
           isWatched: false,
@@ -163,15 +163,15 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
         },
         {
           id: '5',
-          title: 'hourse Game Night',
+          title: 'Circle Game Night',
           type: 'activity',
           genre: 'Board Games',
           rating: 8.8,
           duration: 60,
           releaseYear: 2023,
-          description: 'Weekly hourse game night featuring various board games and activities.',
+          description: 'Weekly Circle game night featuring various board games and activities.',
           imageUrl: 'https://via.placeholder.com/200x300',
-          isFamilyFriendly: true,
+          isCircleFriendly: true,
           ageRating: 'All Ages',
           language: 'Multi',
           players: 6,
@@ -190,7 +190,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
           releaseYear: 1969,
           description: 'The eleventh studio album by the Beatles, featuring classic hits like "Come Together".',
           imageUrl: 'https://via.placeholder.com/200x300',
-          isFamilyFriendly: true,
+          isCircleFriendly: true,
           ageRating: 'All Ages',
           language: 'English',
           isWatched: false,
@@ -230,7 +230,7 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
       itemId: item.id,
       type: item.type,
       genre: item.genre,
-      isFamilyFriendly: item.isFamilyFriendly,
+      isCircleFriendly: item.isCircleFriendly,
     });
     
     if (onPress) {
@@ -310,9 +310,9 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
                 {formatRating(item.averageRating)} ({item.reviews})
               </Text>
             </View>
-            {item.isFamilyFriendly && (
+            {item.isCircleFriendly && (
               <Badge colorScheme="green" rounded="full" variant="solid">
-                hourse Friendly
+                Circle Friendly
               </Badge>
             )}
           </View>
@@ -371,8 +371,8 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
     return entertainmentItems.filter(item => item.isPlaying).length;
   };
 
-  const getFamilyFriendlyCount = () => {
-    return entertainmentItems.filter(item => item.isFamilyFriendly).length;
+  const getCircleFriendlyCount = () => {
+    return entertainmentItems.filter(item => item.isCircleFriendly).length;
   };
 
   if (loading) {
@@ -446,8 +446,8 @@ const EntertainmentWidget: React.FC<EntertainmentWidgetProps> = ({
             <Text style={styles.statsText}>
               {getWatchedCount()} watched • {getPlayingCount()} playing
             </Text>
-            <Text style={styles.familyText}>
-              {getFamilyFriendlyCount()} hourse friendly
+            <Text style={styles.circleText}>
+              {getCircleFriendlyCount()} Circle friendly
             </Text>
           </View>
           <TouchableOpacity style={styles.viewAllButton} onPress={onPress}>
@@ -637,7 +637,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
   },
-  familyText: {
+  circleText: {
     fontSize: 14,
     color: '#4CAF50',
     fontWeight: '600',

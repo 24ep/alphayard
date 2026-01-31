@@ -1,6 +1,71 @@
 import React from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Rect } from 'react-native-svg';
+import * as LucideIcons from 'lucide-react-native';
+
+const LUCIDE_MAPPING: Record<string, keyof typeof LucideIcons> = {
+  bell: 'Bell',
+  'bell-ring': 'BellRing',
+  home: 'Home',
+  chat: 'MessageSquare',
+  'chat-processing': 'MessageSquareMore',
+  menu: 'Menu',
+  magnify: 'Search',
+  phone: 'Phone',
+  heart: 'Heart',
+  'heart-pulse': 'Activity',
+  walk: 'Footprints',
+  battery: 'Battery',
+  sleep: 'Moon',
+  thermometer: 'Thermometer',
+  map: 'Map',
+  'emoticon-happy': 'Smile',
+  'image-outline': 'Image',
+  image: 'Image',
+  calendar: 'Calendar',
+  'note-text': 'FileText',
+  apps: 'LayoutGrid',
+  plus: 'Plus',
+  refresh: 'RefreshCw',
+  analytics: 'BarChart3',
+  'check-circle': 'CheckCircle2',
+  search: 'Search',
+  close: 'X',
+  'close-circle': 'XCircle',
+  'map-marker': 'MapPin',
+  'image-plus': 'ImagePlus',
+  'arrow-left': 'ArrowLeft',
+  'camera-plus': 'Camera',
+  camera: 'Camera',
+  'email-plus': 'MailPlus',
+  qrcode: 'QrCode',
+  location: 'MapPin',
+  call: 'Phone',
+  chatbubble: 'MessageCircle',
+  'account-group': 'Users',
+  people: 'Users',
+  lock: 'Lock',
+  eye: 'Eye',
+  'account-multiple': 'Users2',
+  account: 'User',
+  wallet: 'Wallet',
+  'house-03': 'Home',
+  settings: 'Settings',
+  'chat-processing-outline': 'MessageSquareText',
+  'home-heart': 'Home',
+  'tune-vertical': 'SlidersHorizontal',
+  earth: 'Globe',
+  'earth-globe': 'Globe2',
+  flag: 'Flag',
+  'crosshairs-gps': 'Target',
+  'map-marker-radius': 'LocateFixed',
+  'chevron-down': 'ChevronDown',
+  'chevron-up': 'ChevronUp',
+  'image-multiple': 'Images',
+  'text-box-outline': 'FileText',
+  info: 'Info',
+  users: 'Users',
+};
 
 interface CoolIconProps {
   name: string;
@@ -62,9 +127,25 @@ const ICON_PATHS: Record<string, string> = {
   settings: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm8-3.5c0-.6-.1-1.1-.2-1.6l2.1-1.6-2-3.4-2.5.8c-.8-.7-1.7-1.2-2.7-1.6l-.4-2.6H9.9l-.4 2.6c-1 .3-1.9.9-2.7 1.6l-2.5-.8-2 3.4 2.1 1.6c-.1.5-.2 1-.2 1.6s.1 1.1.2 1.6l-2.1 1.6 2 3.4 2.5-.8c.8.7 1.7 1.2 2.7 1.6l.4 2.6h4.2l.4-2.6c1-.3 1.9-.9 2.7-1.6l2.5.8 2-3.4-2.1-1.6c.1-.5.2-1 .2-1.6Z',
   'chat-processing-outline': 'M12 3c5.5 0 10 3.58 10 8s-4.5 8-10 8c-1.24 0-2.43-.18-3.53-.5C5.55 21 2 21 2 21c2.33-2.33 2.7-3.9 2.75-4.5C3.05 15.07 2 13.13 2 11c0-4.42 4.5-8 10-8',
   'home-heart': 'M12 3l9 8h-3v9h-4v-5h-4v5H6v-9H3l9-8Zm0 6a2 2 0 0 0-2 2c0 1.5 2 3 2 3s2-1.5 2-3a2 2 0 0 0-2-2Z',
+  'tune-vertical': 'M3 17v2h6v-2H3M3 5v2h10V5H3m10 16v-2h8v-2h-8v-2h-2v6h2M7 9v2H3v2h4v2h2V9H7m14 4v-2H11v2h10m-6-4h2V7h4V5h-4V3h-2v6Z',
+  'earth': 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8Zm-1-4a2 2 0 1 1-2-2 2 2 0 0 1 2 2Zm4-3a2 2 0 1 1-2-2 2 2 0 0 1 2 2Zm-6-5a2 2 0 1 1-2-2 2 2 0 0 1 2 2Z', // Using a simple earth-like representation or globe
+  'earth-globe': 'M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2Zm6.65 6A13.41 13.41 0 0 0 12 6a13.41 13.41 0 0 0-6.65 2h13.3ZM12 20a13.43 13.43 0 0 1-6.65-2h13.3A13.43 13.43 0 0 1 12 20Zm-7.65-4a13.41 13.41 0 0 1 0-8h15.3a13.41 13.41 0 0 1 0 8Z', // Better grid globe
+  'flag': 'M5 21v-8a2 2 0 0 1 0-4h7l2 5 7-5v9l-7 5-2-5H5v8', // Flag variant
+  'crosshairs-gps': 'M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4Zm0 6a2 2 0 1 1 2-2 2 2 0 0 1-2 2Zm10-2h-3.17a8.94 8.94 0 0 0-5.74-5.74V3h-2.18v3.09A8.94 8.94 0 0 0 5.17 11H2v2.18h3.17a8.94 8.94 0 0 0 5.74 5.74V22h2.18v-3.09a8.94 8.94 0 0 0 5.74-5.74H22Z',
+  'map-marker-radius': 'M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 14.5 9 2.5 2.5 0 0 1 12 11.5Z',
+  'chevron-down': 'M6 9l6 6 6-6',
+  'chevron-up': 'M18 15l-6-6-6 6',
 };
 
 export const CoolIcon: React.FC<CoolIconProps> = ({ name, size = 24, color = '#000', style }) => {
+  const lucideName = LUCIDE_MAPPING[name];
+  if (lucideName) {
+    const LucideIcon = LucideIcons[lucideName] as any;
+    if (LucideIcon) {
+      return <LucideIcon size={size} color={color} style={style} />;
+    }
+  }
+
   const path = ICON_PATHS[name];
   if (!path) {
     // Fallback placeholder to avoid crashes if an unmapped name is used

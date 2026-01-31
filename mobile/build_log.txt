@@ -1,0 +1,17 @@
+
+FAILURE: Build failed with an exception.
+
+* Where:
+Settings file 'E:\GitCloneProject\boundary\mobile\android\settings.gradle' line: 13
+
+* What went wrong:
+Error resolving plugin [id: 'com.facebook.react.settings']
+> java.io.UncheckedIOException: Could not move temporary workspace (E:\GitCloneProject\boundary\mobile\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a-8f1c3dc8-9e0b-4c86-8618-594e314f76f7) to immutable location (E:\GitCloneProject\boundary\mobile\android\.gradle\8.8\dependencies-accessors\423f0288fa7dffe069445ffa4b72952b4629a15a)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1s

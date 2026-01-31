@@ -22,7 +22,7 @@ async function createTestUser() {
             firstName: 'Test',
             lastName: 'User',
             phone: '+1234567890',
-            userType: 'hourse'
+            userType: 'circle'
         };
 
         // Hash the password
@@ -117,3 +117,4 @@ if (require.main === module) {
 }
 
 export default createTestUser;
+

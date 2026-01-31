@@ -52,7 +52,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     switch (profile.subscription?.plan) {
       case 'premium':
         return '#FFD700';
-      case 'hourse':
+      case 'Circle':
         return '#FF6B6B';
       case 'basic':
         return '#4ECDC4';
@@ -65,7 +65,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     switch (profile.subscription?.plan) {
       case 'premium':
         return ['#FFD700', '#FFA500'];
-      case 'hourse':
+      case 'Circle':
         return ['#FF6B6B', '#FF8E8E'];
       case 'basic':
         return ['#4ECDC4', '#6ED5D5'];
@@ -359,4 +359,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileHeader;
-export default ProfileHeader;
+

@@ -9,9 +9,9 @@ export interface User {
   avatar?: string;
   phone?: string;
   dateOfBirth?: Date;
-  userType: 'hourse' | 'children' | 'seniors';
+  userType: 'Circle' | 'children' | 'seniors';
   subscriptionTier: 'free' | 'premium' | 'elite';
-  familyIds: string[];
+  circleIds: string[];
   isOnboardingComplete: boolean;
   preferences: {
     notifications: boolean;
@@ -113,4 +113,5 @@ export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
 export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.loading;
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
+
 

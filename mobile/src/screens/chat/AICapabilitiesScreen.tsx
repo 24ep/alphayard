@@ -81,7 +81,7 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
 
   const getCapabilityIcon = (service: string) => {
     const iconMap: { [key: string]: string } = {
-      hourse: 'account-group',
+      Circle: 'account-group',
       user: 'account',
       chat: 'chat',
       location: 'map-marker',
@@ -102,7 +102,7 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
 
   const getCapabilityColor = (service: string) => {
     const colorMap: { [key: string]: string } = {
-      hourse: '#4CAF50',
+      Circle: '#4CAF50',
       user: '#2196F3',
       chat: '#9C27B0',
       location: '#FF9800',
@@ -249,7 +249,7 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
         <TouchableOpacity
           style={styles.quickStartItem}
           onPress={() => navigation.navigate('AIAgent', { 
-            initialMessage: 'Help me manage my hourse' 
+            initialMessage: 'Help me manage my Circle' 
           })}
         >
           <HStack space={3} alignItems="center">
@@ -260,9 +260,9 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
               color="primary.500"
             />
             <VStack flex={1}>
-              <Text style={styles.quickStartTitle}>hourse Management</Text>
+              <Text style={styles.quickStartTitle}>Circle Management</Text>
               <Text style={styles.quickStartDescription}>
-                Add members, manage roles, and organize your hourse
+                Add members, manage roles, and organize your Circle
               </Text>
             </VStack>
             <Icon
@@ -277,7 +277,7 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
         <TouchableOpacity
           style={styles.quickStartItem}
           onPress={() => navigation.navigate('AIAgent', { 
-            initialMessage: 'Send a message to my hourse' 
+            initialMessage: 'Send a message to my Circle' 
           })}
         >
           <HStack space={3} alignItems="center">
@@ -288,7 +288,7 @@ const AICapabilitiesScreen: React.FC<AICapabilitiesScreenProps> = ({ route }) =>
               color="primary.500"
             />
             <VStack flex={1}>
-              <Text style={styles.quickStartTitle}>hourse Communication</Text>
+              <Text style={styles.quickStartTitle}>Circle Communication</Text>
               <Text style={styles.quickStartDescription}>
                 Send messages, create chats, and stay connected
               </Text>

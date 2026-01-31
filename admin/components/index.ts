@@ -5,7 +5,7 @@
 export * from './auth';
 export * from './analytics';
 export * from './dashboard';
-export * from './families';
+export * from './circles';
 export * from './settings';
 export * from './users';
 export * from './layout';
@@ -36,3 +36,4 @@ export * from './cms';
 export * from './content';
 
 // Note: UI components should be imported from './ui' directly to avoid naming conflicts
+

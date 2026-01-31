@@ -21,7 +21,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-  { name: 'Family', href: '/dashboard/family', icon: UserGroupIcon },
+  { name: 'Circle', href: '/dashboard/Circle', icon: UserGroupIcon },
   { name: 'Social', href: '/dashboard/social', icon: ChatBubbleLeftRightIcon },
   { name: 'Calendar', href: '/dashboard/calendar', icon: CalendarIcon },
   { name: 'Tasks', href: '/dashboard/tasks', icon: CheckCircleIcon },
@@ -114,4 +114,5 @@ export function Sidebar() {
     </div>
   )
 }
+
 

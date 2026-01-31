@@ -162,8 +162,8 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
       {
         type: 'content',
         initials: 'JF',
-        title: 'Johnson Family Reunion 2024',
-        meta: 'Johnson Family • 45 views',
+        title: 'Johnson Appkit Reunion 2024',
+        meta: 'Johnson Account • 45 views',
         badge: 'Published',
         badgeColor: 'green',
         time: '2 hours ago',
@@ -173,7 +173,7 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
         type: 'content',
         initials: 'RC',
         title: "Grandma's Apple Pie Recipe",
-        meta: 'Smith Family • 78 views',
+        meta: 'Smith Account • 78 views',
         badge: 'Published',
         badgeColor: 'green',
         time: '5 hours ago',
@@ -183,7 +183,7 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
         type: 'content',
         initials: 'BF',
         title: 'Birthday Celebration Photos',
-        meta: 'Brown Family • 32 views',
+        meta: 'Brown Account • 32 views',
         badge: 'Draft',
         badgeColor: 'yellow',
         time: '1 day ago',
@@ -192,7 +192,7 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
       {
         type: 'families',
         initials: 'SF',
-        title: 'Smith Family added a new member',
+        title: 'Smith Account added a new member',
         meta: 'Users +1 (now 5)',
         badge: 'Update',
         badgeColor: 'blue',
@@ -203,7 +203,7 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
         type: 'users',
         initials: 'AU',
         title: 'New admin invited',
-        meta: 'Email sent to admin@bondarys.com',
+        meta: 'Email sent to admin@appkit.com',
         badge: 'Invite',
         badgeColor: 'purple',
         time: '6 hours ago',
@@ -400,101 +400,33 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        {/* Activity Feed */}
-        <div className="xl:col-span-2 macos-card p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-            <div className="flex items-center gap-2">
-              <select
-                value={activityFilter}
-                onChange={(e) => setActivityFilter(e.target.value as any)}
-                className="macos-input text-sm px-3 py-1.5"
-                aria-label="Filter activity"
-              >
-                <option value="all">All</option>
-                <option value="families">Families</option>
-                <option value="content">Content</option>
-                <option value="users">Users</option>
-              </select>
-              <Tooltip content="Export to CSV">
-                <button
-                  onClick={() => exportActivityCsv(getUnifiedActivity())}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                  aria-label="Export to CSV"
-                >
-                  <ArrowDownTrayIcon className="w-4 h-4 text-gray-600" aria-hidden="true" />
-                </button>
-              </Tooltip>
-              <Tooltip content="Copy link with filters">
-                <button
-                  onClick={copyLinkWithFilters}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-                  aria-label="Copy link"
-                >
-                  <LinkIcon className="w-4 h-4 text-gray-600" aria-hidden="true" />
-                </button>
-              </Tooltip>
-            </div>
-          </div>
-          <div className="space-y-3">
-            {getUnifiedActivity().map((item, idx) => (
-              <div
-                key={idx}
-                className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-all duration-200 group cursor-pointer"
-                role="button"
-                tabIndex={0}
-                aria-label={`${item.title} - ${item.meta}`}
-              >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.bg} flex items-center justify-center text-white font-semibold text-sm shadow-lg flex-shrink-0`}>
-                  {item.initials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{item.title}</p>
-                  <p className="text-sm text-gray-500 truncate">{item.meta}</p>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${
-                    item.badgeColor === 'green' ? 'bg-green-50 text-green-700' :
-                    item.badgeColor === 'yellow' ? 'bg-yellow-50 text-yellow-700' :
-                    item.badgeColor === 'blue' ? 'bg-blue-50 text-blue-700' :
-                    'bg-purple-50 text-purple-700'
-                  }`}>
-                    {item.badge}
-                  </span>
-                  <span className="text-xs text-gray-400 whitespace-nowrap">{item.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+      <div className="grid grid-cols-1 gap-4">
         {/* Sidebar Widgets */}
-        <div className="space-y-4">
-          {/* Family Activity */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Account Activity */}
           <div className="macos-card p-6">
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Family Activity</h3>
+            <h3 className="text-base font-semibold text-gray-900 mb-4">Account Activity</h3>
             <div className="space-y-3">
               {[
-                { name: 'Johnson Family', members: 6, content: 24, date: 'Jan 15, 2024', color: 'from-red-500 to-red-600' },
-                { name: 'Smith Family', members: 4, content: 18, date: 'Jan 14, 2024', color: 'from-green-500 to-green-600' },
-                { name: 'Brown Family', members: 5, content: 12, date: 'Jan 13, 2024', color: 'from-blue-500 to-blue-600' },
-              ].map((family, idx) => (
+                { name: 'Johnson Circle', members: 6, content: 24, date: 'Jan 15, 2024', color: 'from-red-500 to-red-600' },
+                { name: 'Smith Circle', members: 4, content: 18, date: 'Jan 14, 2024', color: 'from-green-500 to-green-600' },
+                { name: 'Brown Circle', members: 5, content: 12, date: 'Jan 13, 2024', color: 'from-blue-500 to-blue-600' },
+              ].map((Circle, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors duration-200 cursor-pointer group"
                   role="button"
                   tabIndex={0}
                 >
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${family.color} flex items-center justify-center text-white font-semibold text-xs shadow-md`}>
-                    {family.name.split(' ').map(n => n[0]).join('')}
+                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${Circle.color} flex items-center justify-center text-white font-semibold text-xs shadow-md`}>
+                    {Circle.name.split(' ').map(n => n[0]).join('')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 text-sm truncate">{family.name}</p>
-                    <p className="text-xs text-gray-500">{family.members} members • {family.content} content</p>
+                    <p className="font-medium text-gray-900 text-sm truncate">{Circle.name}</p>
+                    <p className="text-xs text-gray-500">{Circle.members} members • {Circle.content} content</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-400">{family.date}</p>
+                    <p className="text-xs text-gray-400">{Circle.date}</p>
                   </div>
                 </div>
               ))}
@@ -576,3 +508,4 @@ export function Dashboard({ onManageDashboards }: DashboardProps) {
     </div>
   )
 }
+

@@ -1,12 +1,12 @@
-# Family Safety Incidents Component
+# Circle Safety Incidents Component
 
 ## Overview
-The `FamilySafetyIncidents` component provides a comprehensive interface for monitoring and managing emergency incidents within families in the admin console. It displays emergency incidents as a list with detailed information and allows administrators to acknowledge and resolve incidents.
+The `CircleSafetyIncidents` component provides a comprehensive interface for monitoring and managing emergency incidents within families in the admin console. It displays emergency incidents as a list with detailed information and allows administrators to acknowledge and resolve incidents.
 
 ## Features
 
 ### 1. Incident List View
-- **Family Selection**: Dropdown to select which family's incidents to view
+- **Circle Selection**: Dropdown to select which Circle's incidents to view
 - **Search & Filtering**: Search by incident title, user name, or message content
 - **Type Filtering**: Filter by incident type (panic, medical, safety, weather, geofence, check-in)
 - **Status Filtering**: Filter by incident status (active, acknowledged, resolved, false_alarm)
@@ -45,8 +45,8 @@ Clicking on an incident opens a detailed modal showing:
 - When contacts were reached
 - Contact phone numbers and relationships
 
-#### Family Members
-- All family members who were notified
+#### Circle Members
+- All Circle members who were notified
 - Notification status and timestamps
 - Member roles
 
@@ -67,11 +67,11 @@ Clicking on an incident opens a detailed modal showing:
 The component is integrated into the main Safety module with a tab-based interface:
 
 ```tsx
-import { FamilySafetyIncidents } from './FamilySafetyIncidents'
+import { CircleSafetyIncidents } from './CircleSafetyIncidents'
 
 // In the Safety component
 {activeTab === 'incidents' ? (
-  <FamilySafetyIncidents />
+  <CircleSafetyIncidents />
 ) : (
   // Other safety management content
 )}
@@ -83,7 +83,7 @@ The component expects incident data in the following format:
 ```typescript
 interface EmergencyIncident {
   id: string
-  familyId: string
+  CircleId: string
   userId: string
   user: {
     id: string
@@ -116,7 +116,7 @@ interface EmergencyIncident {
     contacted: boolean
     contactedAt?: string
   }>
-  familyMembers: Array<{
+  CircleMembers: Array<{
     id: string
     name: string
     role: string
@@ -146,3 +146,4 @@ The component uses Tailwind CSS classes and follows the existing admin console d
 - Incident analytics and reporting
 - Integration with external emergency services
 - Automated incident response workflows
+

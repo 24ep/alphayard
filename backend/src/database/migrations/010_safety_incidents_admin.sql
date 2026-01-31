@@ -26,7 +26,7 @@ ADD COLUMN IF NOT EXISTS network_type VARCHAR(50);
 -- Create emergency_contacts table if it doesn't exist
 CREATE TABLE IF NOT EXISTS emergency_contacts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(20) NOT NULL,
   email VARCHAR(255),
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS emergency_contacts (
 );
 
 -- Create indexes for emergency_contacts
-CREATE INDEX IF NOT EXISTS idx_emergency_contacts_family_id ON emergency_contacts(family_id);
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_circle_id ON emergency_contacts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_emergency_contacts_is_primary ON emergency_contacts(is_primary);
 CREATE INDEX IF NOT EXISTS idx_emergency_contacts_is_active ON emergency_contacts(is_active);
 
@@ -70,8 +70,8 @@ CREATE INDEX IF NOT EXISTS idx_safety_incident_contacts_incident_id ON safety_in
 CREATE INDEX IF NOT EXISTS idx_safety_incident_contacts_contact_id ON safety_incident_contacts(contact_id);
 CREATE INDEX IF NOT EXISTS idx_safety_incident_contacts_contacted ON safety_incident_contacts(contacted);
 
--- Create safety_incident_family_members table to track which family members were notified
-CREATE TABLE IF NOT EXISTS safety_incident_family_members (
+-- Create safety_incident_circle_members table to track which family members were notified
+CREATE TABLE IF NOT EXISTS safety_incident_circle_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   incident_id UUID NOT NULL REFERENCES safety_alerts(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS safety_incident_family_members (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for safety_incident_family_members
-CREATE INDEX IF NOT EXISTS idx_safety_incident_family_members_incident_id ON safety_incident_family_members(incident_id);
-CREATE INDEX IF NOT EXISTS idx_safety_incident_family_members_user_id ON safety_incident_family_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_safety_incident_family_members_notified ON safety_incident_family_members(notified);
+-- Create indexes for safety_incident_circle_members
+CREATE INDEX IF NOT EXISTS idx_safety_incident_circle_members_incident_id ON safety_incident_circle_members(incident_id);
+CREATE INDEX IF NOT EXISTS idx_safety_incident_circle_members_user_id ON safety_incident_circle_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_safety_incident_circle_members_notified ON safety_incident_circle_members(notified);

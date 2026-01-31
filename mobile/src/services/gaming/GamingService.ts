@@ -121,9 +121,9 @@ export class GamingService {
         playCount: 0,
       },
       {
-        id: 'hourse-quiz',
-        name: 'hourse Quiz',
-        description: 'Test your knowledge about your hourse',
+        id: 'Circle-quiz',
+        name: 'Circle Quiz',
+        description: 'Test your knowledge about your Circle',
         category: 'educational',
         difficulty: 'medium',
         maxPlayers: 4,

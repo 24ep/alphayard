@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { usePin } from '../contexts/PinContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -10,6 +9,7 @@ import AppNavigator from './AppNavigator';
 import PinSetupScreen from '../screens/auth/PinSetupScreen';
 import PinUnlockScreen from '../screens/auth/PinUnlockScreen';
 import LanguageSelectionScreen from '../screens/auth/LanguageSelectionScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -18,12 +18,20 @@ export type RootStackParamList = {
   PinUnlock: undefined;
   Loading: undefined;
   LanguageSelection: undefined;
+  Onboarding: undefined;
+  CircleTypeSelection: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+import SplashBranding from '../components/branding/SplashBranding';
+
+const LoadingScreen = () => (
+  <SplashBranding />
+);
+
 const RootNavigator: React.FC = () => {
-  const { isAuthenticated, isLoading, setNavigationRef, user } = useAuth();
+  const { isAuthenticated, isLoading, setNavigationRef, user, isOnboardingComplete } = useAuth();
   const { hasPin, isPinLocked, isLoading: isPinLoading } = usePin();
   const { language, isLoading: isLanguageLoading } = useLanguage();
   const navigationRef = useRef<any>(null);
@@ -38,22 +46,20 @@ const RootNavigator: React.FC = () => {
   // Determine if we should show language selection first
   const showLanguageSelection = !isLanguageLoading && !language;
 
-  // Simple conditional: if authenticated with valid user, show App; otherwise show Auth
-  const showApp = isAuthenticated && user && user.id && user.email;
+  // Relaxed condition: if we have a user ID and authenticated, we show the app stack
+  const showApp = isAuthenticated && !!user?.id;
 
   useEffect(() => {
     console.log('[NAV] RootNavigator - State Update:', {
       isAuthenticated,
-      hasUser: !!user,
+      userId: user?.id,
       isLoading,
       isPinLoading,
-      isLanguageLoading,
-      language,
+      isOnboardingComplete,
       showApp,
-      showLanguageSelection,
-      hasNavigationRef: !!navigationRef.current
+      showLanguageSelection
     });
-  }, [isAuthenticated, user, isLoading, isPinLoading, isLanguageLoading, language, showApp, showLanguageSelection]);
+  }, [isAuthenticated, user, isLoading, isPinLoading, isOnboardingComplete, showApp, showLanguageSelection]);
 
   return (
     <NavigationContainer
@@ -74,11 +80,7 @@ const RootNavigator: React.FC = () => {
           // Show empty or loading screen while deciding
           <Stack.Screen
             name="Loading"
-            component={() => (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#FF5A5A" />
-              </View>
-            )}
+            component={LoadingScreen}
           />
         ) : showLanguageSelection ? (
           <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
@@ -91,6 +93,9 @@ const RootNavigator: React.FC = () => {
             ) : !hasPin ? (
               // No PIN set up yet - show PIN setup
               <Stack.Screen name="PinSetup" component={PinSetupScreen} />
+            ) : !isOnboardingComplete ? (
+              // Onboarding not complete - show onboarding flow
+              <Stack.Screen name="Onboarding" component={OnboardingScreen} />
             ) : (
               // All good - show the main app
               <Stack.Screen name="App" component={AppNavigator} />
@@ -104,14 +109,5 @@ const RootNavigator: React.FC = () => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-});
 
 export default RootNavigator;

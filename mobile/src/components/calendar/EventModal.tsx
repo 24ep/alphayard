@@ -156,7 +156,7 @@ export const EventModal: React.FC<EventModalProps> = ({
 
   const eventTypes = [
     { key: 'personal', label: 'Personal', icon: 'person-outline', color: '#4caf50' },
-    { key: 'hourse', label: 'hourse', icon: 'people-outline', color: '#e91e63' },
+    { key: 'Circle', label: 'Circle', icon: 'people-outline', color: '#e91e63' },
     { key: 'work', label: 'Work', icon: 'briefcase-outline', color: '#2196f3' },
     { key: 'school', label: 'School', icon: 'school-outline', color: '#9c27b0' },
     { key: 'medical', label: 'Medical', icon: 'medical-outline', color: '#f44336' },
@@ -647,3 +647,4 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
 });
+

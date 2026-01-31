@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { socketService } from '../socket/SocketService';
 import { logger } from '../../utils/logger';
+import { isDev } from '../../utils/isDev';
 
 export interface LocationData {
   latitude: number;
@@ -23,7 +24,7 @@ export interface Geofence {
   radius: number; // in meters
   type: 'home' | 'school' | 'work' | 'custom';
   isActive: boolean;
-  familyId: string;
+  circleId: string;
   members: string[];
   notifications: {
     onEnter: boolean;
@@ -43,7 +44,7 @@ export interface SafetyZone {
   radius: number;
   type: 'safe' | 'warning' | 'danger';
   description?: string;
-  familyId: string;
+  circleId: string;
 }
 
 export interface LocationHistory {
@@ -53,10 +54,10 @@ export interface LocationHistory {
   endTime: Date;
 }
 
-export interface FamilyLocation {
+export interface CircleLocation {
   userId: string;
   userName: string;
-  familyId: string;
+  circleId: string;
   latitude: number;
   longitude: number;
   accuracy?: number;
@@ -75,11 +76,11 @@ class LocationService {
   private updateInterval = 30000; // 30 seconds
   private highAccuracyMode = false;
   private backgroundMode = false;
-  private familyData: any[] = [];
+  private circleData: any[] = [];
   private currentUser: any = null;
-  private familyLocationListeners: Array<(locations: FamilyLocation[]) => void> = [];
+  private circleLocationListeners: Array<(locations: CircleLocation[]) => void> = [];
   private currentLocationListeners: Array<(location: LocationData) => void> = [];
-  private familyLocations: FamilyLocation[] = [];
+  private circleLocations: CircleLocation[] = [];
 
   // Location tracking methods
   async startLocationTracking(options: {
@@ -157,7 +158,7 @@ class LocationService {
       } catch (err) {
         logger.warn('Failed to get immediate location fix or timed out', err);
         // If in DEV or Web, fallback to a default location to avoid "Locating..." stuck state
-        if (__DEV__ || Platform.OS === 'web') {
+        if (isDev || Platform.OS === 'web') {
           logger.info('Using fallback mock location');
           this.handleLocationUpdate({
             coords: {
@@ -416,8 +417,8 @@ class LocationService {
   }
 
   private triggerGeofenceNotification(geofence: Geofence, event: 'enter' | 'exit') {
-    // Send notification to hourse members
-    const message = `${geofence.name}: hourse member ${event}ed the area`;
+    // Send notification to Circle members
+    const message = `${geofence.name}: Circle member ${event}ed the area`;
 
     // This would trigger push notifications and in-app alerts
     logger.info('Geofence notification:', message);
@@ -468,7 +469,7 @@ class LocationService {
   private triggerSafetyZoneAlert(zone: SafetyZone, locationData: LocationData) {
     const alertMessage = `Safety Alert: You are in a ${zone.type} zone - ${zone.name}`;
 
-    // Send emergency alert to hourse
+    // Send emergency alert to Circle
     const locationString = `${locationData.latitude},${locationData.longitude}${locationData.address ? ` (${locationData.address})` : ''}`;
     socketService.sendEmergencyAlert(
       alertMessage,
@@ -566,54 +567,54 @@ class LocationService {
     // Configure background location updates
   }
 
-  // Family location methods
-  setFamilyData(families: any[]) {
-    this.familyData = families;
-    this.updateFamilyLocations();
+  // Circle location methods
+  setCircleData(families: any[]) {
+    this.circleData = families;
+    this.updateCircleLocations();
   }
 
   setCurrentUser(user: any) {
     this.currentUser = user;
-    this.updateFamilyLocations();
+    this.updateCircleLocations();
   }
 
-  subscribe(callback: (locations: FamilyLocation[]) => void): () => void {
-    this.familyLocationListeners.push(callback);
+  subscribe(callback: (locations: CircleLocation[]) => void): () => void {
+    this.circleLocationListeners.push(callback);
     // Immediately call with current locations
-    callback(this.familyLocations);
+    callback(this.circleLocations);
 
     // Return unsubscribe function
     return () => {
-      const index = this.familyLocationListeners.indexOf(callback);
+      const index = this.circleLocationListeners.indexOf(callback);
       if (index > -1) {
-        this.familyLocationListeners.splice(index, 1);
+        this.circleLocationListeners.splice(index, 1);
       }
     };
   }
 
-  private notifyFamilyLocationListeners() {
-    this.familyLocationListeners.forEach(callback => {
-      callback(this.familyLocations);
+  private notifyCircleLocationListeners() {
+    this.circleLocationListeners.forEach(callback => {
+      callback(this.circleLocations);
     });
   }
 
-  private updateFamilyLocations() {
-    // This would typically fetch family member locations from the backend
+  private updateCircleLocations() {
+    // This would typically fetch circle member locations from the backend
     // For now, we'll create a mock implementation
-    if (!this.familyData || this.familyData.length === 0) {
-      this.familyLocations = [];
-      this.notifyFamilyLocationListeners();
+    if (!this.circleData || this.circleData.length === 0) {
+      this.circleLocations = [];
+      this.notifyCircleLocationListeners();
       return;
     }
 
-    // Transform family data into FamilyLocation format
+    // Transform circle data into CircleLocation format
     // This is a simplified version - in production, you'd fetch actual locations
-    const memberLocations = this.familyData
-      .flatMap((family: any) =>
-        (family.members || []).map((member: any) => ({
+    const memberLocations = this.circleData
+      .flatMap((circle: any) =>
+        (circle.members || []).map((member: any) => ({
           userId: member.id || member.userId,
           userName: member.name || member.userName || 'Unknown',
-          familyId: family.id || family.familyId,
+          circleId: circle.id || circle.circleId,
           latitude: member.latitude || this.currentLocation?.latitude || 0,
           longitude: member.longitude || this.currentLocation?.longitude || 0,
           accuracy: member.accuracy || this.currentLocation?.accuracy,
@@ -628,10 +629,10 @@ class LocationService {
 
     // Add current user if available
     if (this.currentUser) {
-      const currentUserLocation: FamilyLocation = {
+      const currentUserLocation: CircleLocation = {
         userId: this.currentUser.id || 'current-user',
         userName: `${this.currentUser.firstName || ''} ${this.currentUser.lastName || ''}`.trim() || 'You',
-        familyId: this.familyData[0]?.id || 'unknown',
+        circleId: this.circleData[0]?.id || 'unknown',
         latitude: this.currentLocation?.latitude || 0,
         longitude: this.currentLocation?.longitude || 0,
         accuracy: this.currentLocation?.accuracy || 0,
@@ -641,13 +642,13 @@ class LocationService {
         isOnline: true,
       };
       // Avoid duplicate if user is somehow in the list
-      const filteredMembers = memberLocations.filter((m: FamilyLocation) => m.userId !== this.currentUser.id);
-      this.familyLocations = [currentUserLocation, ...filteredMembers];
+      const filteredMembers = memberLocations.filter((m: CircleLocation) => m.userId !== this.currentUser.id);
+      this.circleLocations = [currentUserLocation, ...filteredMembers];
     } else {
-      this.familyLocations = memberLocations;
+      this.circleLocations = memberLocations;
     }
 
-    this.notifyFamilyLocationListeners();
+    this.notifyCircleLocationListeners();
   }
 
   subscribeToLocationUpdates(callback: (location: LocationData) => void): () => void {

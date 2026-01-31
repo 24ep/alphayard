@@ -1,13 +1,10 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
-
+import { pool } from '../config/database';
 
 interface Migration {
   id: string;
   name: string;
-  up: string;
-  down: string;
   executed_at?: string;
   checksum: string;
 }
@@ -20,14 +17,9 @@ interface MigrationResult {
 }
 
 class MigrationService {
-  private supabase: SupabaseClient;
   private migrationsPath: string;
 
   constructor() {
-    this.supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     this.migrationsPath = path.join(process.cwd(), 'src', 'database', 'migrations');
   }
 
@@ -36,31 +28,18 @@ class MigrationService {
    */
   async initializeMigrationsTable(): Promise<void> {
     try {
-      // Check if migrations table exists
-      const { error } = await this.supabase
-        .from('migrations')
-        .select('id')
-        .limit(1);
+      const createTableSQL = `
+        CREATE TABLE IF NOT EXISTS migrations (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          checksum VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
 
-      if (error && error.code === 'PGRST116') {
-        // Table doesn't exist, create it
-        const createTableSQL = `
-          CREATE TABLE IF NOT EXISTS migrations (
-            id VARCHAR(255) PRIMARY KEY,
-            name VARCHAR(255) NOT NULL,
-            executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            checksum VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-          );
-        `;
-
-        await this.supabase.rpc('exec_sql', { sql: createTableSQL });
-        console.log('✅ Migrations table created');
-      } else if (error) {
-        throw error;
-      } else {
-        console.log('✅ Migrations table already exists');
-      }
+      await pool.query(createTableSQL);
+      console.log('✅ Migrations table verified');
     } catch (error) {
       console.error('❌ Failed to initialize migrations table:', error);
       throw error;
@@ -89,7 +68,9 @@ class MigrationService {
     const parts = content.split('-- DOWN');
     
     if (parts.length !== 2) {
-      throw new Error(`Invalid migration file format: ${filePath}`);
+      // If no -- DOWN marker, assume entire file is UP and NO rollback possible
+      const upContent = content.replace('-- UP', '').trim();
+      return { up: upContent, down: '' };
     }
 
     const up = parts[0].replace('-- UP', '').trim();
@@ -110,17 +91,10 @@ class MigrationService {
    * Get executed migrations from database
    */
   private async getExecutedMigrations(): Promise<Map<string, Migration>> {
-    const { data, error } = await this.supabase
-      .from('migrations')
-      .select('*')
-      .order('id');
-
-    if (error) {
-      throw error;
-    }
+    const { rows } = await pool.query('SELECT * FROM migrations ORDER BY id');
 
     const executedMigrations = new Map<string, Migration>();
-    (data || []).forEach(migration => {
+    rows.forEach(migration => {
       executedMigrations.set(migration.id, migration);
     });
 
@@ -131,21 +105,22 @@ class MigrationService {
    * Execute SQL command
    */
   private async executeSQL(sql: string): Promise<void> {
+    const client = await pool.connect();
     try {
-      // Split SQL into individual statements
-      const statements = sql
-        .split(';')
-        .map(stmt => stmt.trim())
-        .filter(stmt => stmt.length > 0);
-
-      for (const statement of statements) {
-        if (statement.trim()) {
-          await this.supabase.rpc('exec_sql', { sql: statement });
-        }
-      }
+      await client.query('BEGIN');
+      
+      // Some SQL files might contain multiple statements. 
+      // pg pool.query() can handle multiple statements separated by semicolon in a single string,
+      // but only if it's not a parameterized query. Raw migration SQL is fine.
+      await client.query(sql);
+      
+      await client.query('COMMIT');
     } catch (error) {
+      await client.query('ROLLBACK');
       console.error('SQL execution error:', error);
       throw error;
+    } finally {
+      client.release();
     }
   }
 
@@ -177,18 +152,22 @@ class MigrationService {
 
           console.log(`🔄 Running migration: ${migrationId}`);
 
-          // Execute migration
-          await this.executeSQL(up);
-
-          // Record migration as executed
-          await this.supabase
-            .from('migrations')
-            .insert({
-              id: migrationId,
-              name: file,
-              checksum,
-              executed_at: new Date().toISOString()
-            });
+          // Execute migration and record it in a single transaction if possible
+          const client = await pool.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(up);
+            await client.query(
+              'INSERT INTO migrations (id, name, checksum, executed_at) VALUES ($1, $2, $3, NOW())',
+              [migrationId, file, checksum]
+            );
+            await client.query('COMMIT');
+          } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+          } finally {
+            client.release();
+          }
 
           executedIds.push(migrationId);
           console.log(`✅ Migration completed: ${migrationId}`);
@@ -197,6 +176,9 @@ class MigrationService {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error(`❌ Migration failed: ${migrationId}`, errorMessage);
           failedMigrations.push({ id: migrationId, error: errorMessage });
+          
+          // Stop migrations on first error to maintain state consistency
+          break;
         }
       }
 
@@ -223,17 +205,12 @@ class MigrationService {
     try {
       await this.initializeMigrationsTable();
 
-      const { data, error } = await this.supabase
-        .from('migrations')
-        .select('*')
-        .order('executed_at', { ascending: false })
-        .limit(steps);
+      const { rows } = await pool.query(
+        'SELECT * FROM migrations ORDER BY executed_at DESC LIMIT $1',
+        [steps]
+      );
 
-      if (error) {
-        throw error;
-      }
-
-      if (!data || data.length === 0) {
+      if (rows.length === 0) {
         return {
           success: true,
           message: 'No migrations to rollback'
@@ -243,7 +220,7 @@ class MigrationService {
       const rolledBackIds: string[] = [];
       const failedMigrations: Array<{ id: string; error: string }> = [];
 
-      for (const migration of data) {
+      for (const migration of rows) {
         try {
           const filePath = path.join(this.migrationsPath, `${migration.id}.sql`);
           
@@ -253,16 +230,24 @@ class MigrationService {
 
           const { down } = this.parseMigrationFile(filePath);
           
+          if (!down) {
+            throw new Error(`No rollback (DOWN) SQL found for migration: ${migration.id}`);
+          }
+
           console.log(`🔄 Rolling back migration: ${migration.id}`);
 
-          // Execute rollback
-          await this.executeSQL(down);
-
-          // Remove migration record
-          await this.supabase
-            .from('migrations')
-            .delete()
-            .eq('id', migration.id);
+          const client = await pool.connect();
+          try {
+            await client.query('BEGIN');
+            await client.query(down);
+            await client.query('DELETE FROM migrations WHERE id = $1', [migration.id]);
+            await client.query('COMMIT');
+          } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+          } finally {
+            client.release();
+          }
 
           rolledBackIds.push(migration.id);
           console.log(`✅ Migration rolled back: ${migration.id}`);
@@ -271,6 +256,7 @@ class MigrationService {
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           console.error(`❌ Rollback failed: ${migration.id}`, errorMessage);
           failedMigrations.push({ id: migration.id, error: errorMessage });
+          break;
         }
       }
 
@@ -405,26 +391,18 @@ class MigrationService {
     try {
       console.log('⚠️  WARNING: This will drop all tables and data!');
       
-      // Get all tables
-      const { data: tables, error: tablesError } = await this.supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public');
-
-      if (tablesError) {
-        throw tablesError;
-      }
+      // Get all tables in public schema
+      const { rows } = await pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_type = 'BASE TABLE'
+      `);
 
       // Drop all tables
-      for (const table of tables || []) {
-        await this.executeSQL(`DROP TABLE IF EXISTS "${table.table_name}" CASCADE;`);
+      for (const row of rows) {
+        await pool.query(`DROP TABLE IF EXISTS "${row.table_name}" CASCADE;`);
       }
-
-      // Clear migrations table
-      await this.supabase
-        .from('migrations')
-        .delete()
-        .neq('id', 'dummy'); // Delete all records
 
       console.log('✅ Database reset completed');
 

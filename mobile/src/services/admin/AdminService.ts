@@ -213,42 +213,42 @@ class AdminService {
     }
   }
 
-  async getFamily(familyId: string): Promise<any> {
+  async getCircle(circleId: string): Promise<any> {
     try {
-      const response = await apiClient.get(`/admin/families/${familyId}`);
+      const response = await apiClient.get(`/admin/families/${circleId}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to get hourse:', error);
+      console.error('Failed to get Circle:', error);
       throw error;
     }
   }
 
-  async updateFamily(familyId: string, updates: any): Promise<any> {
+  async updateCircle(circleId: string, updates: any): Promise<any> {
     try {
-      const response = await apiClient.put(`/admin/families/${familyId}`, updates);
+      const response = await apiClient.put(`/admin/families/${circleId}`, updates);
       
-      analyticsService.trackEvent('admin_family_updated', {
-        familyId,
+      analyticsService.trackEvent('admin_circle_updated', {
+        circleId,
         updatedFields: Object.keys(updates)
       });
       
       return response.data;
     } catch (error) {
-      console.error('Failed to update hourse:', error);
+      console.error('Failed to update Circle:', error);
       throw error;
     }
   }
 
-  async deleteFamily(familyId: string, reason: string): Promise<void> {
+  async deleteCircle(circleId: string, reason: string): Promise<void> {
     try {
-      await apiClient.delete(`/admin/families/${familyId}`, { data: { reason } });
+      await apiClient.delete(`/admin/families/${circleId}`, { data: { reason } });
       
-      analyticsService.trackEvent('admin_family_deleted', {
-        familyId,
+      analyticsService.trackEvent('admin_circle_deleted', {
+        circleId,
         reason
       });
     } catch (error) {
-      console.error('Failed to delete hourse:', error);
+      console.error('Failed to delete Circle:', error);
       throw error;
     }
   }

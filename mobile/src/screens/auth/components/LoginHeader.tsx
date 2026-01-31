@@ -22,7 +22,7 @@ const LoginHeader: React.FC<LoginHeaderProps> = ({ fadeAnim, slideAnim }) => {
           style={[textStyles.body1, { color: colors.white[500], opacity: 0.9 }]} 
           textAlign="center"
         >
-          Sign in to continue your hourse journey
+          Sign in to continue your Circle journey
         </Text>
       </VStack>
     </VStack>
@@ -30,3 +30,4 @@ const LoginHeader: React.FC<LoginHeaderProps> = ({ fadeAnim, slideAnim }) => {
 };
 
 export default LoginHeader;
+

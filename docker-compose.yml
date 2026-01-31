@@ -8,23 +8,15 @@ services:
       dockerfile: Dockerfile
     container_name: bondarys-backend
     ports:
-      - "3000:3000"
+      - "4000:4000"
     environment:
       - NODE_ENV=development
-      - PORT=3000
-      - JWT_SECRET=bondarys-dev-secret-key-2024
-      - JWT_REFRESH_SECRET=bondarys-dev-refresh-secret-2024
+      - PORT=4000
+      - JWT_SECRET=b66a9376ab6b4e2bc8e6d15bcfe0ef52
+      - JWT_REFRESH_SECRET=bondarys-dev-refresh-secret-key-32-chars
       - JWT_EXPIRES_IN=1d
       - JWT_REFRESH_EXPIRES_IN=7d
-      # Supabase settings - using local Supabase
-      - SUPABASE_URL=http://postgrest:3000
-      # These keys are now arbitrary JWTs signed with the secret below, 
-      # or they can be ignored if we fully replace the client.
-      # Ideally we should generate a valid JWT here.
-      - SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib25kYXJ5cyIsInJvbGUiOiJwb3N0Z3JlcyIsImV4cCI6NDA5MjU5OTM0OX0.ValidSignatureHereIfWeCare
-      - SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJib25kYXJ5cyIsInJvbGUiOiJwb3N0Z3JlcyIsImV4cCI6NDA5MjU5OTM0OX0.ValidSignatureHereIfWeCare
       # Database connection (uses Supabase's PostgreSQL)
-      # Database connection
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
       - DB_HOST=db
       - DB_PORT=5432
@@ -50,14 +42,14 @@ services:
       - bondarys-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3000/health')" ]
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:4000/health')" ]
       interval: 30s
       timeout: 10s
       retries: 3
 
   # PostgreSQL Database
   db:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.4-alpine
     container_name: bondarys-db
     ports:
       - "5432:5432"
@@ -66,7 +58,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./docker-data/postgres:/var/lib/postgresql/data
     networks:
       - bondarys-network
     restart: unless-stopped
@@ -88,7 +80,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
     command: server /data --console-address ":9001"
     volumes:
-      - minio_data:/data
+      - ./docker-data/minio:/data
     networks:
       - bondarys-network
     restart: unless-stopped
@@ -117,7 +109,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - ./docker-data/redis:/data
     networks:
       - bondarys-network
     restart: unless-stopped
@@ -127,30 +119,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # PostgREST (Replaces Supabase API)
-  postgrest:
-    image: postgrest/postgrest
-    container_name: bondarys-postgrest
-    ports:
-      - "8000:3000"
-    environment:
-      # Connection to the Postgres database
-      PGRST_DB_URI: postgres://postgres:postgres@db:5432/postgres
-      # Schema to expose
-      PGRST_DB_SCHEMA: public
-      # Anonymous role (PostgREST will switch to this role when no JWT is provided)
-      PGRST_DB_ANON_ROLE: postgres
-      # JWT Secret (Must match what the backend uses to sign tokens)
-      # Using the same secret as the backend for simplicity in this migration
-      PGRST_JWT_SECRET: "abcdefghijklmnopqrstuvwxyz1234567890ABCD"
-      # Swagger UI enabled
-      PGRST_SWAGGER_UI: "true"
-    depends_on:
-      - db
-    networks:
-      - bondarys-network
-    restart: unless-stopped
-
   # Optional: Swagger UI for API documentation
   swagger:
     image: swaggerapi/swagger-ui
@@ -158,7 +126,8 @@ services:
     ports:
       - "8080:8080"
     environment:
-      API_URL: http://localhost:8000/
+      # Point to Backend standard docs (if we have openapi.json) or just keep as placeholder
+      API_URL: http://localhost:4000/api-docs
     networks:
       - bondarys-network
     restart: unless-stopped
@@ -166,8 +135,3 @@ services:
 networks:
   bondarys-network:
     driver: bridge
-
-volumes:
-  postgres_data:
-  redis_data:
-  minio_data:

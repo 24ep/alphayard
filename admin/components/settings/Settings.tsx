@@ -34,8 +34,8 @@ export function Settings() {
     | 'security'
   >('integrations')
   const [branding, setBranding] = useState<BrandingSettings>({
-    adminAppName: 'Bondarys Admin',
-    mobileAppName: 'Bondarys Mobile',
+    adminAppName: 'Appkit Admin',
+    mobileAppName: 'Appkit Mobile',
     logoUrl: '',
     iconUrl: ''
   })
@@ -84,7 +84,7 @@ export function Settings() {
         <CardBody>
           <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Settings</h2>
-            <p className="text-sm text-gray-500">Configure your Bondarys CMS settings</p>
+            <p className="text-sm text-gray-500">Configure your Appkit settings</p>
           </div>
         </CardBody>
       </Card>
@@ -135,6 +135,27 @@ export function Settings() {
                 value={branding.mobileAppName || ''}
                 onChange={(e) => setBranding({ ...branding, mobileAppName: e.target.value })}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Login Background Color</label>
+                  <div className="flex gap-3">
+                    <input
+                      type="color"
+                      className="h-11 w-20 p-1 border border-gray-300 rounded-lg cursor-pointer bg-white"
+                      value={branding.loginBackgroundColor || '#FFFFFF'}
+                      onChange={(e) => setBranding({ ...branding, loginBackgroundColor: e.target.value })}
+                    />
+                    <Input
+                      placeholder="#FFFFFF"
+                      className="flex-1"
+                      value={branding.loginBackgroundColor || ''}
+                      onChange={(e) => setBranding({ ...branding, loginBackgroundColor: e.target.value })}
+                    />
+                  </div>
+                  <p className="mt-1.5 text-xs text-gray-500">The primary background color for the login and welcome screens.</p>
+                </div>
+              </div>
 
               <div>
                 <Input
@@ -293,16 +314,16 @@ export function Settings() {
             </CardHeader>
             <CardBody>
               <div className="space-y-4">
-                <Input label="Site Name" defaultValue="Bondarys CMS" />
+                <Input label="Site Name" defaultValue="Appkit CMS" />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Site Description</label>
                   <textarea
                     className="macos-input w-full"
                     rows={3}
-                    defaultValue="Family content management system"
+                    defaultValue="Appkit platform"
                   />
                 </div>
-                <Input label="Admin Email" type="email" defaultValue="admin@bondarys.com" />
+                <Input label="Admin Email" type="email" defaultValue="admin@appkit.com" />
                 <Button variant="primary">Save Settings</Button>
               </div>
             </CardBody>
@@ -427,3 +448,4 @@ export function Settings() {
     </div>
   )
 }
+

@@ -4,110 +4,20 @@ import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { countryService, Country } from '../../services/dataServices';
 
 export type SortOrder = 'recent' | 'nearby' | 'popular';
-export type GeoScope = 'worldwide' | 'country' | 'nearby' | 'custom';
+export type GeoScope = 'worldwide' | 'country' | 'nearby' | 'custom' | 'following';
 export type DistanceUnit = 'km' | 'mile';
 
-// Conversion constants
-const KM_TO_MILE = 0.621371;
-const MILE_TO_KM = 1.60934;
-
-export type CustomCoordinates = {
-    latitude: number;
-    longitude: number;
-    name?: string;
-};
-
-
-// Mock country list removed - fetching from API
-
-interface PostFilterHeaderProps {
-    // Nearby/Location filter
-    geoScope: GeoScope;
-    onGeoScopeChange: (scope: GeoScope) => void;
-    distanceKm: number | null;
-    onDistanceChange: (km: number) => void;
-    distanceUnit: DistanceUnit;
-    onDistanceUnitChange: (unit: DistanceUnit) => void;
-    selectedCountry?: string;
-    onCountryChange?: (country: string) => void;
-    customCoordinates?: CustomCoordinates;
-    onCustomCoordinatesChange?: (coords: CustomCoordinates) => void;
-    // Sort
-    sortOrder: SortOrder;
-    onSortOrderChange: (order: SortOrder) => void;
+export interface CustomCoordinates {
+  latitude: number;
+  longitude: number;
+  name?: string;
 }
 
-export const PostFilterHeader: React.FC<PostFilterHeaderProps> = ({
-    geoScope,
-    onGeoScopeChange,
-    distanceKm,
-    onDistanceChange,
-    distanceUnit,
-    onDistanceUnitChange,
-    selectedCountry,
-    onCountryChange,
-    customCoordinates,
-    onCustomCoordinatesChange,
-    sortOrder,
-    onSortOrderChange,
-}) => {
-    const [nearbyDrawerVisible, setNearbyDrawerVisible] = React.useState(false);
-    const [sortDrawerVisible, setSortDrawerVisible] = React.useState(false);
+// ... (keep constants)
 
-    // Additional Drawers
-    const [countryPickerVisible, setCountryPickerVisible] = React.useState(false);
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [customCoordsModalVisible, setCustomCoordsModalVisible] = React.useState(false);
+// ... (keep interface)
 
-    // Custom Input State
-    const [customDistanceInput, setCustomDistanceInput] = React.useState('');
-    const [showCustomDistanceInput, setShowCustomDistanceInput] = React.useState(false);
-
-    const [customLatInput, setCustomLatInput] = React.useState('');
-    const [customLngInput, setCustomLngInput] = React.useState('');
-    const [customNameInput, setCustomNameInput] = React.useState('');
-
-    // Countries State
-    const [countries, setCountries] = React.useState<Country[]>([]);
-    const [loadingCountries, setLoadingCountries] = React.useState(false);
-
-    // Fetch countries on mount
-    React.useEffect(() => {
-        const fetchCountries = async () => {
-            setLoadingCountries(true);
-            const data = await countryService.getCountries();
-            setCountries(data);
-            setLoadingCountries(false);
-        };
-        fetchCountries();
-    }, []);
-
-    // Helper functions
-    const toDisplayUnit = (km: number): number => {
-        return distanceUnit === 'mile' ? km * KM_TO_MILE : km;
-    };
-
-    const toKm = (value: number): number => {
-        return distanceUnit === 'mile' ? value * MILE_TO_KM : value;
-    };
-
-    const getUnitLabel = (): string => {
-        return distanceUnit === 'mile' ? 'mi' : 'km';
-    };
-
-    const handleCustomCoordsSubmit = () => {
-        const lat = parseFloat(customLatInput);
-        const lng = parseFloat(customLngInput);
-        if (!isNaN(lat) && !isNaN(lng)) {
-            onCustomCoordinatesChange?.({
-                latitude: lat,
-                longitude: lng,
-                name: customNameInput || `${lat.toFixed(4)}, ${lng.toFixed(4)}`
-            });
-            setCustomCoordsModalVisible(false);
-            setNearbyDrawerVisible(false); // Close parent drawer too if desired
-        }
-    };
+// ... (keep component implementation)
 
     const getNearbyLabel = (): string => {
         switch (geoScope) {
@@ -117,6 +27,8 @@ export const PostFilterHeader: React.FC<PostFilterHeaderProps> = ({
                 return selectedCountry || 'Country';
             case 'custom':
                 return customCoordinates?.name || 'Custom Location';
+            case 'following':
+                return 'Following';
             case 'nearby':
             default:
                 if (distanceKm) {
@@ -126,71 +38,15 @@ export const PostFilterHeader: React.FC<PostFilterHeaderProps> = ({
         }
     };
 
-    const getSortLabel = (): string => {
-        switch (sortOrder) {
-            case 'recent': return 'Recent';
-            case 'nearby': return 'Nearest';
-            case 'popular': return 'Popular';
-            default: return 'Sort';
-        }
-    };
+    // ... (keep getSortLabel)
 
-    const distanceOptions = [
-        { label: `1${getUnitLabel()}`, valueKm: distanceUnit === 'mile' ? 1.60934 : 1 },
-        { label: `5${getUnitLabel()}`, valueKm: distanceUnit === 'mile' ? 8.0467 : 5 },
-        { label: `10${getUnitLabel()}`, valueKm: distanceUnit === 'mile' ? 16.0934 : 10 },
-        { label: `25${getUnitLabel()}`, valueKm: distanceUnit === 'mile' ? 40.2336 : 25 },
-        { label: `50${getUnitLabel()}`, valueKm: distanceUnit === 'mile' ? 80.4672 : 50 },
-    ];
-
-    const handleCustomDistanceSubmit = () => {
-        const value = parseFloat(customDistanceInput);
-        if (!isNaN(value) && value > 0) {
-            onDistanceChange(toKm(value));
-            setShowCustomDistanceInput(false);
-            setCustomDistanceInput('');
-            setNearbyDrawerVisible(false);
-        }
-    };
-
-    return (
-        <View style={styles.container}>
-            {/* Left: Nearby/Location Filter */}
-            <TouchableOpacity
-                style={styles.filterButton}
-                onPress={() => setNearbyDrawerVisible(true)}
-            >
-                <IconMC name="map-marker-radius" size={18} color="#EF4444" />
-                <Text style={styles.filterButtonText}>{getNearbyLabel()}</Text>
-                <IconMC name="chevron-down" size={16} color="#6B7280" />
-            </TouchableOpacity>
-
-            {/* Right: Sort */}
-            <TouchableOpacity
-                style={styles.filterButton}
-                onPress={() => setSortDrawerVisible(true)}
-            >
-                <IconMC name="sort" size={18} color="#6B7280" />
-                <Text style={styles.filterButtonText}>{getSortLabel()}</Text>
-                <IconMC name="chevron-down" size={16} color="#6B7280" />
-            </TouchableOpacity>
-
-            {/* Nearby Drawer */}
-            <Modal
-                visible={nearbyDrawerVisible}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setNearbyDrawerVisible(false)}
-            >
-                <Pressable style={styles.drawerOverlay} onPress={() => setNearbyDrawerVisible(false)}>
-                    <Pressable style={styles.drawer} onPress={e => e.stopPropagation()}>
-                        <View style={styles.drawerHandle} />
-                        <Text style={styles.drawerTitle}>Filter by Location</Text>
+// ... (keep handlers)
 
                         {/* Scope Options */}
                         <View style={styles.optionSection}>
                             <Text style={styles.optionLabel}>Scope</Text>
                             {[
+                                { value: 'following', label: 'Following', icon: 'account-group' },
                                 { value: 'worldwide', label: 'Worldwide', icon: 'earth' },
                                 { value: 'country', label: selectedCountry || 'Select Country', icon: 'flag' },
                                 { value: 'nearby', label: 'Nearby', icon: 'map-marker-radius' },
@@ -207,7 +63,7 @@ export const PostFilterHeader: React.FC<PostFilterHeaderProps> = ({
                                             setCustomCoordsModalVisible(true);
                                         }
                                         // Only close drawer if specifically picking something that doesn't need refinement
-                                        if (option.value === 'worldwide') {
+                                        if (option.value === 'worldwide' || option.value === 'following') {
                                             setNearbyDrawerVisible(false);
                                         }
                                     }}

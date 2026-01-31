@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember } from '../middleware/auth';
 
 // Chat/message/attachment persistence is disabled in this local setup.
 // Routes will return stubbed success responses so the rest of the app can run.
@@ -36,11 +36,11 @@ const upload = multer({
   }
 });
 
-// All routes require authentication and hourse membership
+// All routes require authentication and circle membership
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+router.use(requireCircleMember as any);
 
-import pool from '../config/database';
+import { pool } from '../config/database';
 import { ChatDatabaseService } from '../services/chatDatabaseService';
 
 /**
@@ -212,7 +212,7 @@ router.post('/rooms/:chatId/mark-read', async (req: any, res: any) => {
 /**
  * Get chat statistics
  */
-router.get('/families/:familyId/stats', async (req: any, res: any) => {
+router.get('/families/:circleId/stats', async (req: any, res: any) => {
   try {
     res.json({
       success: true,
@@ -228,3 +228,4 @@ router.get('/families/:familyId/stats', async (req: any, res: any) => {
 });
 
 export default router;
+

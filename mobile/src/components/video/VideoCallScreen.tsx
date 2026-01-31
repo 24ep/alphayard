@@ -74,14 +74,14 @@ interface VideoCall {
 
 interface VideoCallScreenProps {
   callId: string;
-  familyId: string;
+  circleId: string;
   onCallEnd?: () => void;
   onCallMinimize?: () => void;
 }
 
 const VideoCallScreen: React.FC<VideoCallScreenProps> = ({
   callId,
-  familyId,
+  circleId,
   onCallEnd,
   onCallMinimize,
 }) => {

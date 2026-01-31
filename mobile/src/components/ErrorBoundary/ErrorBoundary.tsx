@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { config } from '../../config/environment';
+import { isDev } from '../../utils/isDev';
 
 interface Props {
   children: ReactNode;
@@ -66,7 +67,8 @@ class ErrorBoundary extends Component<Props, State> {
     // Example: Sentry.captureException(error, { contexts: { react: { componentStack: errorInfo.componentStack } } });
     
     // For now, log to console
-    if (__DEV__) {
+    // For now, log to console
+    if (isDev) {
       console.log('📊 Error would be reported to tracking service:', {
         message: error.message,
         stack: error.stack,
@@ -104,7 +106,7 @@ class ErrorBoundary extends Component<Props, State> {
               We're sorry, but something unexpected happened. Please try again.
             </Text>
 
-            {__DEV__ && this.state.error && (
+            {isDev && this.state.error && (
               <View style={styles.errorDetails}>
                 <Text style={styles.errorTitle}>Error Details (Dev Only):</Text>
                 <Text style={styles.errorText}>{this.state.error.toString()}</Text>
@@ -187,13 +189,13 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
     color: '#d32f2f',
-    fontFamily: 'monospace',
+    fontCIRCLE: 'monospace',
     marginBottom: 8,
   },
   errorStack: {
     fontSize: 10,
     color: '#666',
-    fontFamily: 'monospace',
+    fontCIRCLE: 'monospace',
   },
   buttonContainer: {
     width: '100%',
@@ -227,4 +229,5 @@ const styles = StyleSheet.create({
 });
 
 export default ErrorBoundary;
+
 

@@ -42,6 +42,9 @@ router.get('/config/:configKey', appConfigController.getConfigValue.bind(appConf
 // Update screen configuration
 router.put('/screens/:screenKey', appConfigController.updateScreenConfig.bind(appConfigController));
 
+// Update theme configuration
+router.put('/themes/:themeKey', appConfigController.updateTheme.bind(appConfigController));
+
 // Create or update asset
 router.post('/assets', appConfigController.upsertAsset.bind(appConfigController));
 

@@ -131,7 +131,7 @@ export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle,
           id: 'families',
           label: 'Families',
           icon: 'users',
-          description: 'Family management'
+          description: 'Circle management'
         }
       ]
     },
@@ -262,11 +262,11 @@ export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle,
               {branding?.logoUrl ? (
                 <img src={branding.logoUrl} alt="Logo" className="logo-icon object-cover" />
               ) : (
-                <div className="logo-icon">B</div>
+                <div className="logo-icon">A</div>
               )}
               <div className="logo-text">
-                <h1 className="logo-title">{branding?.adminAppName || 'Bondarys'}</h1>
-                <p className="logo-subtitle">Family CMS</p>
+                <h1 className="logo-title">{branding?.adminAppName || 'Appkit'}</h1>
+                <p className="logo-subtitle">Appkit CMS</p>
               </div>
             </div>
             <div className="header-actions">
@@ -330,3 +330,4 @@ export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle,
     </>
   )
 }
+

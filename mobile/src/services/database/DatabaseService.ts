@@ -1,7 +1,11 @@
-import { supabase } from '../../config/supabase';
-import { Tables } from '../../config/supabase';
+/**
+ * Database Service - Refactored to use Backend API
+ * All data operations now go through the backend API instead of direct Supabase access
+ */
 
-export interface hourse {
+import { apiClient } from '../api/apiClient';
+
+export interface Circle {
   id: string;
   name: string;
   description: string | null;
@@ -14,7 +18,7 @@ export interface hourse {
 export interface Message {
   id: string;
   senderId: string;
-  familyId: string;
+  circleId: string;
   content: string;
   messageType: 'text' | 'image' | 'location' | 'emergency';
   metadata?: any;
@@ -47,7 +51,7 @@ export interface SafetyAlert {
 
 export interface Geofence {
   id: string;
-  familyId: string;
+  circleId: string;
   name: string;
   centerLat: number;
   centerLng: number;
@@ -77,7 +81,7 @@ export interface User {
     };
     privacy: {
       locationSharing: boolean;
-      profileVisibility: 'public' | 'hourse' | 'private';
+      profileVisibility: 'public' | 'Circle' | 'private';
       dataSharing: boolean;
     };
   };
@@ -86,8 +90,8 @@ export interface User {
     status: string;
     expiresAt: string;
   };
-  familyId?: string;
-  familyRole?: 'admin' | 'member';
+  circleId?: string;
+  circleRole?: 'admin' | 'member';
   emergencyContacts: Array<{
     id: string;
     name: string;
@@ -111,197 +115,92 @@ class DatabaseService {
     return DatabaseService.instance;
   }
 
-  // hourse Operations
-  async createFamily(name: string, description?: string): Promise<hourse> {
+  // Circle Operations
+  async createCircle(name: string, description?: string): Promise<Circle> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('families')
-        .insert({
-          name,
-          description,
-          created_by: user.id,
-        })
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      // Update user's family_id and role
-      await supabase
-        .from('users')
-        .update({
-          family_id: data.id,
-          family_role: 'admin',
-        })
-        .eq('id', user.id);
-
-      return this.mapFamilyData(data);
+      const response = await apiClient.post('/circles', { name, description });
+      return this.mapCircleData(response.data);
     } catch (error) {
-      console.error('Create hourse error:', error);
+      console.error('Create Circle error:', error);
       throw error;
     }
   }
 
-  async getFamily(familyId: string): Promise<hourse | null> {
+  async getCircle(circleId: string): Promise<Circle | null> {
     try {
-      const { data, error } = await supabase
-        .from('families')
-        .select(`
-          *,
-          users (
-            id,
-            email,
-            first_name,
-            last_name,
-            phone_number,
-            avatar_url,
-            family_role,
-            last_active_at
-          )
-        `)
-        .eq('id', familyId)
-        .single();
-
-      if (error) {
-        if (error.code === 'PGRST116') return null; // No rows returned
-        throw new Error(error.message);
-      }
-
-      return this.mapFamilyData(data);
-    } catch (error) {
-      console.error('Get hourse error:', error);
+      const response = await apiClient.get(`/circles/${circleId}`);
+      if (!response.data) return null;
+      return this.mapCircleData(response.data);
+    } catch (error: any) {
+      if (error.code === 'NOT_FOUND') return null;
+      console.error('Get Circle error:', error);
       throw error;
     }
   }
 
-  async getUserFamily(): Promise<hourse | null> {
+  async getUserCircle(): Promise<Circle | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.family_id) return null;
-
-      return await this.getFamily(userData.family_id);
-    } catch (error) {
-      console.error('Get user hourse error:', error);
+      const response = await apiClient.get('/circles/my');
+      if (!response.data) return null;
+      return this.mapCircleData(response.data);
+    } catch (error: any) {
+      if (error.code === 'NOT_FOUND') return null;
+      console.error('Get user Circle error:', error);
       throw error;
     }
   }
 
-  async updateFamily(familyId: string, updates: Partial<hourse>): Promise<hourse> {
+  async updateCircle(circleId: string, updates: Partial<Circle>): Promise<Circle> {
     try {
-      const { data, error } = await supabase
-        .from('families')
-        .update({
-          name: updates.name,
-          description: updates.description,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', familyId)
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapFamilyData(data);
+      const response = await apiClient.put(`/circles/${circleId}`, {
+        name: updates.name,
+        description: updates.description,
+      });
+      return this.mapCircleData(response.data);
     } catch (error) {
-      console.error('Update hourse error:', error);
+      console.error('Update Circle error:', error);
       throw error;
     }
   }
 
-  async deleteFamily(familyId: string): Promise<void> {
+  async deleteCircle(circleId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('families')
-        .delete()
-        .eq('id', familyId);
-
-      if (error) throw new Error(error.message);
+      await apiClient.delete(`/circles/${circleId}`);
     } catch (error) {
-      console.error('Delete hourse error:', error);
+      console.error('Delete Circle error:', error);
       throw error;
     }
   }
 
   // Message Operations
-  async sendMessage(familyId: string, content: string, messageType: Message['messageType'] = 'text', metadata?: any): Promise<Message> {
+  async sendMessage(circleId: string, content: string, messageType: Message['messageType'] = 'text', metadata?: any): Promise<Message> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('messages')
-        .insert({
-          sender_id: user.id,
-          family_id: familyId,
-          content,
-          message_type: messageType,
-          metadata,
-        })
-        .select(`
-          *,
-          users!messages_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapMessageData(data);
+      const response = await apiClient.post('/chat/messages', {
+        circleId,
+        content,
+        messageType,
+        metadata,
+      });
+      return this.mapMessageData(response.data);
     } catch (error) {
       console.error('Send message error:', error);
       throw error;
     }
   }
 
-  async getFamilyMessages(familyId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
+  async getCircleMessages(circleId: string, limit: number = 50, offset: number = 0): Promise<Message[]> {
     try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select(`
-          *,
-          users!messages_sender_id_fkey (
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
-        .eq('family_id', familyId)
-        .order('created_at', { ascending: false })
-        .range(offset, offset + limit - 1);
-
-      if (error) throw new Error(error.message);
-
-      return data.map(this.mapMessageData);
+      const response = await apiClient.get(`/chat/messages?circleId=${circleId}&limit=${limit}&offset=${offset}`);
+      return (response.data || []).map((msg: any) => this.mapMessageData(msg));
     } catch (error) {
-      console.error('Get hourse messages error:', error);
+      console.error('Get Circle messages error:', error);
       throw error;
     }
   }
 
   async deleteMessage(messageId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .delete()
-        .eq('id', messageId);
-
-      if (error) throw new Error(error.message);
+      await apiClient.delete(`/chat/messages/${messageId}`);
     } catch (error) {
       console.error('Delete message error:', error);
       throw error;
@@ -311,23 +210,12 @@ class DatabaseService {
   // Location Operations
   async saveLocation(latitude: number, longitude: number, accuracy?: number): Promise<LocationPoint> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('location_history')
-        .insert({
-          user_id: user.id,
-          latitude,
-          longitude,
-          accuracy,
-        })
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapLocationData(data);
+      const response = await apiClient.post('/location', {
+        latitude,
+        longitude,
+        accuracy,
+      });
+      return this.mapLocationData(response.data);
     } catch (error) {
       console.error('Save location error:', error);
       throw error;
@@ -336,44 +224,20 @@ class DatabaseService {
 
   async getLocationHistory(userId: string, limit: number = 100): Promise<LocationPoint[]> {
     try {
-      const { data, error } = await supabase
-        .from('location_history')
-        .select('*')
-        .eq('user_id', userId)
-        .order('timestamp', { ascending: false })
-        .limit(limit);
-
-      if (error) throw new Error(error.message);
-
-      return data.map(this.mapLocationData);
+      const response = await apiClient.get(`/location/history?userId=${userId}&limit=${limit}`);
+      return (response.data || []).map((loc: any) => this.mapLocationData(loc));
     } catch (error) {
       console.error('Get location history error:', error);
       throw error;
     }
   }
 
-  async getFamilyLocations(familyId: string): Promise<LocationPoint[]> {
+  async getCircleLocations(circleId: string): Promise<LocationPoint[]> {
     try {
-      const { data, error } = await supabase
-        .from('location_history')
-        .select(`
-          *,
-          users!location_history_user_id_fkey (
-            id,
-            first_name,
-            last_name,
-            family_id
-          )
-        `)
-        .eq('users.family_id', familyId)
-        .order('timestamp', { ascending: false })
-        .limit(50);
-
-      if (error) throw new Error(error.message);
-
-      return data.map(this.mapLocationData);
+      const response = await apiClient.get(`/location/circle/${circleId}`);
+      return (response.data || []).map((loc: any) => this.mapLocationData(loc));
     } catch (error) {
-      console.error('Get hourse locations error:', error);
+      console.error('Get Circle locations error:', error);
       throw error;
     }
   }
@@ -381,67 +245,27 @@ class DatabaseService {
   // Safety Alert Operations
   async createSafetyAlert(alertType: SafetyAlert['alertType'], locationLat?: number, locationLng?: number, metadata?: any): Promise<SafetyAlert> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('safety_alerts')
-        .insert({
-          user_id: user.id,
-          alert_type: alertType,
-          location_lat: locationLat,
-          location_lng: locationLng,
-          metadata,
-        })
-        .select(`
-          *,
-          users!safety_alerts_user_id_fkey (
-            id,
-            first_name,
-            last_name,
-            phone_number
-          )
-        `)
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapSafetyAlertData(data);
+      const response = await apiClient.post('/safety/alerts', {
+        alertType,
+        locationLat,
+        locationLng,
+        metadata,
+      });
+      return this.mapSafetyAlertData(response.data);
     } catch (error) {
       console.error('Create safety alert error:', error);
       throw error;
     }
   }
 
-  async getSafetyAlerts(familyId?: string, status?: SafetyAlert['status']): Promise<SafetyAlert[]> {
+  async getSafetyAlerts(circleId?: string, status?: SafetyAlert['status']): Promise<SafetyAlert[]> {
     try {
-      let query = supabase
-        .from('safety_alerts')
-        .select(`
-          *,
-          users!safety_alerts_user_id_fkey (
-            id,
-            first_name,
-            last_name,
-            phone_number,
-            family_id
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (familyId) {
-        query = query.eq('users.family_id', familyId);
-      }
-
-      if (status) {
-        query = query.eq('status', status);
-      }
-
-      const { data, error } = await query.limit(50);
-
-      if (error) throw new Error(error.message);
-
-      return data.map(this.mapSafetyAlertData);
+      let url = '/safety/alerts?';
+      if (circleId) url += `circleId=${circleId}&`;
+      if (status) url += `status=${status}&`;
+      
+      const response = await apiClient.get(url);
+      return (response.data || []).map((alert: any) => this.mapSafetyAlertData(alert));
     } catch (error) {
       console.error('Get safety alerts error:', error);
       throw error;
@@ -450,15 +274,7 @@ class DatabaseService {
 
   async resolveSafetyAlert(alertId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('safety_alerts')
-        .update({
-          status: 'resolved',
-          resolved_at: new Date().toISOString(),
-        })
-        .eq('id', alertId);
-
-      if (error) throw new Error(error.message);
+      await apiClient.put(`/safety/alerts/${alertId}/resolve`);
     } catch (error) {
       console.error('Resolve safety alert error:', error);
       throw error;
@@ -468,78 +284,39 @@ class DatabaseService {
   // Geofence Operations
   async createGeofence(name: string, centerLat: number, centerLng: number, radiusMeters: number): Promise<Geofence> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // Get user's hourse
-      const { data: userData } = await supabase
-        .from('users')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!userData?.family_id) {
-        throw new Error('User must be part of a hourse to create geofences');
-      }
-
-      const { data, error } = await supabase
-        .from('geofences')
-        .insert({
-          family_id: userData.family_id,
-          name,
-          center_lat: centerLat,
-          center_lng: centerLng,
-          radius_meters: radiusMeters,
-        })
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapGeofenceData(data);
+      const response = await apiClient.post('/safety/geofences', {
+        name,
+        centerLat,
+        centerLng,
+        radiusMeters,
+      });
+      return this.mapGeofenceData(response.data);
     } catch (error) {
       console.error('Create geofence error:', error);
       throw error;
     }
   }
 
-  async getFamilyGeofences(familyId: string): Promise<Geofence[]> {
+  async getCircleGeofences(circleId: string): Promise<Geofence[]> {
     try {
-      const { data, error } = await supabase
-        .from('geofences')
-        .select('*')
-        .eq('family_id', familyId)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) throw new Error(error.message);
-
-      return data.map(this.mapGeofenceData);
+      const response = await apiClient.get(`/safety/geofences?circleId=${circleId}`);
+      return (response.data || []).map((geo: any) => this.mapGeofenceData(geo));
     } catch (error) {
-      console.error('Get hourse geofences error:', error);
+      console.error('Get Circle geofences error:', error);
       throw error;
     }
   }
 
   async updateGeofence(geofenceId: string, updates: Partial<Geofence>): Promise<Geofence> {
     try {
-      const { data, error } = await supabase
-        .from('geofences')
-        .update({
-          name: updates.name,
-          center_lat: updates.centerLat,
-          center_lng: updates.centerLng,
-          radius_meters: updates.radiusMeters,
-          is_active: updates.isActive,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', geofenceId)
-        .select()
-        .single();
-
-      if (error) throw new Error(error.message);
-
-      return this.mapGeofenceData(data);
+      const response = await apiClient.put(`/safety/geofences/${geofenceId}`, {
+        name: updates.name,
+        centerLat: updates.centerLat,
+        centerLng: updates.centerLng,
+        radiusMeters: updates.radiusMeters,
+        isActive: updates.isActive,
+      });
+      return this.mapGeofenceData(response.data);
     } catch (error) {
       console.error('Update geofence error:', error);
       throw error;
@@ -548,12 +325,7 @@ class DatabaseService {
 
   async deleteGeofence(geofenceId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('geofences')
-        .delete()
-        .eq('id', geofenceId);
-
-      if (error) throw new Error(error.message);
+      await apiClient.delete(`/safety/geofences/${geofenceId}`);
     } catch (error) {
       console.error('Delete geofence error:', error);
       throw error;
@@ -563,28 +335,12 @@ class DatabaseService {
   // Emergency Contact Operations
   async addEmergencyContact(name: string, phoneNumber: string, relationship: string, isPrimary: boolean = false): Promise<void> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      // If this is a primary contact, unset other primary contacts
-      if (isPrimary) {
-        await supabase
-          .from('emergency_contacts')
-          .update({ is_primary: false })
-          .eq('user_id', user.id);
-      }
-
-      const { error } = await supabase
-        .from('emergency_contacts')
-        .insert({
-          user_id: user.id,
-          name,
-          phone_number: phoneNumber,
-          relationship,
-          is_primary: isPrimary,
-        });
-
-      if (error) throw new Error(error.message);
+      await apiClient.post('/users/emergency-contacts', {
+        name,
+        phoneNumber,
+        relationship,
+        isPrimary,
+      });
     } catch (error) {
       console.error('Add emergency contact error:', error);
       throw error;
@@ -599,24 +355,8 @@ class DatabaseService {
     isPrimary: boolean;
   }>> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
-
-      const { data, error } = await supabase
-        .from('emergency_contacts')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('is_primary', { ascending: false });
-
-      if (error) throw new Error(error.message);
-
-      return data.map(contact => ({
-        id: contact.id,
-        name: contact.name,
-        phoneNumber: contact.phone_number,
-        relationship: contact.relationship,
-        isPrimary: contact.is_primary,
-      }));
+      const response = await apiClient.get('/users/emergency-contacts');
+      return response.data || [];
     } catch (error) {
       console.error('Get emergency contacts error:', error);
       throw error;
@@ -625,12 +365,7 @@ class DatabaseService {
 
   async deleteEmergencyContact(contactId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('emergency_contacts')
-        .delete()
-        .eq('id', contactId);
-
-      if (error) throw new Error(error.message);
+      await apiClient.delete(`/users/emergency-contacts/${contactId}`);
     } catch (error) {
       console.error('Delete emergency contact error:', error);
       throw error;
@@ -638,36 +373,39 @@ class DatabaseService {
   }
 
   // Data Mapping Functions
-  private mapFamilyData(data: any): hourse {
+  private mapCircleData(data: any): Circle {
+    if (!data) return data;
     return {
       id: data.id,
       name: data.name,
       description: data.description,
-      createdBy: data.created_by,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      members: data.users?.map(this.mapUserData) || [],
+      createdBy: data.created_by || data.createdBy,
+      createdAt: data.created_at || data.createdAt,
+      updatedAt: data.updated_at || data.updatedAt,
+      members: data.users?.map((u: any) => this.mapUserData(u)) || data.members || [],
     };
   }
 
   private mapMessageData(data: any): Message {
+    if (!data) return data;
     return {
       id: data.id,
-      senderId: data.sender_id,
-      familyId: data.family_id,
+      senderId: data.sender_id || data.senderId,
+      circleId: data.circle_id || data.circleId,
       content: data.content,
-      messageType: data.message_type,
+      messageType: data.message_type || data.messageType,
       metadata: data.metadata,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      sender: data.users ? this.mapUserData(data.users) : undefined,
+      createdAt: data.created_at || data.createdAt,
+      updatedAt: data.updated_at || data.updatedAt,
+      sender: data.sender ? this.mapUserData(data.sender) : undefined,
     };
   }
 
   private mapLocationData(data: any): LocationPoint {
+    if (!data) return data;
     return {
       id: data.id,
-      userId: data.user_id,
+      userId: data.user_id || data.userId,
       latitude: data.latitude,
       longitude: data.longitude,
       accuracy: data.accuracy,
@@ -676,54 +414,62 @@ class DatabaseService {
   }
 
   private mapSafetyAlertData(data: any): SafetyAlert {
+    if (!data) return data;
     return {
       id: data.id,
-      userId: data.user_id,
-      alertType: data.alert_type,
-      locationLat: data.location_lat,
-      locationLng: data.location_lng,
+      userId: data.user_id || data.userId,
+      alertType: data.alert_type || data.alertType,
+      locationLat: data.location_lat || data.locationLat,
+      locationLng: data.location_lng || data.locationLng,
       status: data.status,
       metadata: data.metadata,
-      createdAt: data.created_at,
-      resolvedAt: data.resolved_at,
-      user: data.users ? this.mapUserData(data.users) : undefined,
+      createdAt: data.created_at || data.createdAt,
+      resolvedAt: data.resolved_at || data.resolvedAt,
+      user: data.user ? this.mapUserData(data.user) : undefined,
     };
   }
 
   private mapGeofenceData(data: any): Geofence {
+    if (!data) return data;
     return {
       id: data.id,
-      familyId: data.family_id,
+      circleId: data.circle_id || data.circleId,
       name: data.name,
-      centerLat: data.center_lat,
-      centerLng: data.center_lng,
-      radiusMeters: data.radius_meters,
-      isActive: data.is_active,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
+      centerLat: data.center_lat || data.centerLat,
+      centerLng: data.center_lng || data.centerLng,
+      radiusMeters: data.radius_meters || data.radiusMeters,
+      isActive: data.is_active ?? data.isActive ?? true,
+      createdAt: data.created_at || data.createdAt,
+      updatedAt: data.updated_at || data.updatedAt,
     };
   }
 
   private mapUserData(data: any): User {
+    if (!data) return data;
     return {
       id: data.id,
       email: data.email,
-      firstName: data.first_name,
-      lastName: data.last_name,
-      phoneNumber: data.phone_number,
-      avatar: data.avatar_url,
-      dateOfBirth: data.date_of_birth,
+      firstName: data.first_name || data.firstName,
+      lastName: data.last_name || data.lastName,
+      phoneNumber: data.phone_number || data.phoneNumber,
+      avatar: data.avatar_url || data.avatar,
+      dateOfBirth: data.date_of_birth || data.dateOfBirth,
       gender: data.gender,
       bio: data.bio,
-      preferences: data.preferences,
+      preferences: data.preferences || {
+        language: 'en',
+        theme: 'auto',
+        notifications: { push: true, email: true, sms: false },
+        privacy: { locationSharing: true, profileVisibility: 'Circle', dataSharing: false }
+      },
       subscription: data.subscription,
-      familyId: data.family_id,
-      familyRole: data.family_role,
-      emergencyContacts: data.emergency_contacts || [],
-      createdAt: data.created_at,
-      lastActiveAt: data.last_active_at,
+      circleId: data.circle_id || data.circleId,
+      circleRole: data.circle_role || data.circleRole,
+      emergencyContacts: data.emergency_contacts || data.emergencyContacts || [],
+      createdAt: data.created_at || data.createdAt,
+      lastActiveAt: data.last_active_at || data.lastActiveAt,
     };
   }
 }
 
-export default DatabaseService.getInstance(); 
+export default DatabaseService.getInstance();

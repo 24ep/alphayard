@@ -1,6 +1,6 @@
 export interface Category {
   id: string;
-  familyId: string;
+  circleId: string;
   name: string;
   description?: string;
   color: string;
@@ -15,7 +15,7 @@ export interface Category {
 }
 
 export interface CreateCategoryRequest {
-  familyId: string;
+  circleId: string;
   name: string;
   description?: string;
   color?: string;
@@ -33,3 +33,4 @@ export interface UpdateCategoryRequest {
   sortOrder?: number;
   isActive?: boolean;
 }
+

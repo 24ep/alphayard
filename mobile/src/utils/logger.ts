@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { isDev } from './isDev';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -16,7 +17,7 @@ export interface LogEntry {
   component?: string;
   method?: string;
   userId?: string;
-  familyId?: string;
+  circleId?: string;
 }
 
 class Logger {
@@ -27,7 +28,7 @@ class Logger {
   private maxBufferSize = 100;
 
   private constructor() {
-    this.isProduction = !__DEV__;
+    this.isProduction = !isDev;
     this.currentLevel = this.isProduction ? LogLevel.WARN : LogLevel.DEBUG;
   }
 
@@ -42,27 +43,27 @@ class Logger {
     this.currentLevel = level;
   }
 
-  debug(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  debug(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     this.log(LogLevel.DEBUG, message, data, context);
   }
 
-  info(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  info(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     this.log(LogLevel.INFO, message, data, context);
   }
 
-  warn(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  warn(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     this.log(LogLevel.WARN, message, data, context);
   }
 
-  error(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  error(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     this.log(LogLevel.ERROR, message, data, context);
   }
 
-  critical(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  critical(message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     this.log(LogLevel.CRITICAL, message, data, context);
   }
 
-  private log(level: LogLevel, message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }): void {
+  private log(level: LogLevel, message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }): void {
     if (level < this.currentLevel) {
       return;
     }
@@ -75,7 +76,7 @@ class Logger {
       component: context?.component,
       method: context?.method,
       userId: context?.userId,
-      familyId: context?.familyId
+      circleId: context?.circleId
     };
 
     // Add to buffer
@@ -214,22 +215,22 @@ class Logger {
 export const logger = Logger.getInstance();
 
 // Convenience functions
-export const debug = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }) => {
+export const debug = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }) => {
   logger.debug(message, data, context);
 };
 
-export const info = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }) => {
+export const info = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }) => {
   logger.info(message, data, context);
 };
 
-export const warn = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }) => {
+export const warn = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }) => {
   logger.warn(message, data, context);
 };
 
-export const error = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }) => {
+export const error = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }) => {
   logger.error(message, data, context);
 };
 
-export const critical = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; familyId?: string }) => {
+export const critical = (message: string, data?: any, context?: { component?: string; method?: string; userId?: string; circleId?: string }) => {
   logger.critical(message, data, context);
 }; 

@@ -4,7 +4,8 @@
     "admin",
     "backend",
     "mobile",
-    "web"
+    "web",
+    "packages/*"
   ],
   "scripts": {
     "setup": "node scripts/setup.js",
@@ -21,16 +22,11 @@
     "dev:web": "npm run dev --workspace=web",
     "build:all": "npm run build --workspaces --if-present",
     "lint:all": "npm run lint --workspaces --if-present",
-    "type-check:all": "npm run type-check --workspaces --if-present",
-    "supabase:init": "supabase init",
-    "supabase:start": "supabase start",
-    "supabase:stop": "supabase stop",
-    "supabase:status": "supabase status",
-    "supabase:reset": "supabase stop && supabase start"
+    "type-check:all": "npm run type-check --workspaces --if-present"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.74.0",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",

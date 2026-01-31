@@ -25,7 +25,7 @@ function makeRequest(url) {
 }
 
 async function testAPIEndpoints() {
-  console.log('🧪 Testing Bondarys CMS API Endpoints');
+  console.log('🧪 Testing Appkit API Endpoints');
   console.log('====================================');
   console.log(`📍 Testing: ${API_BASE_URL}`);
   console.log('');
@@ -37,7 +37,7 @@ async function testAPIEndpoints() {
     { path: '/api/admin/roles', name: 'Admin Roles' },
     { path: '/api/admin/permissions', name: 'Admin Permissions' },
     { path: '/api/admin/user-groups', name: 'Admin User Groups' },
-    { path: '/api/families', name: 'Families' }
+    { path: '/api/circles', name: 'Families' }
   ];
 
   const results = [];
@@ -90,3 +90,4 @@ async function testAPIEndpoints() {
 
 // Run the test
 testAPIEndpoints().catch(console.error);
+

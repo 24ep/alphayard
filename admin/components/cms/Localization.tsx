@@ -81,8 +81,8 @@ const getFallbackTranslationKeys = () => [
 
 const getFallbackTranslations = () => {
   const demoEnMap: Record<string, string> = {
-    'ui.welcome.title': 'Welcome to Bondarys',
-    'ui.welcome.subtitle': 'Connect with your family safely',
+    'ui.welcome.title': 'Welcome to Appkit',
+    'ui.welcome.subtitle': 'Connect with your platform safely',
     'ui.button.save': 'Save',
     'ui.button.cancel': 'Cancel',
     'nav.home': 'Home',
@@ -1672,3 +1672,4 @@ export function Localization() {
     </div>
   )
 }
+

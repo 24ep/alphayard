@@ -11,7 +11,7 @@ export interface Location {
   timestamp: Date;
 }
 
-export interface FamilyMemberLocation {
+export interface CircleMemberLocation {
   userId: string;
   location: Location;
   name: string;
@@ -21,7 +21,7 @@ export interface FamilyMemberLocation {
 
 interface LocationState {
   currentLocation: Location | null;
-  familyLocations: FamilyMemberLocation[];
+  circleLocations: CircleMemberLocation[];
   loading: boolean;
   error: string | null;
 }
@@ -29,7 +29,7 @@ interface LocationState {
 // Initial state
 const initialState: LocationState = {
   currentLocation: null,
-  familyLocations: [],
+  circleLocations: [],
   loading: false,
   error: null,
 };
@@ -46,28 +46,28 @@ const locationSlice = createSlice({
       state.error = null;
     },
     
-    // Set family locations
-    setFamilyLocations: (state, action: PayloadAction<FamilyMemberLocation[]>) => {
-      state.familyLocations = action.payload;
+    // Set circle locations
+    setCircleLocations: (state, action: PayloadAction<CircleMemberLocation[]>) => {
+      state.circleLocations = action.payload;
       state.loading = false;
       state.error = null;
     },
     
-    // Update family member location
-    updateFamilyMemberLocation: (state, action: PayloadAction<FamilyMemberLocation>) => {
-      const index = state.familyLocations.findIndex(
+    // Update circle member location
+    updateCircleMemberLocation: (state, action: PayloadAction<CircleMemberLocation>) => {
+      const index = state.circleLocations.findIndex(
         (l) => l.userId === action.payload.userId
       );
       if (index !== -1) {
-        state.familyLocations[index] = action.payload;
+        state.circleLocations[index] = action.payload;
       } else {
-        state.familyLocations.push(action.payload);
+        state.circleLocations.push(action.payload);
       }
     },
     
-    // Remove family member location
-    removeFamilyMemberLocation: (state, action: PayloadAction<string>) => {
-      state.familyLocations = state.familyLocations.filter(
+    // Remove circle member location
+    removeCircleMemberLocation: (state, action: PayloadAction<string>) => {
+      state.circleLocations = state.circleLocations.filter(
         (l) => l.userId !== action.payload
       );
     },
@@ -93,9 +93,9 @@ const locationSlice = createSlice({
 // Export actions
 export const {
   setCurrentLocation,
-  setFamilyLocations,
-  updateFamilyMemberLocation,
-  removeFamilyMemberLocation,
+  setCircleLocations,
+  updateCircleMemberLocation,
+  removeCircleMemberLocation,
   setLoading,
   setError,
   clearError,
@@ -103,4 +103,5 @@ export const {
 
 // Export reducer
 export default locationSlice.reducer;
+
 

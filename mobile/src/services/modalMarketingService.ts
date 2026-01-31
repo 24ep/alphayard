@@ -25,7 +25,7 @@ export interface ModalAnalytics {
   id: string;
   modal_id: string;
   user_id?: string;
-  family_id?: string;
+  circle_id?: string;
   action_type: 'view' | 'click' | 'close' | 'dismiss' | 'interact';
   action_data?: any;
   device_info?: any;
@@ -58,8 +58,8 @@ class ModalMarketingService {
     });
   }
 
-  async getActiveModals(userId?: string, familyId?: string): Promise<ModalMarketingContent[]> {
-    const cacheKey = `active-modals-${userId}-${familyId}`;
+  async getActiveModals(userId?: string, circleId?: string): Promise<ModalMarketingContent[]> {
+    const cacheKey = `active-modals-${userId}-${circleId}`;
     const cached = this.getCachedData(cacheKey);
     if (cached) {
       return cached;
@@ -68,7 +68,7 @@ class ModalMarketingService {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
 
       const response = await fetch(`${this.baseUrl}/active?${params}`, {
         method: 'GET',
@@ -101,7 +101,7 @@ class ModalMarketingService {
     modalId: string,
     actionType: 'view' | 'click' | 'close' | 'dismiss' | 'interact',
     userId?: string,
-    familyId?: string,
+    circleId?: string,
     actionData?: any
   ): Promise<void> {
     try {
@@ -124,7 +124,7 @@ class ModalMarketingService {
         },
         body: JSON.stringify({
           userId,
-          familyId,
+          circleId,
           actionType,
           actionData,
           deviceInfo,
@@ -179,7 +179,7 @@ class ModalMarketingService {
     // Check trigger conditions
     if (modal.trigger_conditions) {
       // Implement specific trigger condition checks here
-      // For example: user_type, family_size, location, etc.
+      // For example: user_type, circle_size, location, etc.
     }
 
     return true;
@@ -270,3 +270,4 @@ class ModalMarketingService {
 }
 
 export default new ModalMarketingService();
+

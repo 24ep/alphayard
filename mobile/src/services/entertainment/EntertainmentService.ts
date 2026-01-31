@@ -22,7 +22,7 @@ export interface EntertainmentItem {
   awards?: string[];
   posterUrl?: string;
   trailerUrl?: string;
-  isFamilyFriendly: boolean;
+  isCircleFriendly: boolean;
   ageRating?: string; // G, PG, PG-13, R, etc.
   tags: string[];
   createdAt: Date;
@@ -32,14 +32,14 @@ export interface EntertainmentItem {
 export interface EntertainmentList {
   id: string;
   userId: string;
-  familyId: string;
+  circleId: string;
   name: string;
   description?: string;
   type: 'watchlist' | 'favorites' | 'completed' | 'custom';
   items: EntertainmentItem[];
   isPublic: boolean;
   isShared: boolean;
-  sharedWith: string[]; // hourse member IDs
+  sharedWith: string[]; // Circle member IDs
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,18 +47,18 @@ export interface EntertainmentList {
 export interface EntertainmentRecommendation {
   id: string;
   userId: string;
-  familyId: string;
+  circleId: string;
   item: EntertainmentItem;
   reason: string;
   confidence: number; // 0-1
-  source: 'algorithm' | 'hourse' | 'trending' | 'similar';
+  source: 'algorithm' | 'Circle' | 'trending' | 'similar';
   isViewed: boolean;
   createdAt: Date;
 }
 
 export interface EntertainmentPreferences {
   userId: string;
-  familyId: string;
+  circleId: string;
   genres: string[];
   platforms: string[];
   languages: string[];
@@ -67,7 +67,7 @@ export interface EntertainmentPreferences {
   notifications: {
     newReleases: boolean;
     recommendations: boolean;
-    familyActivity: boolean;
+    circleActivity: boolean;
     reminders: boolean;
   };
   privacy: {
@@ -85,7 +85,7 @@ export interface EntertainmentStats {
   averageRating: number;
   topGenre: string;
   topPlatform: string;
-  familyActivity: number;
+  circleActivity: number;
   recommendationsViewed: number;
 }
 
@@ -96,7 +96,7 @@ class EntertainmentService {
     platform?: string;
     status?: string;
     rating?: number;
-    familyFriendly?: boolean;
+    circleFriendly?: boolean;
   }): Promise<EntertainmentItem[]> {
     try {
       const params = new URLSearchParams();
@@ -106,7 +106,7 @@ class EntertainmentService {
       if (filters?.platform) params.append('platform', filters.platform);
       if (filters?.status) params.append('status', filters.status);
       if (filters?.rating) params.append('rating', filters.rating.toString());
-      if (filters?.familyFriendly !== undefined) params.append('familyFriendly', filters.familyFriendly.toString());
+      if (filters?.circleFriendly !== undefined) params.append('circleFriendly', filters.circleFriendly.toString());
 
       const response = await apiClient.get(`/entertainment/items?${params.toString()}`);
       
@@ -166,9 +166,9 @@ class EntertainmentService {
     }
   }
 
-  async getUserLists(userId: string, familyId: string): Promise<EntertainmentList[]> {
+  async getUserLists(userId: string, circleId: string): Promise<EntertainmentList[]> {
     try {
-      const response = await apiClient.get(`/entertainment/lists?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/entertainment/lists?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get user lists:', error);
@@ -285,9 +285,9 @@ class EntertainmentService {
     }
   }
 
-  async getRecommendations(userId: string, familyId: string, limit: number = 10): Promise<EntertainmentRecommendation[]> {
+  async getRecommendations(userId: string, circleId: string, limit: number = 10): Promise<EntertainmentRecommendation[]> {
     try {
-      const response = await apiClient.get(`/entertainment/recommendations?userId=${userId}&familyId=${familyId}&limit=${limit}`);
+      const response = await apiClient.get(`/entertainment/recommendations?userId=${userId}&circleId=${circleId}&limit=${limit}`);
       
       analyticsService.trackEvent('entertainment_recommendations_fetched', {
         userId,
@@ -314,9 +314,9 @@ class EntertainmentService {
     }
   }
 
-  async getUserPreferences(userId: string, familyId: string): Promise<EntertainmentPreferences> {
+  async getUserPreferences(userId: string, circleId: string): Promise<EntertainmentPreferences> {
     try {
-      const response = await apiClient.get(`/entertainment/preferences?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/entertainment/preferences?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get user preferences:', error);
@@ -324,9 +324,9 @@ class EntertainmentService {
     }
   }
 
-  async updateUserPreferences(userId: string, familyId: string, preferences: Partial<EntertainmentPreferences>): Promise<EntertainmentPreferences> {
+  async updateUserPreferences(userId: string, circleId: string, preferences: Partial<EntertainmentPreferences>): Promise<EntertainmentPreferences> {
     try {
-      const response = await apiClient.put(`/entertainment/preferences?userId=${userId}&familyId=${familyId}`, preferences);
+      const response = await apiClient.put(`/entertainment/preferences?userId=${userId}&circleId=${circleId}`, preferences);
       
       analyticsService.trackEvent('entertainment_preferences_updated', {
         userId,
@@ -341,9 +341,9 @@ class EntertainmentService {
     }
   }
 
-  async getEntertainmentStats(userId: string, familyId: string): Promise<EntertainmentStats> {
+  async getEntertainmentStats(userId: string, circleId: string): Promise<EntertainmentStats> {
     try {
-      const response = await apiClient.get(`/entertainment/stats?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/entertainment/stats?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get entertainment stats:', error);
@@ -376,7 +376,7 @@ class EntertainmentService {
     }
   }
 
-  async getFamilyActivity(familyId: string, days: number = 7): Promise<Array<{
+  async getCircleActivity(circleId: string, days: number = 7): Promise<Array<{
     userId: string;
     userName: string;
     activity: string;
@@ -384,10 +384,10 @@ class EntertainmentService {
     timestamp: Date;
   }>> {
     try {
-      const response = await apiClient.get(`/entertainment/hourse-activity?familyId=${familyId}&days=${days}`);
+      const response = await apiClient.get(`/entertainment/Circle-activity?circleId=${circleId}&days=${days}`);
       return response.data;
     } catch (error) {
-      console.error('Failed to get hourse activity:', error);
+      console.error('Failed to get Circle activity:', error);
       throw error;
     }
   }
@@ -430,9 +430,9 @@ class EntertainmentService {
     }
   }
 
-  async exportEntertainmentData(userId: string, familyId: string, format: 'pdf' | 'csv' | 'json' = 'pdf'): Promise<string> {
+  async exportEntertainmentData(userId: string, circleId: string, format: 'pdf' | 'csv' | 'json' = 'pdf'): Promise<string> {
     try {
-      const response = await apiClient.get(`/entertainment/export?userId=${userId}&familyId=${familyId}&format=${format}`);
+      const response = await apiClient.get(`/entertainment/export?userId=${userId}&circleId=${circleId}&format=${format}`);
       
       analyticsService.trackEvent('entertainment_data_exported', {
         format,

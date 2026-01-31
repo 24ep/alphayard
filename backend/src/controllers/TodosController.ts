@@ -4,11 +4,11 @@ import { pool } from '../config/database';
 export class TodosController {
   static async list(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
 
       const { rows } = await pool.query(
-        'SELECT * FROM todos WHERE family_id = $1 ORDER BY position ASC',
-        [familyId]
+        'SELECT * FROM todos WHERE circle_id = $1 ORDER BY position ASC',
+        [circleId]
       );
 
       return res.json({ success: true, data: rows });
@@ -20,7 +20,7 @@ export class TodosController {
 
   static async create(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const userId = req.user.id;
       const { title, description, category, priority, due_date } = req.body;
 
@@ -30,18 +30,18 @@ export class TodosController {
 
       // Determine next position
       const { rows: maxRows } = await pool.query(
-        'SELECT position FROM todos WHERE family_id = $1 ORDER BY position DESC LIMIT 1',
-        [familyId]
+        'SELECT position FROM todos WHERE circle_id = $1 ORDER BY position DESC LIMIT 1',
+        [circleId]
       );
 
       const nextPosition = (maxRows[0]?.position || 0) + 1;
 
       const { rows } = await pool.query(
-        `INSERT INTO todos (family_id, user_id, title, description, is_completed, position, category, priority, due_date)
+        `INSERT INTO todos (circle_id, user_id, title, description, is_completed, position, category, priority, due_date)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING *`,
         [
-          familyId,
+          circleId,
           userId,
           title,
           description || null,
@@ -62,17 +62,17 @@ export class TodosController {
 
   static async update(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const { id } = req.params;
       const { title, description, is_completed, category, priority, due_date } = req.body;
 
       // Check permissions
       const { rows: existing } = await pool.query(
-        'SELECT id, family_id FROM todos WHERE id = $1 LIMIT 1',
+        'SELECT id, circle_id FROM todos WHERE id = $1 LIMIT 1',
         [id]
       );
 
-      if (existing.length === 0 || existing[0].family_id !== familyId) {
+      if (existing.length === 0 || existing[0].circle_id !== circleId) {
         return res.status(404).json({ error: 'Todo not found' });
       }
 
@@ -122,15 +122,15 @@ export class TodosController {
 
   static async remove(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const { id } = req.params;
 
       const { rows: existing } = await pool.query(
-        'SELECT id, family_id FROM todos WHERE id = $1 LIMIT 1',
+        'SELECT id, circle_id FROM todos WHERE id = $1 LIMIT 1',
         [id]
       );
 
-      if (existing.length === 0 || existing[0].family_id !== familyId) {
+      if (existing.length === 0 || existing[0].circle_id !== circleId) {
         return res.status(404).json({ error: 'Todo not found' });
       }
 
@@ -145,25 +145,25 @@ export class TodosController {
 
   static async reorder(req: any, res: Response) {
     try {
-      const familyId = (req as any).familyId;
+      const circleId = (req as any).circleId;
       const { orderedIds } = req.body as { orderedIds: string[] };
 
       if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
         return res.status(400).json({ error: 'orderedIds must be a non-empty array' });
       }
 
-      // Verify all belong to same family
+      // Verify all belong to same circle
       // Using ANY($1) for array check
       const { rows: items } = await pool.query(
-        'SELECT id, family_id FROM todos WHERE id = ANY($1)',
+        'SELECT id, circle_id FROM todos WHERE id = ANY($1)',
         [orderedIds]
       );
 
-      const allSameFamily = items.every(i => i.family_id === familyId);
+      const allSamecircle = items.every(i => i.circle_id === circleId);
       // Also check if found count matches (optional but good) - skipping for lenient handling
 
-      if (!allSameFamily) {
-        return res.status(403).json({ error: 'Some todos do not belong to your family' });
+      if (!allSamecircle) {
+        return res.status(403).json({ error: 'Some todos do not belong to your circle' });
       }
 
       // Update positions in a loop (simpler for now, transaction recommended strictly but okay for this)
@@ -189,5 +189,6 @@ export class TodosController {
     }
   }
 }
+
 
 

@@ -8,15 +8,15 @@ export const WysiwygEditorDemo: React.FC = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.section}>
-        <Text style={styles.title}>hourse Story Editor</Text>
+        <Text style={styles.title}>Circle Story Editor</Text>
         <Text style={styles.subtitle}>
-          Create rich, formatted hourse stories with our inline WYSIWYG editor
+          Create rich, formatted Circle stories with our inline WYSIWYG editor
         </Text>
         
         <InlineWysiwygEditor
           value={story}
           onChange={setStory}
-          placeholder="Share your hourse's story... Use the toolbar to format text and add emojis!"
+          placeholder="Share your Circle's story... Use the toolbar to format text and add emojis!"
           minHeight={200}
           maxHeight={400}
           showToolbar={true}
@@ -76,6 +76,7 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 });
+
 
 
 

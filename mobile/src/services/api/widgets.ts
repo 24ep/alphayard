@@ -4,14 +4,14 @@ import { WidgetType } from '../../types/home';
 export interface WidgetFilters {
   category?: string;
   enabled?: boolean;
-  familyId?: string;
+  circleId?: string;
   userId?: string;
 }
 
 export interface WidgetConfiguration {
   widgetId: string;
   userId: string;
-  familyId?: string;
+  circleId?: string;
   enabled: boolean;
   position: number;
   settings: Record<string, any>;
@@ -32,7 +32,7 @@ export const widgetApi = {
     const params = new URLSearchParams();
     if (filters?.category) params.append('category', filters.category);
     if (filters?.enabled !== undefined) params.append('enabled', filters.enabled.toString());
-    if (filters?.familyId) params.append('familyId', filters.familyId);
+    if (filters?.circleId) params.append('circleId', filters.circleId);
     if (filters?.userId) params.append('userId', filters.userId);
 
     const response = await api.get(`/widgets/types?${params.toString()}`);
@@ -46,8 +46,8 @@ export const widgetApi = {
   },
 
   // Get user widget configuration
-  getUserWidgetConfiguration: async (userId: string, familyId?: string): Promise<{ success: boolean; configurations: WidgetConfiguration[] }> => {
-    const params = familyId ? `?familyId=${familyId}` : '';
+  getUserWidgetConfiguration: async (userId: string, circleId?: string): Promise<{ success: boolean; configurations: WidgetConfiguration[] }> => {
+    const params = circleId ? `?circleId=${circleId}` : '';
     const response = await api.get(`/widgets/users/${userId}/configuration${params}`);
     return response.data;
   },
@@ -59,52 +59,53 @@ export const widgetApi = {
   },
 
   // Enable widget
-  enableWidget: async (widgetId: string, userId: string, familyId?: string): Promise<{ success: boolean; message: string }> => {
+  enableWidget: async (widgetId: string, userId: string, circleId?: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/widgets/enable', {
       widgetId,
       userId,
-      familyId
+      circleId
     });
     return response.data;
   },
 
   // Disable widget
-  disableWidget: async (widgetId: string, userId: string, familyId?: string): Promise<{ success: boolean; message: string }> => {
+  disableWidget: async (widgetId: string, userId: string, circleId?: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/widgets/disable', {
       widgetId,
       userId,
-      familyId
+      circleId
     });
     return response.data;
   },
 
   // Reorder widgets
-  reorderWidgets: async (userId: string, widgetIds: string[], familyId?: string): Promise<{ success: boolean; message: string }> => {
+  reorderWidgets: async (userId: string, widgetIds: string[], circleId?: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/widgets/reorder', {
       userId,
       widgetIds,
-      familyId
+      circleId
     });
     return response.data;
   },
 
   // Get widget data
-  getWidgetData: async (widgetId: string, userId: string, familyId?: string): Promise<{ success: boolean; data: any }> => {
+  getWidgetData: async (widgetId: string, userId: string, circleId?: string): Promise<{ success: boolean; data: any }> => {
     const params = new URLSearchParams();
     params.append('userId', userId);
-    if (familyId) params.append('familyId', familyId);
+    if (circleId) params.append('circleId', circleId);
 
     const response = await api.get(`/widgets/${widgetId}/data?${params.toString()}`);
     return response.data;
   },
 
   // Update widget settings
-  updateWidgetSettings: async (widgetId: string, userId: string, settings: Record<string, any>, familyId?: string): Promise<{ success: boolean; message: string }> => {
+  updateWidgetSettings: async (widgetId: string, userId: string, settings: Record<string, any>, circleId?: string): Promise<{ success: boolean; message: string }> => {
     const response = await api.put(`/widgets/${widgetId}/settings`, {
       userId,
       settings,
-      familyId
+      circleId
     });
     return response.data;
   }
 };
+

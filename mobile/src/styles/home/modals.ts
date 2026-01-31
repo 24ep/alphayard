@@ -250,5 +250,18 @@ export const modalStyles = StyleSheet.create({
         height: 30,
         borderRadius: 15,
         backgroundColor: '#D1D5DB',
+        padding: 2,
+    },
+    toggleActive: {
+        backgroundColor: '#10B981',
+    },
+    toggleThumb: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        backgroundColor: '#FFFFFF',
+    },
+    toggleThumbActive: {
+        marginLeft: 20,
     },
 });

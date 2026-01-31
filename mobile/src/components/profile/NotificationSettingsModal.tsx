@@ -19,7 +19,7 @@ interface NotificationPreferences {
   push: boolean;
   email: boolean;
   sms: boolean;
-  hourse?: {
+  Circle?: {
     locationUpdates: boolean;
     emergencyAlerts: boolean;
     eventReminders: boolean;
@@ -66,12 +66,12 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
     if (visible) {
       setLocalPreferences({
         ...preferences,
-        hourse: {
+        Circle: {
           locationUpdates: true,
           emergencyAlerts: true,
           eventReminders: true,
           chatMessages: true,
-          ...preferences.hourse,
+          ...preferences.Circle,
         },
         safety: {
           emergencyAlerts: true,
@@ -236,42 +236,42 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
             </View>
           </View>
 
-          {/* hourse Notifications */}
+          {/* Circle Notifications */}
           <View style={styles.section}>
             {renderSectionHeader(
-              t('notifications.hourse'),
+              t('notifications.Circle'),
               'account-group',
-              t('notifications.familyDesc')
+              t('notifications.circleDesc')
             )}
             
             <View style={styles.sectionContent}>
               {renderToggleItem(
                 t('notifications.locationUpdates'),
                 t('notifications.locationUpdatesDesc'),
-                localPreferences.hourse?.locationUpdates || false,
-                (value) => updatePreference('hourse', 'locationUpdates', value)
+                localPreferences.Circle?.locationUpdates || false,
+                (value) => updatePreference('Circle', 'locationUpdates', value)
               )}
               
               {renderToggleItem(
                 t('notifications.emergencyAlerts'),
                 t('notifications.emergencyAlertsDesc'),
-                localPreferences.hourse?.emergencyAlerts || false,
-                (value) => updatePreference('hourse', 'emergencyAlerts', value),
+                localPreferences.Circle?.emergencyAlerts || false,
+                (value) => updatePreference('Circle', 'emergencyAlerts', value),
                 true
               )}
               
               {renderToggleItem(
                 t('notifications.eventReminders'),
                 t('notifications.eventRemindersDesc'),
-                localPreferences.hourse?.eventReminders || false,
-                (value) => updatePreference('hourse', 'eventReminders', value)
+                localPreferences.Circle?.eventReminders || false,
+                (value) => updatePreference('Circle', 'eventReminders', value)
               )}
               
               {renderToggleItem(
                 t('notifications.chatMessages'),
                 t('notifications.chatMessagesDesc'),
-                localPreferences.hourse?.chatMessages || false,
-                (value) => updatePreference('hourse', 'chatMessages', value)
+                localPreferences.Circle?.chatMessages || false,
+                (value) => updatePreference('Circle', 'chatMessages', value)
               )}
             </View>
           </View>

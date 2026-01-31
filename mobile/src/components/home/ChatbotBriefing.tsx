@@ -1,10 +1,33 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { chatbotBriefingStyles as styles } from '../../styles/home/chatbotBriefing';
-import IconIon from 'react-native-vector-icons/Ionicons';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { 
+  Sparkles, 
+  Calendar, 
+  CloudRain, 
+  Newspaper, 
+  Bot, 
+  Settings,
+  Star
+} from 'lucide-react-native';
 import { ScalePressable } from '../common/ScalePressable';
 import { MiniAppsGrid } from './MiniAppsGrid';
+
+// Wrapped Icon components for type safety
+const SparklesIcon = Sparkles as any;
+const CalendarIcon = Calendar as any;
+const CloudRainIcon = CloudRain as any;
+const NewspaperIcon = Newspaper as any;
+const BotIcon = Bot as any;
+const SettingsIcon = Settings as any;
+const StarIcon = Star as any;
+
+const ICON_MAP: Record<string, any> = {
+    'sparkles': SparklesIcon,
+    'calendar': CalendarIcon,
+    'weather-pouring': CloudRainIcon,
+    'newspaper': NewspaperIcon,
+};
 
 interface BriefingItem {
     id: string;
@@ -112,7 +135,7 @@ export const ChatbotBriefing: React.FC<ChatbotBriefingProps> = ({ onCustomize, o
             <View style={styles.botContainer}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 8 }}>
                     <View style={styles.botAvatar}>
-                        <IconMC name="robot-happy" size={28} color="#4F46E5" />
+                        <BotIcon size={28} color="#4F46E5" />
                     </View>
                     <Text style={styles.botName}>Bound</Text>
                 </View>
@@ -121,7 +144,7 @@ export const ChatbotBriefing: React.FC<ChatbotBriefingProps> = ({ onCustomize, o
                         onPress={onCustomize}
                         style={styles.customizeButton}
                     >
-                        <IconMC name="cog" size={20} color="#6B7280" />
+                        <SettingsIcon size={20} color="#6B7280" />
                     </TouchableOpacity>
                 )}
             </View>
@@ -145,11 +168,10 @@ export const ChatbotBriefing: React.FC<ChatbotBriefingProps> = ({ onCustomize, o
                         >
                             <View style={styles.itemHeader}>
                                 <View style={[styles.itemIcon, { backgroundColor: `${item.color}15` }]}>
-                                    {item.iconType === 'mc' ? (
-                                        <IconMC name={item.icon || 'star'} size={16} color={item.color} />
-                                    ) : (
-                                        <IconIon name={item.icon || 'star'} size={16} color={item.color} />
-                                    )}
+                                    {(() => {
+                                        const Icon = ICON_MAP[item.icon || ''] || StarIcon;
+                                        return <Icon size={16} color={item.color} />;
+                                    })()}
                                 </View>
                                 <Text style={styles.itemTitle}>{item.title}</Text>
                             </View>

@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS location_history (
 -- Geofences table
 CREATE TABLE IF NOT EXISTS geofences (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   latitude DECIMAL(10, 8) NOT NULL,
   longitude DECIMAL(11, 8) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS geofences (
 CREATE TABLE IF NOT EXISTS location_shares (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS location_requests (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   requester_id UUID REFERENCES users(id) ON DELETE CASCADE,
   target_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   status VARCHAR(20) DEFAULT 'pending',
   responded_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS location_requests (
 CREATE INDEX IF NOT EXISTS idx_user_locations_user_id ON user_locations(user_id);
 CREATE INDEX IF NOT EXISTS idx_location_history_user_id ON location_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_location_history_created_at ON location_history(created_at);
-CREATE INDEX IF NOT EXISTS idx_geofences_family_id ON geofences(family_id);
+CREATE INDEX IF NOT EXISTS idx_geofences_circle_id ON geofences(circle_id);
 
 -- Create triggers for updated_at timestamps
 CREATE TRIGGER IF NOT EXISTS update_geofences_updated_at 
@@ -86,8 +86,8 @@ CREATE POLICY IF NOT EXISTS "Users can insert own location history" ON location_
 
 CREATE POLICY IF NOT EXISTS "hourse members can view hourse geofences" ON geofences FOR SELECT USING (
   EXISTS (
-    SELECT 1 FROM family_members 
-    WHERE family_members.family_id = geofences.family_id 
-    AND family_members.user_id = auth.uid()
+    SELECT 1 FROM circle_members 
+    WHERE circle_members.circle_id = geofences.circle_id 
+    AND circle_members.user_id = auth.uid()
   )
 );

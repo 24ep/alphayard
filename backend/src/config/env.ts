@@ -3,10 +3,10 @@ import path from 'path';
 import { z } from 'zod';
 
 // Load environment variables before validating
-// 1) Project Root .env (3 levels up from src/config)
-dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
-// 2) Backend-local .env (2 levels up)
+// 1) Backend-local .env (highest priority)
 dotenv.config({ path: path.resolve(__dirname, '../..', '.env') });
+// 2) Project Root .env (3 levels up from src/config) - Fallback
+dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
 // 3) Fallback to default .env resolution
 dotenv.config();
 
@@ -29,12 +29,13 @@ const envSchema = z.object({
 
   // JWT
   JWT_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32).optional().default('bondarys-refresh-dev-secret-key-32chars'),
   JWT_EXPIRES_IN: z.string().default('7d'),
 
   // Database
   DATABASE_URL: z.string().url().optional(),
   DB_HOST: z.string().default('localhost'),
-  DB_PORT: z.string().transform(Number).default('54322'),
+  DB_PORT: z.string().transform(Number).default('5432'),
   DB_NAME: z.string().default('postgres'),
   DB_USER: z.string().default('postgres'),
   DB_PASSWORD: z.string().default('postgres'),

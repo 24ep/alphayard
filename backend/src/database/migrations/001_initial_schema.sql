@@ -1,5 +1,6 @@
 -- UP
 -- Initial Bondarys database schema
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -18,8 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Families table
-CREATE TABLE IF NOT EXISTS families (
+-- Circles table
+CREATE TABLE IF NOT EXISTS circles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) DEFAULT 'hourse' CHECK (type IN ('hourse', 'friends', 'sharehouse')),
@@ -31,27 +32,27 @@ CREATE TABLE IF NOT EXISTS families (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- hourse members table
-CREATE TABLE IF NOT EXISTS family_members (
+-- Circle members table
+CREATE TABLE IF NOT EXISTS circle_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role VARCHAR(20) DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
   joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(family_id, user_id)
+  UNIQUE(circle_id, user_id)
 );
 
 -- hourse invitations table
 CREATE TABLE IF NOT EXISTS family_invitations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   email VARCHAR(255) NOT NULL,
   invited_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   message TEXT,
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined', 'expired')),
   expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '7 days'),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(family_id, email)
+  UNIQUE(circle_id, email)
 );
 
 -- User preferences table
@@ -81,7 +82,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 -- Messages table
 CREATE TABLE IF NOT EXISTS messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   type VARCHAR(20) DEFAULT 'text' CHECK (type IN ('text', 'image', 'file', 'location', 'system')),
@@ -95,7 +96,7 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE TABLE IF NOT EXISTS location_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   latitude DECIMAL(10, 8) NOT NULL,
   longitude DECIMAL(11, 8) NOT NULL,
   accuracy DECIMAL(8, 2),
@@ -107,7 +108,7 @@ CREATE TABLE IF NOT EXISTS location_history (
 -- Geofences table
 CREATE TABLE IF NOT EXISTS geofences (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   center_latitude DECIMAL(10, 8) NOT NULL,
@@ -121,7 +122,7 @@ CREATE TABLE IF NOT EXISTS geofences (
 -- Safety alerts table
 CREATE TABLE IF NOT EXISTS safety_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL CHECK (type IN ('emergency', 'check_in', 'location_alert', 'custom')),
   title VARCHAR(255) NOT NULL,
@@ -144,7 +145,7 @@ CREATE TABLE IF NOT EXISTS files (
   url TEXT NOT NULL,
   thumbnail_url TEXT,
   uploaded_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   folder_path VARCHAR(500) DEFAULT '/',
   is_public BOOLEAN DEFAULT false,
   uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -153,7 +154,7 @@ CREATE TABLE IF NOT EXISTS files (
 -- Calendar events table
 CREATE TABLE IF NOT EXISTS calendar_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   title VARCHAR(255) NOT NULL,
   description TEXT,
@@ -172,7 +173,7 @@ CREATE TABLE IF NOT EXISTS calendar_events (
 -- Tasks table
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  family_id UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
   created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   assigned_to UUID REFERENCES users(id) ON DELETE SET NULL,
   title VARCHAR(255) NOT NULL,
@@ -189,7 +190,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   type VARCHAR(50) NOT NULL,
   title VARCHAR(255) NOT NULL,
   message TEXT NOT NULL,
@@ -215,30 +216,13 @@ CREATE TABLE IF NOT EXISTS email_logs (
 CREATE TABLE IF NOT EXISTS emotion_records (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   emotion_type VARCHAR(20) NOT NULL CHECK (emotion_type IN ('very_bad', 'bad', 'neutral', 'good', 'very_good')),
   notes TEXT,
   recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, DATE(recorded_at))
-);
-
--- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_families_owner_id ON families(owner_id);
-CREATE INDEX IF NOT EXISTS idx_family_members_family_id ON family_members(family_id);
-CREATE INDEX IF NOT EXISTS idx_family_members_user_id ON family_members(user_id);
-CREATE INDEX IF NOT EXISTS idx_messages_family_id ON messages(family_id);
-CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
-CREATE INDEX IF NOT EXISTS idx_location_history_user_id ON location_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_location_history_created_at ON location_history(created_at);
-CREATE INDEX IF NOT EXISTS idx_safety_alerts_family_id ON safety_alerts(family_id);
-CREATE INDEX IF NOT EXISTS idx_safety_alerts_status ON safety_alerts(status);
-CREATE INDEX IF NOT EXISTS idx_files_uploaded_by ON files(uploaded_by);
-CREATE INDEX IF NOT EXISTS idx_files_family_id ON files(family_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
 CREATE INDEX IF NOT EXISTS idx_emotion_records_user_id ON emotion_records(user_id);
 CREATE INDEX IF NOT EXISTS idx_emotion_records_recorded_at ON emotion_records(recorded_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_emotion_records_user_date ON emotion_records (user_id, (recorded_at::DATE));
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -251,7 +235,7 @@ $$ language 'plpgsql';
 
 -- Add updated_at triggers
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_families_updated_at BEFORE UPDATE ON families FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_circles_updated_at BEFORE UPDATE ON circles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_geofences_updated_at BEFORE UPDATE ON geofences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_safety_alerts_updated_at BEFORE UPDATE ON safety_alerts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -267,7 +251,7 @@ DROP TRIGGER IF EXISTS update_files_updated_at ON files;
 DROP TRIGGER IF EXISTS update_safety_alerts_updated_at ON safety_alerts;
 DROP TRIGGER IF EXISTS update_geofences_updated_at ON geofences;
 DROP TRIGGER IF EXISTS update_user_preferences_updated_at ON user_preferences;
-DROP TRIGGER IF EXISTS update_families_updated_at ON families;
+DROP TRIGGER IF EXISTS update_circles_updated_at ON circles;
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 
 DROP FUNCTION IF EXISTS update_updated_at_column();
@@ -285,6 +269,6 @@ DROP TABLE IF EXISTS messages CASCADE;
 DROP TABLE IF EXISTS refresh_tokens CASCADE;
 DROP TABLE IF EXISTS user_preferences CASCADE;
 DROP TABLE IF EXISTS family_invitations CASCADE;
-DROP TABLE IF EXISTS family_members CASCADE;
-DROP TABLE IF EXISTS families CASCADE;
+DROP TABLE IF EXISTS circle_members CASCADE;
+DROP TABLE IF EXISTS circles CASCADE;
 DROP TABLE IF EXISTS users CASCADE;

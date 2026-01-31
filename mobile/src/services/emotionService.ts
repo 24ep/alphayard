@@ -9,7 +9,7 @@ export interface EmotionRecord {
   created_at?: string;
 }
 
-export interface FamilyEmotionAverage {
+export interface CircleEmotionAverage {
   date: string;
   average_emotion: number;
   total_records: number;
@@ -79,17 +79,17 @@ class EmotionService {
   }
 
   /**
-   * Get hourse's emotion averages for the last 30 days
+   * Get Circle's emotion averages for the last 30 days
    */
-  async getFamilyEmotionAverages(days: number = 30): Promise<FamilyEmotionAverage[]> {
+  async getCircleEmotionAverages(days: number = 30): Promise<CircleEmotionAverage[]> {
     try {
-      const response = await api.get('/emotions/hourse-averages', {
+      const response = await api.get('/emotions/Circle-averages', {
         params: { days }
       });
 
       return response.data.averages || [];
     } catch (error) {
-      console.error('Error fetching hourse emotion averages:', error);
+      console.error('Error fetching Circle emotion averages:', error);
       throw error;
     }
   }
@@ -124,3 +124,4 @@ class EmotionService {
 }
 
 export const emotionService = new EmotionService();
+

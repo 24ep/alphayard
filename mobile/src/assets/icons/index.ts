@@ -7,7 +7,7 @@ export const ICONS = {
   APPLICATIONS: 'apps',
   PROFILE: 'person',
   SETTINGS: 'settings',
-  hourse: 'family',
+  Circle: 'circle',
   SAFETY: 'shield',
   CHAT: 'chat',
 
@@ -46,8 +46,8 @@ export const ICONS = {
   KEY: 'vpn-key',
   SHIELD: 'shield',
 
-  // hourse
-  FAMILY_MEMBER: 'person',
+  // Circle
+  CIRCLE_MEMBER: 'person',
   INVITE: 'person-add',
   JOIN: 'group-add',
   LEAVE: 'exit-to-app',
@@ -307,3 +307,4 @@ export const ICONS = {
   TRADEMARK: 'trademark',
   REGISTERED: 'registered',
 }; 
+

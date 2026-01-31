@@ -99,7 +99,7 @@ export const validatePhotoData = (photoData: Partial<Photo>): boolean => {
     photoData.size &&
     photoData.width &&
     photoData.height &&
-    photoData.familyId &&
+    photoData.circleId &&
     photoData.uploadedBy
   );
 };
@@ -107,7 +107,7 @@ export const validatePhotoData = (photoData: Partial<Photo>): boolean => {
 export const validateAlbumData = (albumData: Partial<Album>): boolean => {
   return !!(
     albumData.name &&
-    albumData.familyId &&
+    albumData.circleId &&
     albumData.createdBy
   );
 };

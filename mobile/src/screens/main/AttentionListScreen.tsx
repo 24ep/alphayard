@@ -46,7 +46,7 @@ const AttentionListScreen: React.FC = () => {
   const attentionItems: AttentionItem[] = [
     {
       id: '1',
-      name: 'hourse Emergency',
+      name: 'Circle Emergency',
       type: 'Emergency',
       priority: 'high',
       status: 'active',
@@ -126,7 +126,7 @@ const AttentionListScreen: React.FC = () => {
     {
       id: '1',
       title: 'New Message',
-      message: 'Sarah sent you a message in hourse Chat',
+      message: 'Sarah sent you a message in Circle Chat',
       type: 'info',
       timestamp: '2 minutes ago',
       isRead: false,
@@ -156,7 +156,7 @@ const AttentionListScreen: React.FC = () => {
     {
       id: '4',
       title: 'Connection Lost',
-      message: 'Lost connection to hourse tracking service',
+      message: 'Lost connection to Circle tracking service',
       type: 'error',
       timestamp: '5 hours ago',
       isRead: true,

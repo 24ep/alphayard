@@ -340,7 +340,7 @@ const LanguageSettings: React.FC<LanguageSettingsProps> = ({
                   {t('auth.welcomeSubtitle')}
                 </Text>
                 <Text style={textStyles.caption} color={colors.gray[600]}>
-                  {t('navigation.home')} • {t('navigation.hourse')} • {t('navigation.settings')}
+                  {t('navigation.home')} • {t('navigation.Circle')} • {t('navigation.settings')}
                 </Text>
               </Box>
               

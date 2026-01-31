@@ -6,7 +6,7 @@ import { Button } from '@/components/ui'
 import { apiClient } from '@/lib/api/client'
 import { API_ENDPOINTS } from '@/lib/config/api'
 
-interface Family {
+interface Circle {
     id: string
     name: string
 }
@@ -15,13 +15,13 @@ interface PostModalProps {
     isOpen: boolean
     onClose: () => void
     onSuccess?: () => void // renamed from onPostCreated
-    postToEdit?: { id: string, content: string, familyId?: string } | null
+    postToEdit?: { id: string, content: string, CircleId?: string } | null
 }
 
 export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalProps) {
     const [content, setContent] = useState('')
-    const [families, setFamilies] = useState<Family[]>([])
-    const [selectedFamilyId, setSelectedFamilyId] = useState('')
+    const [families, setFamilies] = useState<Circle[]>([])
+    const [selectedCircleId, setSelectedCircleId] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [loadingFamilies, setLoadingFamilies] = useState(false)
 
@@ -31,8 +31,8 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
         if (isOpen) {
             if (isEditing && postToEdit) {
                 setContent(postToEdit.content)
-                // Set family if possible, or ignore (editing content usually doesn't change family)
-                if (postToEdit.familyId) setSelectedFamilyId(postToEdit.familyId)
+                // Set Circle if possible, or ignore (editing content usually doesn't change Circle)
+                if (postToEdit.CircleId) setSelectedCircleId(postToEdit.CircleId)
             } else {
                 setContent('')
                 // fetch families if creating
@@ -47,8 +47,8 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
             const response = await apiClient.get(API_ENDPOINTS.SOCIAL.FAMILIES)
             const familiesData = response.data || []
             setFamilies(familiesData)
-            if (familiesData.length > 0 && !selectedFamilyId) {
-                setSelectedFamilyId(familiesData[0].id)
+            if (familiesData.length > 0 && !selectedCircleId) {
+                setSelectedCircleId(familiesData[0].id)
             }
         } catch (error) {
             console.error('Failed to fetch families:', error)
@@ -59,7 +59,7 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
 
     const handleSubmit = async () => {
         if (!content.trim()) return
-        if (!isEditing && !selectedFamilyId) return
+        if (!isEditing && !selectedCircleId) return
 
         setIsSubmitting(true)
         try {
@@ -71,7 +71,7 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
             } else {
                 await apiClient.post(API_ENDPOINTS.SOCIAL.POSTS, {
                     content,
-                    family_id: selectedFamilyId,
+                    Circle_id: selectedCircleId,
                     type: 'text'
                 })
             }
@@ -96,17 +96,17 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
                 {!isEditing && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Family
+                            Circle
                         </label>
                         {loadingFamilies ? (
                             <div className="h-10 bg-gray-100 rounded animate-pulse" />
                         ) : (
                             <select
-                                value={selectedFamilyId}
-                                onChange={(e) => setSelectedFamilyId(e.target.value)}
+                                value={selectedCircleId}
+                                onChange={(e) => setSelectedCircleId(e.target.value)}
                                 className="w-full rounded-md border border-gray-300 p-2 focus:border-macos-blue-500 focus:outline-none"
                             >
-                                <option value="" disabled>Select a family</option>
+                                <option value="" disabled>Select a Circle</option>
                                 {families.map((f) => (
                                     <option key={f.id} value={f.id}>{f.name}</option>
                                 ))}
@@ -132,7 +132,7 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
                     <Button
                         variant="primary"
                         onClick={handleSubmit}
-                        disabled={isSubmitting || !content.trim() || (!isEditing && !selectedFamilyId)}
+                        disabled={isSubmitting || !content.trim() || (!isEditing && !selectedCircleId)}
                     >
                         {isSubmitting ? (isEditing ? 'Saving...' : 'Posting...') : (isEditing ? 'Save' : 'Post')}
                     </Button>
@@ -141,3 +141,4 @@ export function PostModal({ isOpen, onClose, onSuccess, postToEdit }: PostModalP
         </Modal>
     )
 }
+

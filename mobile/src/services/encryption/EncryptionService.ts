@@ -1,7 +1,5 @@
-import Crypto from 'react-native-crypto-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import * as Keychain from 'react-native-keychain';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface EncryptionConfig {
   algorithm: string;
@@ -49,7 +47,22 @@ export class EncryptionService {
   // Initialize master key
   private async initializeMasterKey(): Promise<void> {
     try {
+      if (Platform.OS === 'web') {
+        // Web fallback - iterate from simple usage (insecure but functional for dev)
+        // Check if master key is in memory or local storage if needed
+        let storedKey = await AsyncStorage.getItem('bondarys_master_key');
+        if (storedKey) {
+            this.masterKey = storedKey;
+        } else {
+            this.masterKey = this.generateMasterKey();
+            await AsyncStorage.setItem('bondarys_master_key', this.masterKey);
+        }
+        return;
+      }
+
+      
       // Try to get existing master key from keychain
+      const Keychain = require('react-native-keychain');
       const credentials = await Keychain.getGenericPassword('bondarys_master_key');
       
       if (credentials) {
@@ -87,6 +100,7 @@ export class EncryptionService {
   // Encrypt data
   async encrypt(data: string, key?: string): Promise<EncryptedData> {
     try {
+      const Crypto = require('react-native-crypto-js');
       const encryptionKey = key || this.masterKey;
       if (!encryptionKey) {
         throw new Error('No encryption key available');
@@ -123,6 +137,7 @@ export class EncryptionService {
   // Decrypt data
   async decrypt(encryptedData: EncryptedData, key?: string): Promise<string> {
     try {
+      const Crypto = require('react-native-crypto-js');
       const encryptionKey = key || this.masterKey;
       if (!encryptionKey) {
         throw new Error('No encryption key available');
@@ -205,6 +220,7 @@ export class EncryptionService {
   // Hash data
   hash(data: string, algorithm: string = 'SHA256'): string {
     try {
+      const Crypto = require('react-native-crypto-js');
       return Crypto[algorithm](data).toString();
     } catch (error) {
       console.error('Hashing failed:', error);
@@ -298,6 +314,7 @@ export class EncryptionService {
   // Sign data
   async signData(data: string, privateKey: string): Promise<string> {
     try {
+      const Crypto = require('react-native-crypto-js');
       const signature = Crypto.HmacSHA256(data, privateKey).toString();
       return signature;
     } catch (error) {
@@ -309,6 +326,7 @@ export class EncryptionService {
   // Verify signature
   async verifySignature(data: string, signature: string, publicKey: string): Promise<boolean> {
     try {
+      const Crypto = require('react-native-crypto-js');
       const expectedSignature = Crypto.HmacSHA256(data, publicKey).toString();
       return signature === expectedSignature;
     } catch (error) {
@@ -335,6 +353,7 @@ export class EncryptionService {
 
       // Update master key
       this.masterKey = newKey;
+      const Keychain = require('react-native-keychain');
       await Keychain.setGenericPassword('bondarys_master_key', newKey);
     } catch (error) {
       console.error('Failed to change master key:', error);
@@ -353,6 +372,7 @@ export class EncryptionService {
       }
 
       // Remove master key from keychain
+      const Keychain = require('react-native-keychain');
       await Keychain.resetGenericPassword();
       this.masterKey = null;
     } catch (error) {

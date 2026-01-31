@@ -6,10 +6,10 @@ export interface TodoItem {
   description?: string | null;
   is_completed: boolean;
   position: number;
-  category: 'work' | 'personal' | 'family' | 'urgent';
+  category: 'work' | 'personal' | 'circle' | 'urgent';
   priority: 'low' | 'medium' | 'high';
   due_date?: string | null;
-  family_id: string;
+  circle_id: string;
   user_id: string;
   created_at: string;
   updated_at: string;
@@ -18,7 +18,7 @@ export interface TodoItem {
 export interface CreateTodoPayload {
   title: string;
   description?: string | null;
-  category?: 'work' | 'personal' | 'family' | 'urgent';
+  category?: 'work' | 'personal' | 'circle' | 'urgent';
   priority?: 'low' | 'medium' | 'high';
   due_date?: string | null;
 }
@@ -27,7 +27,7 @@ export interface UpdateTodoPayload {
   title?: string;
   description?: string | null;
   is_completed?: boolean;
-  category?: 'work' | 'personal' | 'family' | 'urgent';
+  category?: 'work' | 'personal' | 'circle' | 'urgent';
   priority?: 'low' | 'medium' | 'high';
   due_date?: string | null;
 }
@@ -54,3 +54,4 @@ export const todosApi = {
     return res.data;
   },
 };
+

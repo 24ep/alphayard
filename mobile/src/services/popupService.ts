@@ -12,7 +12,7 @@ export interface PopupContent {
   priority: 'low' | 'medium' | 'high' | 'critical';
   startDate: Date;
   endDate: Date;
-  targetAudience: 'all' | 'premium' | 'hourse' | 'children' | 'seniors';
+  targetAudience: 'all' | 'premium' | 'Circle' | 'children' | 'seniors';
   isActive: boolean;
   showCount: number;
   maxShows: number;

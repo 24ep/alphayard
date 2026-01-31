@@ -559,7 +559,7 @@ export const productionContentPreviewStyles = `
 }
 
 .preview-content {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-Circle: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.6;
   color: #374151;
 }
@@ -631,7 +631,7 @@ export const productionContentPreviewStyles = `
   background: #f3f4f6;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
+  font-Circle: 'Courier New', monospace;
   font-size: 0.875rem;
 }
 
@@ -680,3 +680,4 @@ export const productionContentPreviewStyles = `
   }
 }
 `
+

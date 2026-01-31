@@ -4,8 +4,8 @@ import { useState } from 'react'
 
 export function SettingsModule() {
   const [settings, setSettings] = useState({
-    siteName: 'Bondarys Family',
-    siteDescription: 'Our family content management system',
+    siteName: 'Appkit Platform',
+    siteDescription: 'Our Appkit platform',
     allowComments: true,
     requireApproval: false,
     emailNotifications: true,
@@ -150,3 +150,4 @@ export function SettingsModule() {
     </div>
   )
 }
+

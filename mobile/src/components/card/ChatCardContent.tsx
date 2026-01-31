@@ -18,10 +18,10 @@ interface ChatMember {
 }
 
 interface ChatCardContentProps {
-  familyMembers?: any[];
+  circleMembers?: any[];
 }
 
-type ChatCategory = 'family' | 'workplace' | 'hometown' | 'commercial' | 'other';
+type ChatCategory = 'circle' | 'workplace' | 'hometown' | 'commercial' | 'other';
 
 const getMoodIconParams = (mood?: string) => {
   switch (mood) {
@@ -58,8 +58,8 @@ const MoodAvatar: React.FC<{ member: ChatMember; index: number }> = ({ member, i
   const avatarBgColor = `hsl(${(index * 137.5) % 360}, 70%, 60%)`;
 
   return (
-    <View style={homeStyles.familyStatusAvatarContainer}>
-      <View style={[homeStyles.familyStatusAvatar, { backgroundColor: member.isGroup ? '#FFB6C1' : avatarBgColor, overflow: 'hidden' }]}>
+    <View style={homeStyles.circleStatusAvatarContainer}>
+      <View style={[homeStyles.circleStatusAvatar, { backgroundColor: member.isGroup ? '#FFB6C1' : avatarBgColor, overflow: 'hidden' }]}>
         {/* Avatar Layer */}
         <Animated.View style={{
           position: 'absolute',
@@ -73,7 +73,7 @@ const MoodAvatar: React.FC<{ member: ChatMember; index: number }> = ({ member, i
             member.avatar?.startsWith('http') ? (
               <Image source={{ uri: member.avatar }} style={{ width: '100%', height: '100%' }} />
             ) : (
-              <Text style={homeStyles.familyStatusAvatarText}>
+              <Text style={homeStyles.circleStatusAvatarText}>
                 {member.name.charAt(0)}
               </Text>
             )
@@ -97,7 +97,7 @@ const MoodAvatar: React.FC<{ member: ChatMember; index: number }> = ({ member, i
       {/* Online/Status Indicator */}
       {!member.isGroup && (
         <View style={[
-          homeStyles.familyStatusIndicator,
+          homeStyles.circleStatusIndicator,
           { backgroundColor: member.isOnline ? '#10B981' : '#6B7280' }
         ]} />
       )}
@@ -105,9 +105,9 @@ const MoodAvatar: React.FC<{ member: ChatMember; index: number }> = ({ member, i
   );
 };
 
-export const ChatCardContent: React.FC<ChatCardContentProps> = ({ familyMembers = [] }) => {
+export const ChatCardContent: React.FC<ChatCardContentProps> = ({ circleMembers = [] }) => {
   const [selectedChat, setSelectedChat] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<ChatCategory>('family');
+  const [activeCategory, setActiveCategory] = useState<ChatCategory>('circle');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -115,23 +115,23 @@ export const ChatCardContent: React.FC<ChatCardContentProps> = ({ familyMembers 
   const generateChatList = (): ChatMember[] => {
     const chatList: ChatMember[] = [];
 
-    if (familyMembers.length > 1) {
+    if (circleMembers.length > 1) {
       chatList.push({
-        id: 'family-group',
-        name: 'Family Group',
+        id: 'circle-group',
+        name: 'Circle Group',
         avatar: '',
         lastMessage: 'No recent messages',
         lastMessageTime: '',
         unreadCount: 0,
-        isOnline: familyMembers.some(member => member.status === 'online'),
+        isOnline: circleMembers.some(member => member.status === 'online'),
         isGroup: true,
       });
     }
 
-    familyMembers.forEach((member) => {
+    circleMembers.forEach((member) => {
       chatList.push({
         id: member.id || `member-${member.name}`,
-        name: member.name || 'Family Member',
+        name: member.name || 'Circle Member',
         avatar: member.avatar || '',
         lastMessage: member.status === 'online' ? 'Active now' : 'Seen recently',
         lastMessageTime: '2m',
@@ -171,7 +171,7 @@ export const ChatCardContent: React.FC<ChatCardContentProps> = ({ familyMembers 
     <View style={styles.container}>
       <SegmentedTabs
         tabs={[
-          { id: 'family', label: 'Family', icon: 'home' },
+          { id: 'circle', label: 'Circle', icon: 'home' },
           { id: 'workplace', label: 'Work', icon: 'briefcase' },
           { id: 'hometown', label: 'BFFs', icon: 'heart' },
         ]}
@@ -198,24 +198,24 @@ export const ChatCardContent: React.FC<ChatCardContentProps> = ({ familyMembers 
               <TouchableOpacity
                 key={chat.id}
                 style={[
-                  homeStyles.familyStatusCard, // Use Home Screen Card Style
+                  homeStyles.circleStatusCard, // Use Home Screen Card Style
                   { marginBottom: 12 }, // Add margin
-                  selectedChat === chat.id && homeStyles.familyStatusCardExpanded
+                  selectedChat === chat.id && homeStyles.circleStatusCardExpanded
                 ]}
                 onPress={() => handleChatPress(chat)}
                 activeOpacity={0.9}
               >
                 <LinearGradient
                   colors={['transparent', 'transparent', 'transparent']} // consistent with home
-                  style={homeStyles.familyStatusCardGradient}
+                  style={homeStyles.circleStatusCardGradient}
                 >
-                  <View style={homeStyles.familyStatusCardHeader}>
+                  <View style={homeStyles.circleStatusCardHeader}>
                     {/* Replaced Avatar with MoodAvatar */}
                     <MoodAvatar member={chat} index={index} />
 
                     <View style={styles.chatInfo}>
                       <View style={styles.chatHeader}>
-                        <Text style={homeStyles.familyStatusName}>{chat.name}</Text>
+                        <Text style={homeStyles.circleStatusName}>{chat.name}</Text>
                         <Text style={styles.lastMessageTime}>{chat.lastMessageTime}</Text>
                       </View>
 
@@ -332,3 +332,4 @@ const styles = StyleSheet.create({
 
 
 export default ChatCardContent;
+

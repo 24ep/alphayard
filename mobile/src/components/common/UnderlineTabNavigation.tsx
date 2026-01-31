@@ -71,12 +71,12 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6B7280',
         fontWeight: '500',
-        fontFamily: theme.typography.fontFamily.medium,
+        fontCIRCLE: theme.typography.fontCIRCLE.medium,
     },
     activeTabText: {
         color: '#1F2937', // Darker active color
         fontWeight: '600',
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
     },
     activeIndicator: {
         position: 'absolute',
@@ -97,3 +97,4 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 2,
     },
 });
+

@@ -8,8 +8,10 @@
     "build": "tsc && shx cp -r src/routes/*.js dist/routes/ 2>/dev/null || true && shx cp -r src/middleware/*.js dist/middleware/ 2>/dev/null || true && shx cp -r src/services/*.js dist/services/ 2>/dev/null || true",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
-    "fix-types": "node fix-types.js",
-    "fix-all-types": "node fix-all-types.js"
+    "seed:app": "node scripts/seed-bondary-app.js",
+    "seed:screens": "ts-node src/scripts/seed-screens.ts",
+    "fix-types": "node scripts/legacy/fix-types.js",
+    "fix-all-types": "node scripts/legacy/fix-all-types.js"
   },
   "keywords": [],
   "author": "",
@@ -17,10 +19,12 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.962.0",
     "@aws-sdk/s3-request-presigner": "^3.962.0",
+    "@modelcontextprotocol/sdk": "^1.25.3",
+    "@bondarys/shared": "*",
     "@sentry/node": "^10.28.0",
     "@socket.io/redis-adapter": "^8.3.0",
-    "@supabase/supabase-js": "^2.39.3",
     "@types/node-cron": "^3.0.11",
+    "array-flatten": "^1.1.1",
     "aws-sdk": "^2.1693.0",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
@@ -46,7 +50,7 @@
     "uuid": "^13.0.0",
     "winston": "^3.18.3",
     "xlsx": "^0.18.5",
-    "zod": "^3.22.4"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

@@ -1,0 +1,142 @@
+
+import { pool } from '../config/database';
+import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcryptjs';
+
+async function seedJaroonwit() {
+  console.log('🌱 Seeding Jaroonwit User Data...');
+
+  try {
+    const email = 'jaroonwit.pool@gmail.com';
+    const firstName = 'Jaroonwit';
+    const lastName = 'Pool';
+    
+    // 1. Check or Create User
+    let userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    let userId;
+
+    if (userRes.rows.length === 0) {
+      console.log('Creating new user...');
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      userRes = await pool.query(`
+        INSERT INTO users (
+            id, email, password_hash, first_name, last_name, 
+            user_type, is_active, is_email_verified, is_onboarding_complete
+        ) VALUES ($1, $2, $3, $4, $5, 'workplace', true, true, true)
+        RETURNING id
+      `, [uuidv4(), email, hashedPassword, firstName, lastName]);
+      userId = userRes.rows[0].id;
+    } else {
+      console.log('User already exists, updating type...');
+      userId = userRes.rows[0].id;
+      // Ensure type is workplace
+      await pool.query("UPDATE users SET user_type = 'workplace' WHERE id = $1", [userId]);
+    }
+
+    console.log(`User ID: ${userId}`);
+
+    // 2. Create/Get circle (Workplace context, but using circle table for grouping)
+    // We'll create a "Workplace" circle for him
+    let circleRes = await pool.query("SELECT * FROM families WHERE name = 'Jaroonwit Workplace'");
+    let circleId;
+
+    if (circleRes.rows.length === 0) {
+        console.log('Creating workplace group...');
+        circleRes = await pool.query(
+            "INSERT INTO families (id, name, type) VALUES ($1, $2, 'workplace') RETURNING id",
+            [uuidv4(), 'Jaroonwit Workplace']
+        );
+        circleId = circleRes.rows[0].id;
+    } else {
+        circleId = circleRes.rows[0].id;
+    }
+
+    // Link user to circle
+    await pool.query(
+        "INSERT INTO circle_members (circle_id, user_id, role) VALUES ($1, $2, 'admin') ON CONFLICT DO NOTHING",
+        [circleId, userId]
+    );
+
+    // 3. Create Chats
+    // a. Workplace Chat
+    const workplaceChatName = 'Office General';
+    let chatRes = await pool.query(
+        "SELECT * FROM chat_rooms WHERE circle_id = $1 AND name = $2",
+        [circleId, workplaceChatName]
+    );
+    
+    if (chatRes.rows.length === 0) {
+        console.log('Creating Workplace Chat...');
+        await pool.query(
+            "INSERT INTO chat_rooms (circle_id, name, type) VALUES ($1, $2, 'workplace')",
+            [circleId, workplaceChatName]
+        );
+    }
+
+    // b. Friend Chat (Need another user)
+    // Let's ensure a friend exists, e.g., 'Friend User'
+    const friendEmail = 'friend@example.com';
+    let friendRes = await pool.query('SELECT * FROM users WHERE email = $1', [friendEmail]);
+    let friendId;
+    
+    if (friendRes.rows.length === 0) {
+        const friendPass = await bcrypt.hash('password123', 10);
+        friendRes = await pool.query(`
+            INSERT INTO users (id, email, password_hash, first_name, last_name, user_type, is_active)
+            VALUES ($1, $2, $3, 'Friend', 'One', 'circle', true)
+            RETURNING id
+        `, [uuidv4(), friendEmail, friendPass]);
+        friendId = friendRes.rows[0].id;
+    } else {
+        friendId = friendRes.rows[0].id;
+    }
+
+    // Create Individual Chat (Friend)
+    // For individual chats, we might not reference circle_id or use a special one, 
+    // but schema usually requires it. We'll use the user's main circle or a shared one.
+    // Assuming 'individual' type chats might be loosely coupled or just use the initiator's circle.
+    
+    const friendChatName = 'Friend One';
+    let friendChatRes = await pool.query(
+        "SELECT * FROM chat_rooms WHERE (type = 'individual' OR type = 'friend') AND name = $1 AND circle_id = $2",
+        [friendChatName, circleId]
+    );
+
+    if (friendChatRes.rows.length === 0) {
+        console.log('Creating Friend Chat...');
+        const newChat = await pool.query(
+            "INSERT INTO chat_rooms (circle_id, name, type) VALUES ($1, $2, 'friend') RETURNING id",
+            [circleId, friendChatName]
+        );
+        const chatId = newChat.rows[0].id;
+
+        // Add both as participants (if participants table exists, otherwise logic is implied by circle)
+        // Check for chat_participants table
+        try {
+             await pool.query(
+                "INSERT INTO chat_participants (room_id, user_id) VALUES ($1, $2), ($1, $3)",
+                [chatId, userId, friendId]
+             );
+        } catch (e) {
+            console.log('chat_participants table might not exist or error adding participants:', e.message);
+        }
+        
+        // Seed a message
+        await pool.query(
+            "INSERT INTO chat_messages (room_id, sender_id, content, type) VALUES ($1, $2, 'Hey, long time no see!', 'text')",
+            [chatId, friendId]
+        );
+    }
+
+    console.log('✅ Seeding Complete for Jaroonwit.');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Seeding failed:', err);
+    process.exit(1);
+  } finally {
+      await pool.end();
+  }
+}
+
+seedJaroonwit();
+

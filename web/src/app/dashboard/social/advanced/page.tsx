@@ -53,7 +53,7 @@ export default function AdvancedSocialPage() {
                   <UserGroupIcon className="w-6 h-6 text-macos-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Family Planning Committee</h3>
+                  <h3 className="font-semibold text-gray-900">Circle Planning Committee</h3>
                   <p className="text-sm text-gray-600 mt-1">12 members • Private group</p>
                 </div>
                 <Button variant="outline" size="sm">Join</Button>
@@ -70,7 +70,7 @@ export default function AdvancedSocialPage() {
                   <CalendarIcon className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Summer Family Reunion 2024</h3>
+                  <h3 className="font-semibold text-gray-900">Summer Circle Reunion 2024</h3>
                   <p className="text-sm text-gray-600 mt-1">July 15-17, 2024 • 24 attendees</p>
                 </div>
                 <div className="text-right">
@@ -89,7 +89,7 @@ export default function AdvancedSocialPage() {
                   <ChatBubbleLeftRightIcon className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Family Recipes Discussion</h3>
+                  <h3 className="font-semibold text-gray-900">Circle Recipes Discussion</h3>
                   <p className="text-sm text-gray-600 mt-1">45 topics • 128 replies</p>
                 </div>
                 <Button variant="outline" size="sm">View</Button>
@@ -184,7 +184,7 @@ export default function AdvancedSocialPage() {
             </div>
             <div className="p-3 bg-gray-50 rounded-macos">
               <p className="text-sm text-gray-700">
-                <span className="font-medium">Jane Smith</span> joined Family Planning Committee
+                <span className="font-medium">Jane Smith</span> joined Circle Planning Committee
               </p>
               <p className="text-xs text-gray-500 mt-1">5 hours ago</p>
             </div>
@@ -194,4 +194,5 @@ export default function AdvancedSocialPage() {
     </div>
   )
 }
+
 

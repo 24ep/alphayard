@@ -1,4 +1,4 @@
-const supabaseService = require('../services/supabaseService');
+const { pool } = require('../config/database');
 const winston = require('winston');
 
 // Configure logger
@@ -18,66 +18,37 @@ async function runHealthCheck() {
   try {
     console.log('🔍 Running database health check...\n');
 
-    // Initialize Supabase service
-    await supabaseService.initialize();
-
-    // Get health status
-    const healthStatus = await supabaseService.getHealthStatus();
+    const start = Date.now();
+    await pool.query('SELECT 1');
+    const responseTime = Date.now() - start;
     
     console.log('📊 Health Status:');
-    console.log(`   Healthy: ${healthStatus.healthy ? '✅ Yes' : '❌ No'}`);
-    console.log(`   Response Time: ${healthStatus.responseTime}ms`);
-    console.log(`   Connection Retries: ${healthStatus.connectionRetries}`);
-    console.log(`   Timestamp: ${healthStatus.timestamp}`);
-
-    if (!healthStatus.healthy) {
-      console.log(`   Error: ${healthStatus.error}`);
-      process.exit(1);
-    }
+    console.log(`   Healthy: ✅ Yes`);
+    console.log(`   Response Time: ${responseTime}ms`);
+    console.log(`   Timestamp: ${new Date().toISOString()}`);
 
     // Test basic operations
     console.log('\n🧪 Testing basic operations...');
     
     // Test user table access
     try {
-      const { data: userTest, error: userError } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('users')
-          .select('count')
-          .limit(1);
-      });
-      
-      if (userError) throw userError;
+      const { rowCount } = await pool.query('SELECT 1 FROM users LIMIT 1');
       console.log('   ✅ User table access: OK');
     } catch (error) {
       console.log(`   ❌ User table access: FAILED - ${error.message}`);
     }
 
-    // Test hourse table access
+    // Test circle table access
     try {
-      const { data: familyTest, error: familyError } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('families')
-          .select('count')
-          .limit(1);
-      });
-      
-      if (familyError) throw familyError;
-      console.log('   ✅ hourse table access: OK');
+      const { rowCount } = await pool.query('SELECT 1 FROM circles LIMIT 1');
+      console.log('   ✅ circle table access: OK');
     } catch (error) {
-      console.log(`   ❌ hourse table access: FAILED - ${error.message}`);
+      console.log(`   ❌ circle table access: FAILED - ${error.message}`);
     }
 
     // Test location table access
     try {
-      const { data: locationTest, error: locationError } = await supabaseService.executeQuery(async (client) => {
-        return await client
-          .from('user_locations')
-          .select('count')
-          .limit(1);
-      });
-      
-      if (locationError) throw locationError;
+      const { rowCount } = await pool.query('SELECT 1 FROM user_locations LIMIT 1');
       console.log('   ✅ Location table access: OK');
     } catch (error) {
       console.log(`   ❌ Location table access: FAILED - ${error.message}`);

@@ -19,10 +19,10 @@ const taskData = [
   { name: 'Pending', value: 10, color: '#ef4444' },
 ]
 
-const familyActivity = [
-  { name: 'Family A', events: 12, tasks: 8, posts: 15 },
-  { name: 'Family B', events: 8, tasks: 12, posts: 10 },
-  { name: 'Family C', events: 15, tasks: 6, posts: 18 },
+const CircleActivity = [
+  { name: 'Circle A', events: 12, tasks: 8, posts: 15 },
+  { name: 'Circle B', events: 8, tasks: 12, posts: 10 },
+  { name: 'Circle C', events: 15, tasks: 6, posts: 18 },
 ]
 
 export default function AnalyticsPage() {
@@ -38,7 +38,7 @@ export default function AnalyticsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600 mt-1">Family insights and engagement metrics</p>
+          <p className="text-gray-600 mt-1">Circle insights and engagement metrics</p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -146,9 +146,9 @@ export default function AnalyticsPage() {
       </div>
 
       <Card>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Family Activity Comparison</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Circle Activity Comparison</h2>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={familyActivity}>
+          <BarChart data={CircleActivity}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
             <YAxis />
@@ -163,4 +163,5 @@ export default function AnalyticsPage() {
     </div>
   )
 }
+
 

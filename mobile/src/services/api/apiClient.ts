@@ -2,6 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 import { config } from '../../config/environment';
+import { isDev } from '../../utils/isDev';
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -33,7 +34,7 @@ class ApiClient {
 
   constructor() {
     // Backend runs on port 4000 to avoid conflicts
-    // Android emulator uses 10.0.2.2 to access localhost of the host machine
+    // Android emulator uses localhost to access localhost of the host machine
     console.log('[API] Initializing ApiClient...');
 
     console.log('[API] Initializing ApiClient...');
@@ -49,7 +50,7 @@ class ApiClient {
     // The previous hardcoded values had /api/v1. config.apiUrl has /api/v1.
 
     if (Platform.OS === 'android' && this.baseURL.includes('localhost')) {
-      // Special case for Android Emulator to map localhost to 10.0.2.2
+      // Special case for Android Emulator to map localhost to host machine
       this.baseURL = this.baseURL.replace('localhost', '10.0.2.2');
     }
 
@@ -116,7 +117,9 @@ class ApiClient {
           ));
 
         if (status === 401 && !originalRequest._retry && !isAuthEndpoint && !isExpectedError) {
+          console.log(`[API] 🔐 401 Detected on ${originalRequest?.url}. Attempting token refresh...`);
           if (this.isRefreshing) {
+            console.log('[API] Refresh already in progress, queuing request');
             return new Promise((resolve, reject) => {
               this.failedQueue.push({ resolve, reject });
             }).then(() => {
@@ -132,10 +135,13 @@ class ApiClient {
           try {
             const refreshToken = await this.getRefreshToken();
             if (refreshToken) {
+              console.log('[API] Found refresh token. Posting to /auth/refresh...');
               const response = await this.refreshAccessToken(refreshToken);
+              console.log('[API] Refresh successful, updating token');
               await this.setAccessToken(response.data.accessToken);
 
               // Retry failed requests
+              console.log(`[API] Retrying ${this.failedQueue.length} queued requests`);
               this.failedQueue.forEach(({ resolve }) => {
                 resolve();
               });
@@ -144,12 +150,14 @@ class ApiClient {
               return this.instance(originalRequest);
             } else {
               // No refresh token, redirect to login
-              await this.handleLogout();
+              console.warn(`[API] ⚠️ No refresh token found during 401 on ${originalRequest?.url}. Logging out.`);
+              await this.handleLogout(originalRequest?.url);
               return Promise.reject(error);
             }
-          } catch (refreshError) {
+          } catch (refreshError: any) {
             // Refresh token failed, redirect to login
-            await this.handleLogout();
+            console.error(`[API] ❌ Refresh token failed for ${originalRequest?.url}:`, refreshError?.message);
+            await this.handleLogout(originalRequest?.url);
             return Promise.reject(refreshError);
           } finally {
             this.isRefreshing = false;
@@ -169,19 +177,9 @@ class ApiClient {
   private async getAccessToken(): Promise<string | null> {
     try {
       const token = await AsyncStorage.getItem('accessToken');
-      // DEV BYPASS: If no token stored and in development, use mock token
-      if (!token && __DEV__) {
-        console.log('[API] DEV: No token found, using mock-access-token');
-        return 'mock-access-token';
-      }
       return token;
     } catch (error) {
       console.error('Error getting access token:', error);
-      // DEV BYPASS: Return mock token on error in development
-      if (__DEV__) {
-        console.log('[API] DEV: Error getting token, using mock-access-token');
-        return 'mock-access-token';
-      }
       return null;
     }
   }
@@ -190,7 +188,7 @@ class ApiClient {
     try {
       const token = await AsyncStorage.getItem('refreshToken');
       // DEV BYPASS: If no token stored and in development, use mock token
-      if (!token && __DEV__) {
+      if (!token && isDev) {
         console.log('[API] DEV: No refresh token found, using mock-refresh-token');
         return 'mock-refresh-token';
       }
@@ -198,7 +196,7 @@ class ApiClient {
     } catch (error) {
       console.error('Error getting refresh token:', error);
       // DEV BYPASS: Return mock token on error in development
-      if (__DEV__) {
+      if (isDev) {
         return 'mock-refresh-token';
       }
       return null;
@@ -225,9 +223,14 @@ class ApiClient {
     }
   }
 
-  private async handleLogout(): Promise<void> {
+  public async handleLogout(triggerUrl?: string): Promise<void> {
     try {
-      console.log('[API] 🛑 Unauthorized access detected - triggering logout');
+      if (triggerUrl) {
+        console.log(`[API] 🛑 Unauthorized access detected on ${triggerUrl} - triggering logout`);
+      } else {
+        console.log('[API] 🛑 Unauthorized access detected - triggering logout');
+      }
+      
       await AsyncStorage.multiRemove(['accessToken', 'refreshToken', 'user']);
 
       if (this.logoutCallback) {
@@ -312,16 +315,18 @@ class ApiClient {
             message: data?.message || 'An unknown error occurred',
           };
       }
-    } else if (error.request) {
+    } else if (error.request || error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('Network Error')) {
       // Network error
       return {
         code: 'NETWORK_ERROR',
-        message: 'Network connection failed',
+        message: error.message?.includes('timeout') || error.code === 'ECONNABORTED' 
+          ? 'Connection timed out. Please check your internet or firewall settings.' 
+          : 'Network connection failed. Please check your internet.'
       };
     } else {
       // Other error
       return {
-        code: 'UNKNOWN_ERROR',
+        code: error.code || 'UNKNOWN_ERROR',
         message: error.message || 'An unknown error occurred',
       };
     }

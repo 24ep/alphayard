@@ -22,7 +22,7 @@ interface SEOMetadataProps {
 }
 
 export const SEOMetadata: React.FC<SEOMetadataProps> = ({
-  title = 'Dynamic Content Management - Bondarys',
+  title = 'Dynamic Content Management - Appkit',
   description = 'Create and manage dynamic content with our powerful drag-and-drop editor. Build marketing pages, news articles, and interactive content.',
   keywords = ['content management', 'CMS', 'drag and drop', 'dynamic content', 'marketing', 'editor'],
   ogImage = '/images/og-content-management.jpg',
@@ -31,14 +31,14 @@ export const SEOMetadata: React.FC<SEOMetadataProps> = ({
   twitterCard = 'summary_large_image',
   canonicalUrl,
   robots = 'index,follow',
-  author = 'Bondarys Team',
+  author = 'Appkit Team',
   publishedTime,
   modifiedTime,
   section = 'Content Management',
   tags = [],
   noindex = false
 }) => {
-  const fullTitle = title.includes('Bondarys') ? title : `${title} | Bondarys`
+  const fullTitle = title.includes('Appkit') ? title : `${title} | Appkit`
   const finalOgTitle = ogTitle || fullTitle
   const finalOgDescription = ogDescription || description
   const finalRobots = noindex ? 'noindex,nofollow' : robots
@@ -60,7 +60,7 @@ export const SEOMetadata: React.FC<SEOMetadataProps> = ({
       <meta property="og:title" content={finalOgTitle} />
       <meta property="og:description" content={finalOgDescription} />
       <meta property="og:image" content={ogImage} />
-      <meta property="og:site_name" content="Bondarys" />
+      <meta property="og:site_name" content="Appkit" />
       {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
       
       {/* Twitter Card Meta Tags */}
@@ -174,7 +174,7 @@ interface ContentSEOMetadataProps {
 
 export const ContentSEOMetadata: React.FC<ContentSEOMetadataProps> = ({
   content,
-  baseUrl = 'https://bondarys.com'
+  baseUrl = 'https://appkit.com'
 }) => {
   const isPublished = content.status === 'published'
   const contentUrl = `${baseUrl}/content/${content.slug}`
@@ -195,7 +195,7 @@ export const ContentSEOMetadata: React.FC<ContentSEOMetadataProps> = ({
   }
 
   const keywords = [
-    'bondarys',
+    'appkit',
     'content management',
     'dynamic content',
     ...getContentTypeKeywords(content.type)
@@ -205,7 +205,7 @@ export const ContentSEOMetadata: React.FC<ContentSEOMetadataProps> = ({
     <>
       <SEOMetadata
         title={content.title}
-        description={content.description || `Dynamic ${content.type} content created with Bondarys content management system.`}
+        description={content.description || `Dynamic ${content.type} content created with Appkit content management system.`}
         keywords={keywords}
         canonicalUrl={isPublished ? contentUrl : undefined}
         robots={isPublished ? 'index,follow' : 'noindex,nofollow'}
@@ -225,11 +225,11 @@ export const ContentSEOMetadata: React.FC<ContentSEOMetadataProps> = ({
           datePublished={content.createdAt}
           dateModified={content.updatedAt}
           author={{
-            name: 'Bondarys Team',
+            name: 'Appkit Team',
             url: baseUrl
           }}
           publisher={{
-            name: 'Bondarys',
+            name: 'Appkit',
             url: baseUrl
           }}
         />

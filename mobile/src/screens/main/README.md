@@ -9,9 +9,9 @@ mobile/src/screens/main/
 ├── HomeScreen.tsx              # Main HomeScreen component (refactored)
 ├── components/                 # Extracted components
 │   ├── index.ts               # Component exports
-│   ├── FamilyMember.tsx       # hourse member avatar component
+│   ├── CircleMember.tsx       # Circle member avatar component
 │   ├── SocialPost.tsx         # Social media post component
-│   └── FamilyStatusCard.tsx   # hourse status monitoring card
+│   └── CircleStatusCard.tsx   # Circle status monitoring card
 └── README.md                 # This file
 ```
 
@@ -25,7 +25,7 @@ mobile/src/
 ├── hooks/useHomeState.ts      # Main state management hook
 └── components/home/           # Home-specific components
     ├── HomeHeader.tsx
-    ├── FamilyMembers.tsx
+    ├── CircleMembers.tsx
     ├── HomeTabs.tsx
     ├── AssetCards.tsx
     └── AttentionApps.tsx
@@ -33,8 +33,8 @@ mobile/src/
 
 ## Components
 
-### FamilyMember
-- Renders individual hourse member avatars
+### CircleMember
+- Renders individual Circle member avatars
 - Handles composite avatars for groups
 - Manages notification badges
 - Handles navigation to chat screens
@@ -45,8 +45,8 @@ mobile/src/
 - Manages report functionality
 - Supports media content
 
-### FamilyStatusCard
-- Shows hourse member health and status information
+### CircleStatusCard
+- Shows Circle member health and status information
 - Displays heart rate charts
 - Shows location and battery status
 - Real-time status indicators
@@ -71,9 +71,9 @@ mobile/src/
 
 The refactored HomeScreen maintains the same API and functionality as the original, but with improved code organization. All existing features are preserved:
 
-- hourse member management
+- Circle member management
 - Social media posts
-- hourse status monitoring
+- Circle status monitoring
 - Customizable tabs and widgets
 - Modal interactions
 - Navigation handling
@@ -85,3 +85,4 @@ The refactored HomeScreen maintains the same API and functionality as the origin
 - No breaking changes to the component API
 - Styles are extracted but maintain the same structure
 - Code is now organized across multiple directories for better maintainability
+

@@ -33,8 +33,8 @@ import { useSocket } from '../../contexts/SocketContext';
 interface ChatScreenProps {
   route: {
     params: {
-      familyId: string;
-      familyName: string;
+      circleId: string;
+      circleName: string;
       participants: Array<{
         id: string;
         name: string;
@@ -60,7 +60,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
     off
   } = useSocket();
 
-  const { familyId, familyName, participants } = route.params;
+  const { circleId, circleName, participants } = route.params;
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -122,34 +122,34 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [familyId, isConnected, chat?.id, recording]);
+  }, [circleId, isConnected, chat?.id, recording]);
 
   const loadChatHistory = async () => {
     try {
       setIsLoading(true);
 
-      // First, get or create the hourse chat
+      // First, get or create the Circle chat
       const chatsResponse = await chatApi.getChats();
       if (chatsResponse.success) {
-        let familyChat = chatsResponse.chats.find(c => c.type === 'hourse');
+        let circleChat = chatsResponse.chats.find(c => c.type === 'Circle');
 
-        if (!familyChat) {
-          // Create hourse chat if it doesn't exist
+        if (!circleChat) {
+          // Create Circle chat if it doesn't exist
           const createResponse = await chatApi.createChat({
-            type: 'hourse',
-            name: `${familyName} hourse Chat`,
-            description: `hourse chat for ${familyName}`,
+            type: 'Circle',
+            name: `${circleName} Circle Chat`,
+            description: `Circle chat for ${circleName}`,
           });
           if (createResponse.success) {
-            familyChat = createResponse.chat;
+            circleChat = createResponse.chat;
           }
         }
 
-        if (familyChat) {
-          setChat(familyChat);
+        if (circleChat) {
+          setChat(circleChat);
 
           // Load messages for this chat
-          const messagesResponse = await chatApi.getMessages(familyChat.id, {
+          const messagesResponse = await chatApi.getMessages(circleChat.id, {
             limit: 50,
             offset: 0,
           });
@@ -945,7 +945,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
               style={styles.headerTitleContainer}
               onPress={onOpen}
             >
-              <Text style={styles.headerTitle} numberOfLines={1}>{familyName}</Text>
+              <Text style={styles.headerTitle} numberOfLines={1}>{circleName}</Text>
               <Text style={styles.headerSubtitle}>
                 {participants.length} members • {participants.filter(p => p.isOnline).length} online
               </Text>
@@ -1111,7 +1111,7 @@ const ChatScreen: React.FC<ChatScreenProps> = ({ route }) => {
         <Modal.Content>
           <Modal.Header>
             <Text style={textStyles.h3} color={textColor}>
-              hourse Members
+              Circle Members
             </Text>
           </Modal.Header>
           <Modal.Body>
@@ -1219,3 +1219,4 @@ const styles = StyleSheet.create({
 });
 
 export default ChatScreen;
+

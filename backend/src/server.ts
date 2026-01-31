@@ -1,12 +1,21 @@
 import express from 'express';
+import dotenv from 'dotenv';
+import path from 'path';
+
+console.log(`[Server] Initialization trigger: ${new Date().toISOString()}`);
+
+// Load environment variables
+// 1) Backend-local .env (highest priority)
+dotenv.config();
+// 2) Project Root .env (fallback for shared secrets)
+dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
+
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
-import path from 'path';
 import * as Sentry from '@sentry/node';
 // import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import Redis from 'ioredis';
@@ -17,7 +26,7 @@ import os from 'os';
 // Import routes
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
-import familyRoutes from './routes/families';
+import circleRoutes from './routes/circles';
 import chatRoutes from './routes/chat';
 import chatAttachmentRoutes from './routes/chatAttachments';
 import locationRoutes from './routes/location';
@@ -31,14 +40,15 @@ import socialRoutes from './routes/social';
 import financialRoutes from './routes/financial';
 import translationsRoutes from './routes/translations';
 import emotionsRoutes from './routes/emotions';
+import circleTypeRoutes from './routes/circleTypeRoutes';
+import galleryRoutes from './routes/gallery';
 
 // ...
 
-// import miscRoutes from './routes/misc';
+import miscRoutes from './routes/misc';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const auditRoutes = require('./routes/audit');
-const adminRoutes = require('./routes/admin');
+import auditRoutes from './routes/audit';
+import adminRoutes from './routes/admin';
 
 // Import CMS routes
 import cmsRoutes from './routes/cmsRoutes';
@@ -58,21 +68,30 @@ import componentRoutes from './routes/componentRoutes';
 import templateRoutes from './routes/templateRoutes';
 import versionRoutes from './routes/versionRoutes';
 import publishingRoutes from './routes/publishingRoutes';
+import applicationRoutes from './routes/applicationRoutes';
 import assetRoutes from './routes/assetRoutes';
+import preferencesRoutes from './routes/preferences';
+import entityRoutes from './routes/entityRoutes';
+import collectionsRoutes from './routes/collectionsRoutes';
+import publicApplicationRoutes from './routes/publicApplicationRoutes';
 // import comprehensiveAdminRoutes from './routes/comprehensiveAdminRoutes';
+
+// Import MCP server
+// Import MCP server
+import { createMcpRouter } from './mcp';
+
+// Import V1 Router
+import v1Router from './routes/v1';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
 import { requestLogger } from './middleware/logger';
 import { requestIdMiddleware } from './middleware/requestId';
 // import { validateRequest } from './middleware/validation';
+import { appScopingMiddleware } from './middleware/appScoping';
 
 // Import services
 import { initializeSocket } from './socket/socketService';
-
-// Load environment variables from repository root
-dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
-dotenv.config();
 
 // Initialize Sentry for error tracking and performance monitoring
 if (process.env.SENTRY_DSN) {
@@ -164,12 +183,16 @@ function startServer() {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "wss:", "ws:"],
+        imgSrc: ["'self'", "data:", "https:", "http:"],
+        connectSrc: ["'self'", "wss:", "ws:", "https:", "http:"],
       },
     },
     crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
   }));
+
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
   // Rate limiting with Redis store if available
   const limiter = rateLimit({
@@ -200,6 +223,8 @@ function startServer() {
         '/api/users', '/api/v1/users',
         '/api/chat', '/api/v1/chat',
         '/api/chat-attachments', '/api/v1/chat-attachments',
+        '/api/mobile', '/api/v1/mobile',
+        '/api/notifications', '/api/v1/notifications',
       ];
       return isDev || skipPrefixes.some(prefix => path.startsWith(prefix));
     },
@@ -262,6 +287,10 @@ function startServer() {
     limit: process.env.MAX_FILE_SIZE || '10mb'
   }));
 
+  // Static uploads folder
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+
   // Compression with options
   app.use(compression({
     level: 6,
@@ -277,6 +306,7 @@ function startServer() {
   // Correlation IDs then request logging
   app.use(requestIdMiddleware);
   app.use(requestLogger);
+  app.use(appScopingMiddleware);
 
   // Enhanced health check endpoint
   app.get('/health', async (_req, res) => {
@@ -354,23 +384,14 @@ function startServer() {
   });
 
   // API routes with versioning
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/api/v1/users', userRoutes);
-  app.use('/api/v1/families', familyRoutes);
-  app.use('/api/v1/chat', chatRoutes);
-  app.use('/api/v1/chat-attachments', chatAttachmentRoutes);
-  app.use('/api/v1/location', locationRoutes);
-  app.use('/api/v1/safety', safetyRoutes);
-  app.use('/api/v1/safety', safetyIncidentsRoutes);
-  app.use('/api/v1/storage', storageRoutes);
-  app.use('/api/v1/calendar', calendarRoutes);
-  app.use('/api/v1/notes', notesRoutes);
-  app.use('/api/v1/todos', todosRoutes);
-  app.use('/api/v1/social', socialRoutes);
-  app.use('/api/v1/finance', financialRoutes);
-  app.use('/api/v1/emotions', emotionsRoutes);
-  // app.use('/api/v1/misc', miscRoutes);
-  app.use('/api/v1/translations', translationsRoutes);
+  // API routes with versioning
+  app.use('/api/v1', v1Router);
+
+  // Legacy aliases (mapped to v1 router for backward compatibility)
+  app.use('/api', v1Router);
+
+  // Explicit overrides or non-v1 routes if any
+  app.use('/api/admin/circle-types', circleTypeRoutes);
 
   // Audit routes (non-versioned)
   app.use('/api/audit', auditRoutes);
@@ -390,9 +411,22 @@ function startServer() {
   app.use('/api/page-builder/publishing', publishingRoutes);
   app.use('/api/page-builder/assets', assetRoutes);
   app.use('/api/mobile', mobileRoutes);
+  app.use('/api/mobile/collections', collectionsRoutes);
   app.use('/api/settings', settingsRoutes);
+  app.use('/api/v1/settings', settingsRoutes);
   app.use('/api/config', configRoutes); // New System Config Routes
-  app.use('/api/admin/auth', adminUsersRoutes); // New RBAC-based auth
+  app.use('/api/admin/auth', adminUsersRoutes); // Fixed: Use modern adminUsersRoutes for all auth endpoints
+  app.use('/api/admin/applications', applicationRoutes);
+  app.use('/api/admin/preferences', preferencesRoutes);
+  app.use('/api/admin/entities', entityRoutes);
+  app.use('/api/public/applications', publicApplicationRoutes);
+
+  // MCP Server API (for AI-assisted development)
+  if (process.env.MCP_ENABLED !== 'false') {
+    const mcpRouter = createMcpRouter();
+    app.use('/api/mcp', mcpRouter as any);
+    console.log('✅ MCP Server enabled at /api/mcp');
+  }
 
   // App Configuration API (for dynamic app management - login backgrounds, themes, etc.)
   app.use('/api/app-config', appConfigRoutes);
@@ -405,23 +439,8 @@ function startServer() {
   app.use('/api/v1/cms/marketing', marketingRoutes);
   // app.use('/admin', comprehensiveAdminRoutes);
 
-  // Legacy API routes (for backward compatibility)
-  app.use('/api/auth', authRoutes);
-  app.use('/api/users', userRoutes);
-  app.use('/api/families', familyRoutes);
-  app.use('/api/chat', chatRoutes);
-  app.use('/api/chat-attachments', chatAttachmentRoutes);
-  app.use('/api/location', locationRoutes);
-  app.use('/api/safety', safetyRoutes);
-  app.use('/api/safety', safetyIncidentsRoutes);
-  app.use('/api/storage', storageRoutes);
-  app.use('/api/calendar', calendarRoutes);
-  app.use('/api/notes', notesRoutes);
-  app.use('/api/todos', todosRoutes);
-  app.use('/api/social', socialRoutes);
-  app.use('/api/audit', auditRoutes);
-  app.use('/api/admin', adminRoutes);
-  // app.use('/api/admin', comprehensiveAdminRoutes);
+  // Legacy API routes are now handled by the alias above: app.use('/api', v1Router);
+
 
   // Sentry error handler (must be before other error handlers)
   if (process.env.SENTRY_DSN) {
@@ -445,18 +464,22 @@ function startServer() {
   async function initializeServices() {
     try {
       // Initialize Database Connection (Pool is already created in database.ts)
-      const { pool } = require('./config/database');
-      await pool.query('SELECT 1');
-      console.log('✅ Database connection verified');
+    const { pool } = require('./config/database');
+    console.log('[Server] Verifying database connection...');
+    const dbPromise = pool.query('SELECT 1');
+    const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database verification timeout')), 5000));
+    await Promise.race([dbPromise, timeoutPromise]);
+    console.log('✅ Database connection verified');
 
       // Initialize Socket.IO
-      initializeSocket(io);
-      console.log('✅ Socket.IO initialized');
+    console.log('[Server] Initializing Socket.IO...');
+    initializeSocket(io);
+    console.log('✅ Socket.IO initialized');
 
       // Start server
-      // Forced to 4000 as requested, ignoring .env PORT if it's set to 3000
+      // Forced to 4000 to avoid conflict with Admin (3001)
       const PORT = 4000;
-      const HOST = process.env.HOST || '0.0.0.0';
+      const HOST = (process.env.HOST && process.env.HOST !== '0.0.0.0') ? process.env.HOST : '::';
 
       console.log(`[Server] Starting on port ${PORT}...`);
 
@@ -503,9 +526,8 @@ function startServer() {
       process.exit(1);
     }
   }
-
   // Start the services
-  initializeServices();
+  initializeServices(); // Restart trigger
 }
 
 // export default app; // App is defined inside startServer function

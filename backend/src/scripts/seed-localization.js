@@ -81,7 +81,7 @@ INSERT INTO translations (key_id, language_id, value, is_approved, approved_at)
 SELECT tk.id, l.id,
   CASE tk.key
     WHEN 'ui.welcome.title' THEN 'Welcome to Bondarys'
-    WHEN 'ui.welcome.subtitle' THEN 'Connect with your family safely'
+    WHEN 'ui.welcome.subtitle' THEN 'Connect with your circle safely'
     WHEN 'ui.button.save' THEN 'Save'
     WHEN 'ui.button.cancel' THEN 'Cancel'
     WHEN 'nav.home' THEN 'Home'
@@ -115,5 +115,6 @@ async function main() {
 if (require.main === module) {
   main();
 }
+
 
 

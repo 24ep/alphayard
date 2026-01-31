@@ -102,13 +102,7 @@ class PgMigrationRunner {
   }
 
   async executeSQL(sql) {
-    const statements = sql
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
-    for (const statement of statements) {
-      await this.client.query(statement);
-    }
+    await this.client.query(sql);
   }
 
   async migrate() {

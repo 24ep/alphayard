@@ -10,7 +10,7 @@ The `UnifiedSettingsPage` component consolidates all the different settings comp
 
 ### UnifiedSettingsPage.tsx
 The main unified settings component that combines:
-- **Account Settings**: Notifications, Privacy, hourse Settings, Subscription
+- **Account Settings**: Notifications, Privacy, Circle Settings, Subscription
 - **App Preferences**: Language, Theme, Font Size, Haptic Feedback, Sound Effects
 - **Data & Storage**: Auto Backup, Data Usage, Download Data, Clear Cache
 - **Support & Help**: Help, About, Rate App, Report Bug
@@ -31,7 +31,7 @@ An example showing how to navigate to the settings page from other parts of the 
 
 ### 🔔 **Notification Settings**
 - Master controls for push, email, and SMS notifications
-- Granular controls for hourse, safety, social, and system notifications
+- Granular controls for Circle, safety, social, and system notifications
 - Important notifications highlighted
 
 ### 🔒 **Privacy Settings**
@@ -41,8 +41,8 @@ An example showing how to navigate to the settings page from other parts of the 
 - Data and analytics settings
 - Data management actions
 
-### 👨‍👩‍👧‍👦 **hourse Settings**
-- hourse sharing controls
+### 👨‍👩‍👧‍👦 **Circle Settings**
+- Circle sharing controls
 - Feature-specific toggles
 - Privacy notes and information
 
@@ -168,7 +168,7 @@ The component uses a consistent design system:
 The component manages state for:
 - Notification preferences
 - Privacy settings
-- hourse settings
+- Circle settings
 - App preferences
 - Subscription information
 
@@ -209,3 +209,4 @@ Potential improvements:
 ## Support
 
 For questions or issues with the unified settings page, please refer to the main application documentation or contact the development team.
+

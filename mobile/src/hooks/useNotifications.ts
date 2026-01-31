@@ -167,24 +167,24 @@ export const useNotifications = () => {
     }
   }, [user]);
 
-  const sendFamilyNotification = useCallback(async (
-    familyId: string,
+  const sendCircleNotification = useCallback(async (
+    circleId: string,
     type: NotificationType,
     title: string,
     message: string,
     data?: any
   ) => {
     try {
-      await notificationService.sendFamilyNotification(
-        familyId,
+      await notificationService.sendCircleNotification(
+        circleId,
         type,
         title,
         message,
         data
       );
     } catch (error) {
-      console.error('Error sending hourse notification:', error);
-      setError('Failed to send hourse notification');
+      console.error('Error sending Circle notification:', error);
+      setError('Failed to send Circle notification');
     }
   }, []);
 
@@ -241,7 +241,7 @@ export const useNotifications = () => {
     createNotification,
     scheduleNotification,
     cancelScheduledNotification,
-    sendFamilyNotification,
+    sendCircleNotification,
     getNotificationSettings,
     updateNotificationSettings,
     clearOldNotifications,

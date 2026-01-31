@@ -5,7 +5,7 @@ import { shoppingStyles } from './home/shopping';
 import { appointmentsStyles } from './home/appointments';
 import { attentionStyles } from './home/attention';
 import { socialStyles } from './home/social';
-import { familyStyles } from './home/family';
+import { circleStyles } from './home/circle';
 import { blogStyles } from './home/blog';
 import { chatStyles } from './home/chat';
 import { headerStyles } from './home/header';
@@ -47,10 +47,10 @@ export const homeStyles = StyleSheet.create({
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     marginHorizontal: 0,
-    marginTop: -16, // Counteracting the 16px margin seen by user
+    marginTop: -20, // More overlap
     marginBottom: 0,
-    paddingTop: 0,
-    paddingBottom: 20, // Keep some bottom padding
+    paddingTop: 4, // Minimal top padding
+    paddingBottom: 0,
     paddingHorizontal: 0,
     flex: 1,
   },
@@ -63,8 +63,9 @@ export const homeStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    backgroundColor: 'transparent',
+    // borderBottomWidth: 1, // Removed border
+    // borderBottomColor: '#F0F0F0', // Removed border color
   },
   contentCardHeaderLeft: {
     flex: 1,
@@ -118,7 +119,7 @@ export const homeStyles = StyleSheet.create({
   ...appointmentsStyles,
   ...attentionStyles,
   ...socialStyles,
-  ...familyStyles,
+  ...circleStyles,
   ...blogStyles,
   ...chatStyles,
   ...tabStyles,
@@ -127,7 +128,6 @@ export const homeStyles = StyleSheet.create({
   ...calendarStyles,
   ...widgetStyles,
   ...emptyStateStyles,
-  ...emptyStateStyles,
   ...commonStyles,
   ...galleryStyles,
 
@@ -135,11 +135,14 @@ export const homeStyles = StyleSheet.create({
   homeContentContainer: {
     paddingHorizontal: 20,
   },
+  scrollContent: {
+    paddingHorizontal: 32, // Match WelcomeSection exactly for perfect alignment
+    gap: 24, // Increased spacing between menu items
+  },
   welcomeSection: {
     paddingTop: 24,
-    paddingBottom: 20,
-    paddingLeft: 32,
-    paddingRight: 32,
+    paddingBottom: 0,
+    paddingHorizontal: 32,
   },
   quickActionButton: {
     position: 'absolute',

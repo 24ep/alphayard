@@ -10,7 +10,7 @@
 -- Social posts table
 CREATE TABLE IF NOT EXISTS social_posts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+  circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
   author_id UUID REFERENCES users(id) ON DELETE CASCADE,
   content TEXT NOT NULL,
   type VARCHAR(20) DEFAULT 'text' CHECK (type IN ('text', 'image', 'video', 'event')),
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS social_comment_likes (
 -- =============================================
 
 -- Social posts indexes
-CREATE INDEX IF NOT EXISTS idx_social_posts_family_id ON social_posts(family_id);
+CREATE INDEX IF NOT EXISTS idx_social_posts_circle_id ON social_posts(circle_id);
 CREATE INDEX IF NOT EXISTS idx_social_posts_author_id ON social_posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_social_posts_status ON social_posts(status);
 CREATE INDEX IF NOT EXISTS idx_social_posts_created_at ON social_posts(created_at DESC);
@@ -227,15 +227,15 @@ ALTER TABLE social_comment_likes ENABLE ROW LEVEL SECURITY;
 -- Social posts policies
 CREATE POLICY "Users can view posts from their family" ON social_posts
   FOR SELECT USING (
-    family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+    circle_id IN (
+      SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Users can create posts in their family" ON social_posts
   FOR INSERT WITH CHECK (
-    family_id IN (
-      SELECT family_id FROM family_members WHERE user_id = auth.uid()
+    circle_id IN (
+      SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
     ) AND author_id = auth.uid()
   );
 
@@ -249,8 +249,8 @@ CREATE POLICY "Users can delete their own posts" ON social_posts
 CREATE POLICY "Users can view comments on posts they can see" ON social_comments
   FOR SELECT USING (
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -259,8 +259,8 @@ CREATE POLICY "Users can create comments on posts they can see" ON social_commen
   FOR INSERT WITH CHECK (
     author_id = auth.uid() AND
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -275,8 +275,8 @@ CREATE POLICY "Users can delete their own comments" ON social_comments
 CREATE POLICY "Users can view reports on posts they can see" ON social_reports
   FOR SELECT USING (
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -285,8 +285,8 @@ CREATE POLICY "Users can create reports on posts they can see" ON social_reports
   FOR INSERT WITH CHECK (
     reporter_id = auth.uid() AND
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -295,8 +295,8 @@ CREATE POLICY "Users can create reports on posts they can see" ON social_reports
 CREATE POLICY "Users can view activities on posts they can see" ON social_activities
   FOR SELECT USING (
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -305,8 +305,8 @@ CREATE POLICY "Users can create activities on posts they can see" ON social_acti
   FOR INSERT WITH CHECK (
     user_id = auth.uid() AND
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -315,8 +315,8 @@ CREATE POLICY "Users can create activities on posts they can see" ON social_acti
 CREATE POLICY "Users can view likes on posts they can see" ON social_post_likes
   FOR SELECT USING (
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -325,8 +325,8 @@ CREATE POLICY "Users can create likes on posts they can see" ON social_post_like
   FOR INSERT WITH CHECK (
     user_id = auth.uid() AND
     post_id IN (
-      SELECT id FROM social_posts WHERE family_id IN (
-        SELECT family_id FROM family_members WHERE user_id = auth.uid()
+      SELECT id FROM social_posts WHERE circle_id IN (
+        SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
       )
     )
   );
@@ -339,8 +339,8 @@ CREATE POLICY "Users can view comment likes on posts they can see" ON social_com
   FOR SELECT USING (
     comment_id IN (
       SELECT id FROM social_comments WHERE post_id IN (
-        SELECT id FROM social_posts WHERE family_id IN (
-          SELECT family_id FROM family_members WHERE user_id = auth.uid()
+        SELECT id FROM social_posts WHERE circle_id IN (
+          SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
         )
       )
     )
@@ -351,8 +351,8 @@ CREATE POLICY "Users can create comment likes on posts they can see" ON social_c
     user_id = auth.uid() AND
     comment_id IN (
       SELECT id FROM social_comments WHERE post_id IN (
-        SELECT id FROM social_posts WHERE family_id IN (
-          SELECT family_id FROM family_members WHERE user_id = auth.uid()
+        SELECT id FROM social_posts WHERE circle_id IN (
+          SELECT circle_id FROM circle_members WHERE user_id = auth.uid()
         )
       )
     )

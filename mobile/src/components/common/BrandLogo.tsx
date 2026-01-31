@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface BrandLogoProps {
   size?: 'small' | 'medium' | 'large';
@@ -14,6 +15,8 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   color = '#FFFFFF',
   style,
 }) => {
+  const { branding } = useTheme();
+  
   const getSize = () => {
     switch (size) {
       case 'small':
@@ -26,6 +29,27 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   };
 
   const sizes = getSize();
+
+  if (branding?.logoUrl) {
+    return (
+      <View style={[styles.container, style]}>
+        <Image 
+          source={{ uri: branding.logoUrl }} 
+          style={{ 
+            width: sizes.logo, 
+            height: sizes.logo, 
+            borderRadius: sizes.logo * 0.2,
+            resizeMode: 'contain' 
+          }} 
+        />
+        {showText && (
+          <Text style={[styles.logoText, { fontSize: sizes.text, color }]}>
+            {branding.appName || 'Bondarys'}
+          </Text>
+        )}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, style]}>

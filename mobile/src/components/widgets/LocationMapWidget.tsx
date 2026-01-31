@@ -10,30 +10,30 @@ interface Location {
 }
 
 interface LocationMapWidgetProps {
-  familyLocations: Location[];
+  circleLocations: Location[];
   currentLocation?: Location;
   onLocationPress?: (location: Location) => void;
 }
 
 export const LocationMapWidget: React.FC<LocationMapWidgetProps> = ({
-  familyLocations,
+  circleLocations,
   currentLocation,
   onLocationPress,
 }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>hourse Locations</Text>
+        <Text style={styles.title}>Circle Locations</Text>
       </View>
       
-      {familyLocations.length === 0 ? (
+      {circleLocations.length === 0 ? (
         <View style={styles.emptyState}>
           <IconMC name="map-marker" size={48} color="#CCC" />
-          <Text style={styles.emptyText}>No hourse locations available</Text>
+          <Text style={styles.emptyText}>No Circle locations available</Text>
         </View>
       ) : (
         <View style={styles.locationsList}>
-          {familyLocations.map((location) => (
+          {circleLocations.map((location) => (
             <View key={location.id} style={styles.locationItem}>
               <IconMC name="map-marker" size={20} color="#4A90E2" />
               <Text style={styles.locationName}>{location.name}</Text>

@@ -16,8 +16,10 @@ async function check() {
         await client.connect();
         console.log('Connected to database');
 
-        const res = await client.query('SELECT id, slug, title, status FROM pages');
-        console.log('Pages found:', res.rows);
+        const rooms = await client.query('SELECT count(*) FROM chat_rooms');
+        const msgs = await client.query('SELECT count(*) FROM chat_messages');
+        console.log('Chat Rooms:', rooms.rows[0].count);
+        console.log('Chat Messages:', msgs.rows[0].count);
 
     } catch (err) {
         console.error('Error:', err);

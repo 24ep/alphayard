@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS content_types (
 -- Categories Table
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     description TEXT,
     color VARCHAR(7) DEFAULT '#FFD700',
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS categories (
 -- Content Table
 CREATE TABLE IF NOT EXISTS content (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    family_id UUID REFERENCES families(id) ON DELETE CASCADE,
+    circle_id UUID REFERENCES circles(id) ON DELETE CASCADE,
     content_type_id UUID REFERENCES content_types(id) ON DELETE RESTRICT,
     category_id UUID REFERENCES categories(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS content (
     updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(family_id, slug)
+    UNIQUE(circle_id, slug)
 );
 
 -- Content Meta Table
@@ -129,7 +129,7 @@ INSERT INTO content_types (name, description, schema) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert default categories
-INSERT INTO categories (family_id, name, description, color, icon) VALUES
+INSERT INTO categories (circle_id, name, description, color, icon) VALUES
 (NULL, 'General', 'General family content', '#FFD700', '📁'),
 (NULL, 'News', 'Family news and updates', '#2196F3', '📰'),
 (NULL, 'Events', 'Family events and celebrations', '#4CAF50', '🎉'),
@@ -140,7 +140,7 @@ INSERT INTO categories (family_id, name, description, color, icon) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_content_family_id ON content(family_id);
+CREATE INDEX IF NOT EXISTS idx_content_circle_id ON content(circle_id);
 CREATE INDEX IF NOT EXISTS idx_content_type_id ON content(content_type_id);
 CREATE INDEX IF NOT EXISTS idx_content_category_id ON content(category_id);
 CREATE INDEX IF NOT EXISTS idx_content_status ON content(status);
@@ -184,16 +184,16 @@ CREATE POLICY "Content types are viewable by authenticated users" ON content_typ
 -- Categories policies
 CREATE POLICY "Categories are viewable by family members" ON categories FOR SELECT USING (
     EXISTS (
-        SELECT 1 FROM family_members fm 
-        WHERE fm.family_id = categories.family_id 
+        SELECT 1 FROM circle_members fm 
+        WHERE fm.circle_id = categories.circle_id 
         AND fm.user_id = auth.uid()
     )
 );
 
 CREATE POLICY "Categories are manageable by family admins" ON categories FOR ALL USING (
     EXISTS (
-        SELECT 1 FROM family_members fm 
-        WHERE fm.family_id = categories.family_id 
+        SELECT 1 FROM circle_members fm 
+        WHERE fm.circle_id = categories.circle_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')
     )
@@ -202,16 +202,16 @@ CREATE POLICY "Categories are manageable by family admins" ON categories FOR ALL
 -- Content policies
 CREATE POLICY "Content is viewable by family members" ON content FOR SELECT USING (
     EXISTS (
-        SELECT 1 FROM family_members fm 
-        WHERE fm.family_id = content.family_id 
+        SELECT 1 FROM circle_members fm 
+        WHERE fm.circle_id = content.circle_id 
         AND fm.user_id = auth.uid()
     )
 );
 
 CREATE POLICY "Content is manageable by family admins" ON content FOR ALL USING (
     EXISTS (
-        SELECT 1 FROM family_members fm 
-        WHERE fm.family_id = content.family_id 
+        SELECT 1 FROM circle_members fm 
+        WHERE fm.circle_id = content.circle_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')
     )
@@ -221,7 +221,7 @@ CREATE POLICY "Content is manageable by family admins" ON content FOR ALL USING 
 CREATE POLICY "Content meta is viewable by family members" ON content_meta FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_meta.content_id 
         AND fm.user_id = auth.uid()
     )
@@ -230,7 +230,7 @@ CREATE POLICY "Content meta is viewable by family members" ON content_meta FOR S
 CREATE POLICY "Content meta is manageable by family admins" ON content_meta FOR ALL USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_meta.content_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')
@@ -241,7 +241,7 @@ CREATE POLICY "Content meta is manageable by family admins" ON content_meta FOR 
 CREATE POLICY "Content tags are viewable by family members" ON content_tags FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_tags.content_id 
         AND fm.user_id = auth.uid()
     )
@@ -250,7 +250,7 @@ CREATE POLICY "Content tags are viewable by family members" ON content_tags FOR 
 CREATE POLICY "Content tags are manageable by family admins" ON content_tags FOR ALL USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_tags.content_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')
@@ -261,7 +261,7 @@ CREATE POLICY "Content tags are manageable by family admins" ON content_tags FOR
 CREATE POLICY "Content interactions are viewable by family members" ON content_interactions FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_interactions.content_id 
         AND fm.user_id = auth.uid()
     )
@@ -275,7 +275,7 @@ CREATE POLICY "Users can manage their own interactions" ON content_interactions 
 CREATE POLICY "Content comments are viewable by family members" ON content_comments FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_comments.content_id 
         AND fm.user_id = auth.uid()
     )
@@ -289,7 +289,7 @@ CREATE POLICY "Users can manage their own comments" ON content_comments FOR ALL 
 CREATE POLICY "Content analytics are viewable by family admins" ON content_analytics FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_analytics.content_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')
@@ -300,7 +300,7 @@ CREATE POLICY "Content analytics are viewable by family admins" ON content_analy
 CREATE POLICY "Content files are viewable by family members" ON content_files FOR SELECT USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_files.content_id 
         AND fm.user_id = auth.uid()
     )
@@ -309,7 +309,7 @@ CREATE POLICY "Content files are viewable by family members" ON content_files FO
 CREATE POLICY "Content files are manageable by family admins" ON content_files FOR ALL USING (
     EXISTS (
         SELECT 1 FROM content c
-        JOIN family_members fm ON fm.family_id = c.family_id
+        JOIN circle_members fm ON fm.circle_id = c.circle_id
         WHERE c.id = content_files.content_id 
         AND fm.user_id = auth.uid()
         AND fm.role IN ('admin', 'parent')

@@ -77,7 +77,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ route }) => {
   };
 
   const handleViewFamilies = () => {
-    navigation.navigate('FamilyManagement');
+    navigation.navigate('CircleManagement');
   };
 
   const handleViewReports = () => {
@@ -329,8 +329,8 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ route }) => {
                   color="primary.500"
                 />
                 <VStack flex={1}>
-                  <Text style={styles.actionTitle}>hourse Management</Text>
-                  <Text style={styles.actionSubtitle}>View and manage hourse accounts</Text>
+                  <Text style={styles.actionTitle}>Circle Management</Text>
+                  <Text style={styles.actionSubtitle}>View and manage Circle accounts</Text>
                 </VStack>
                 <Icon
                   as={MaterialCommunityIcons}

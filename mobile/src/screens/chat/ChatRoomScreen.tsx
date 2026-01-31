@@ -11,15 +11,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Box, HStack, VStack, Avatar, Input, IconButton, Menu, Divider } from 'native-base';
+import { Box, HStack, VStack, Avatar, Input, IconButton, Menu, Divider, Icon } from 'native-base';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chat/ChatService';
 import { analyticsService } from '../../services/analytics/AnalyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import MainScreenLayout from '../../components/layout/MainScreenLayout';
-import { FamilyDropdown } from '../../components/home/FamilyDropdown';
+import { CircleDropdown } from '../../components/home/CircleDropdown';
 
 interface Message {
   id: string;
@@ -55,6 +56,7 @@ interface ChatRoomScreenProps {
 
 const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const navigation = useNavigation();
+  const { user } = useAuth();
   const { chatId, chatName } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,8 +64,8 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const [messageText, setMessageText] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [selectedFamily, setSelectedFamily] = useState('Smith hourse');
+  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
+  const [selectedCircle, setSelectedCircle] = useState('Smith Circle');
 
   useEffect(() => {
     loadMessages();
@@ -96,10 +98,12 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
 
     try {
       setSending(true);
-      const newMessage = await chatService.sendMessage(chatId, {
-        text: messageText.trim(),
-        type: 'text',
-      });
+      const newMessage = await chatService.sendMessage(
+        chatId,
+        user?.id || 'unknown',
+        messageText.trim(),
+        'text'
+      );
       
       setMessages(prev => [...prev, newMessage]);
       setMessageText('');
@@ -240,7 +244,7 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
               borderColor="white"
               shadow={2}
             >
-              {item.sender.name.charAt(0).toUpperCase()}
+              {item.sender?.name?.charAt(0).toUpperCase() || '?'}
             </Avatar>
             {/* Online indicator */}
             <Box
@@ -259,7 +263,7 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
 
         <VStack space={1} flex={1}>
           {!item.isOwn && (
-            <Text style={styles.senderName} ml={1}>{item.sender.name}</Text>
+            <Text style={[styles.senderName, { marginLeft: 4 }]}>{item.sender?.name || 'Unknown'}</Text>
           )}
 
           <Box
@@ -311,9 +315,9 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
               {item.isOwn && (
                 <Icon
                   as={MaterialCommunityIcons}
-                  name={getMessageStatusIcon(item.status)}
+                  name={item.status ? getMessageStatusIcon(item.status) : 'clock-outline'}
                   size="xs"
-                  color={getMessageStatusColor(item.status)}
+                  color={item.status ? getMessageStatusColor(item.status) : '#9E9E9E'}
                 />
               )}
             </HStack>
@@ -331,7 +335,7 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
               borderColor="white"
               shadow={2}
             >
-              {item.sender.name.charAt(0).toUpperCase()}
+              {item.sender?.name?.charAt(0).toUpperCase() || '?'}
             </Avatar>
             {/* Online indicator for own messages */}
             <Box
@@ -354,9 +358,9 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   if (loading) {
     return (
       <MainScreenLayout
-        selectedFamily={selectedFamily}
-        showFamilyDropdown={showFamilyDropdown}
-        onToggleFamilyDropdown={() => setShowFamilyDropdown(!showFamilyDropdown)}
+        selectedCircle={selectedCircle}
+        showCircleDropdown={showCircleDropdown}
+        onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
       >
         <LoadingSpinner fullScreen />
       </MainScreenLayout>
@@ -365,9 +369,9 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
 
   return (
     <MainScreenLayout
-      selectedFamily={selectedFamily}
-      showFamilyDropdown={showFamilyDropdown}
-      onToggleFamilyDropdown={() => setShowFamilyDropdown(!showFamilyDropdown)}
+      selectedCircle={selectedCircle}
+      showCircleDropdown={showCircleDropdown}
+      onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
     >
       <Box style={styles.header}>
         <HStack space={3} alignItems="center" flex={1}>
@@ -413,71 +417,73 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
         style={styles.inputContainer}
       >
         <HStack space={2} alignItems="center">
-          <Menu
-            isOpen={showMenu}
-            onClose={() => setShowMenu(false)}
-            trigger={(triggerProps) => (
-              <IconButton
-                {...triggerProps}
-                icon={<Icon as={MaterialCommunityIcons} name="paperclip" />}
-                onPress={handleAttachment}
-                variant="ghost"
-                colorScheme="primary"
-              />
-            )}
-          >
-            <Menu.Item onPress={handleImagePicker}>
-              <HStack space={2} alignItems="center">
-                <Icon as={MaterialCommunityIcons} name="image" />
-                <Text>Photo</Text>
-              </HStack>
-            </Menu.Item>
-            <Menu.Item onPress={handleFilePicker}>
-              <HStack space={2} alignItems="center">
-                <Icon as={MaterialCommunityIcons} name="file" />
-                <Text>File</Text>
-              </HStack>
-            </Menu.Item>
-            <Menu.Item onPress={handleLocationShare}>
-              <HStack space={2} alignItems="center">
-                <Icon as={MaterialCommunityIcons} name="map-marker" />
-                <Text>Location</Text>
-              </HStack>
-            </Menu.Item>
-          </Menu>
-
           <Input
             flex={1}
             placeholder="Type a message..."
             value={messageText}
             onChangeText={setMessageText}
-            multiline
-            maxHeight={100}
             style={styles.messageInput}
-          />
-
-          <IconButton
-            icon={
-              sending ? (
-                <ActivityIndicator size="small" color="#4A90E2" />
-              ) : (
-                <Icon as={MaterialCommunityIcons} name="send" />
-              )
+            InputLeftElement={
+              <Menu
+                isOpen={showMenu}
+                onClose={() => setShowMenu(false)}
+                trigger={(triggerProps) => (
+                  <IconButton
+                    {...triggerProps}
+                    icon={<Icon as={MaterialCommunityIcons} name="paperclip" />}
+                    onPress={handleAttachment}
+                    variant="ghost"
+                    colorScheme="gray"
+                    _icon={{ color: "gray.500" }}
+                    ml={2}
+                  />
+                )}
+              >
+                <Menu.Item onPress={handleImagePicker}>
+                  <HStack space={2} alignItems="center">
+                    <Icon as={MaterialCommunityIcons} name="image" />
+                    <Text>Photo</Text>
+                  </HStack>
+                </Menu.Item>
+                <Menu.Item onPress={handleFilePicker}>
+                  <HStack space={2} alignItems="center">
+                    <Icon as={MaterialCommunityIcons} name="file" />
+                    <Text>File</Text>
+                  </HStack>
+                </Menu.Item>
+                <Menu.Item onPress={handleLocationShare}>
+                  <HStack space={2} alignItems="center">
+                    <Icon as={MaterialCommunityIcons} name="map-marker" />
+                    <Text>Location</Text>
+                  </HStack>
+                </Menu.Item>
+              </Menu>
             }
-            onPress={sendMessage}
-            disabled={!messageText.trim() || sending}
-            colorScheme="primary"
-            variant="solid"
-            rounded="full"
+            InputRightElement={
+              <IconButton
+                icon={
+                  sending ? (
+                    <ActivityIndicator size="small" color="#4A90E2" />
+                  ) : (
+                    <Icon as={MaterialCommunityIcons} name="send" />
+                  )
+                }
+                onPress={sendMessage}
+                disabled={!messageText.trim() || sending}
+                variant="ghost"
+                colorScheme="primary"
+                mr={2}
+              />
+            }
           />
         </HStack>
       </KeyboardAvoidingView>
 
-      <FamilyDropdown
-        visible={showFamilyDropdown}
-        onClose={() => setShowFamilyDropdown(false)}
-        selectedFamily={selectedFamily}
-        onFamilySelect={(name: string) => { setSelectedFamily(name); setShowFamilyDropdown(false); }}
+      <CircleDropdown
+        visible={showCircleDropdown}
+        onClose={() => setShowCircleDropdown(false)}
+        selectedCircle={selectedCircle}
+        onCircleSelect={(name: string) => { setSelectedCircle(name); setShowCircleDropdown(false); }}
         availableFamilies={[]}
       />
     </MainScreenLayout>

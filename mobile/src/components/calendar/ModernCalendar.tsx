@@ -26,7 +26,7 @@ interface ModernCalendarProps {
   onEventDelete?: (eventId: string) => void;
   onRefresh?: () => Promise<void>;
   loading?: boolean;
-  familyId?: string;
+  circleId?: string;
 }
 
 export const ModernCalendar: React.FC<ModernCalendarProps> = ({
@@ -36,7 +36,7 @@ export const ModernCalendar: React.FC<ModernCalendarProps> = ({
   onEventDelete,
   onRefresh,
   loading = false,
-  familyId,
+  circleId,
 }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<DateData | null>(null);
@@ -666,3 +666,4 @@ const styles = StyleSheet.create({
     height: 20,
   },
 });
+

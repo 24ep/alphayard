@@ -31,8 +31,8 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: '/user/change-password',
   },
 
-  // Family Management
-  FAMILY: {
+  // Circle Management
+  Circle: {
     LIST: '/hourse',
     CREATE: '/hourse',
     GET: (id: string) => `/hourse/${id}`,
@@ -50,7 +50,7 @@ export const API_ENDPOINTS = {
     POST: (id: string) => `/social/posts/${id}`,
     COMMENTS: (postId: string) => `/social/posts/${postId}/comments`,
     LIKE: (postId: string) => `/social/posts/${postId}/like`,
-    FAMILIES: '/social/families',
+    FAMILIES: '/social/circles',
   },
 
   // Calendar
@@ -113,4 +113,5 @@ export const API_ENDPOINTS = {
 }
 
 export default API_CONFIG
+
 

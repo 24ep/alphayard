@@ -157,7 +157,7 @@ const SafetyScreen: React.FC<SafetyScreenProps> = ({ route }) => {
   };
 
   const handleEmergencyAlertReceived = (data: { alert: any }) => {
-    // Handle incoming emergency alert from other hourse members
+    // Handle incoming emergency alert from other Circle members
     console.log('Emergency alert received:', data.alert);
     
     // Add to local alerts
@@ -194,7 +194,7 @@ const SafetyScreen: React.FC<SafetyScreenProps> = ({ route }) => {
     try {
       await safetyService.checkIn();
       await loadSafetyData();
-      Alert.alert('Check-in Successful', 'Your hourse has been notified');
+      Alert.alert('Check-in Successful', 'Your Circle has been notified');
       
       analyticsService.trackEvent('safety_check_in', {
         timestamp: Date.now(),
@@ -294,7 +294,7 @@ const SafetyScreen: React.FC<SafetyScreenProps> = ({ route }) => {
           <VStack flex={1}>
             <Text style={styles.title}>Safety Center</Text>
             <Text style={styles.subtitle}>
-              {safetyStatus?.isSafe ? 'All hourse members are safe' : 'Safety check needed'}
+              {safetyStatus?.isSafe ? 'All Circle members are safe' : 'Safety check needed'}
             </Text>
           </VStack>
         </HStack>
@@ -637,3 +637,4 @@ const styles = StyleSheet.create({
 });
 
 export default SafetyScreen; 
+

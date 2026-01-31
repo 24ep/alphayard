@@ -1,13 +1,15 @@
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator, TransitionPresets, CardStyleInterpolators } from '@react-navigation/stack';
 import CoolIcon from '../components/common/CoolIcon';
 import { NavigationAnimationProvider } from '../contexts/NavigationAnimationContext';
 import { MainContentProvider } from '../contexts/MainContentContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { TranslationKey } from '../i18n/translations';
 
 // Import screens
-import YouScreen from '../screens/main/YouScreen';
-import FamilyScreen from '../screens/main/FamilyScreen';
+import PersonalScreen from '../screens/main/PersonalScreen';
+import CircleScreen from '../screens/main/CircleScreen';
 import SocialScreen from '../screens/main/SocialScreen';
 import AppsScreen from '../screens/main/AppsScreen';
 
@@ -16,16 +18,17 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 import CalendarScreen from '../screens/main/CalendarScreen';
 import GalleryScreen from '../screens/main/GalleryScreen';
 import NotesScreen from '../screens/main/NotesScreen';
-import FamilySettingsScreen from '../screens/settings/FamilySettingsScreen';
-import FamilyListScreen from '../screens/family/FamilyListScreen';
-import FamilyDetailScreen from '../screens/family/FamilyDetailScreen';
+import CircleSettingsScreen from '../screens/settings/CircleSettingsScreen';
+import CircleListScreen from '../screens/circle/CircleListScreen';
+import CircleDetailScreen from '../screens/circle/CircleDetailScreen';
 import NewsScreen from '../screens/main/NewsScreen';
 import NewsDetailScreen from '../screens/main/NewsDetailScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import SecondHandShopScreen from '../screens/main/SecondHandShopScreen';
 import StorageScreen from '../screens/storage/StorageScreen';
-import ChatListScreen from '../screens/main/ChatListScreen';
+import ChatListScreen from '../screens/chat/ChatListScreen';
 import IndividualChatScreen from '../screens/chat/IndividualChatScreen';
+import NewChatScreen from '../screens/chat/NewChatScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,30 +44,30 @@ const commonStackOptions = {
 
 // --- Stack Navigators ---
 
-// YouStack: Main "You" tab + profile/settings/personal stuff
-const YouStack = createStackNavigator();
-const YouStackNavigator: React.FC = () => {
+// PersonalStack: Main "Personal" tab + profile/settings/personal stuff
+const PersonalStack = createStackNavigator();
+const PersonalStackNavigator: React.FC = () => {
   return (
-    <YouStack.Navigator screenOptions={commonStackOptions}>
-      <YouStack.Screen name="YouMain" component={YouScreen} />
-      <YouStack.Screen name="Profile" component={ProfileScreen} />
-      <YouStack.Screen name="Settings" component={SettingsScreen} />
-      <YouStack.Screen name="FamilySettings" component={FamilySettingsScreen} />
+    <PersonalStack.Navigator screenOptions={commonStackOptions}>
+      <PersonalStack.Screen name="PersonalMain" component={PersonalScreen} />
+      <PersonalStack.Screen name="Profile" component={ProfileScreen} />
+      <PersonalStack.Screen name="Settings" component={SettingsScreen} />
+      <PersonalStack.Screen name="CircleSettings" component={CircleSettingsScreen} />
       {/* Finance could go here */}
-    </YouStack.Navigator>
+    </PersonalStack.Navigator>
   );
 };
 
-// FamilyStack: Main "Family" tab + family details/settings
-const FamilyStack = createStackNavigator();
-const FamilyStackNavigator: React.FC = () => {
+// CircleStack: Main "Circle" tab + circle details/settings
+const CircleStack = createStackNavigator();
+const CircleStackNavigator: React.FC = () => {
   return (
-    <FamilyStack.Navigator screenOptions={commonStackOptions}>
-      <FamilyStack.Screen name="FamilyMain" component={FamilyScreen} />
-      <FamilyStack.Screen name="FamilyDetail" component={FamilyDetailScreen} />
-      <FamilyStack.Screen name="FamilyList" component={FamilyListScreen} />
-      <FamilyStack.Screen name="FamilySettings" component={FamilySettingsScreen} />
-    </FamilyStack.Navigator>
+    <CircleStack.Navigator screenOptions={commonStackOptions}>
+      <CircleStack.Screen name="CircleMain" component={CircleScreen} />
+      <CircleStack.Screen name="CircleDetail" component={CircleDetailScreen} />
+      <CircleStack.Screen name="CircleList" component={CircleListScreen} />
+      <CircleStack.Screen name="CircleSettings" component={CircleSettingsScreen} />
+    </CircleStack.Navigator>
   );
 };
 
@@ -75,6 +78,7 @@ const ChatStackNavigator: React.FC = () => {
     <ChatStack.Navigator screenOptions={commonStackOptions}>
       <ChatStack.Screen name="ChatListMain" component={ChatListScreen} />
       <ChatStack.Screen name="ChatRoom" component={IndividualChatScreen} />
+      <ChatStack.Screen name="NewChat" component={NewChatScreen} />
     </ChatStack.Navigator>
   );
 };
@@ -108,7 +112,7 @@ const AppsStackNavigator: React.FC = () => {
       {/* Duplicated here just in case accessed from Apps */}
       <AppsStack.Screen name="Profile" component={ProfileScreen} />
       <AppsStack.Screen name="Settings" component={SettingsScreen} />
-      <AppsStack.Screen name="FamilySettings" component={FamilySettingsScreen} />
+      <AppsStack.Screen name="CircleSettings" component={CircleSettingsScreen} />
 
       {/* Other apps if they have screens */}
     </AppsStack.Navigator>
@@ -116,56 +120,83 @@ const AppsStackNavigator: React.FC = () => {
 };
 
 
+// Branding imports
+import { useBranding } from '../contexts/BrandingContext';
+
+// Helper to resolve color
+const resolveColor = (colorValue: any, defaultColor: string) => {
+  if (!colorValue) return defaultColor;
+  return colorValue.solid || defaultColor;
+};
+
 // Main Tab Navigator
 const MainTabNavigatorInner: React.FC = () => {
   const { t: translate } = useLanguage();
+  const { categories } = useBranding();
+  
   // Safe fallback if t is undefined for any reason (though it shouldn't be if Provider is up)
-  const t = (key: string) => (typeof translate === 'function' ? translate(key) : key);
+  const t = (key: TranslationKey) => (typeof translate === 'function' ? translate(key) : key);
+
+  // Extract config
+  const tabConfig = React.useMemo(() => {
+      if (!categories) return null;
+      for (const cat of categories) {
+          const comp = cat.components.find(c => c.id === 'main-tab-bar');
+          if (comp) return comp;
+      }
+      return null;
+  }, [categories]);
+
+  const styles = tabConfig?.styles;
+  const config = tabConfig?.config || {};
+
+  const bgColor = resolveColor(styles?.backgroundColor, '#FFFFFF');
+  const activeColor = resolveColor(styles?.textColor, '#FA7272');
+  const inactiveColor = config?.inactiveColor || '#9E9E9E';
 
   return (
     <NavigationAnimationProvider>
       <Tab.Navigator
-        initialRouteName="You"
+        initialRouteName="Personal"
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: '#FFFFFF',
-            height: 60,
-            paddingBottom: 8,
-            paddingTop: 8,
+            backgroundColor: bgColor,
+            height: 64, // Reduced height to match reduced padding
+            paddingBottom: 12, // Equal to top padding
+            paddingTop: 12, // More top padding
+            borderTopWidth: 0,
+            elevation: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 10,
           },
-          tabBarActiveTintColor: '#FA7272', // Pink active
-          tabBarInactiveTintColor: '#9E9E9E',
+          tabBarActiveTintColor: activeColor,
+          tabBarInactiveTintColor: inactiveColor,
           tabBarLabelPosition: 'below-icon',
+          tabBarIconStyle: {
+             marginTop: 0 // Reset margin as we have better padding now
+          }
         }}
       >
         <Tab.Screen
-          name="You"
-          component={YouStackNavigator}
+          name="Personal"
+          component={PersonalStackNavigator}
           options={{
-            tabBarLabel: t('nav.you'),
-            tabBarIcon: ({ color, size }) => (
-              <CoolIcon name="account" size={size} color={color} />
+            tabBarLabel: t('nav.personal'),
+            tabBarIcon: ({ color }) => (
+              <CoolIcon name="account" size={20} color={color} />
             ),
           }}
         />
         <Tab.Screen
-          name="Family"
-          component={FamilyStackNavigator}
+          name="Circle"
+          component={CircleStackNavigator}
           options={{
-            tabBarLabel: t('nav.family'),
-            tabBarIcon: ({ color, size }) => (
-              <CoolIcon name="home-heart" size={size} color={color} />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Chat"
-          component={ChatStackNavigator}
-          options={{
-            tabBarLabel: t('nav.chat'),
-            tabBarIcon: ({ color, size }) => (
-              <CoolIcon name="chat-processing" size={size} color={color} />
+            tabBarLabel: t('nav.circle'),
+            tabBarIcon: ({ color }) => (
+              <CoolIcon name="home-heart" size={20} color={color} />
             ),
           }}
         />
@@ -174,8 +205,18 @@ const MainTabNavigatorInner: React.FC = () => {
           component={SocialStackNavigator}
           options={{
             tabBarLabel: t('nav.social'),
-            tabBarIcon: ({ color, size }) => (
-              <CoolIcon name="account-multiple" size={size} color={color} />
+            tabBarIcon: ({ color }) => (
+              <CoolIcon name="account-multiple" size={20} color={color} />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Chat"
+          component={ChatStackNavigator}
+          options={{
+            tabBarLabel: t('nav.chat'),
+            tabBarIcon: ({ color }) => (
+              <CoolIcon name="chat-processing" size={20} color={color} />
             ),
           }}
         />
@@ -184,8 +225,8 @@ const MainTabNavigatorInner: React.FC = () => {
           component={AppsStackNavigator}
           options={{
             tabBarLabel: t('nav.apps'),
-            tabBarIcon: ({ color, size }) => (
-              <CoolIcon name="apps" size={size} color={color} />
+            tabBarIcon: ({ color }) => (
+              <CoolIcon name="apps" size={20} color={color} />
             ),
           }}
         />

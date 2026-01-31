@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 
-type CategoryKey = 'hourse' | 'workplace' | 'hometown' | 'commercial' | 'other';
+type CategoryKey = 'Circle' | 'workplace' | 'hometown' | 'commercial' | 'other';
 
 interface ChatHomeTabProps {
   category: CategoryKey;
@@ -9,7 +9,7 @@ interface ChatHomeTabProps {
 }
 
 const CATEGORY_LABELS: Record<CategoryKey, string> = {
-  hourse: 'hourse',
+  Circle: 'Circle',
   workplace: 'Workplace',
   hometown: 'Hometown',
   commercial: 'Commercial',
@@ -71,5 +71,6 @@ const styles = StyleSheet.create({
 });
 
 export default ChatHomeTab;
+
 
 

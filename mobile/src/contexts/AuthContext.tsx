@@ -2,33 +2,40 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CommonActions } from '@react-navigation/native';
 import { Alert, Platform } from 'react-native';
+import { apiClient } from '../services/api/apiClient';
+import { logger } from '../utils/logger';
+import { isDev } from '../utils/isDev';
+import axios from 'axios';
 
 // Conditional imports for optional dependencies
-let GoogleSignin: any;
-let LoginManager: any, AccessToken: any;
-let appleAuth: any;
+let GoogleSignin: any = null;
+let LoginManager: any = null;
+let AccessToken: any = null;
+let appleAuth: any = null;
 
-try {
-  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
-} catch (error) {
-  console.warn('Google Sign-In not available:', error);
-  GoogleSignin = null;
-}
+const initializeNativeModules = () => {
+  if (Platform.OS === 'web') return;
 
-try {
-  const fbModule = require('react-native-fbsdk-next');
-  LoginManager = fbModule.LoginManager;
-  AccessToken = fbModule.AccessToken;
-} catch (error) {
-  console.warn('Facebook SDK not available:', error);
-}
+  try {
+    const googleModule = require('@react-native-google-signin/google-signin');
+    GoogleSignin = googleModule.GoogleSignin;
+  } catch (error) {
+    console.warn('Google Sign-In not available:', error);
+  }
+
+  try {
+    const fbModule = require('react-native-fbsdk-next');
+    LoginManager = fbModule.LoginManager;
+    AccessToken = fbModule.AccessToken;
+  } catch (error) {
+    console.warn('Facebook SDK not available:', error);
+  }
+};
 
 // Apple Authentication is optional and not installed
 appleAuth = null;
 
-import { apiClient } from '../services/api/apiClient';
-import { logger } from '../utils/logger';
-import axios from 'axios';
+
 
 // Create a fallback axios instance in case apiClient fails to load
 const fallbackApi = axios.create({
@@ -54,9 +61,9 @@ interface User {
   avatar?: string;
   phone?: string;
   dateOfBirth?: Date;
-  userType: 'hourse' | 'children' | 'seniors';
+  userType: 'Circle' | 'children' | 'seniors' | 'workplace';
   subscriptionTier: 'free' | 'premium' | 'elite';
-  familyIds: string[];
+  circleIds: string[];
   isOnboardingComplete: boolean;
   preferences: {
     notifications: boolean;
@@ -106,7 +113,7 @@ interface SignupData {
   lastName: string;
   phone?: string;
   dateOfBirth?: Date;
-  userType: 'hourse' | 'children' | 'seniors';
+  userType: 'Circle' | 'children' | 'seniors' | 'workplace';
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +183,31 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
+const parseUserDates = (userData: any): User => {
+  if (!userData) return userData;
+  
+  // Consolidate property mapping
+  const id = userData.id || userData._id;
+  const email = userData.email || userData.emailAddress;
+  
+  if (!id || !email) {
+    console.warn('[AUTH] parseUserDates - Missing id or email!', { id, email, keys: Object.keys(userData) });
+  }
+
+  return {
+    ...userData,
+    id,
+    email,
+    firstName: userData.firstName || userData.first_name || '',
+    lastName: userData.lastName || userData.last_name || '',
+    avatar: userData.avatar || userData.avatar_url,
+    isOnboardingComplete: !!(userData.isOnboardingComplete ?? userData.is_onboarding_complete),
+    dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : undefined,
+    createdAt: userData.createdAt ? new Date(userData.createdAt) : new Date(),
+    updatedAt: userData.updatedAt ? new Date(userData.updatedAt) : new Date(),
+  };
+};
+
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   console.log('🔧 AuthProvider rendering...');
   const [user, setUser] = useState<User | null>(null);
@@ -188,6 +220,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const clearLoginError = () => setLoginError(null);
 
   console.log('🔧 AuthProvider - Initial state:', { user: !!user, isLoading, isOnboardingComplete, forceUpdate });
+
+  // Initialize native modules on mount
+  useEffect(() => {
+    initializeNativeModules();
+  }, []);
 
   // Initialize Google Sign-In only if available
   useEffect(() => {
@@ -244,7 +281,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const storedUser = await AsyncStorage.getItem('user');
         if (storedUser) {
           try {
-            const userData = JSON.parse(storedUser);
+            const userData = parseUserDates(JSON.parse(storedUser));
             console.log('[AUTH] Restored user from storage:', userData.email);
             setUser(userData);
             setIsOnboardingComplete(userData.isOnboardingComplete || false);
@@ -253,8 +290,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             api.get('/auth/me').then((response: any) => {
               const freshUserData = response?.user || response?.data?.user;
               if (freshUserData) {
-                setUser(freshUserData);
-                AsyncStorage.setItem('user', JSON.stringify(freshUserData));
+                const parsedUser = parseUserDates(freshUserData);
+                setUser(parsedUser);
+                AsyncStorage.setItem('user', JSON.stringify(parsedUser));
                 console.log('[AUTH] User data refreshed from server');
               }
             }).catch(async (err: any) => {
@@ -291,7 +329,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ]).catch(() => null);
           const responseData = response as any;
           if (responseData && (responseData.user || responseData.data?.user)) {
-            const userData = responseData.user || responseData.data?.user;
+            const userData = parseUserDates(responseData.user || responseData.data?.user);
             setUser(userData);
             setIsOnboardingComplete(userData.isOnboardingComplete || false);
             await AsyncStorage.setItem('user', JSON.stringify(userData));
@@ -422,7 +460,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const devBypassLogin = async () => {
     console.log('🔧 devBypassLogin called!');
-    if (!__DEV__) {
+    if (!isDev) {
       throw new Error('Development bypass is only available in development mode');
     }
 
@@ -435,9 +473,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastName: 'User',
         avatar: 'https://via.placeholder.com/150',
         phone: '+1234567890',
-        userType: 'hourse',
+        userType: 'Circle',
         subscriptionTier: 'premium',
-        familyIds: ['dev-hourse-123'],
+        circleIds: ['dev-Circle-123'],
         isOnboardingComplete: true,
         preferences: {
           notifications: true,
@@ -554,7 +592,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         accessToken: userInfo.accessToken,
         email: userInfo.user.email,
         firstName: userInfo.user.givenName,
-        lastName: userInfo.user.familyName,
+        lastName: userInfo.user.circleName,
         avatar: userInfo.user.photo,
       };
     } catch (error) {
@@ -609,7 +647,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         authorizationCode,
         email: fullName?.emailAddress,
         firstName: fullName?.givenName,
-        lastName: fullName?.familyName,
+        lastName: fullName?.circleName,
       };
     } catch (error) {
       logger.error('Apple sign-in failed:', error);
@@ -798,12 +836,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const updateUser = async (updates: Partial<User>) => {
     try {
-      const response = await api.put('/auth/profile', updates);
-      const updatedUser = response.data.user;
+      console.log('[AUTH] Updating user profile...', updates);
+      const response = await api.put('/auth/profile', updates) as any;
+      
+      // Handle various response structures defensively
+      const userData = response.user || response.data?.user || (response.data && response.data.data?.user);
+      
+      if (!userData) {
+        console.warn('[AUTH] updateUser - No user data returned from profile update');
+        return;
+      }
 
-      setUser(updatedUser);
-      setIsOnboardingComplete(updatedUser.isOnboardingComplete);
-
+      const transformedUser = parseUserDates(userData);
+      
+      // Ensure we don't clear critical fields if missing from update response
+      // parseUserDates already handles mapping, so we just set state
+      console.log('[AUTH] User profile updated successfully:', transformedUser.email);
+      setUser(transformedUser);
+      setIsOnboardingComplete(transformedUser.isOnboardingComplete);
+      
+      await AsyncStorage.setItem('user', JSON.stringify(transformedUser));
+      
+      setForceUpdate(prev => prev + 1);
       logger.info('User profile updated');
     } catch (error) {
       logger.error('Profile update failed:', error);
@@ -813,13 +867,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const completeOnboarding = async () => {
     try {
-      const response = await api.post('/auth/onboarding/complete');
-      const updatedUser = response.data.user;
+      console.log('[AUTH] Completing onboarding...');
+      const response = await api.post('/auth/onboarding/complete') as any;
+      
+      // Handle various response structures defensively
+      const userData = response.user || response.data?.user;
+      
+      if (!userData) {
+        console.error('[AUTH] completeOnboarding - CRITICAL: No user data returned!');
+        // Fallback: If we know it succeeded but user is missing, at least update state if we have current user
+        if (user) {
+          const updatedUser = { ...user, isOnboardingComplete: true };
+          setUser(updatedUser);
+          setIsOnboardingComplete(true);
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+          setForceUpdate(prev => prev + 1);
+        }
+        return;
+      }
 
-      setUser(updatedUser);
+      const transformedUser = parseUserDates(userData);
+      // Ensure onboarding is marked complete
+      transformedUser.isOnboardingComplete = true;
+
+      console.log('[AUTH] Onboarding completed successfully for:', transformedUser.email);
+      
+      // Update state atomically where possible
+      setUser(transformedUser);
       setIsOnboardingComplete(true);
-
+      
+      await AsyncStorage.setItem('user', JSON.stringify(transformedUser));
+      
+      setForceUpdate(prev => prev + 1);
       logger.info('Onboarding completed');
+
+      // Note: Removed manual navigation reset as RootNavigator now handles the state switch more gracefully.
+
+
     } catch (error) {
       logger.error('Onboarding completion failed:', error);
       throw error;
@@ -856,9 +940,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (Platform.OS === 'web') {
         window.alert(msg);
       } else {
-        Alert.alert('Login Debug Error', msg);
+        // Alert.alert('Login Debug Error', msg);
       }
-      return false;
+      throw error;
     }
   };
 
@@ -880,7 +964,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Helper to handle successful auth response
   const handleAuthResponse = async (data: any) => {
-    const { user: userData, accessToken, refreshToken } = data;
+    console.log('[AUTH] handleAuthResponse - Raw data received:', {
+      hasUser: !!data.user,
+      hasDataUser: !!data.data?.user,
+      hasAccessToken: !!data.accessToken,
+      hasRefreshToken: !!data.refreshToken,
+      keys: Object.keys(data)
+    });
+
+    const userData = data.user || data.data?.user;
+    const accessToken = data.accessToken || data.data?.accessToken;
+    const refreshToken = data.refreshToken || data.data?.refreshToken;
+
+    if (!userData || !accessToken) {
+      console.error('[AUTH] handleAuthResponse - CRITICAL: Missing user or token!', { 
+        hasUser: !!userData, 
+        hasToken: !!accessToken 
+      });
+      return;
+    }
+
+    console.log('[AUTH] handleAuthResponse - User keys:', Object.keys(userData));
 
     // Store tokens
     await AsyncStorage.multiSet([
@@ -891,24 +995,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Set token in API headers
     api.setAuthToken(accessToken);
 
-    // Store user data
-    const transformedUser: User = {
-      ...userData,
-      createdAt: new Date(userData.createdAt),
-      updatedAt: new Date(userData.updatedAt),
-      // Ensure defaults
-      preferences: userData.preferences || {
-        notifications: true,
-        locationSharing: true,
-        popupSettings: { enabled: true, frequency: 'daily', maxPerDay: 4, categories: [] }
-      }
-    };
-
+    // Use parseUserDates for robust transformation
+    const transformedUser = parseUserDates(userData);
+    
+    console.log('[AUTH] handleAuthResponse - Setting user state:', transformedUser.email);
     setUser(transformedUser);
     setIsOnboardingComplete(transformedUser.isOnboardingComplete);
+    
     await AsyncStorage.setItem('user', JSON.stringify(transformedUser));
 
-    setForceUpdate(prev => prev + 1);
+    setForceUpdate(prev => {
+      console.log('[AUTH] handleAuthResponse - forceUpdate from', prev, 'to', prev + 1);
+      return prev + 1;
+    });
   };
 
   const loginWithOtp = async (identifier: string, otp: string): Promise<void> => {
@@ -923,14 +1022,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         otp
       });
 
+      console.log('[AUTH] loginWithOtp success. Calling handleAuthResponse...');
       await handleAuthResponse(response);
       logger.info('User logged in via OTP successfully');
+
+      // FORCE NAVIGATION RESET
+      // Sometimes RootNavigator's automatic state detection is delayed
+      // This ensures the UI moves forward immediately
+      console.log('[AUTH] Forcing navigation reset to App');
+      setTimeout(() => {
+        try {
+          const navigation = navigationRef.current;
+          if (navigation) {
+            console.log('[AUTH] Navigation ref found, resetting to App');
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: 'App' }],
+              })
+            );
+          } else {
+            console.log('[AUTH] Navigation ref NOT FOUND for reset');
+          }
+        } catch (err) {
+          console.error('[AUTH] Reset navigation failed:', err);
+        }
+      }, 500);
 
     } catch (error: any) {
       console.error('Login with OTP failed:', error);
       setLoginError(error.message || 'Invalid OTP');
       throw error;
     } finally {
+      console.log('[AUTH] loginWithOtp finally - setting isLoading false');
       setIsLoading(false);
     }
   };
@@ -964,13 +1088,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     refreshToken,
     updateUser,
     completeOnboarding,
-    devBypassLogin: __DEV__ ? devBypassLogin : undefined,
-    _devSetUser: __DEV__ ? (user: User) => {
+    devBypassLogin: isDev ? devBypassLogin : undefined,
+    _devSetUser: isDev ? (user: User) => {
       console.log('🔧 _devSetUser called with:', user?.email);
       setUser(user);
       setForceUpdate(prev => prev + 1);
     } : undefined,
-    _devSetOnboarding: __DEV__ ? (complete: boolean) => {
+    _devSetOnboarding: isDev ? (complete: boolean) => {
       console.log('🔧 _devSetOnboarding called with:', complete);
       setIsOnboardingComplete(complete);
       setForceUpdate(prev => prev + 1);
@@ -990,7 +1114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Simple auth state logging
-  if (__DEV__) {
+  if (isDev) {
     console.log('Auth state:', !!user ? 'authenticated' : 'not authenticated');
   }
 
@@ -1000,5 +1124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
 
 

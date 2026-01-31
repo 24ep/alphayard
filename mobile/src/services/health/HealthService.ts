@@ -1,408 +1,480 @@
+import { Platform } from 'react-native';
 import { apiClient } from '../api/apiClient';
 import { analyticsService } from '../analytics/AnalyticsService';
 
-export interface HealthRecord {
+interface Game {
   id: string;
-  userId: string;
-  familyId: string;
-  type: 'medication' | 'appointment' | 'symptom' | 'vital' | 'allergy' | 'vaccination' | 'test' | 'procedure';
-  title: string;
-  description?: string;
-  value?: string;
-  unit?: string;
-  date: Date;
-  doctor?: string;
-  location?: string;
-  notes?: string;
-  isRecurring: boolean;
-  recurrencePattern?: string;
-  nextDate?: Date;
-  status: 'active' | 'completed' | 'cancelled' | 'pending';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  tags: string[];
-  attachments?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  name: string;
+  description: string;
+  category: 'puzzle' | 'action' | 'strategy' | 'arcade' | 'educational';
+  difficulty: 'easy' | 'medium' | 'hard';
+  maxPlayers: number;
+  isMultiplayer: boolean;
+  isOnline: boolean;
+  thumbnail: string;
+  rating: number;
+  playCount: number;
 }
 
-export interface HealthGoal {
+interface GameSession {
   id: string;
-  userId: string;
-  familyId: string;
-  title: string;
-  description?: string;
-  type: 'fitness' | 'nutrition' | 'mental' | 'medical' | 'lifestyle';
-  targetValue?: number;
-  currentValue?: number;
-  unit?: string;
-  targetDate?: Date;
-  progress: number; // 0-100
-  status: 'active' | 'completed' | 'paused' | 'cancelled';
-  milestones: Array<{
-    id: string;
-    title: string;
-    targetValue: number;
-    achieved: boolean;
-    achievedAt?: Date;
-  }>;
-  createdAt: Date;
-  updatedAt: Date;
+  gameId: string;
+  playerId: string;
+  startTime: number;
+  endTime?: number;
+  score: number;
+  level: number;
+  achievements: string[];
+  isCompleted: boolean;
 }
 
-export interface MedicationSchedule {
+interface GameLeaderboard {
+  gameId: string;
+  entries: {
+    playerId: string;
+    playerName: string;
+    score: number;
+    rank: number;
+    timestamp: number;
+  }[];
+}
+
+interface GameAchievement {
   id: string;
-  userId: string;
-  familyId: string;
-  medicationName: string;
-  dosage: string;
-  frequency: string;
-  timeOfDay: string[];
-  startDate: Date;
-  endDate?: Date;
-  isActive: boolean;
-  notes?: string;
-  reminders: boolean;
-  reminderTime: string;
-  createdAt: Date;
-  updatedAt: Date;
+  name: string;
+  description: string;
+  icon: string;
+  isUnlocked: boolean;
+  unlockDate?: number;
+  progress?: number;
+  maxProgress?: number;
 }
 
-export interface HealthStats {
-  totalRecords: number;
-  activeMedications: number;
-  upcomingAppointments: number;
-  completedGoals: number;
-  activeGoals: number;
-  averageHealthScore: number;
-  lastCheckup: Date;
-  nextCheckup?: Date;
+export class GamingService {
+  private static instance: GamingService;
+  private currentSession: GameSession | null = null;
+  private games: Game[] = [];
+  private achievements: GameAchievement[] = [];
+
+  private constructor() {}
+
+  static getInstance(): GamingService {
+    if (!GamingService.instance) {
+      GamingService.instance = new GamingService();
+    }
+    return GamingService.instance;
+  }
+
+  // Initialize gaming service
+  async initialize(): Promise<void> {
+    try {
+      // Load available games
+      await this.loadGames();
+      
+      // Load user achievements
+      await this.loadAchievements();
+      
+      console.log('Gaming service initialized');
+    } catch (error) {
+      console.error('Failed to initialize gaming service:', error);
+      throw error;
+    }
+  }
+
+  // Load available games
+  private async loadGames(): Promise<void> {
+    try {
+      const response = await apiClient.get('/games');
+      this.games = response.data;
+    } catch (error) {
+      console.error('Failed to load games:', error);
+      // Load default games
+      this.games = this.getDefaultGames();
+    }
+  }
+
+  // Load user achievements
+  private async loadAchievements(): Promise<void> {
+    try {
+      const response = await apiClient.get('/games/achievements');
+      this.achievements = response.data;
+    } catch (error) {
+      console.error('Failed to load achievements:', error);
+      this.achievements = [];
+    }
+  }
+
+  // Get default games
+  private getDefaultGames(): Game[] {
+    return [
+      {
+        id: 'memory-match',
+        name: 'Memory Match',
+        description: 'Match pairs of cards to test your memory',
+        category: 'puzzle',
+        difficulty: 'easy',
+        maxPlayers: 1,
+        isMultiplayer: false,
+        isOnline: false,
+        thumbnail: '🧠',
+        rating: 4.5,
+        playCount: 0,
+      },
+      {
+        id: 'Circle-quiz',
+        name: 'Circle Quiz',
+        description: 'Test your knowledge about your Circle',
+        category: 'educational',
+        difficulty: 'medium',
+        maxPlayers: 4,
+        isMultiplayer: true,
+        isOnline: true,
+        thumbnail: '❓',
+        rating: 4.2,
+        playCount: 0,
+      },
+      {
+        id: 'location-explorer',
+        name: 'Location Explorer',
+        description: 'Explore and learn about different places',
+        category: 'educational',
+        difficulty: 'easy',
+        maxPlayers: 1,
+        isMultiplayer: false,
+        isOnline: true,
+        thumbnail: 'map',
+        rating: 4.0,
+        playCount: 0,
+      },
+      {
+        id: 'safety-champion',
+        name: 'Safety Champion',
+        description: 'Learn about safety and emergency procedures',
+        category: 'educational',
+        difficulty: 'medium',
+        maxPlayers: 2,
+        isMultiplayer: true,
+        isOnline: false,
+        thumbnail: 'shield',
+        rating: 4.8,
+        playCount: 0,
+      },
+      {
+        id: 'word-builder',
+        name: 'Word Builder',
+        description: 'Create words from given letters',
+        category: 'puzzle',
+        difficulty: 'medium',
+        maxPlayers: 1,
+        isMultiplayer: false,
+        isOnline: false,
+        thumbnail: 'note-text',
+        rating: 4.3,
+        playCount: 0,
+      },
+    ];
+  }
+
+  // Get all games
+  getGames(): Game[] {
+    return [...this.games];
+  }
+
+  // Get games by category
+  getGamesByCategory(category: string): Game[] {
+    return this.games.filter(game => game.category === category);
+  }
+
+  // Get games by difficulty
+  getGamesByDifficulty(difficulty: string): Game[] {
+    return this.games.filter(game => game.difficulty === difficulty);
+  }
+
+  // Get game by ID
+  getGameById(gameId: string): Game | null {
+    return this.games.find(game => game.id === gameId) || null;
+  }
+
+  // Start a game session
+  async startGame(gameId: string, playerId: string): Promise<GameSession> {
+    try {
+      const game = this.getGameById(gameId);
+      if (!game) {
+        throw new Error('Game not found');
+      }
+
+      const session: GameSession = {
+        id: this.generateSessionId(),
+        gameId,
+        playerId,
+        startTime: Date.now(),
+        score: 0,
+        level: 1,
+        achievements: [],
+        isCompleted: false,
+      };
+
+      this.currentSession = session;
+
+      // Track game start
+      analyticsService.trackEvent('game_started', {
+        gameId,
+        gameName: game.name,
+        category: game.category,
+        difficulty: game.difficulty,
+      });
+
+      console.log(`Game session started: ${game.name}`);
+      return session;
+    } catch (error) {
+      console.error('Failed to start game:', error);
+      throw error;
+    }
+  }
+
+  // End current game session
+  async endGame(score: number, level: number, achievements: string[] = []): Promise<void> {
+    if (!this.currentSession) {
+      throw new Error('No active game session');
+    }
+
+    try {
+      this.currentSession.endTime = Date.now();
+      this.currentSession.score = score;
+      this.currentSession.level = level;
+      this.currentSession.achievements = achievements;
+      this.currentSession.isCompleted = true;
+
+      // Save session to server
+      await apiClient.post('/games/sessions', this.currentSession);
+
+      // Update game play count
+      await this.updateGamePlayCount(this.currentSession.gameId);
+
+      // Track game completion
+      analyticsService.trackEvent('game_completed', {
+        gameId: this.currentSession.gameId,
+        score,
+        level,
+        duration: this.currentSession.endTime - this.currentSession.startTime,
+        achievements: achievements.length,
+      });
+
+      console.log('Game session ended');
+      this.currentSession = null;
+    } catch (error) {
+      console.error('Failed to end game:', error);
+      throw error;
+    }
+  }
+
+  // Update game play count
+  private async updateGamePlayCount(gameId: string): Promise<void> {
+    try {
+      await apiClient.put(`/games/${gameId}/play-count`);
+    } catch (error) {
+      console.error('Failed to update game play count:', error);
+    }
+  }
+
+  // Get current game session
+  getCurrentSession(): GameSession | null {
+    return this.currentSession;
+  }
+
+  // Get game leaderboard
+  async getGameLeaderboard(gameId: string): Promise<GameLeaderboard> {
+    try {
+      const response = await apiClient.get(`/games/${gameId}/leaderboard`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get game leaderboard:', error);
+      return {
+        gameId,
+        entries: [],
+      };
+    }
+  }
+
+  // Submit score to leaderboard
+  async submitScore(gameId: string, score: number): Promise<void> {
+    try {
+      await apiClient.post(`/games/${gameId}/scores`, { score });
+      
+      // Track score submission
+      analyticsService.trackEvent('score_submitted', {
+        gameId,
+        score,
+      });
+    } catch (error) {
+      console.error('Failed to submit score:', error);
+      throw error;
+    }
+  }
+
+  // Get user achievements
+  getUserAchievements(): GameAchievement[] {
+    return [...this.achievements];
+  }
+
+  // Unlock achievement
+  async unlockAchievement(achievementId: string): Promise<void> {
+    try {
+      const achievement = this.achievements.find(a => a.id === achievementId);
+      if (achievement && !achievement.isUnlocked) {
+        achievement.isUnlocked = true;
+        achievement.unlockDate = Date.now();
+
+        await apiClient.post('/games/achievements/unlock', { achievementId });
+
+        // Track achievement unlock
+        analyticsService.trackEvent('achievement_unlocked', {
+          achievementId,
+          achievementName: achievement.name,
+        });
+
+        console.log(`Achievement unlocked: ${achievement.name}`);
+      }
+    } catch (error) {
+      console.error('Failed to unlock achievement:', error);
+      throw error;
+    }
+  }
+
+  // Update achievement progress
+  async updateAchievementProgress(achievementId: string, progress: number): Promise<void> {
+    try {
+      const achievement = this.achievements.find(a => a.id === achievementId);
+      if (achievement) {
+        achievement.progress = progress;
+        
+        if (achievement.maxProgress && progress >= achievement.maxProgress) {
+          await this.unlockAchievement(achievementId);
+        }
+
+        await apiClient.put(`/games/achievements/${achievementId}/progress`, { progress });
+      }
+    } catch (error) {
+      console.error('Failed to update achievement progress:', error);
+      throw error;
+    }
+  }
+
+  // Get game statistics
+  async getGameStatistics(gameId: string): Promise<any> {
+    try {
+      const response = await apiClient.get(`/games/${gameId}/statistics`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get game statistics:', error);
+      return {
+        totalPlays: 0,
+        averageScore: 0,
+        highestScore: 0,
+        totalPlayTime: 0,
+      };
+    }
+  }
+
+  // Get user game history
+  async getUserGameHistory(): Promise<GameSession[]> {
+    try {
+      const response = await apiClient.get('/games/sessions/history');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user game history:', error);
+      return [];
+    }
+  }
+
+  // Get multiplayer games
+  getMultiplayerGames(): Game[] {
+    return this.games.filter(game => game.isMultiplayer);
+  }
+
+  // Get online games
+  getOnlineGames(): Game[] {
+    return this.games.filter(game => game.isOnline);
+  }
+
+  // Get popular games
+  getPopularGames(limit: number = 5): Game[] {
+    return this.games
+      .sort((a, b) => b.playCount - a.playCount)
+      .slice(0, limit);
+  }
+
+  // Get highly rated games
+  getHighlyRatedGames(limit: number = 5): Game[] {
+    return this.games
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, limit);
+  }
+
+  // Search games
+  searchGames(query: string): Game[] {
+    const lowerQuery = query.toLowerCase();
+    return this.games.filter(game => 
+      game.name.toLowerCase().includes(lowerQuery) ||
+      game.description.toLowerCase().includes(lowerQuery) ||
+      game.category.toLowerCase().includes(lowerQuery)
+    );
+  }
+
+  // Get game recommendations
+  getGameRecommendations(userId: string): Game[] {
+    // This would typically use machine learning to recommend games
+    // For now, return popular games
+    return this.getPopularGames(3);
+  }
+
+  // Generate session ID
+  private generateSessionId(): string {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 8);
+    return `session_${timestamp}_${random}`;
+  }
+
+  // Check if game is available
+  isGameAvailable(gameId: string): boolean {
+    const game = this.getGameById(gameId);
+    return game !== null;
+  }
+
+  // Get game categories
+  getGameCategories(): string[] {
+    const categories = new Set(this.games.map(game => game.category));
+    return Array.from(categories);
+  }
+
+  // Get game difficulties
+  getGameDifficulties(): string[] {
+    const difficulties = new Set(this.games.map(game => game.difficulty));
+    return Array.from(difficulties);
+  }
+
+  // Get total games count
+  getTotalGamesCount(): number {
+    return this.games.length;
+  }
+
+  // Get total achievements count
+  getTotalAchievementsCount(): number {
+    return this.achievements.length;
+  }
+
+  // Get unlocked achievements count
+  getUnlockedAchievementsCount(): number {
+    return this.achievements.filter(a => a.isUnlocked).length;
+  }
+
+  // Get achievement progress percentage
+  getAchievementProgressPercentage(): number {
+    const total = this.achievements.length;
+    const unlocked = this.getUnlockedAchievementsCount();
+    return total > 0 ? (unlocked / total) * 100 : 0;
+  }
 }
 
-class HealthService {
-  async getHealthRecords(userId: string, familyId: string): Promise<HealthRecord[]> {
-    try {
-      const response = await apiClient.get(`/health/records?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health records:', error);
-      throw error;
-    }
-  }
-
-  async getHealthRecord(recordId: string): Promise<HealthRecord> {
-    try {
-      const response = await apiClient.get(`/health/records/${recordId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health record:', error);
-      throw error;
-    }
-  }
-
-  async createHealthRecord(record: Omit<HealthRecord, 'id' | 'createdAt' | 'updatedAt'>): Promise<HealthRecord> {
-    try {
-      const response = await apiClient.post('/health/records', record);
-      
-      analyticsService.trackEvent('health_record_created', {
-        recordType: record.type,
-        priority: record.priority,
-        userId: record.userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to create health record:', error);
-      throw error;
-    }
-  }
-
-  async updateHealthRecord(recordId: string, updates: Partial<HealthRecord>): Promise<HealthRecord> {
-    try {
-      const response = await apiClient.put(`/health/records/${recordId}`, updates);
-      
-      analyticsService.trackEvent('health_record_updated', {
-        recordId,
-        recordType: updates.type,
-        userId: updates.userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update health record:', error);
-      throw error;
-    }
-  }
-
-  async deleteHealthRecord(recordId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/health/records/${recordId}`);
-      
-      analyticsService.trackEvent('health_record_deleted', {
-        recordId
-      });
-    } catch (error) {
-      console.error('Failed to delete health record:', error);
-      throw error;
-    }
-  }
-
-  async getHealthGoals(userId: string, familyId: string): Promise<HealthGoal[]> {
-    try {
-      const response = await apiClient.get(`/health/goals?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health goals:', error);
-      throw error;
-    }
-  }
-
-  async createHealthGoal(goal: Omit<HealthGoal, 'id' | 'createdAt' | 'updatedAt'>): Promise<HealthGoal> {
-    try {
-      const response = await apiClient.post('/health/goals', goal);
-      
-      analyticsService.trackEvent('health_goal_created', {
-        goalType: goal.type,
-        userId: goal.userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to create health goal:', error);
-      throw error;
-    }
-  }
-
-  async updateHealthGoal(goalId: string, updates: Partial<HealthGoal>): Promise<HealthGoal> {
-    try {
-      const response = await apiClient.put(`/health/goals/${goalId}`, updates);
-      
-      analyticsService.trackEvent('health_goal_updated', {
-        goalId,
-        progress: updates.progress,
-        status: updates.status
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update health goal:', error);
-      throw error;
-    }
-  }
-
-  async deleteHealthGoal(goalId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/health/goals/${goalId}`);
-      
-      analyticsService.trackEvent('health_goal_deleted', {
-        goalId
-      });
-    } catch (error) {
-      console.error('Failed to delete health goal:', error);
-      throw error;
-    }
-  }
-
-  async getMedicationSchedules(userId: string, familyId: string): Promise<MedicationSchedule[]> {
-    try {
-      const response = await apiClient.get(`/health/medications?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get medication schedules:', error);
-      throw error;
-    }
-  }
-
-  async createMedicationSchedule(schedule: Omit<MedicationSchedule, 'id' | 'createdAt' | 'updatedAt'>): Promise<MedicationSchedule> {
-    try {
-      const response = await apiClient.post('/health/medications', schedule);
-      
-      analyticsService.trackEvent('medication_schedule_created', {
-        medicationName: schedule.medicationName,
-        userId: schedule.userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to create medication schedule:', error);
-      throw error;
-    }
-  }
-
-  async updateMedicationSchedule(scheduleId: string, updates: Partial<MedicationSchedule>): Promise<MedicationSchedule> {
-    try {
-      const response = await apiClient.put(`/health/medications/${scheduleId}`, updates);
-      
-      analyticsService.trackEvent('medication_schedule_updated', {
-        scheduleId,
-        isActive: updates.isActive
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update medication schedule:', error);
-      throw error;
-    }
-  }
-
-  async deleteMedicationSchedule(scheduleId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/health/medications/${scheduleId}`);
-      
-      analyticsService.trackEvent('medication_schedule_deleted', {
-        scheduleId
-      });
-    } catch (error) {
-      console.error('Failed to delete medication schedule:', error);
-      throw error;
-    }
-  }
-
-  async getHealthStats(userId: string, familyId: string): Promise<HealthStats> {
-    try {
-      const response = await apiClient.get(`/health/stats?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health stats:', error);
-      throw error;
-    }
-  }
-
-  async searchHealthRecords(query: string, userId: string, familyId: string): Promise<HealthRecord[]> {
-    try {
-      const response = await apiClient.get(`/health/search?q=${encodeURIComponent(query)}&userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to search health records:', error);
-      throw error;
-    }
-  }
-
-  async getUpcomingAppointments(userId: string, familyId: string, days: number = 30): Promise<HealthRecord[]> {
-    try {
-      const response = await apiClient.get(`/health/appointments/upcoming?userId=${userId}&familyId=${familyId}&days=${days}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get upcoming appointments:', error);
-      throw error;
-    }
-  }
-
-  async getActiveMedications(userId: string, familyId: string): Promise<MedicationSchedule[]> {
-    try {
-      const response = await apiClient.get(`/health/medications/active?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get active medications:', error);
-      throw error;
-    }
-  }
-
-  async markMedicationTaken(scheduleId: string, takenAt: Date = new Date()): Promise<void> {
-    try {
-      await apiClient.post(`/health/medications/${scheduleId}/taken`, { takenAt });
-      
-      analyticsService.trackEvent('medication_taken', {
-        scheduleId,
-        takenAt
-      });
-    } catch (error) {
-      console.error('Failed to mark medication as taken:', error);
-      throw error;
-    }
-  }
-
-  async getMedicationHistory(scheduleId: string, days: number = 30): Promise<Array<{ date: Date; taken: boolean; takenAt?: Date }>> {
-    try {
-      const response = await apiClient.get(`/health/medications/${scheduleId}/history?days=${days}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get medication history:', error);
-      throw error;
-    }
-  }
-
-  async exportHealthData(userId: string, familyId: string, format: 'pdf' | 'csv' | 'json' = 'pdf'): Promise<string> {
-    try {
-      const response = await apiClient.get(`/health/export?userId=${userId}&familyId=${familyId}&format=${format}`);
-      
-      analyticsService.trackEvent('health_data_exported', {
-        format,
-        userId
-      });
-      
-      return response.data.downloadUrl;
-    } catch (error) {
-      console.error('Failed to export health data:', error);
-      throw error;
-    }
-  }
-
-  async shareHealthRecord(recordId: string, recipients: string[]): Promise<void> {
-    try {
-      await apiClient.post(`/health/records/${recordId}/share`, { recipients });
-      
-      analyticsService.trackEvent('health_record_shared', {
-        recordId,
-        recipientsCount: recipients.length
-      });
-    } catch (error) {
-      console.error('Failed to share health record:', error);
-      throw error;
-    }
-  }
-
-  async getHealthTips(category?: string): Promise<Array<{ id: string; title: string; content: string; category: string }>> {
-    try {
-      const response = await apiClient.get(`/health/tips${category ? `?category=${category}` : ''}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health tips:', error);
-      throw error;
-    }
-  }
-
-  async setHealthReminder(reminder: {
-    userId: string;
-    familyId: string;
-    type: 'medication' | 'appointment' | 'checkup' | 'exercise';
-    title: string;
-    message: string;
-    time: string;
-    frequency: 'once' | 'daily' | 'weekly' | 'monthly';
-    isActive: boolean;
-  }): Promise<void> {
-    try {
-      await apiClient.post('/health/reminders', reminder);
-      
-      analyticsService.trackEvent('health_reminder_set', {
-        reminderType: reminder.type,
-        frequency: reminder.frequency,
-        userId: reminder.userId
-      });
-    } catch (error) {
-      console.error('Failed to set health reminder:', error);
-      throw error;
-    }
-  }
-
-  async getHealthReminders(userId: string, familyId: string): Promise<Array<{
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    time: string;
-    frequency: string;
-    isActive: boolean;
-    nextReminder: Date;
-  }>> {
-    try {
-      const response = await apiClient.get(`/health/reminders?userId=${userId}&familyId=${familyId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get health reminders:', error);
-      throw error;
-    }
-  }
-}
-
-export const healthService = new HealthService(); 
+export const gamingService = GamingService.getInstance();
+export default gamingService; 

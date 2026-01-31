@@ -61,10 +61,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     })
 
     // Listen for real-time updates
-    newSocket.on('family:update', (data) => {
-      console.log('Family update:', data)
+    newSocket.on('Circle:update', (data) => {
+      console.log('Circle update:', data)
       // Emit custom event for components to listen
-      window.dispatchEvent(new CustomEvent('family:update', { detail: data }))
+      window.dispatchEvent(new CustomEvent('Circle:update', { detail: data }))
     })
 
     newSocket.on('social:new_post', (data) => {
@@ -113,4 +113,5 @@ export function useSocket() {
   }
   return context
 }
+
 

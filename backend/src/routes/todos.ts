@@ -1,11 +1,11 @@
 import express from 'express';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember } from '../middleware/auth';
 import { TodosController } from '../controllers/TodosController';
 
 const router = express.Router();
 
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+router.use(requireCircleMember as any);
 
 router.get('/', TodosController.list);
 router.post('/', TodosController.create);
@@ -14,5 +14,6 @@ router.delete('/:id', TodosController.remove);
 router.post('/reorder', TodosController.reorder);
 
 export default router;
+
 
 

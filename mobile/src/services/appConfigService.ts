@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { config } from '../config/environment';
 
 /**
  * App Configuration Service
@@ -59,7 +60,7 @@ class AppConfigService {
   private cacheTimestamp: number = 0;
 
   constructor() {
-    this.baseURL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000';
+    this.baseURL = config.apiUrl.replace(/\/api\/v1$/, '');
 
     this.client = axios.create({
       baseURL: `${this.baseURL}/api/app-config`,

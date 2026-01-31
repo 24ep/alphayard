@@ -3,7 +3,7 @@ import { api } from './index';
 export interface File {
   id: string;
   userId: string;
-  familyId: string;
+  circleId: string;
   fileName: string;
   originalName: string;
   fileSize: number;
@@ -88,9 +88,9 @@ export const storageApi = {
     return response.data;
   },
 
-  // Get hourse files
-  getFamilyFiles: async (params?: { type?: string; limit?: number; offset?: number; search?: string }): Promise<{ success: boolean; files: File[]; pagination: any }> => {
-    const response = await api.get('/storage/files/hourse', { params });
+  // Get Circle files
+  getCircleFiles: async (params?: { type?: string; limit?: number; offset?: number; search?: string }): Promise<{ success: boolean; files: File[]; pagination: any }> => {
+    const response = await api.get('/storage/files/Circle', { params });
     return response.data;
   },
 
@@ -146,3 +146,4 @@ export const storageApi = {
     return response.data;
   },
 };
+

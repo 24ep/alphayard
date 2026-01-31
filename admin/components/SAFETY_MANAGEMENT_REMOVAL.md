@@ -13,7 +13,7 @@
   - Emergency contacts management
   - Geofences management  
   - Safety alerts management
-  - Family selection for management
+  - Circle selection for management
   - All related forms and modals
   - Tab navigation system
 
@@ -28,7 +28,7 @@
 - ❌ Emergency contacts CRUD operations
 - ❌ Geofences management
 - ❌ Safety alerts creation/editing
-- ❌ Family selection dropdown for management
+- ❌ Circle selection dropdown for management
 - ❌ Contact form modal
 - ❌ Geofence form modal
 - ❌ Alert form modal
@@ -45,7 +45,7 @@
 ## **✅ What Remains**
 
 ### **Emergency Incidents Only**
-- ✅ Family Safety Incidents component (unchanged)
+- ✅ Circle Safety Incidents component (unchanged)
 - ✅ All families incidents view
 - ✅ Incident filtering and search
 - ✅ Incident details modal
@@ -71,14 +71,14 @@ export function Safety() {
   return (
     <div>
       {/* Tab navigation */}
-      {activeTab === 'incidents' ? <FamilySafetyIncidents /> : <ManagementView />}
+      {activeTab === 'incidents' ? <CircleSafetyIncidents /> : <ManagementView />}
     </div>
   )
 }
 
 // After: Simple, focused component
 export function Safety() {
-  return <FamilySafetyIncidents />
+  return <CircleSafetyIncidents />
 }
 ```
 
@@ -91,3 +91,4 @@ The component is now:
 - **Faster** (no unnecessary features)
 - **More focused** (incidents only)
 - **Easier to maintain** (single responsibility)
+

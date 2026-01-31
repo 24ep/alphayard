@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { CustomTab, Widget, FamilyMember, AssetCard, AttentionApp } from '../types/home';
+import { CustomTab, Widget, CircleMember, AssetCard, AttentionApp } from '../types/home';
 
 export const useHomeState = () => {
   // Basic state
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('hourse');
+  const [activeTab, setActiveTab] = useState('Circle');
   const [showBackToTop, setShowBackToTop] = useState(false);
 
   // Post-related state
@@ -40,7 +40,7 @@ export const useHomeState = () => {
   // Customize functionality
   const [showCustomizeModal, setShowCustomizeModal] = useState(false);
   const [customTabs, setCustomTabs] = useState<CustomTab[]>([
-    { id: 'hourse', name: 'hourse', icon: 'account-group', enabled: true, widgets: ['hourse-members', 'hourse-status-cards'] },
+    { id: 'Circle', name: 'Circle', icon: 'account-group', enabled: true, widgets: ['Circle-members', 'Circle-status-cards'] },
     { id: 'today', name: 'Today', icon: 'calendar-today', enabled: true, widgets: ['appointments', 'attention-apps', 'recently-used'] },
     { id: 'shop', name: 'Shop', icon: 'shopping', enabled: true, widgets: ['shopping-list', 'asset-cards'] },
     { id: 'map', name: 'Map', icon: 'map', enabled: true, widgets: ['location-map'] },
@@ -67,11 +67,11 @@ export const useHomeState = () => {
   const [newWalletBankAccount, setNewWalletBankAccount] = useState('');
   const [showBankAccount, setShowBankAccount] = useState(false);
 
-  // hourse-related state
-  const [showCreateFamilyModal, setShowCreateFamilyModal] = useState(false);
-  const [newFamilyName, setNewFamilyName] = useState('');
-  const [newFamilyType, setNewFamilyType] = useState('nuclear');
-  const [newFamilyMembers, setNewFamilyMembers] = useState<string[]>([]);
+  // Circle-related state
+  const [showCreateCircleModal, setShowCreateCircleModal] = useState(false);
+  const [newCircleName, setNewCircleName] = useState('');
+  const [newCircleType, setNewCircleType] = useState('nuclear');
+  const [newCircleMembers, setNewCircleMembers] = useState<string[]>([]);
   const [newMemberInput, setNewMemberInput] = useState('');
   const [showAddMemberInput, setShowAddMemberInput] = useState(false);
 
@@ -175,16 +175,16 @@ export const useHomeState = () => {
     setShowBankAccount(false);
   };
 
-  // hourse handlers
-  const handleCreateFamilyPress = () => {
-    setShowCreateFamilyModal(true);
+  // Circle handlers
+  const handleCreateCirclePress = () => {
+    setShowCreateCircleModal(true);
   };
 
-  const handleCloseCreateFamilyModal = () => {
-    setShowCreateFamilyModal(false);
-    setNewFamilyName('');
-    setNewFamilyType('nuclear');
-    setNewFamilyMembers([]);
+  const handleCloseCreateCircleModal = () => {
+    setShowCreateCircleModal(false);
+    setNewCircleName('');
+    setNewCircleType('nuclear');
+    setNewCircleMembers([]);
     setNewMemberInput('');
     setShowAddMemberInput(false);
   };
@@ -229,10 +229,10 @@ export const useHomeState = () => {
     newWalletTargetValue,
     newWalletBankAccount,
     showBankAccount,
-    showCreateFamilyModal,
-    newFamilyName,
-    newFamilyType,
-    newFamilyMembers,
+    showCreateCircleModal,
+    newCircleName,
+    newCircleType,
+    newCircleMembers,
     newMemberInput,
     showAddMemberInput,
 
@@ -265,9 +265,9 @@ export const useHomeState = () => {
     setNewWalletTargetValue,
     setNewWalletBankAccount,
     setShowBankAccount,
-    setNewFamilyName,
-    setNewFamilyType,
-    setNewFamilyMembers,
+    setNewCircleName,
+    setNewCircleType,
+    setNewCircleMembers,
     setNewMemberInput,
     setShowAddMemberInput,
 
@@ -288,7 +288,8 @@ export const useHomeState = () => {
     handleCloseLocationRangePopup,
     handleAddWalletPress,
     handleCloseAddWalletModal,
-    handleCreateFamilyPress,
-    handleCloseCreateFamilyModal,
+    handleCreateCirclePress,
+    handleCloseCreateCircleModal,
   };
 };
+

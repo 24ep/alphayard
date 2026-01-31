@@ -10,6 +10,14 @@ import {
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
+import { useBranding } from '../../contexts/BrandingContext';
+
+// Helper to resolve color
+const resolveColor = (colorValue: any, defaultColor: string) => {
+  if (!colorValue) return defaultColor;
+  return colorValue.solid || defaultColor;
+};
+
 interface CardProps {
   title?: string;
   subtitle?: string;
@@ -39,8 +47,81 @@ export const Card: React.FC<CardProps> = ({
   contentStyle,
   testID,
 }) => {
+  const { categories } = useBranding();
+  
+  // Extract config
+  const cardConfig = React.useMemo(() => {
+    if (!categories) return null;
+    for (const cat of categories) {
+        // We only modify the 'standard' card for now, or use ID based on variant?
+        // Let's stick to 'standard' as a base config for now.
+        const comp = cat.components.find(c => c.id === 'standard');
+        if (comp) return comp;
+    }
+    return null;
+  }, [categories]);
+
+  const brandingStyles = cardConfig?.styles;
+  
+  const brandingBg = resolveColor(brandingStyles?.backgroundColor, colors.white[500]);
+  const brandingBorder = resolveColor(brandingStyles?.borderColor, colors.gray[200]);
+  const brandingRadius = brandingStyles?.borderRadius ?? 12;
+
+  // Resolve shadow style based on configuration
+  const shadowLevel = brandingStyles?.shadowLevel || 'none';
+  const shadowStyle = React.useMemo(() => {
+    if (shadowLevel === 'none') return {};
+    
+    // Default shadow color if not specified
+    const shadowColor = resolveColor(brandingStyles?.shadowColor, '#000000');
+    
+    // Base shadow props
+    const baseShadow = {
+        shadowColor,
+        shadowOpacity: 0.1, // Consistent with other components
+    };
+
+    switch (shadowLevel) {
+        case 'sm':
+            return {
+                ...baseShadow,
+                shadowOffset: { width: 0, height: 1 },
+                shadowRadius: 3,
+                elevation: 2,
+            };
+        case 'md':
+            return {
+                ...baseShadow,
+                shadowOffset: { width: 0, height: 4 },
+                shadowRadius: 6,
+                elevation: 4,
+            };
+        case 'lg':
+            return {
+                ...baseShadow,
+                shadowOffset: { width: 0, height: 10 },
+                shadowRadius: 15,
+                shadowOpacity: 0.15, // Slightly stronger for large
+                elevation: 8,
+            };
+        default:
+            return {};
+    }
+  }, [shadowLevel, brandingStyles]);
+
   const cardStyle = [
     styles.card,
+    // Apply branding overrides if variant is default
+    variant === 'default' && {
+        backgroundColor: brandingBg,
+        borderColor: brandingBorder,
+        borderRadius: brandingRadius,
+        borderTopWidth: brandingStyles?.borderTopWidth,
+        borderRightWidth: brandingStyles?.borderRightWidth,
+        borderBottomWidth: brandingStyles?.borderBottomWidth,
+        borderLeftWidth: brandingStyles?.borderLeftWidth,
+        ...shadowStyle,
+    },
     styles[variant],
     styles[size],
     disabled && styles.disabled,

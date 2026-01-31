@@ -4,12 +4,14 @@ import { config } from './environment';
 import { DEVELOPMENT_CONFIG } from './development';
 
 // API Base URL configuration
-export const API_BASE_URL = __DEV__ 
+const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+
+export const API_BASE_URL = isDev 
   ? DEVELOPMENT_CONFIG.API_BASE_URL 
   : config.apiUrl;
 
 // API Timeout configuration
-export const API_TIMEOUT = __DEV__ 
+export const API_TIMEOUT = isDev 
   ? DEVELOPMENT_CONFIG.API_TIMEOUT 
   : 30000;
 
@@ -34,14 +36,14 @@ export const API_ENDPOINTS = {
     CHANGE_PASSWORD: '/user/change-password',
   },
   
-  // Family Management
-  FAMILY: {
-    CREATE: '/family/create',
-    JOIN: '/family/join',
-    LEAVE: '/family/leave',
-    MEMBERS: '/family/members',
-    INVITE: '/family/invite',
-    REMOVE_MEMBER: '/family/remove-member',
+  // Circle Management
+  CIRCLE: {
+    CREATE: '/circle/create',
+    JOIN: '/circle/join',
+    LEAVE: '/circle/leave',
+    MEMBERS: '/circle/members',
+    INVITE: '/circle/invite',
+    REMOVE_MEMBER: '/circle/remove-member',
   },
   
   // Localization
@@ -125,3 +127,5 @@ export const API_CONFIG = {
 };
 
 export default API_CONFIG;
+
+

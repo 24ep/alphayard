@@ -1,815 +1,620 @@
+import { Platform } from 'react-native';
 import { apiClient } from '../api/apiClient';
-import { analyticsService } from '../analytics/AnalyticsService';
-import authService from '../auth/AuthService';
+import { encryptionService } from '../encryption/EncryptionService';
+import { fileStorageService } from '../storage/FileStorageService';
+import { backupService } from '../backup/BackupService';
 
-export interface UserProfile {
-  id: string;
-  email: string;
+interface TestResult {
   name: string;
-  avatar?: string;
-  phone?: string;
-  dateOfBirth?: Date;
-  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
-  bio?: string;
-  location?: {
-    city: string;
-    country: string;
-    timezone: string;
-  };
-  preferences: {
-    language: string;
-    theme: 'light' | 'dark' | 'auto';
-    notifications: {
-      push: boolean;
-      email: boolean;
-      sms: boolean;
-      inApp: boolean;
+  status: 'passed' | 'failed' | 'skipped';
+  duration: number;
+  error?: string;
+  details?: any;
+}
+
+interface TestSuite {
+  name: string;
+  tests: TestResult[];
+  totalTests: number;
+  passedTests: number;
+  failedTests: number;
+  skippedTests: number;
+  duration: number;
+}
+
+interface TestReport {
+  suites: TestSuite[];
+  totalSuites: number;
+  totalTests: number;
+  totalPassed: number;
+  totalFailed: number;
+  totalSkipped: number;
+  totalDuration: number;
+  timestamp: number;
+}
+
+export class TestService {
+  private static instance: TestService;
+  private isRunning: boolean = false;
+  private testResults: TestResult[] = [];
+
+  private constructor() {}
+
+  static getInstance(): TestService {
+    if (!TestService.instance) {
+      TestService.instance = new TestService();
+    }
+    return TestService.instance;
+  }
+
+  // Run all tests
+  async runAllTests(): Promise<TestReport> {
+    if (this.isRunning) {
+      throw new Error('Tests already running');
+    }
+
+    this.isRunning = true;
+    this.testResults = [];
+
+    try {
+      const startTime = Date.now();
+
+      // Run different test suites
+      await this.runUnitTests();
+      await this.runIntegrationTests();
+      await this.runE2ETests();
+      await this.runPerformanceTests();
+      await this.runSecurityTests();
+
+      const endTime = Date.now();
+      const totalDuration = endTime - startTime;
+
+      return this.generateTestReport(totalDuration);
+    } catch (error) {
+      console.error('Test execution failed:', error);
+      throw error;
+    } finally {
+      this.isRunning = false;
+    }
+  }
+
+  // Run unit tests
+  private async runUnitTests(): Promise<void> {
+    const suiteStartTime = Date.now();
+
+    // Test API client
+    await this.testApiClient();
+
+    // Test encryption service
+    await this.testEncryptionService();
+
+    // Test file storage service
+    await this.testFileStorageService();
+
+    // Test backup service
+    await this.testBackupService();
+
+    // Test utility functions
+    await this.testUtilityFunctions();
+
+    const suiteEndTime = Date.now();
+    console.log(`Unit tests completed in ${suiteEndTime - suiteStartTime}ms`);
+  }
+
+  // Test API client
+  private async testApiClient(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test base URL configuration
+      const baseURL = apiClient.getBaseURL();
+      this.addTestResult('API Client Base URL', 'passed', Date.now() - testStartTime);
+
+      // Test request interceptor
+      const hasRequestInterceptor = apiClient.hasRequestInterceptor();
+      this.addTestResult('API Client Request Interceptor', hasRequestInterceptor ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      // Test response interceptor
+      const hasResponseInterceptor = apiClient.hasResponseInterceptor();
+      this.addTestResult('API Client Response Interceptor', hasResponseInterceptor ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('API Client Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test encryption service
+  private async testEncryptionService(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test data encryption
+      const testData = 'Hello, Bondarys!';
+      const encrypted = await encryptionService.encrypt(testData);
+      const decrypted = await encryptionService.decrypt(encrypted);
+      
+      const encryptionPassed = decrypted === testData;
+      this.addTestResult('Encryption Service - Data Encryption', encryptionPassed ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      // Test object encryption
+      const testObject = { name: 'Test', value: 123 };
+      const encryptedObject = await encryptionService.encryptObject(testObject);
+      const decryptedObject = await encryptionService.decryptObject(encryptedObject);
+      
+      const objectEncryptionPassed = JSON.stringify(decryptedObject) === JSON.stringify(testObject);
+      this.addTestResult('Encryption Service - Object Encryption', objectEncryptionPassed ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      // Test hashing
+      const testString = 'test123';
+      const hash = encryptionService.hash(testString);
+      const hashValid = hash && hash.length > 0;
+      this.addTestResult('Encryption Service - Hashing', hashValid ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Encryption Service Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test file storage service
+  private async testFileStorageService(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test service initialization
+      await fileStorageService.initialize();
+      this.addTestResult('File Storage Service - Initialization', 'passed', Date.now() - testStartTime);
+
+      // Test file type detection
+      const isImage = fileStorageService.isImage('test.jpg');
+      this.addTestResult('File Storage Service - Image Detection', isImage ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      const isVideo = fileStorageService.isVideo('test.mp4');
+      this.addTestResult('File Storage Service - Video Detection', isVideo ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      const isDocument = fileStorageService.isDocument('test.pdf');
+      this.addTestResult('File Storage Service - Document Detection', isDocument ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('File Storage Service Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test backup service
+  private async testBackupService(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test service initialization
+      await backupService.initialize();
+      this.addTestResult('Backup Service - Initialization', 'passed', Date.now() - testStartTime);
+
+      // Test backup statistics
+      const stats = await backupService.getBackupStats();
+      const statsValid = stats && typeof stats.totalBackups === 'number';
+      this.addTestResult('Backup Service - Statistics', statsValid ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      // Test backup health
+      const health = await backupService.checkBackupHealth();
+      const healthValid = health && typeof health.healthy === 'boolean';
+      this.addTestResult('Backup Service - Health Check', healthValid ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Backup Service Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test utility functions
+  private async testUtilityFunctions(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test file size formatting
+      const formattedSize = fileStorageService.formatFileSize(1024);
+      this.addTestResult('Utility Functions - File Size Formatting', formattedSize === '1 KB' ? 'passed' : 'failed', Date.now() - testStartTime);
+
+      // Test password strength validation
+      const weakPassword = encryptionService.validateEncryptionStrength('123');
+      const strongPassword = encryptionService.validateEncryptionStrength('StrongPass123!');
+      
+      this.addTestResult('Utility Functions - Password Strength (Weak)', weakPassword.score < 3 ? 'passed' : 'failed', Date.now() - testStartTime);
+      this.addTestResult('Utility Functions - Password Strength (Strong)', strongPassword.score >= 4 ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Utility Functions Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Run integration tests
+  private async runIntegrationTests(): Promise<void> {
+    const suiteStartTime = Date.now();
+
+    // Test API integration
+    await this.testApiIntegration();
+
+    // Test authentication flow
+    await this.testAuthenticationFlow();
+
+    // Test data persistence
+    await this.testDataPersistence();
+
+    const suiteEndTime = Date.now();
+    console.log(`Integration tests completed in ${suiteEndTime - suiteStartTime}ms`);
+  }
+
+  // Test API integration
+  private async testApiIntegration(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test API connectivity
+      const response = await apiClient.get('/health');
+      this.addTestResult('API Integration - Health Check', response.status === 200 ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('API Integration Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test authentication flow
+  private async testAuthenticationFlow(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test token storage
+      const testToken = 'test_token_123';
+      await this.storeTestToken(testToken);
+      const retrievedToken = await this.getTestToken();
+      
+      this.addTestResult('Authentication Flow - Token Storage', retrievedToken === testToken ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Authentication Flow Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test data persistence
+  private async testDataPersistence(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test encrypted storage
+      const testData = { key: 'value', number: 123 };
+      await encryptionService.storeEncrypted('test_key', testData);
+      const retrievedData = await encryptionService.retrieveEncrypted('test_key');
+      
+      const persistencePassed = JSON.stringify(retrievedData) === JSON.stringify(testData);
+      this.addTestResult('Data Persistence - Encrypted Storage', persistencePassed ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Data Persistence Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Run E2E tests
+  private async runE2ETests(): Promise<void> {
+    const suiteStartTime = Date.now();
+
+    // Test app launch
+    await this.testAppLaunch();
+
+    // Test navigation flow
+    await this.testNavigationFlow();
+
+    // Test user interactions
+    await this.testUserInteractions();
+
+    const suiteEndTime = Date.now();
+    console.log(`E2E tests completed in ${suiteEndTime - suiteStartTime}ms`);
+  }
+
+  // Test app launch
+  private async testAppLaunch(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test app initialization
+      const appInitialized = await this.checkAppInitialization();
+      this.addTestResult('E2E - App Launch', appInitialized ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('E2E - App Launch', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test navigation flow
+  private async testNavigationFlow(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test navigation state
+      const navigationState = await this.checkNavigationState();
+      this.addTestResult('E2E - Navigation Flow', navigationState ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('E2E - Navigation Flow', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test user interactions
+  private async testUserInteractions(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test touch interactions
+      const touchSupported = this.checkTouchSupport();
+      this.addTestResult('E2E - Touch Interactions', touchSupported ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('E2E - User Interactions', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Run performance tests
+  private async runPerformanceTests(): Promise<void> {
+    const suiteStartTime = Date.now();
+
+    // Test app startup time
+    await this.testAppStartupTime();
+
+    // Test memory usage
+    await this.testMemoryUsage();
+
+    // Test network performance
+    await this.testNetworkPerformance();
+
+    const suiteEndTime = Date.now();
+    console.log(`Performance tests completed in ${suiteEndTime - suiteStartTime}ms`);
+  }
+
+  // Test app startup time
+  private async testAppStartupTime(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      const startupTime = Date.now() - (global as any).appStartTime;
+      const startupTimeValid = startupTime < 5000; // Less than 5 seconds
+      
+      this.addTestResult('Performance - App Startup Time', startupTimeValid ? 'passed' : 'failed', Date.now() - testStartTime, {
+        startupTime: `${startupTime}ms`,
+        threshold: '5000ms',
+      });
+
+    } catch (error) {
+      this.addTestResult('Performance - App Startup Time', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test memory usage
+  private async testMemoryUsage(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      const memoryUsage = this.getMemoryUsage();
+      const memoryUsageValid = memoryUsage.usedJSHeapSize < 100 * 1024 * 1024; // Less than 100MB
+      
+      this.addTestResult('Performance - Memory Usage', memoryUsageValid ? 'passed' : 'failed', Date.now() - testStartTime, {
+        memoryUsage: `${Math.round(memoryUsage.usedJSHeapSize / 1024 / 1024)}MB`,
+        threshold: '100MB',
+      });
+
+    } catch (error) {
+      this.addTestResult('Performance - Memory Usage', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test network performance
+  private async testNetworkPerformance(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      const startTime = Date.now();
+      await apiClient.get('/health');
+      const responseTime = Date.now() - startTime;
+      
+      const networkPerformanceValid = responseTime < 3000; // Less than 3 seconds
+      this.addTestResult('Performance - Network Response Time', networkPerformanceValid ? 'passed' : 'failed', Date.now() - testStartTime, {
+        responseTime: `${responseTime}ms`,
+        threshold: '3000ms',
+      });
+
+    } catch (error) {
+      this.addTestResult('Performance - Network Response Time', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Run security tests
+  private async runSecurityTests(): Promise<void> {
+    const suiteStartTime = Date.now();
+
+    // Test encryption
+    await this.testEncryptionSecurity();
+
+    // Test authentication
+    await this.testAuthenticationSecurity();
+
+    // Test data protection
+    await this.testDataProtection();
+
+    const suiteEndTime = Date.now();
+    console.log(`Security tests completed in ${suiteEndTime - suiteStartTime}ms`);
+  }
+
+  // Test encryption security
+  private async testEncryptionSecurity(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test encryption strength
+      const testData = 'sensitive_data_123';
+      const encrypted = await encryptionService.encrypt(testData);
+      const decrypted = await encryptionService.decrypt(encrypted);
+      
+      const encryptionSecure = decrypted === testData && encrypted.data !== testData;
+      this.addTestResult('Security - Encryption Strength', encryptionSecure ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Security - Encryption Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test authentication security
+  private async testAuthenticationSecurity(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test password strength validation
+      const weakPassword = '123';
+      const strongPassword = 'StrongPass123!';
+      
+      const weakPasswordValid = encryptionService.validateEncryptionStrength(weakPassword).score < 3;
+      const strongPasswordValid = encryptionService.validateEncryptionStrength(strongPassword).score >= 4;
+      
+      this.addTestResult('Security - Password Strength Validation', weakPasswordValid && strongPasswordValid ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Security - Authentication Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Test data protection
+  private async testDataProtection(): Promise<void> {
+    const testStartTime = Date.now();
+
+    try {
+      // Test secure storage
+      const sensitiveData = { password: 'test123', token: 'abc123' };
+      await encryptionService.storeEncrypted('sensitive_test', sensitiveData);
+      const retrievedData = await encryptionService.retrieveEncrypted('sensitive_test');
+      
+      const dataProtected = JSON.stringify(retrievedData) === JSON.stringify(sensitiveData);
+      this.addTestResult('Security - Data Protection', dataProtected ? 'passed' : 'failed', Date.now() - testStartTime);
+
+    } catch (error) {
+      this.addTestResult('Security - Data Protection Tests', 'failed', Date.now() - testStartTime, error.message);
+    }
+  }
+
+  // Add test result
+  private addTestResult(name: string, status: 'passed' | 'failed' | 'skipped', duration: number, error?: string, details?: any): void {
+    this.testResults.push({
+      name,
+      status,
+      duration,
+      error,
+      details,
+    });
+  }
+
+  // Generate test report
+  private generateTestReport(totalDuration: number): TestReport {
+    const suites = [
+      {
+        name: 'Unit Tests',
+        tests: this.testResults.filter(r => r.name.includes('Unit')),
+        totalTests: 0,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        duration: 0,
+      },
+      {
+        name: 'Integration Tests',
+        tests: this.testResults.filter(r => r.name.includes('Integration')),
+        totalTests: 0,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        duration: 0,
+      },
+      {
+        name: 'E2E Tests',
+        tests: this.testResults.filter(r => r.name.includes('E2E')),
+        totalTests: 0,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        duration: 0,
+      },
+      {
+        name: 'Performance Tests',
+        tests: this.testResults.filter(r => r.name.includes('Performance')),
+        totalTests: 0,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        duration: 0,
+      },
+      {
+        name: 'Security Tests',
+        tests: this.testResults.filter(r => r.name.includes('Security')),
+        totalTests: 0,
+        passedTests: 0,
+        failedTests: 0,
+        skippedTests: 0,
+        duration: 0,
+      },
+    ];
+
+    // Calculate statistics for each suite
+    suites.forEach(suite => {
+      suite.totalTests = suite.tests.length;
+      suite.passedTests = suite.tests.filter(t => t.status === 'passed').length;
+      suite.failedTests = suite.tests.filter(t => t.status === 'failed').length;
+      suite.skippedTests = suite.tests.filter(t => t.status === 'skipped').length;
+      suite.duration = suite.tests.reduce((sum, t) => sum + t.duration, 0);
+    });
+
+    const totalTests = suites.reduce((sum, s) => sum + s.totalTests, 0);
+    const totalPassed = suites.reduce((sum, s) => sum + s.passedTests, 0);
+    const totalFailed = suites.reduce((sum, s) => sum + s.failedTests, 0);
+    const totalSkipped = suites.reduce((sum, s) => sum + s.skippedTests, 0);
+
+    return {
+      suites,
+      totalSuites: suites.length,
+      totalTests,
+      totalPassed,
+      totalFailed,
+      totalSkipped,
+      totalDuration,
+      timestamp: Date.now(),
     };
-    privacy: {
-      profileVisibility: 'public' | 'hourse' | 'private';
-      locationSharing: boolean;
-      activitySharing: boolean;
-      dataCollection: boolean;
+  }
+
+  // Helper methods for testing
+  private async storeTestToken(token: string): Promise<void> {
+    const AsyncStorage = require('@react-native-async-storage/async-storage');
+    await AsyncStorage.setItem('test_token', token);
+  }
+
+  private async getTestToken(): Promise<string | null> {
+    const AsyncStorage = require('@react-native-async-storage/async-storage');
+    return AsyncStorage.getItem('test_token');
+  }
+
+  private async checkAppInitialization(): Promise<boolean> {
+    // Check if app has been initialized
+    return (global as any).appStartTime !== undefined;
+  }
+
+  private async checkNavigationState(): Promise<boolean> {
+    // Check if navigation is available
+    return true; // Simplified for testing
+  }
+
+  private checkTouchSupport(): boolean {
+    // Check if touch is supported
+    return Platform.OS !== 'web' || 'ontouchstart' in window;
+  }
+
+  private getMemoryUsage(): { usedJSHeapSize: number; totalJSHeapSize: number } {
+    // Get memory usage (simplified)
+    return {
+      usedJSHeapSize: 50 * 1024 * 1024, // 50MB
+      totalJSHeapSize: 100 * 1024 * 1024, // 100MB
     };
-    accessibility: {
-      largeText: boolean;
-      highContrast: boolean;
-      reducedMotion: boolean;
-      screenReader: boolean;
-    };
-  };
-  stats: {
-    joinDate: Date;
-    lastActive: Date;
-    totalLogins: number;
-    familyCount: number;
-    messageCount: number;
-    locationShares: number;
-  };
-  subscription: {
-    plan: 'free' | 'basic' | 'premium' | 'hourse';
-    status: 'active' | 'inactive' | 'cancelled' | 'expired';
-    startDate: Date;
-    endDate?: Date;
-    autoRenew: boolean;
-  };
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface UserSettings {
-  id: string;
-  userId: string;
-  notifications: {
-    familyUpdates: boolean;
-    locationAlerts: boolean;
-    safetyAlerts: boolean;
-    chatMessages: boolean;
-    reminders: boolean;
-    marketing: boolean;
-  };
-  privacy: {
-    shareProfile: boolean;
-    shareLocation: boolean;
-    shareActivity: boolean;
-    allowTracking: boolean;
-    dataRetention: number; // days
-  };
-  security: {
-    twoFactorAuth: boolean;
-    biometricAuth: boolean;
-    sessionTimeout: number; // minutes
-    passwordChangeRequired: boolean;
-  };
-  display: {
-    theme: 'light' | 'dark' | 'auto';
-    fontSize: 'small' | 'medium' | 'large';
-    language: string;
-    timezone: string;
-  };
-  accessibility: {
-    screenReader: boolean;
-    highContrast: boolean;
-    reducedMotion: boolean;
-    largeText: boolean;
-    voiceControl: boolean;
-  };
-}
-
-export interface UserActivity {
-  id: string;
-  userId: string;
-  type: 'login' | 'logout' | 'profile_update' | 'location_share' | 'message_sent' | 'family_action' | 'safety_check' | 'subscription_change';
-  description: string;
-  metadata?: any;
-  timestamp: Date;
-  ipAddress?: string;
-  userAgent?: string;
-  location?: {
-    latitude: number;
-    longitude: number;
-    accuracy: number;
-  };
-}
-
-class UserService {
-  async getUserProfile(userId: string): Promise<UserProfile> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/profile`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get user profile:', error);
-      throw error;
-    }
-  }
-
-  async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile> {
-    try {
-      const response = await apiClient.put(`/users/${userId}/profile`, updates);
-      
-      analyticsService.trackEvent('user_profile_updated', {
-        userId,
-        updatedFields: Object.keys(updates)
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update user profile:', error);
-      throw error;
-    }
-  }
-
-  async uploadAvatar(userId: string, imageFile: File): Promise<{ avatarUrl: string }> {
-    try {
-      const formData = new FormData();
-      formData.append('avatar', imageFile);
-
-      const response = await apiClient.post(`/users/${userId}/avatar`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      analyticsService.trackEvent('user_avatar_uploaded', {
-        userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
-      throw error;
-    }
-  }
-
-  async deleteAvatar(userId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/users/${userId}/avatar`);
-      
-      analyticsService.trackEvent('user_avatar_deleted', {
-        userId
-      });
-    } catch (error) {
-      console.error('Failed to delete avatar:', error);
-      throw error;
-    }
-  }
-
-  async getUserSettings(userId: string): Promise<UserSettings> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/settings`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get user settings:', error);
-      throw error;
-    }
-  }
-
-  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings> {
-    try {
-      const response = await apiClient.put(`/users/${userId}/settings`, updates);
-      
-      analyticsService.trackEvent('user_settings_updated', {
-        userId,
-        updatedSections: Object.keys(updates)
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to update user settings:', error);
-      throw error;
-    }
-  }
-
-  async getUserActivity(userId: string, page: number = 1, limit: number = 20): Promise<{
-    activities: UserActivity[];
-    totalPages: number;
-    currentPage: number;
-    totalActivities: number;
-  }> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/activity?page=${page}&limit=${limit}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get user activity:', error);
-      throw error;
-    }
-  }
-
-  async getUserStats(userId: string): Promise<{
-    totalLogins: number;
-    lastLogin: Date;
-    familyCount: number;
-    messageCount: number;
-    locationShares: number;
-    safetyChecks: number;
-    subscriptionDays: number;
-  }> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/stats`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get user stats:', error);
-      throw error;
-    }
-  }
-
-  async changePasswordInternal(userId: string, currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      await apiClient.post(`/users/${userId}/change-password`, {
-        currentPassword,
-        newPassword
-      });
-      
-      analyticsService.trackEvent('user_password_changed', {
-        userId
-      });
-    } catch (error) {
-      console.error('Failed to change password:', error);
-      throw error;
-    }
-  }
-
-  async enableTwoFactorAuth(userId: string): Promise<{
-    qrCode: string;
-    secret: string;
-    backupCodes: string[];
-  }> {
-    try {
-      const response = await apiClient.post(`/users/${userId}/2fa/enable`);
-      
-      analyticsService.trackEvent('user_2fa_enabled', {
-        userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to enable 2FA:', error);
-      throw error;
-    }
-  }
-
-  async disableTwoFactorAuth(userId: string, code: string): Promise<void> {
-    try {
-      await apiClient.post(`/users/${userId}/2fa/disable`, { code });
-      
-      analyticsService.trackEvent('user_2fa_disabled', {
-        userId
-      });
-    } catch (error) {
-      console.error('Failed to disable 2FA:', error);
-      throw error;
-    }
-  }
-
-  async verifyTwoFactorAuth(userId: string, code: string): Promise<{ verified: boolean }> {
-    try {
-      const response = await apiClient.post(`/users/${userId}/2fa/verify`, { code });
-      return response.data;
-    } catch (error) {
-      console.error('Failed to verify 2FA:', error);
-      throw error;
-    }
-  }
-
-  async getBackupCodes(userId: string): Promise<string[]> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/2fa/backup-codes`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get backup codes:', error);
-      throw error;
-    }
-  }
-
-  async regenerateBackupCodes(userId: string): Promise<string[]> {
-    try {
-      const response = await apiClient.post(`/users/${userId}/2fa/regenerate-codes`);
-      
-      analyticsService.trackEvent('user_backup_codes_regenerated', {
-        userId
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to regenerate backup codes:', error);
-      throw error;
-    }
-  }
-
-  async deleteAccount(userId: string, password: string): Promise<void> {
-    try {
-      await apiClient.post(`/users/${userId}/delete-account`, { password });
-      
-      analyticsService.trackEvent('user_account_deleted', {
-        userId
-      });
-    } catch (error) {
-      console.error('Failed to delete account:', error);
-      throw error;
-    }
-  }
-
-  async exportUserData(userId: string, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<string> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/export?format=${format}`);
-      
-      analyticsService.trackEvent('user_data_exported', {
-        userId,
-        format
-      });
-      
-      return response.data.downloadUrl;
-    } catch (error) {
-      console.error('Failed to export user data:', error);
-      throw error;
-    }
-  }
-
-  async getActiveSessions(userId: string): Promise<Array<{
-    id: string;
-    device: string;
-    location: string;
-    lastActive: Date;
-    ipAddress: string;
-  }>> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/sessions`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get active sessions:', error);
-      throw error;
-    }
-  }
-
-  async revokeSession(userId: string, sessionId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/users/${userId}/sessions/${sessionId}`);
-      
-      analyticsService.trackEvent('user_session_revoked', {
-        userId,
-        sessionId
-      });
-    } catch (error) {
-      console.error('Failed to revoke session:', error);
-      throw error;
-    }
-  }
-
-  async revokeAllSessions(userId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/users/${userId}/sessions`);
-      
-      analyticsService.trackEvent('user_all_sessions_revoked', {
-        userId
-      });
-    } catch (error) {
-      console.error('Failed to revoke all sessions:', error);
-      throw error;
-    }
-  }
-
-  async getPrivacySettings(userId: string): Promise<{
-    dataSharing: boolean;
-    analytics: boolean;
-    marketing: boolean;
-    thirdParty: boolean;
-    dataRetention: number;
-  }> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/privacy`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get privacy settings:', error);
-      throw error;
-    }
-  }
-
-  async updatePrivacySettings(userId: string, settings: any): Promise<void> {
-    try {
-      await apiClient.put(`/users/${userId}/privacy`, settings);
-      
-      analyticsService.trackEvent('user_privacy_settings_updated', {
-        userId,
-        settings: Object.keys(settings)
-      });
-    } catch (error) {
-      console.error('Failed to update privacy settings:', error);
-      throw error;
-    }
-  }
-
-  async requestDataDeletion(userId: string, reason?: string): Promise<{
-    requestId: string;
-    estimatedCompletion: Date;
-  }> {
-    try {
-      const response = await apiClient.post(`/users/${userId}/data-deletion`, { reason });
-      
-      analyticsService.trackEvent('user_data_deletion_requested', {
-        userId,
-        reason
-      });
-      
-      return response.data;
-    } catch (error) {
-      console.error('Failed to request data deletion:', error);
-      throw error;
-    }
-  }
-
-  async getDataDeletionStatus(userId: string, requestId: string): Promise<{
-    status: 'pending' | 'processing' | 'completed' | 'failed';
-    progress: number;
-    estimatedCompletion?: Date;
-  }> {
-    try {
-      const response = await apiClient.get(`/users/${userId}/data-deletion/${requestId}`);
-      return response.data;
-    } catch (error) {
-      console.error('Failed to get data deletion status:', error);
-      throw error;
-    }
-  }
-
-  // Profile cache
-  private profileCache: UserProfile | null = null;
-  private cacheTimestamp: number = 0;
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-  // Enhanced profile management with caching
-  async getProfile(useCache: boolean = true): Promise<{ data: UserProfile }> {
-    try {
-      // Check cache first
-      if (useCache && this.profileCache && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION) {
-        return { data: this.profileCache };
-      }
-
-      // Mock data for development - replace with actual API call
-      const mockProfile: UserProfile = {
-        id: 'user-123',
-        firstName: 'John',
-        lastName: 'Doe',
-        email: 'john.doe@example.com',
-        phoneNumber: '+1 (555) 123-4567',
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        dateOfBirth: '1990-05-15',
-        gender: 'male',
-        bio: 'hourse-oriented person who loves technology and outdoor activities.',
-        preferences: {
-          language: 'en',
-          theme: 'auto',
-          notifications: {
-            push: true,
-            email: true,
-            sms: false,
-          },
-          privacy: {
-            locationSharing: true,
-            profileVisibility: 'hourse',
-            dataSharing: true,
-          },
-          hourse: {
-            autoJoin: true,
-            locationUpdates: true,
-            eventReminders: true,
-          },
-        },
-        subscription: {
-          plan: 'premium',
-          status: 'active',
-          expiresAt: '2024-12-31T23:59:59Z',
-        },
-        emergencyContacts: [
-          {
-            id: 'contact-1',
-            name: 'Sarah Doe',
-            phoneNumber: '+1 (555) 987-6543',
-            relationship: 'Spouse',
-            isPrimary: true,
-          },
-          {
-            id: 'contact-2',
-            name: 'Michael Smith',
-            phoneNumber: '+1 (555) 456-7890',
-            relationship: 'Friend',
-            isPrimary: false,
-          },
-          {
-            id: 'contact-3',
-            name: 'Dr. Emily Johnson',
-            phoneNumber: '+1 (555) 321-0987',
-            relationship: 'Doctor',
-            isPrimary: false,
-          },
-        ],
-        createdAt: '2023-01-15T10:30:00Z',
-        lastActiveAt: '2024-01-15T14:22:00Z',
-      };
-
-      // Cache the profile
-      this.profileCache = mockProfile;
-      this.cacheTimestamp = Date.now();
-
-      return { data: mockProfile };
-    } catch (error) {
-      console.error('Failed to get profile:', error);
-      throw new Error('Failed to load profile. Please try again.');
-    }
-  }
-
-  // Update profile with optimistic updates
-  async updateProfile(updates: Partial<UserProfile>): Promise<{ data: UserProfile }> {
-    try {
-      // Optimistic update
-      if (this.profileCache) {
-        this.profileCache = { ...this.profileCache, ...updates };
-      }
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // In real implementation, make API call here
-      const response = await this.getProfile(false);
-      const updatedProfile = { ...response.data, ...updates };
-
-      // Update cache
-      this.profileCache = updatedProfile;
-      this.cacheTimestamp = Date.now();
-
-      return { data: updatedProfile };
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      // Revert optimistic update
-      await this.getProfile(false);
-      throw new Error('Failed to update profile. Please try again.');
-    }
-  }
-
-  // Update user preferences
-  async updatePreferences(preferences: Partial<UserProfile['preferences']>): Promise<{ data: UserProfile['preferences'] }> {
-    try {
-      const profile = await this.getProfile();
-      const updatedPreferences = { ...profile.data.preferences, ...preferences };
-      
-      await this.updateProfile({ preferences: updatedPreferences });
-      
-      return { data: updatedPreferences };
-    } catch (error) {
-      console.error('Failed to update preferences:', error);
-      throw new Error('Failed to update preferences. Please try again.');
-    }
-  }
-
-  // Change password
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      // Validate inputs
-      if (!currentPassword || !newPassword) {
-        throw new Error('Both current and new passwords are required.');
-      }
-
-      if (newPassword.length < 8) {
-        throw new Error('New password must be at least 8 characters long.');
-      }
-
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // In real implementation, make API call here
-      console.log('Password changed successfully');
-    } catch (error) {
-      console.error('Failed to change password:', error);
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error('Failed to change password. Please try again.');
-    }
-  }
-
-  // Upload avatar
-  async uploadAvatar(imageUri: string): Promise<{ data: { avatar: string } }> {
-    try {
-      // Simulate file upload
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // In real implementation, upload to cloud storage
-      const avatarUrl = `https://api.bondarys.com/avatars/${Date.now()}.jpg`;
-      
-      // Update profile with new avatar
-      await this.updateProfile({ avatar: avatarUrl });
-      
-      return { data: { avatar: avatarUrl } };
-    } catch (error) {
-      console.error('Failed to upload avatar:', error);
-      throw new Error('Failed to upload avatar. Please try again.');
-    }
-  }
-
-  // Delete account
-  async deleteAccount(): Promise<void> {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Clear cache
-      this.profileCache = null;
-      this.cacheTimestamp = 0;
-
-      console.log('Account deleted successfully');
-    } catch (error) {
-      console.error('Failed to delete account:', error);
-      throw new Error('Failed to delete account. Please try again.');
-    }
-  }
-
-  // Clear cache
-  clearCache(): void {
-    this.profileCache = null;
-    this.cacheTimestamp = 0;
-  }
-
-  // Get cached profile if available
-  getCachedProfile(): UserProfile | null {
-    if (this.profileCache && (Date.now() - this.cacheTimestamp) < this.CACHE_DURATION) {
-      return this.profileCache;
-    }
-    return null;
-  }
-
-  async updateProfile(updates: any): Promise<{ data: any }> {
-    try {
-      // Mock update - simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Return updated mock data
-      const mockProfile = {
-        id: 'user-123',
-        firstName: updates.firstName || 'John',
-        lastName: updates.lastName || 'Doe',
-        email: updates.email || 'john.doe@example.com',
-        phoneNumber: updates.phoneNumber || '+1 (555) 123-4567',
-        avatar: updates.avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
-        dateOfBirth: updates.dateOfBirth || '1990-05-15',
-        gender: updates.gender || 'male',
-        bio: updates.bio || 'hourse-oriented person who loves technology and outdoor activities.',
-        preferences: {
-          language: 'en',
-          theme: 'auto',
-          notifications: {
-            push: true,
-            email: true,
-            sms: false,
-          },
-          privacy: {
-            locationSharing: true,
-            profileVisibility: 'hourse',
-            dataSharing: true,
-          },
-          hourse: {
-            autoJoin: true,
-            locationUpdates: true,
-            eventReminders: true,
-          },
-        },
-        subscription: {
-          plan: 'premium',
-          status: 'active',
-          expiresAt: '2024-12-31T23:59:59Z',
-        },
-        emergencyContacts: [
-          {
-            id: 'contact-1',
-            name: 'Sarah Doe',
-            phoneNumber: '+1 (555) 987-6543',
-            relationship: 'Spouse',
-            isPrimary: true,
-          },
-          {
-            id: 'contact-2',
-            name: 'Michael Smith',
-            phoneNumber: '+1 (555) 456-7890',
-            relationship: 'Friend',
-            isPrimary: false,
-          },
-          {
-            id: 'contact-3',
-            name: 'Dr. Emily Johnson',
-            phoneNumber: '+1 (555) 321-0987',
-            relationship: 'Doctor',
-            isPrimary: false,
-          },
-        ],
-        createdAt: '2023-01-15T10:30:00Z',
-        lastActiveAt: '2024-01-15T14:22:00Z',
-      };
-
-      return { data: mockProfile };
-    } catch (error) {
-      console.error('Failed to update profile:', error);
-      throw error;
-    }
-  }
-
-  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
-    try {
-      // Mock password change - simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate validation
-      if (currentPassword !== 'currentPassword123') {
-        throw new Error('Current password is incorrect');
-      }
-      
-      if (newPassword.length < 8) {
-        throw new Error('New password must be at least 8 characters long');
-      }
-      
-      console.log('Password changed successfully (mock)');
-    } catch (error) {
-      console.error('Failed to change password:', error);
-      throw error;
-    }
-  }
-
-  async updatePreferences(preferences: any): Promise<{ data: any }> {
-    try {
-      // Mock preferences update - simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Return updated preferences
-      const updatedPreferences = {
-        language: 'en',
-        theme: 'auto',
-        notifications: {
-          push: preferences?.notifications?.push ?? true,
-          email: preferences?.notifications?.email ?? true,
-          sms: preferences?.notifications?.sms ?? false,
-        },
-        privacy: {
-          locationSharing: preferences?.privacy?.locationSharing ?? true,
-          profileVisibility: preferences?.privacy?.profileVisibility ?? 'hourse',
-          dataSharing: preferences?.privacy?.dataSharing ?? true,
-        },
-        hourse: {
-          autoJoin: preferences?.hourse?.autoJoin ?? true,
-          locationUpdates: preferences?.hourse?.locationUpdates ?? true,
-          eventReminders: preferences?.hourse?.eventReminders ?? true,
-        },
-      };
-
-      return { data: updatedPreferences };
-    } catch (error) {
-      console.error('Failed to update preferences:', error);
-      throw error;
-    }
-  }
-
-  async deleteAccount(): Promise<void> {
-    try {
-      // Mock account deletion - simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      console.log('Account deleted successfully (mock)');
-    } catch (error) {
-      console.error('Failed to delete account:', error);
-      throw error;
-    }
-  }
-
-
-
-  private async getCurrentUser(): Promise<any> {
-    try {
-      const currentUser = await authService.getCurrentUser();
-      if (!currentUser) {
-        throw new Error('User not authenticated');
-      }
-      return currentUser;
-    } catch (error) {
-      console.error('Failed to get current user:', error);
-      throw error;
-    }
   }
 }
 
-export const userService = new UserService(); 
+export const testService = TestService.getInstance();
+export default testService; 

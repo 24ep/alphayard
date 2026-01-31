@@ -1,6 +1,8 @@
 // API Configuration
+import { isDev } from '../utils/isDev';
+
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:8081/api/v1',
+  BASE_URL: process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1',
   TIMEOUT: 30000,
   RETRY_ATTEMPTS: 3,
   RETRY_DELAY: 1000,
@@ -58,7 +60,7 @@ export const API_ENDPOINTS = {
   LOCATION: {
     UPDATE: '/location/update',
     HISTORY: '/location/history',
-    hourse: '/location/hourse',
+    Circle: '/location/Circle',
     GEOFENCE: '/location/geofence',
     REQUEST: '/location/request',
   },
@@ -121,7 +123,7 @@ export const APP_CONFIG = {
   
   // Features
   FEATURES: {
-    FAMILY_MANAGEMENT: true,
+    CIRCLE_MANAGEMENT: true,
     LOCATION_TRACKING: true,
     SAFETY_FEATURES: true,
     CHAT: true,
@@ -142,7 +144,7 @@ export const APP_CONFIG = {
 
   // Limits
   LIMITS: {
-    MAX_FAMILY_MEMBERS: 10,
+    MAX_CIRCLE_MEMBERS: 10,
     MAX_FILE_SIZE: 100 * 1024 * 1024, // 100MB
     MAX_MESSAGE_LENGTH: 1000,
     MAX_EVENT_DURATION: 24 * 60 * 60 * 1000, // 24 hours
@@ -162,7 +164,7 @@ export const APP_CONFIG = {
   // Cache
   CACHE: {
     USER_PROFILE: 300000, // 5 minutes
-    FAMILY_DATA: 60000, // 1 minute
+    CIRCLE_DATA: 60000, // 1 minute
     LOCATION_HISTORY: 3600000, // 1 hour
     MESSAGES: 300000, // 5 minutes
   },
@@ -182,9 +184,9 @@ export const STORAGE_KEYS = {
   NOTIFICATIONS: 'notifications',
   PRIVACY: 'privacy',
   
-  // hourse
-  CURRENT_FAMILY: 'current_family',
-  FAMILY_DATA: 'family_data',
+  // Circle
+  CURRENT_CIRCLE: 'current_circle',
+  CIRCLE_DATA: 'circle_data',
   INVITATIONS: 'invitations',
   
   // Location
@@ -227,9 +229,9 @@ export const ERROR_MESSAGES = {
   WEAK_PASSWORD: 'Password must be at least 8 characters long.',
   INVALID_EMAIL: 'Please enter a valid email address.',
   
-  // hourse
-  FAMILY_NOT_FOUND: 'hourse not found.',
-  ALREADY_MEMBER: 'You are already a member of this hourse.',
+  // Circle
+  CIRCLE_NOT_FOUND: 'Circle not found.',
+  ALREADY_MEMBER: 'You are already a member of this Circle.',
   INVITATION_EXPIRED: 'This invitation has expired.',
   PERMISSION_DENIED: 'You do not have permission to perform this action.',
   
@@ -259,10 +261,10 @@ export const SUCCESS_MESSAGES = {
   LOGOUT_SUCCESS: 'Successfully logged out.',
   PASSWORD_CHANGED: 'Password changed successfully.',
   
-  // hourse
-  FAMILY_CREATED: 'hourse created successfully.',
-  FAMILY_JOINED: 'Successfully joined hourse.',
-  FAMILY_LEFT: 'Successfully left hourse.',
+  // Circle
+  CIRCLE_CREATED: 'Circle created successfully.',
+  CIRCLE_JOINED: 'Successfully joined Circle.',
+  CIRCLE_LEFT: 'Successfully left Circle.',
   MEMBER_INVITED: 'Invitation sent successfully.',
   MEMBER_REMOVED: 'Member removed successfully.',
   ROLE_UPDATED: 'Role updated successfully.',
@@ -306,12 +308,12 @@ export const VALIDATION_RULES = {
     PATTERN: /^[\+]?[1-9][\d]{0,15}$/,
   },
   
-  // hourse
-  FAMILY_NAME: {
+  // Circle
+  CIRCLE_NAME: {
     MIN_LENGTH: 2,
     MAX_LENGTH: 100,
   },
-  FAMILY_DESCRIPTION: {
+  CIRCLE_DESCRIPTION: {
     MAX_LENGTH: 500,
   },
   
@@ -344,10 +346,10 @@ export const ROUTES = {
   APPLICATIONS: 'Applications',
   PROFILE: 'Profile',
   
-  // hourse
-  FAMILY_LIST: 'FamilyList',
-  FAMILY_DETAILS: 'FamilyDetails',
-  FAMILY_SETTINGS: 'FamilySettings',
+  // Circle
+  CIRCLE_LIST: 'CircleList',
+  CIRCLE_DETAILS: 'CircleDetails',
+  CIRCLE_SETTINGS: 'CircleSettings',
   INVITE_MEMBER: 'InviteMember',
   
   // Safety
@@ -381,9 +383,9 @@ export const ROUTES = {
 // Feature Flags
 export const FEATURE_FLAGS = {
   // Development
-  DEBUG_MODE: __DEV__,
-  SHOW_DEBUG_MENU: __DEV__,
-  ENABLE_LOGGING: __DEV__,
+  DEBUG_MODE: isDev,
+  SHOW_DEBUG_MENU: isDev,
+  ENABLE_LOGGING: isDev,
   
   // Features
   ENABLE_BETA_FEATURES: false,
@@ -401,3 +403,4 @@ export const FEATURE_FLAGS = {
   ENABLE_TWO_FACTOR: false,
   ENABLE_ENCRYPTION: true,
 }; 
+

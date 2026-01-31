@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { FONT_STYLES } from '../../utils/fontUtils';
 
@@ -9,13 +9,17 @@ type MenuItem = {
   key: string;
   title: string;
   subtitle: string;
-  icon: string;
+  icon: any;
   gradient: string[];
   targetAuthRoute?: keyof import('../../navigation/AuthNavigator').AuthStackParamList;
 };
 
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { useApplicationListBackground } from '../../hooks/useAppConfig';
+
 const MarketMenuScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const { background, loading } = useApplicationListBackground();
 
   const items: MenuItem[] = useMemo(
     () => [
@@ -46,10 +50,10 @@ const MarketMenuScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={["#FA7272", "#FFBBB4"]} style={styles.header}>
+      <ScreenBackground background={background} loading={loading} style={styles.header}>
         <Text style={styles.headerTitle}>Market</Text>
         <Text style={styles.headerSubtitle}>Explore before creating an account</Text>
-      </LinearGradient>
+      </ScreenBackground>
 
       <ScrollView contentContainerStyle={styles.content}>
         {items.map((item) => (
@@ -74,15 +78,6 @@ const MarketMenuScreen: React.FC = () => {
             </LinearGradient>
           </TouchableOpacity>
         ))}
-
-        <TouchableOpacity
-          style={styles.cta}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate('Signup')}
-        >
-          <Text style={styles.ctaText}>Create free account</Text>
-          <Icon name="account-plus" size={18} color="#FFFFFF" />
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -96,7 +91,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     letterSpacing: 0.5,
-    fontFamily: FONT_STYLES.englishHeading,
+    fontFamily: FONT_STYLES.englishSemiBold,
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.9)',
@@ -156,5 +151,6 @@ const styles = StyleSheet.create({
 });
 
 export default MarketMenuScreen;
+
 
 

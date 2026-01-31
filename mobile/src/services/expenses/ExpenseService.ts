@@ -3,7 +3,7 @@ import { analyticsService } from '../analytics/AnalyticsService';
 
 export interface Expense {
   id: string;
-  familyId: string;
+  circleId: string;
   userId: string;
   title: string;
   description?: string;
@@ -19,7 +19,7 @@ export interface Expense {
   status: 'pending' | 'paid' | 'cancelled';
   tags: string[];
   attachments?: string[];
-  sharedWith: string[]; // hourse member IDs
+  sharedWith: string[]; // Circle member IDs
   splitType: 'equal' | 'percentage' | 'fixed' | 'none';
   splitDetails?: Array<{
     userId: string;
@@ -32,7 +32,7 @@ export interface Expense {
 
 export interface Budget {
   id: string;
-  familyId: string;
+  circleId: string;
   name: string;
   description?: string;
   amount: number;
@@ -86,7 +86,7 @@ export interface ExpenseStats {
 }
 
 class ExpenseService {
-  async getExpenses(familyId: string, filters?: {
+  async getExpenses(circleId: string, filters?: {
     category?: string;
     dateFrom?: Date;
     dateTo?: Date;
@@ -95,7 +95,7 @@ class ExpenseService {
   }): Promise<Expense[]> {
     try {
       const params = new URLSearchParams();
-      params.append('familyId', familyId);
+      params.append('circleId', circleId);
       
       if (filters?.category) params.append('category', filters.category);
       if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
@@ -169,9 +169,9 @@ class ExpenseService {
     }
   }
 
-  async getBudgets(familyId: string): Promise<Budget[]> {
+  async getBudgets(circleId: string): Promise<Budget[]> {
     try {
-      const response = await apiClient.get(`/expenses/budgets?familyId=${familyId}`);
+      const response = await apiClient.get(`/expenses/budgets?circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get budgets:', error);
@@ -225,9 +225,9 @@ class ExpenseService {
     }
   }
 
-  async getExpenseStats(familyId: string, period: 'week' | 'month' | 'year' = 'month'): Promise<ExpenseStats> {
+  async getExpenseStats(circleId: string, period: 'week' | 'month' | 'year' = 'month'): Promise<ExpenseStats> {
     try {
-      const response = await apiClient.get(`/expenses/stats?familyId=${familyId}&period=${period}`);
+      const response = await apiClient.get(`/expenses/stats?circleId=${circleId}&period=${period}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get expense stats:', error);
@@ -235,9 +235,9 @@ class ExpenseService {
     }
   }
 
-  async getExpenseReport(familyId: string, startDate: Date, endDate: Date): Promise<ExpenseReport> {
+  async getExpenseReport(circleId: string, startDate: Date, endDate: Date): Promise<ExpenseReport> {
     try {
-      const response = await apiClient.get(`/expenses/report?familyId=${familyId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
+      const response = await apiClient.get(`/expenses/report?circleId=${circleId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get expense report:', error);
@@ -245,9 +245,9 @@ class ExpenseService {
     }
   }
 
-  async searchExpenses(query: string, familyId: string): Promise<Expense[]> {
+  async searchExpenses(query: string, circleId: string): Promise<Expense[]> {
     try {
-      const response = await apiClient.get(`/expenses/search?q=${encodeURIComponent(query)}&familyId=${familyId}`);
+      const response = await apiClient.get(`/expenses/search?q=${encodeURIComponent(query)}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to search expenses:', error);
@@ -255,9 +255,9 @@ class ExpenseService {
     }
   }
 
-  async getRecurringExpenses(familyId: string): Promise<Expense[]> {
+  async getRecurringExpenses(circleId: string): Promise<Expense[]> {
     try {
-      const response = await apiClient.get(`/expenses/recurring?familyId=${familyId}`);
+      const response = await apiClient.get(`/expenses/recurring?circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get recurring expenses:', error);
@@ -265,9 +265,9 @@ class ExpenseService {
     }
   }
 
-  async getUpcomingExpenses(familyId: string, days: number = 30): Promise<Expense[]> {
+  async getUpcomingExpenses(circleId: string, days: number = 30): Promise<Expense[]> {
     try {
-      const response = await apiClient.get(`/expenses/upcoming?familyId=${familyId}&days=${days}`);
+      const response = await apiClient.get(`/expenses/upcoming?circleId=${circleId}&days=${days}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get upcoming expenses:', error);
@@ -309,10 +309,10 @@ class ExpenseService {
     }
   }
 
-  async exportExpenses(familyId: string, format: 'pdf' | 'csv' | 'excel' = 'pdf', dateRange?: { start: Date; end: Date }): Promise<string> {
+  async exportExpenses(circleId: string, format: 'pdf' | 'csv' | 'excel' = 'pdf', dateRange?: { start: Date; end: Date }): Promise<string> {
     try {
       const params = new URLSearchParams();
-      params.append('familyId', familyId);
+      params.append('circleId', circleId);
       params.append('format', format);
       if (dateRange) {
         params.append('startDate', dateRange.start.toISOString());
@@ -323,7 +323,7 @@ class ExpenseService {
       
       analyticsService.trackEvent('expenses_exported', {
         format,
-        familyId
+        circleId
       });
       
       return response.data.downloadUrl;
@@ -363,7 +363,7 @@ class ExpenseService {
   }
 
   async setExpenseReminder(reminder: {
-    familyId: string;
+    circleId: string;
     userId: string;
     title: string;
     amount: number;
@@ -385,7 +385,7 @@ class ExpenseService {
     }
   }
 
-  async getExpenseReminders(familyId: string): Promise<Array<{
+  async getExpenseReminders(circleId: string): Promise<Array<{
     id: string;
     title: string;
     amount: number;
@@ -394,7 +394,7 @@ class ExpenseService {
     isActive: boolean;
   }>> {
     try {
-      const response = await apiClient.get(`/expenses/reminders?familyId=${familyId}`);
+      const response = await apiClient.get(`/expenses/reminders?circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get expense reminders:', error);
@@ -402,7 +402,7 @@ class ExpenseService {
     }
   }
 
-  async getExpenseInsights(familyId: string): Promise<Array<{
+  async getExpenseInsights(circleId: string): Promise<Array<{
     type: 'spending_trend' | 'category_alert' | 'budget_warning' | 'savings_opportunity';
     title: string;
     message: string;
@@ -410,7 +410,7 @@ class ExpenseService {
     data?: any;
   }>> {
     try {
-      const response = await apiClient.get(`/expenses/insights?familyId=${familyId}`);
+      const response = await apiClient.get(`/expenses/insights?circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get expense insights:', error);

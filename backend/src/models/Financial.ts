@@ -1,7 +1,7 @@
 export interface FinancialAccount {
     id: string;
     user_id: string;
-    family_id?: string | null;
+    circle_id?: string | null;
     name: string;
     type: 'cash' | 'bank' | 'credit_card' | 'investment' | 'loan' | 'other';
     balance: number;
@@ -32,7 +32,7 @@ export interface FinancialTransaction {
     type: 'income' | 'expense' | 'transfer';
     date: string;
     note?: string;
-    is_family_shared: boolean;
+    is_circle_shared: boolean;
     location_label?: string;
     created_at: string;
     updated_at: string;
@@ -60,3 +60,4 @@ export interface FinancialGoal {
     created_at: string;
     updated_at: string;
 }
+

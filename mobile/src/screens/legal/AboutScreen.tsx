@@ -62,7 +62,7 @@ const AboutScreen: React.FC = () => {
                 Bondarys
               </Heading>
               <Text color="gray.600" fontSize="md">
-                hourse Safety & Communication
+                Circle Safety & Communication
               </Text>
               <Text color="gray.500" fontSize="sm">
                 Version {appVersion} ({buildNumber})
@@ -78,7 +78,7 @@ const AboutScreen: React.FC = () => {
               About Bondarys
             </Heading>
             <Text color="gray.700" fontSize="sm" lineHeight="md">
-              Bondarys is a comprehensive hourse safety and communication app designed to keep your loved ones connected and protected. Our mission is to provide peace of mind through real-time location sharing, emergency alerts, and seamless hourse communication.
+              Bondarys is a comprehensive Circle safety and communication app designed to keep your loved ones connected and protected. Our mission is to provide peace of mind through real-time location sharing, emergency alerts, and seamless Circle communication.
             </Text>
           </VStack>
 
@@ -120,7 +120,7 @@ const AboutScreen: React.FC = () => {
                   color="primary.500"
                 />
                 <Text color="gray.700" fontSize="sm" flex={1}>
-                  hourse group chat and calls
+                  Circle group chat and calls
                 </Text>
               </HStack>
               <HStack space={3} alignItems="center">
@@ -131,7 +131,7 @@ const AboutScreen: React.FC = () => {
                   color="primary.500"
                 />
                 <Text color="gray.700" fontSize="sm" flex={1}>
-                  hourse calendar and events
+                  Circle calendar and events
                 </Text>
               </HStack>
               <HStack space={3} alignItems="center">

@@ -1,5 +1,6 @@
 import { Alert } from 'react-native';
 import analyticsService from '../services/analytics/AnalyticsService';
+import { isDev } from './isDev';
 
 export enum ErrorLevel {
   DEBUG = 'debug',
@@ -13,7 +14,7 @@ export interface ErrorContext {
   component?: string;
   method?: string;
   userId?: string;
-  familyId?: string;
+  circleId?: string;
   additionalData?: any;
 }
 
@@ -22,7 +23,7 @@ export class ErrorHandler {
   private isProduction: boolean;
 
   private constructor() {
-    this.isProduction = !__DEV__;
+    this.isProduction = !isDev;
   }
 
   static getInstance(): ErrorHandler {
@@ -103,7 +104,7 @@ export class ErrorHandler {
         component: context?.component,
         method: context?.method,
         user_id: context?.userId,
-        family_id: context?.familyId
+        circle_id: context?.circleId
       });
     } catch (error) {
       // Fallback to console if analytics fails

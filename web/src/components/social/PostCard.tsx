@@ -21,7 +21,7 @@ export interface Post {
     likes_count: number
     comments_count: number
     media_urls?: string[]
-    family_id?: string
+    Circle_id?: string
 }
 
 interface PostCardProps {
@@ -227,3 +227,4 @@ export function PostCard({ post: initialPost, onEdit, onDelete }: PostCardProps)
         </Card>
     )
 }
+

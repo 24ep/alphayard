@@ -1,477 +1,538 @@
+import { apiClient } from '../api/apiClient';
 import { analyticsService } from '../analytics/AnalyticsService';
-import { userService } from '../user/UserService';
-import { familyService } from '../hourse/FamilyService';
 
-export interface AIAnalyticsEvent {
-  eventType: string;
-  userId: string;
-  familyId: string;
-  timestamp: number;
-  metadata: {
-    intent?: string;
-    confidence?: number;
-    actionsCount?: number;
-    responseTime?: number;
-    success?: boolean;
-    error?: string;
-    context?: any;
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'super_admin' | 'moderator';
+  permissions: string[];
+  isActive: boolean;
+  lastLogin: Date;
+  createdAt: Date;
+}
+
+export interface SystemStats {
+  users: {
+    total: number;
+    active: number;
+    newThisMonth: number;
+    premium: number;
+  };
+  families: {
+    total: number;
+    active: number;
+    averageSize: number;
+  };
+  revenue: {
+    monthly: number;
+    yearly: number;
+    growth: number;
+  };
+  performance: {
+    averageResponseTime: number;
+    uptime: number;
+    errorRate: number;
+  };
+  storage: {
+    total: number;
+    used: number;
+    available: number;
   };
 }
 
-export interface AIAnalyticsMetrics {
-  totalRequests: number;
-  successfulRequests: number;
-  failedRequests: number;
-  averageResponseTime: number;
-  mostCommonIntents: Array<{
-    intent: string;
-    count: number;
-    successRate: number;
-  }>;
-  userEngagement: {
-    dailyActiveUsers: number;
-    weeklyActiveUsers: number;
-    monthlyActiveUsers: number;
-    averageSessionLength: number;
-  };
-  familyUsage: {
-    totalFamilies: number;
-    activeFamilies: number;
-    averageFamilySize: number;
-  };
-  performanceMetrics: {
-    averageConfidence: number;
-    actionSuccessRate: number;
-    userSatisfaction: number;
-  };
+export interface AdminReport {
+  id: string;
+  type: 'user_activity' | 'system_performance' | 'revenue' | 'security' | 'custom';
+  title: string;
+  description: string;
+  data: any;
+  filters: any;
+  generatedAt: Date;
+  expiresAt: Date;
+  downloadUrl?: string;
 }
 
-export interface AIAnalyticsReport {
-  period: 'daily' | 'weekly' | 'monthly';
-  startDate: number;
-  endDate: number;
-  metrics: AIAnalyticsMetrics;
-  insights: string[];
-  recommendations: string[];
+export interface AdminAction {
+  id: string;
+  adminId: string;
+  action: string;
+  target: string;
+  targetId: string;
+  details: any;
+  timestamp: Date;
+  ipAddress: string;
+  userAgent: string;
 }
 
-class AIAnalyticsService {
-  private events: AIAnalyticsEvent[] = [];
-  private readonly MAX_EVENTS = 1000;
+export interface SystemAlert {
+  id: string;
+  type: 'error' | 'warning' | 'info' | 'success';
+  title: string;
+  message: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  isActive: boolean;
+  createdAt: Date;
+  resolvedAt?: Date;
+  resolvedBy?: string;
+}
 
-  async trackEvent(eventType: string, metadata: any = {}): Promise<void> {
+class AdminService {
+  async getSystemStats(): Promise<SystemStats> {
     try {
-      const event: AIAnalyticsEvent = {
-        eventType,
-        userId: metadata.userId || 'unknown',
-        familyId: metadata.familyId || 'unknown',
-        timestamp: Date.now(),
-        metadata: {
-          ...metadata,
-          context: this.getContextInfo()
-        }
-      };
-
-      this.events.push(event);
-
-      // Keep only recent events
-      if (this.events.length > this.MAX_EVENTS) {
-        this.events = this.events.slice(-this.MAX_EVENTS);
-      }
-
-      // Send to analytics service
-      await analyticsService.trackEvent(`ai_${eventType}`, {
-        ...metadata,
-        timestamp: event.timestamp,
-        context: event.metadata.context
-      });
-
-      // Store locally for offline analysis
-      await this.storeEventLocally(event);
-
+      const response = await apiClient.get('/admin/stats');
+      return response.data;
     } catch (error) {
-      console.error('Failed to track AI analytics event:', error);
-    }
-  }
-
-  async trackRequest(request: any, response: any, responseTime: number): Promise<void> {
-    try {
-      const success = !response.error;
-      
-      await this.trackEvent('request', {
-        intent: request.intent,
-        confidence: request.confidence,
-        actionsCount: response.actions?.length || 0,
-        responseTime,
-        success,
-        error: response.error,
-        userId: request.context?.userId,
-        familyId: request.context?.familyId
-      });
-
-    } catch (error) {
-      console.error('Failed to track AI request:', error);
-    }
-  }
-
-  async trackIntent(intent: string, confidence: number, success: boolean): Promise<void> {
-    try {
-      await this.trackEvent('intent', {
-        intent,
-        confidence,
-        success,
-        timestamp: Date.now()
-      });
-
-    } catch (error) {
-      console.error('Failed to track AI intent:', error);
-    }
-  }
-
-  async trackAction(action: any, success: boolean): Promise<void> {
-    try {
-      await this.trackEvent('action', {
-        actionType: action.type,
-        service: action.service,
-        method: action.method,
-        success,
-        timestamp: Date.now()
-      });
-
-    } catch (error) {
-      console.error('Failed to track AI action:', error);
-    }
-  }
-
-  async trackUserInteraction(interaction: string, metadata: any = {}): Promise<void> {
-    try {
-      await this.trackEvent('user_interaction', {
-        interaction,
-        ...metadata,
-        timestamp: Date.now()
-      });
-
-    } catch (error) {
-      console.error('Failed to track user interaction:', error);
-    }
-  }
-
-  async trackError(error: Error, context: any = {}): Promise<void> {
-    try {
-      await this.trackEvent('error', {
-        error: error.message,
-        stack: error.stack,
-        context,
-        timestamp: Date.now()
-      });
-
-    } catch (err) {
-      console.error('Failed to track AI error:', err);
-    }
-  }
-
-  async getMetrics(period: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<AIAnalyticsMetrics> {
-    try {
-      const now = Date.now();
-      const periodMs = this.getPeriodMs(period);
-      const startTime = now - periodMs;
-
-      const periodEvents = this.events.filter(event => event.timestamp >= startTime);
-
-      const totalRequests = periodEvents.filter(e => e.eventType === 'request').length;
-      const successfulRequests = periodEvents.filter(e => 
-        e.eventType === 'request' && e.metadata.success
-      ).length;
-      const failedRequests = totalRequests - successfulRequests;
-
-      const responseTimes = periodEvents
-        .filter(e => e.eventType === 'request' && e.metadata.responseTime)
-        .map(e => e.metadata.responseTime!);
-      
-      const averageResponseTime = responseTimes.length > 0 
-        ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length 
-        : 0;
-
-      const intentCounts = new Map<string, { count: number; success: number }>();
-      periodEvents
-        .filter(e => e.eventType === 'intent')
-        .forEach(e => {
-          const intent = e.metadata.intent || 'unknown';
-          const current = intentCounts.get(intent) || { count: 0, success: 0 };
-          current.count++;
-          if (e.metadata.success) current.success++;
-          intentCounts.set(intent, current);
-        });
-
-      const mostCommonIntents = Array.from(intentCounts.entries())
-        .map(([intent, data]) => ({
-          intent,
-          count: data.count,
-          successRate: data.count > 0 ? data.success / data.count : 0
-        }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      const uniqueUsers = new Set(periodEvents.map(e => e.userId));
-      const uniqueFamilies = new Set(periodEvents.map(e => e.familyId));
-
-      const confidences = periodEvents
-        .filter(e => e.metadata.confidence)
-        .map(e => e.metadata.confidence!);
-      
-      const averageConfidence = confidences.length > 0 
-        ? confidences.reduce((a, b) => a + b, 0) / confidences.length 
-        : 0;
-
-      const actionEvents = periodEvents.filter(e => e.eventType === 'action');
-      const successfulActions = actionEvents.filter(e => e.metadata.success).length;
-      const actionSuccessRate = actionEvents.length > 0 
-        ? successfulActions / actionEvents.length 
-        : 0;
-
-      return {
-        totalRequests,
-        successfulRequests,
-        failedRequests,
-        averageResponseTime,
-        mostCommonIntents,
-        userEngagement: {
-          dailyActiveUsers: uniqueUsers.size,
-          weeklyActiveUsers: uniqueUsers.size, // Simplified
-          monthlyActiveUsers: uniqueUsers.size, // Simplified
-          averageSessionLength: 0 // Would need session tracking
-        },
-        familyUsage: {
-          totalFamilies: uniqueFamilies.size,
-          activeFamilies: uniqueFamilies.size,
-          averageFamilySize: 0 // Would need hourse data
-        },
-        performanceMetrics: {
-          averageConfidence,
-          actionSuccessRate,
-          userSatisfaction: 0 // Would need user feedback
-        }
-      };
-
-    } catch (error) {
-      console.error('Failed to get AI metrics:', error);
+      console.error('Failed to get system stats:', error);
       throw error;
     }
   }
 
-  async generateReport(period: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<AIAnalyticsReport> {
+  async getUsers(filters?: {
+    role?: string;
+    status?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    search?: string;
+  }): Promise<{
+    users: AdminUser[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     try {
-      const metrics = await this.getMetrics(period);
-      const insights = this.generateInsights(metrics);
-      const recommendations = this.generateRecommendations(metrics);
+      const params = new URLSearchParams();
+      
+      if (filters?.role) params.append('role', filters.role);
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo.toISOString());
+      if (filters?.search) params.append('search', filters.search);
 
-      const now = Date.now();
-      const periodMs = this.getPeriodMs(period);
-
-      return {
-        period,
-        startDate: now - periodMs,
-        endDate: now,
-        metrics,
-        insights,
-        recommendations
-      };
-
+      const response = await apiClient.get(`/admin/users?${params.toString()}`);
+      return response.data;
     } catch (error) {
-      console.error('Failed to generate AI report:', error);
+      console.error('Failed to get users:', error);
       throw error;
     }
   }
 
-  private generateInsights(metrics: AIAnalyticsMetrics): string[] {
-    const insights: string[] = [];
-
-    // Request insights
-    if (metrics.totalRequests > 0) {
-      const successRate = metrics.successfulRequests / metrics.totalRequests;
-      if (successRate < 0.8) {
-        insights.push(`Low success rate: ${(successRate * 100).toFixed(1)}% of requests failed`);
-      }
-      if (successRate > 0.95) {
-        insights.push(`Excellent success rate: ${(successRate * 100).toFixed(1)}% of requests succeeded`);
-      }
+  async getUser(userId: string): Promise<AdminUser> {
+    try {
+      const response = await apiClient.get(`/admin/users/${userId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get user:', error);
+      throw error;
     }
+  }
 
-    // Response time insights
-    if (metrics.averageResponseTime > 2000) {
-      insights.push(`Slow response time: ${metrics.averageResponseTime.toFixed(0)}ms average`);
-    } else if (metrics.averageResponseTime < 500) {
-      insights.push(`Fast response time: ${metrics.averageResponseTime.toFixed(0)}ms average`);
-    }
-
-    // Intent insights
-    if (metrics.mostCommonIntents.length > 0) {
-      const topIntent = metrics.mostCommonIntents[0];
-      insights.push(`Most popular intent: "${topIntent.intent}" (${topIntent.count} requests)`);
+  async updateUser(userId: string, updates: Partial<AdminUser>): Promise<AdminUser> {
+    try {
+      const response = await apiClient.put(`/admin/users/${userId}`, updates);
       
-      if (topIntent.successRate < 0.7) {
-        insights.push(`Low success rate for "${topIntent.intent}": ${(topIntent.successRate * 100).toFixed(1)}%`);
-      }
-    }
-
-    // User engagement insights
-    if (metrics.userEngagement.dailyActiveUsers > 0) {
-      insights.push(`${metrics.userEngagement.dailyActiveUsers} active users today`);
-    }
-
-    // hourse usage insights
-    if (metrics.familyUsage.activeFamilies > 0) {
-      insights.push(`${metrics.familyUsage.activeFamilies} active families`);
-    }
-
-    return insights;
-  }
-
-  private generateRecommendations(metrics: AIAnalyticsMetrics): string[] {
-    const recommendations: string[] = [];
-
-    // Performance recommendations
-    if (metrics.averageResponseTime > 2000) {
-      recommendations.push('Optimize AI response time by improving intent recognition');
-    }
-
-    if (metrics.performanceMetrics.averageConfidence < 0.7) {
-      recommendations.push('Improve AI confidence by enhancing training data');
-    }
-
-    if (metrics.performanceMetrics.actionSuccessRate < 0.8) {
-      recommendations.push('Review and fix failing AI actions');
-    }
-
-    // User engagement recommendations
-    if (metrics.userEngagement.dailyActiveUsers < 10) {
-      recommendations.push('Increase user engagement through better onboarding');
-    }
-
-    // Intent-specific recommendations
-    const lowSuccessIntents = metrics.mostCommonIntents.filter(i => i.successRate < 0.7);
-    if (lowSuccessIntents.length > 0) {
-      recommendations.push(`Improve success rate for: ${lowSuccessIntents.map(i => i.intent).join(', ')}`);
-    }
-
-    return recommendations;
-  }
-
-  private getPeriodMs(period: 'daily' | 'weekly' | 'monthly'): number {
-    switch (period) {
-      case 'daily':
-        return 24 * 60 * 60 * 1000;
-      case 'weekly':
-        return 7 * 24 * 60 * 60 * 1000;
-      case 'monthly':
-        return 30 * 24 * 60 * 60 * 1000;
-      default:
-        return 24 * 60 * 60 * 1000;
+      analyticsService.trackEvent('admin_user_updated', {
+        userId,
+        updatedFields: Object.keys(updates)
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update user:', error);
+      throw error;
     }
   }
 
-  private getContextInfo(): any {
-    return {
-      platform: 'mobile',
-      timestamp: Date.now(),
-      version: '1.0.0'
+  async suspendUser(userId: string, reason: string): Promise<void> {
+    try {
+      await apiClient.post(`/admin/users/${userId}/suspend`, { reason });
+      
+      analyticsService.trackEvent('admin_user_suspended', {
+        userId,
+        reason
+      });
+    } catch (error) {
+      console.error('Failed to suspend user:', error);
+      throw error;
+    }
+  }
+
+  async unsuspendUser(userId: string): Promise<void> {
+    try {
+      await apiClient.post(`/admin/users/${userId}/unsuspend`);
+      
+      analyticsService.trackEvent('admin_user_unsuspended', {
+        userId
+      });
+    } catch (error) {
+      console.error('Failed to unsuspend user:', error);
+      throw error;
+    }
+  }
+
+  async deleteUser(userId: string, reason: string): Promise<void> {
+    try {
+      await apiClient.delete(`/admin/users/${userId}`, { data: { reason } });
+      
+      analyticsService.trackEvent('admin_user_deleted', {
+        userId,
+        reason
+      });
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      throw error;
+    }
+  }
+
+  async getFamilies(filters?: {
+    status?: string;
+    size?: number;
+    dateFrom?: Date;
+    dateTo?: Date;
+    search?: string;
+  }): Promise<{
+    families: any[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.size) params.append('size', filters.size.toString());
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo.toISOString());
+      if (filters?.search) params.append('search', filters.search);
+
+      const response = await apiClient.get(`/admin/families?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get families:', error);
+      throw error;
+    }
+  }
+
+  async getCircle(circleId: string): Promise<any> {
+    try {
+      const response = await apiClient.get(`/admin/families/${circleId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get Circle:', error);
+      throw error;
+    }
+  }
+
+  async updateCircle(circleId: string, updates: any): Promise<any> {
+    try {
+      const response = await apiClient.put(`/admin/families/${circleId}`, updates);
+      
+      analyticsService.trackEvent('admin_circle_updated', {
+        circleId,
+        updatedFields: Object.keys(updates)
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update Circle:', error);
+      throw error;
+    }
+  }
+
+  async deleteCircle(circleId: string, reason: string): Promise<void> {
+    try {
+      await apiClient.delete(`/admin/families/${circleId}`, { data: { reason } });
+      
+      analyticsService.trackEvent('admin_circle_deleted', {
+        circleId,
+        reason
+      });
+    } catch (error) {
+      console.error('Failed to delete Circle:', error);
+      throw error;
+    }
+  }
+
+  async getReports(type?: string): Promise<AdminReport[]> {
+    try {
+      const params = type ? `?type=${type}` : '';
+      const response = await apiClient.get(`/admin/reports${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get reports:', error);
+      throw error;
+    }
+  }
+
+  async generateReport(report: {
+    type: string;
+    title: string;
+    description: string;
+    filters: any;
+  }): Promise<AdminReport> {
+    try {
+      const response = await apiClient.post('/admin/reports', report);
+      
+      analyticsService.trackEvent('admin_report_generated', {
+        type: report.type,
+        title: report.title
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate report:', error);
+      throw error;
+    }
+  }
+
+  async downloadReport(reportId: string): Promise<string> {
+    try {
+      const response = await apiClient.get(`/admin/reports/${reportId}/download`);
+      
+      analyticsService.trackEvent('admin_report_downloaded', {
+        reportId
+      });
+      
+      return response.data.downloadUrl;
+    } catch (error) {
+      console.error('Failed to download report:', error);
+      throw error;
+    }
+  }
+
+  async getAdminActions(filters?: {
+    adminId?: string;
+    action?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+  }): Promise<{
+    actions: AdminAction[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.adminId) params.append('adminId', filters.adminId);
+      if (filters?.action) params.append('action', filters.action);
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo.toISOString());
+
+      const response = await apiClient.get(`/admin/actions?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get admin actions:', error);
+      throw error;
+    }
+  }
+
+  async getSystemAlerts(): Promise<SystemAlert[]> {
+    try {
+      const response = await apiClient.get('/admin/alerts');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get system alerts:', error);
+      throw error;
+    }
+  }
+
+  async createSystemAlert(alert: Omit<SystemAlert, 'id' | 'createdAt'>): Promise<SystemAlert> {
+    try {
+      const response = await apiClient.post('/admin/alerts', alert);
+      
+      analyticsService.trackEvent('admin_alert_created', {
+        type: alert.type,
+        severity: alert.severity
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create system alert:', error);
+      throw error;
+    }
+  }
+
+  async resolveAlert(alertId: string): Promise<void> {
+    try {
+      await apiClient.post(`/admin/alerts/${alertId}/resolve`);
+      
+      analyticsService.trackEvent('admin_alert_resolved', {
+        alertId
+      });
+    } catch (error) {
+      console.error('Failed to resolve alert:', error);
+      throw error;
+    }
+  }
+
+  async getSystemLogs(filters?: {
+    level?: string;
+    service?: string;
+    dateFrom?: Date;
+    dateTo?: Date;
+    search?: string;
+  }): Promise<{
+    logs: Array<{
+      id: string;
+      level: string;
+      service: string;
+      message: string;
+      timestamp: Date;
+      metadata: any;
+    }>;
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.level) params.append('level', filters.level);
+      if (filters?.service) params.append('service', filters.service);
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo.toISOString());
+      if (filters?.search) params.append('search', filters.search);
+
+      const response = await apiClient.get(`/admin/logs?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get system logs:', error);
+      throw error;
+    }
+  }
+
+  async getSystemHealth(): Promise<{
+    status: 'healthy' | 'warning' | 'critical';
+    services: Array<{
+      name: string;
+      status: 'up' | 'down' | 'degraded';
+      responseTime: number;
+      lastCheck: Date;
+    }>;
+    databases: Array<{
+      name: string;
+      status: 'up' | 'down';
+      connections: number;
+      lastCheck: Date;
+    }>;
+    storage: {
+      total: number;
+      used: number;
+      available: number;
+      status: 'ok' | 'warning' | 'critical';
     };
-  }
-
-  private async storeEventLocally(event: AIAnalyticsEvent): Promise<void> {
+  }> {
     try {
-      // Store in local storage for offline analysis
-      const storedEvents = await this.getStoredEvents();
-      storedEvents.push(event);
-      
-      // Keep only recent events
-      if (storedEvents.length > this.MAX_EVENTS) {
-        storedEvents.splice(0, storedEvents.length - this.MAX_EVENTS);
-      }
-      
-      // Store back to local storage
-      await this.setStoredEvents(storedEvents);
+      const response = await apiClient.get('/admin/health');
+      return response.data;
     } catch (error) {
-      console.error('Failed to store event locally:', error);
-    }
-  }
-
-  private async getStoredEvents(): Promise<AIAnalyticsEvent[]> {
-    try {
-      // This would use AsyncStorage in a real implementation
-      return [];
-    } catch (error) {
-      console.error('Failed to get stored events:', error);
-      return [];
-    }
-  }
-
-  private async setStoredEvents(events: AIAnalyticsEvent[]): Promise<void> {
-    try {
-      // This would use AsyncStorage in a real implementation
-    } catch (error) {
-      console.error('Failed to set stored events:', error);
-    }
-  }
-
-  // Public methods for external access
-  async getTopIntents(limit: number = 10): Promise<Array<{ intent: string; count: number; successRate: number }>> {
-    const metrics = await this.getMetrics();
-    return metrics.mostCommonIntents.slice(0, limit);
-  }
-
-  async getSuccessRate(): Promise<number> {
-    const metrics = await this.getMetrics();
-    return metrics.totalRequests > 0 ? metrics.successfulRequests / metrics.totalRequests : 0;
-  }
-
-  async getAverageResponseTime(): Promise<number> {
-    const metrics = await this.getMetrics();
-    return metrics.averageResponseTime;
-  }
-
-  async getActiveUsers(): Promise<number> {
-    const metrics = await this.getMetrics();
-    return metrics.userEngagement.dailyActiveUsers;
-  }
-
-  async exportData(format: 'json' | 'csv' = 'json'): Promise<string> {
-    try {
-      if (format === 'json') {
-        return JSON.stringify(this.events, null, 2);
-      } else {
-        // CSV format
-        const headers = ['eventType', 'userId', 'familyId', 'timestamp', 'metadata'];
-        const csvRows = [headers.join(',')];
-        
-        this.events.forEach(event => {
-          const row = [
-            event.eventType,
-            event.userId,
-            event.familyId,
-            event.timestamp,
-            JSON.stringify(event.metadata)
-          ];
-          csvRows.push(row.join(','));
-        });
-        
-        return csvRows.join('\n');
-      }
-    } catch (error) {
-      console.error('Failed to export data:', error);
+      console.error('Failed to get system health:', error);
       throw error;
     }
   }
 
-  async clearData(): Promise<void> {
+  async restartService(serviceName: string): Promise<void> {
     try {
-      this.events = [];
-      await this.setStoredEvents([]);
+      await apiClient.post(`/admin/services/${serviceName}/restart`);
+      
+      analyticsService.trackEvent('admin_service_restarted', {
+        serviceName
+      });
     } catch (error) {
-      console.error('Failed to clear data:', error);
+      console.error('Failed to restart service:', error);
+      throw error;
+    }
+  }
+
+  async clearCache(cacheType: string): Promise<void> {
+    try {
+      await apiClient.post(`/admin/cache/${cacheType}/clear`);
+      
+      analyticsService.trackEvent('admin_cache_cleared', {
+        cacheType
+      });
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+      throw error;
+    }
+  }
+
+  async backupDatabase(): Promise<{
+    backupId: string;
+    size: number;
+    downloadUrl: string;
+  }> {
+    try {
+      const response = await apiClient.post('/admin/database/backup');
+      
+      analyticsService.trackEvent('admin_database_backup_created', {
+        backupId: response.data.backupId
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Failed to backup database:', error);
+      throw error;
+    }
+  }
+
+  async getBackupStatus(backupId: string): Promise<{
+    status: 'pending' | 'in_progress' | 'completed' | 'failed';
+    progress: number;
+    downloadUrl?: string;
+  }> {
+    try {
+      const response = await apiClient.get(`/admin/database/backup/${backupId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get backup status:', error);
+      throw error;
+    }
+  }
+
+  async sendSystemNotification(notification: {
+    title: string;
+    message: string;
+    type: 'info' | 'warning' | 'error';
+    targetUsers?: string[];
+    targetFamilies?: string[];
+  }): Promise<void> {
+    try {
+      await apiClient.post('/admin/notifications/send', notification);
+      
+      analyticsService.trackEvent('admin_notification_sent', {
+        type: notification.type,
+        targetUsersCount: notification.targetUsers?.length,
+        targetFamiliesCount: notification.targetFamilies?.length
+      });
+    } catch (error) {
+      console.error('Failed to send system notification:', error);
+      throw error;
+    }
+  }
+
+  async getAnalytics(filters?: {
+    dateFrom?: Date;
+    dateTo?: Date;
+    metric?: string;
+    groupBy?: string;
+  }): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom.toISOString());
+      if (filters?.dateTo) params.append('dateTo', filters.dateTo.toISOString());
+      if (filters?.metric) params.append('metric', filters.metric);
+      if (filters?.groupBy) params.append('groupBy', filters.groupBy);
+
+      const response = await apiClient.get(`/admin/analytics?${params.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get analytics:', error);
       throw error;
     }
   }
 }
 
-export const aiAnalyticsService = new AIAnalyticsService(); 
+export const adminService = new AdminService(); 

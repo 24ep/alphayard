@@ -20,7 +20,7 @@ interface ProfileInfoTabProps {
         position?: string;
         current?: boolean;
     }>;
-    family?: {
+    circle?: {
         name: string;
         memberCount: number;
         role: string;
@@ -33,7 +33,7 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({
     lastName = 'Doe',
     email = 'john.doe@example.com',
     phone = '+66 123 456 789',
-    bio = 'Living life to the fullest with my wonderful family.',
+    bio = 'Living life to the fullest with my wonderful circle.',
     hometown = 'Chiang Mai, Thailand',
     currentCity = 'Bangkok, Thailand',
     education = [
@@ -42,7 +42,7 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({
     work = [
         { company: 'Tech Solutions Co.', position: 'Software Engineer', current: true },
     ],
-    family = { name: 'Doe Family', memberCount: 4, role: 'Admin' },
+    circle = { name: 'Doe Circle', memberCount: 4, role: 'Admin' },
     onEditPress,
 }) => {
     const InfoSection = ({
@@ -99,13 +99,13 @@ export const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({
                 <InfoRow label="Phone" value={phone} icon="phone-outline" />
             </InfoSection>
 
-            {/* Family */}
-            <InfoSection icon="home-heart" title="Family">
-                <View style={styles.familyCard}>
-                    <View style={styles.familyInfo}>
-                        <Text style={styles.familyName}>{family.name}</Text>
-                        <Text style={styles.familyMeta}>
-                            {family.memberCount} members • {family.role}
+            {/* Circle */}
+            <InfoSection icon="home-heart" title="Circle">
+                <View style={styles.circleCard}>
+                    <View style={styles.circleInfo}>
+                        <Text style={styles.circleName}>{circle.name}</Text>
+                        <Text style={styles.circleMeta}>
+                            {circle.memberCount} members • {circle.role}
                         </Text>
                     </View>
                     <TouchableOpacity style={styles.viewButton}>
@@ -224,21 +224,21 @@ const styles = StyleSheet.create({
         color: '#1F2937',
         fontWeight: '500',
     },
-    familyCard: {
+    circleCard: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
     },
-    familyInfo: {
+    circleInfo: {
         flex: 1,
     },
-    familyName: {
+    circleName: {
         fontSize: 16,
         fontWeight: '600',
         color: '#1F2937',
         marginBottom: 4,
     },
-    familyMeta: {
+    circleMeta: {
         fontSize: 13,
         color: '#6B7280',
     },
@@ -303,3 +303,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileInfoTab;
+

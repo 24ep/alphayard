@@ -27,7 +27,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={clsx(
-            'macos-input w-full',
+            'content-input w-full',
             error && 'border-red-300 focus:border-red-500 focus:ring-red-500/20',
             className
           )}

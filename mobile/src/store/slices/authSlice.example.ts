@@ -5,7 +5,7 @@
  * Replace the manual reducer in store.ts with this pattern.
  * 
  * Usage:
- * 1. Create slices for each domain (auth, family, chat, location, safety)
+ * 1. Create slices for each domain (auth, circle, chat, location, safety)
  * 2. Combine them using combineReducers
  * 3. Use typed hooks for better TypeScript support
  */
@@ -21,9 +21,9 @@ export interface User {
   avatar?: string;
   phone?: string;
   dateOfBirth?: Date;
-  userType: 'hourse' | 'children' | 'seniors';
+  userType: 'Circle' | 'children' | 'seniors';
   subscriptionTier: 'free' | 'premium' | 'elite';
-  familyIds: string[];
+  circleIds: string[];
   isOnboardingComplete: boolean;
   preferences: {
     notifications: boolean;
@@ -117,4 +117,5 @@ export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectIsAuthenticated = (state: { auth: AuthState }) => state.auth.isAuthenticated;
 export const selectAuthLoading = (state: { auth: AuthState }) => state.auth.loading;
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
+
 

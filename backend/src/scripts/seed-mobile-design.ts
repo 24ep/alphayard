@@ -20,7 +20,7 @@ const mobilePages = [
             {
                 componentType: 'WelcomeSection',
                 position: 0,
-                props: { showFamilyDropdown: true }
+                props: { showcircleDropdown: true }
             },
             {
                 componentType: 'TabNavigation',
@@ -191,3 +191,4 @@ async function seed() {
 }
 
 seed();
+

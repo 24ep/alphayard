@@ -59,14 +59,14 @@ INSERT INTO content_types (name, description, schema) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert marketing categories
-INSERT INTO categories (family_id, name, description, color, icon) VALUES
+INSERT INTO categories (circle_id, name, description, color, icon) VALUES
 (NULL, 'Marketing Slides', 'Onboarding and landing page slides', '#FF6B6B', '🎯'),
 (NULL, 'Hero Sections', 'Main hero content for marketing pages', '#4ECDC4', '🚀'),
 (NULL, 'Features', 'Product feature highlights', '#45B7D1', '⭐'),
 (NULL, 'Testimonials', 'Customer testimonials and reviews', '#96CEB4', '💬'),
 (NULL, 'FAQ', 'Frequently asked questions', '#FFEAA7', '❓'),
 (NULL, 'General Marketing', 'General marketing content', '#DDA0DD', '📢')
-ON CONFLICT (family_id, name) DO NOTHING;
+ON CONFLICT (circle_id, name) DO NOTHING;
 
 -- Create marketing content table for global marketing content (not family-specific)
 CREATE TABLE IF NOT EXISTS marketing_content (

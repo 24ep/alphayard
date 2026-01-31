@@ -1,8 +1,47 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { 
+  Wallet, 
+  CreditCard, 
+  Landmark, 
+  Banknote, 
+  PiggyBank, 
+  Box, 
+  Diamond, 
+  Coins, 
+  Bitcoin,
+  Hexagon,
+  X,
+  Star
+} from 'lucide-react-native';
 import { homeStyles } from '../../styles/homeStyles';
 import { WALLET_ICONS } from '../../constants/home';
+
+const WalletIcon = Wallet as any;
+const CreditCardIcon = CreditCard as any;
+const LandmarkIcon = Landmark as any;
+const BanknoteIcon = Banknote as any;
+const PiggyBankIcon = PiggyBank as any;
+const BoxIcon = Box as any;
+const DiamondIcon = Diamond as any;
+const CoinsIcon = Coins as any;
+const BitcoinIcon = Bitcoin as any;
+const HexagonIcon = Hexagon as any;
+const XIcon = X as any;
+const StarIcon = Star as any;
+
+const ICON_MAP: Record<string, any> = {
+  'wallet': WalletIcon,
+  'credit-card': CreditCardIcon,
+  'bank': LandmarkIcon,
+  'cash': BanknoteIcon,
+  'piggy-bank': PiggyBankIcon,
+  'treasure-chest': BoxIcon,
+  'diamond': DiamondIcon,
+  'gold': CoinsIcon,
+  'bitcoin': BitcoinIcon,
+  'ethereum': HexagonIcon,
+};
 
 interface AddWalletModalProps {
   visible: boolean;
@@ -53,7 +92,7 @@ const AddWalletModal: React.FC<AddWalletModalProps> = ({
         <View style={homeStyles.modalHeader}>
           <Text style={homeStyles.modalTitle}>Add New Wallet</Text>
           <TouchableOpacity onPress={onClose} style={homeStyles.modalCloseButton}>
-            <IconMC name="close" size={24} color="#666666" />
+            <XIcon size={24} color="#666666" />
           </TouchableOpacity>
         </View>
 
@@ -82,11 +121,15 @@ const AddWalletModal: React.FC<AddWalletModalProps> = ({
                   ]}
                   onPress={() => onIconChange(iconName)}
                 >
-                  <IconMC
-                    name={iconName}
-                    size={24}
-                    color={icon === iconName ? '#FFFFFF' : '#666666'}
-                  />
+                  {(() => {
+                    const Icon = ICON_MAP[iconName] || StarIcon;
+                    return (
+                      <Icon
+                        size={24}
+                        color={icon === iconName ? '#FFFFFF' : '#666666'}
+                      />
+                    );
+                  })()}
                 </TouchableOpacity>
               ))}
             </View>

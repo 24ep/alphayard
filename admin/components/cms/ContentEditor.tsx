@@ -20,8 +20,12 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   ClockIcon,
-  DevicePhoneMobileIcon
+  DevicePhoneMobileIcon,
+  ComputerDesktopIcon,
+  LinkIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
+import { StarIcon as StarIconSolid } from '@heroicons/react/24/solid'
 import { VersionControl } from './VersionControl'
 
 // Component Types
@@ -395,7 +399,17 @@ const CanvasArea: React.FC<{
       {previewMode && (
         <div className="absolute top-2 right-2 z-10">
           <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-            {previewDevice === 'mobile' ? '📱 Mobile Preview' : '💻 Web Preview'}
+            {previewDevice === 'mobile' ? (
+              <span className="flex items-center gap-1">
+                <DevicePhoneMobileIcon className="w-4 h-4" />
+                Mobile Preview
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <ComputerDesktopIcon className="w-4 h-4" />
+                Web Preview
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -799,8 +813,14 @@ const CanvasComponent: React.FC<{
               </div>
             </div>
             {component.props.rating && (
-              <div className="mt-2">
-                {'★'.repeat(component.props.rating)} {'☆'.repeat(5 - component.props.rating)}
+              <div className="mt-2 flex">
+                {[...Array(5)].map((_, i) => (
+                  i < component.props.rating ? (
+                    <StarIconSolid key={i} className="w-4 h-4 text-yellow-400" />
+                  ) : (
+                    <StarIcon key={i} className="w-4 h-4 text-gray-300" />
+                  )
+                ))}
               </div>
             )}
           </div>
@@ -812,7 +832,7 @@ const CanvasComponent: React.FC<{
           <div className="flex justify-center space-x-4">
             {(component.props.platforms || ['facebook', 'twitter', 'instagram']).map((platform: string) => (
               <a key={platform} href="#" className="text-gray-600 hover:text-gray-900">
-                <span className="text-2xl">📱</span>
+                <LinkIcon className="w-6 h-6" />
               </a>
             ))}
           </div>

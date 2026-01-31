@@ -1,20 +1,38 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember, optionalCircleMember } from '../middleware/auth';
 import { pool } from '../config/database';
 import { validateRequest } from '../middleware/validation';
 import { query } from 'express-validator';
 
 const router = express.Router();
 
-// All routes require authentication and hourse membership
+// All routes require authentication
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+router.use(optionalCircleMember as any);
 
 // Get safety statistics
 router.get('/stats', async (req: any, res: any) => {
   try {
-    // Return empty stats for now
+    const circleId = (req as any).circleId;
+
+    if (!circleId) {
+       return res.json({
+        success: true,
+        stats: {
+          totalAlerts: 0,
+          activeAlerts: 0,
+          resolvedAlerts: 0,
+          alertsByType: {},
+          alertsBySeverity: {},
+          checkInsToday: 0,
+          lastCheckIn: null,
+          safetyScore: 100,
+        }
+      });
+    }
+
+    // Return empty stats for now (placeholder implementation)
     res.json({
       success: true,
       stats: {
@@ -45,18 +63,26 @@ router.get('/alerts', [
   query('offset').optional().isInt({ min: 0 }),
 ], validateRequest, async (req: any, res: any) => {
   try {
-    const familyId = (req as any).familyId as string;
+    const circleId = (req as any).circleId as string;
+    
+    if (!circleId) {
+      return res.json({
+        alerts: [],
+        activeAlerts: 0
+      });
+    }
+
     const { status, type, limit = 50, offset = 0 } = req.query as Record<string, string>;
 
     let sql = `
-      SELECT sa.id, sa.user_id, sa.family_id, sa.type, sa.severity, sa.message, sa.location, 
+      SELECT sa.id, sa.user_id, sa.circle_id, sa.type, sa.severity, sa.message, sa.location, 
              sa.is_resolved, sa.created_at, sa.updated_at,
              u.id as u_id, u.first_name, u.last_name, u.email, u.avatar_url
       FROM safety_alerts sa
       LEFT JOIN users u ON sa.user_id = u.id
-      WHERE sa.family_id = $1
+      WHERE sa.circle_id = $1
     `;
-    const params: any[] = [familyId];
+    const params: any[] = [circleId];
     let paramIdx = 2;
 
     if (status) {
@@ -79,8 +105,8 @@ router.get('/alerts', [
 
     // Get count of active alerts
     const { rows: countRows } = await pool.query(
-      'SELECT count(*) FROM safety_alerts WHERE family_id = $1 AND is_resolved = false',
-      [familyId]
+      'SELECT count(*) FROM safety_alerts WHERE circle_id = $1 AND is_resolved = false',
+      [circleId]
     );
     const activeCount = parseInt(countRows[0].count);
 
@@ -88,7 +114,7 @@ router.get('/alerts', [
       alerts: alerts?.map((alert: any) => ({
         id: alert.id,
         userId: alert.user_id,
-        familyId: alert.family_id,
+        circleId: alert.circle_id,
         type: alert.type,
         severity: alert.severity,
         message: alert.message,
@@ -121,18 +147,18 @@ router.post('/alerts', [
   body('severity').optional().isString().isIn(['low', 'medium', 'high', 'urgent']),
   body('message').optional().isString().trim(),
   body('location').optional().isString().trim(),
-], validateRequest, async (req: any, res: any) => {
+], requireCircleMember as any, validateRequest, async (req: any, res: any) => { // Strictly require circle for creating alerts
   try {
-    const familyId = (req as any).familyId as string;
+    const circleId = (req as any).circleId as string;
     const userId = req.user.id;
     const { type, severity = 'medium', message, location } = req.body;
 
     // Create safety alert
     const { rows } = await pool.query(
-      `INSERT INTO safety_alerts (user_id, family_id, type, severity, message, location, is_resolved, created_at, updated_at)
+      `INSERT INTO safety_alerts (user_id, circle_id, type, severity, message, location, is_resolved, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, false, NOW(), NOW())
        RETURNING *`,
-      [userId, familyId, type, severity, message || null, location || null]
+      [userId, circleId, type, severity, message || null, location || null]
     );
 
     const alert = rows[0];
@@ -159,3 +185,4 @@ router.post('/alerts', [
 });
 
 export default router;
+

@@ -3,7 +3,7 @@ import { RecentlyUsedApp } from '../../types/home';
 
 export interface RecentlyUsedFilters {
   userId?: string;
-  familyId?: string;
+  circleId?: string;
   category?: string;
   limit?: number;
   offset?: number;
@@ -18,7 +18,7 @@ export interface AppUsageRecord {
   usageCount: number;
   totalTimeSpent: number; // in minutes
   userId: string;
-  familyId?: string;
+  circleId?: string;
 }
 
 export interface AppCategory {
@@ -36,7 +36,7 @@ class RecentlyUsedService {
     try {
       const params = new URLSearchParams();
       if (filters?.userId) params.append('userId', filters.userId);
-      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.circleId) params.append('circleId', filters.circleId);
       if (filters?.category) params.append('category', filters.category);
       if (filters?.limit) params.append('limit', filters.limit.toString());
       if (filters?.offset) params.append('offset', filters.offset.toString());
@@ -55,7 +55,7 @@ class RecentlyUsedService {
     category: string;
     icon: string;
     userId: string;
-    familyId?: string;
+    circleId?: string;
     timeSpent?: number; // in minutes
   }): Promise<void> {
     try {
@@ -66,7 +66,7 @@ class RecentlyUsedService {
     }
   }
 
-  async getAppUsageStats(userId?: string, familyId?: string, days: number = 30): Promise<{
+  async getAppUsageStats(userId?: string, circleId?: string, days: number = 30): Promise<{
     totalApps: number;
     totalTimeSpent: number;
     mostUsedApps: AppUsageRecord[];
@@ -76,7 +76,7 @@ class RecentlyUsedService {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
       params.append('days', days.toString());
 
       const response = await api.get(`${this.baseUrl}/stats?${params.toString()}`);
@@ -113,11 +113,11 @@ class RecentlyUsedService {
     }
   }
 
-  async getMostUsedApps(userId?: string, familyId?: string, limit: number = 10): Promise<AppUsageRecord[]> {
+  async getMostUsedApps(userId?: string, circleId?: string, limit: number = 10): Promise<AppUsageRecord[]> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
       params.append('limit', limit.toString());
 
       const response = await api.get(`${this.baseUrl}/most-used?${params.toString()}`);
@@ -128,11 +128,11 @@ class RecentlyUsedService {
     }
   }
 
-  async clearUsageHistory(userId?: string, familyId?: string): Promise<void> {
+  async clearUsageHistory(userId?: string, circleId?: string): Promise<void> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
 
       await api.delete(`${this.baseUrl}/history?${params.toString()}`);
     } catch (error) {
@@ -141,11 +141,11 @@ class RecentlyUsedService {
     }
   }
 
-  async getAppRecommendations(userId?: string, familyId?: string): Promise<RecentlyUsedApp[]> {
+  async getAppRecommendations(userId?: string, circleId?: string): Promise<RecentlyUsedApp[]> {
     try {
       const params = new URLSearchParams();
       if (userId) params.append('userId', userId);
-      if (familyId) params.append('familyId', familyId);
+      if (circleId) params.append('circleId', circleId);
 
       const response = await api.get(`${this.baseUrl}/recommendations?${params.toString()}`);
       return response.data.apps || [];
@@ -155,8 +155,8 @@ class RecentlyUsedService {
     }
   }
 
-  async getFamilyAppUsage(familyId: string, days: number = 7): Promise<{
-    familyStats: {
+  async getCircleAppUsage(circleId: string, days: number = 7): Promise<{
+    circleStats: {
       totalApps: number;
       totalTimeSpent: number;
       mostActiveUser: string;
@@ -170,12 +170,12 @@ class RecentlyUsedService {
     }>;
   }> {
     try {
-      const response = await api.get(`${this.baseUrl}/family/${familyId}/usage?days=${days}`);
+      const response = await api.get(`${this.baseUrl}/circle/${circleId}/usage?days=${days}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching family app usage:', error);
+      console.error('Error fetching circle app usage:', error);
       return {
-        familyStats: {
+        circleStats: {
           totalApps: 0,
           totalTimeSpent: 0,
           mostActiveUser: ''
@@ -185,7 +185,7 @@ class RecentlyUsedService {
     }
   }
 
-  async trackAppLaunch(appId: string, appName: string, category: string, icon: string, userId: string, familyId?: string): Promise<void> {
+  async trackAppLaunch(appId: string, appName: string, category: string, icon: string, userId: string, circleId?: string): Promise<void> {
     try {
       await this.recordAppUsage({
         appId,
@@ -193,7 +193,7 @@ class RecentlyUsedService {
         category,
         icon,
         userId,
-        familyId
+        circleId
       });
     } catch (error) {
       console.error('Error tracking app launch:', error);
@@ -214,3 +214,4 @@ class RecentlyUsedService {
 }
 
 export const recentlyUsedService = new RecentlyUsedService();
+

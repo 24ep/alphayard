@@ -42,12 +42,12 @@ export const ContentCard: React.FC<ContentCardProps> = ({
   const getContentTypeIcon = (type: string) => {
     const iconColor = textColor as string;
     switch (type) {
-      case 'family_news': return <Newspaper size={16} color={iconColor} />;
-      case 'family_events': return <PartyPopper size={16} color={iconColor} />;
-      case 'family_memories': return <Camera size={16} color={iconColor} />;
+      case 'circle_news': return <Newspaper size={16} color={iconColor} />;
+      case 'circle_events': return <PartyPopper size={16} color={iconColor} />;
+      case 'circle_memories': return <Camera size={16} color={iconColor} />;
       case 'safety_alerts': return <AlertTriangle size={16} color={iconColor} />;
-      case 'family_recipes': return <ChefHat size={16} color={iconColor} />;
-      case 'family_tips': return <Lightbulb size={16} color={iconColor} />;
+      case 'circle_recipes': return <ChefHat size={16} color={iconColor} />;
+      case 'circle_tips': return <Lightbulb size={16} color={iconColor} />;
       default: return <FileText size={16} color={iconColor} />;
     }
   };
@@ -263,3 +263,4 @@ export const ContentCard: React.FC<ContentCardProps> = ({
     </Pressable>
   );
 };
+

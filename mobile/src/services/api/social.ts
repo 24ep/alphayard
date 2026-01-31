@@ -1,8 +1,8 @@
 import { api } from './index';
-import { SocialPost } from '../../types/home';
+import { SocialPost, CreateSocialPostRequest, UpdateSocialPostRequest, SocialPostInteraction } from '../../types/home';
 
 export interface SocialPostFilters {
-  familyId?: string;
+  circleId?: string;
   authorId?: string;
   search?: string;
   tags?: string[];
@@ -10,44 +10,20 @@ export interface SocialPostFilters {
   dateTo?: string;
   limit?: number;
   offset?: number;
+  following?: boolean;
 }
 
-export interface CreateSocialPostRequest {
-  content: string;
-  familyId: string;
-  media?: {
-    type: 'image' | 'video';
-    url: string;
-  };
-  media_urls?: string[]; // Backend expects this
-  location?: string;
-  latitude?: number;
-  longitude?: number;
-  tags?: string[];
-}
+// ... (keep CreateSocialPostRequest)
 
-export interface UpdateSocialPostRequest {
-  content?: string;
-  media?: {
-    type: 'image' | 'video';
-    url: string;
-  };
-  location?: string;
-  tags?: string[];
-}
+// ... (keep UpdateSocialPostRequest)
 
-export interface SocialPostInteraction {
-  postId: string;
-  type: 'like' | 'comment' | 'share';
-  userId: string;
-  data?: any;
-}
+// ... (keep SocialPostInteraction)
 
 export const socialApi = {
   // Get social posts
   getPosts: async (filters?: SocialPostFilters): Promise<{ success: boolean; posts: SocialPost[] }> => {
     const params = new URLSearchParams();
-    if (filters?.familyId) params.append('familyId', filters.familyId);
+    if (filters?.circleId) params.append('circleId', filters.circleId);
     if (filters?.authorId) params.append('authorId', filters.authorId);
     if (filters?.search) params.append('search', filters.search);
     if (filters?.tags) params.append('tags', filters.tags.join(','));
@@ -55,6 +31,7 @@ export const socialApi = {
     if (filters?.dateTo) params.append('dateTo', filters.dateTo);
     if (filters?.limit) params.append('limit', filters.limit.toString());
     if (filters?.offset) params.append('offset', filters.offset.toString());
+    if (filters?.following) params.append('following', 'true');
 
     const response = await api.get(`/social/posts?${params.toString()}`);
     // apiClient.get already unwraps axios response.data, so response is { success, data: posts }
@@ -125,18 +102,26 @@ export const socialApi = {
   },
 
   // Add comment to post
-  addComment: async (postId: string, content: string, media?: { type: string; url: string }): Promise<{ success: boolean; comment: any }> => {
+  addComment: async (postId: string, content: string, media?: { type: string; url: string }, parentId?: string): Promise<{ success: boolean; comment: any }> => {
     const response = await api.post(`/social/posts/${postId}/comments`, {
       content,
-      media
+      media,
+      parent_id: parentId
     });
     return { success: response.success, comment: response.data };
   },
 
   // Get trending tags
-  getTrendingTags: async (familyId?: string): Promise<{ success: boolean; tags: string[] }> => {
-    const params = familyId ? `?familyId=${familyId}` : '';
+  getTrendingTags: async (circleId?: string): Promise<{ success: boolean; tags: string[] }> => {
+    const params = circleId ? `?circleId=${circleId}` : '';
     const response = await api.get(`/social/trending-tags${params}`);
     return response.data;
+  },
+
+  // Report post
+  reportPost: async (reportData: { post_id: string; reason: string; description?: string }): Promise<{ success: boolean; report: any }> => {
+    const response = await api.post('/social/reports', reportData);
+    return { success: response.success, report: response.data };
   }
 };
+

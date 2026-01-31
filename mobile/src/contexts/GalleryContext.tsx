@@ -109,12 +109,12 @@ export const GalleryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // For now, don't depend on AuthContext to avoid provider hierarchy issues
   const user = null;
 
-    const loadPhotos = useCallback(async (familyId: string) => {
+    const loadPhotos = useCallback(async (circleId: string) => {
       try {
         dispatch({ type: 'SET_LOADING', payload: true });
         dispatch({ type: 'SET_ERROR', payload: null });
         
-        const photos = await galleryService.getPhotos(familyId, state.filters);
+        const photos = await galleryService.getPhotos(circleId, state.filters);
         dispatch({ type: 'SET_PHOTOS', payload: photos });
       } catch (error) {
         dispatch({ type: 'SET_ERROR', payload: 'Failed to load photos' });
@@ -124,12 +124,12 @@ export const GalleryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     }, [state.filters]);
 
-  const loadAlbums = useCallback(async (familyId: string) => {
+  const loadAlbums = useCallback(async (circleId: string) => {
     try {
       dispatch({ type: 'SET_LOADING', payload: true });
       dispatch({ type: 'SET_ERROR', payload: null });
       
-      const albums = await galleryService.getAlbums(familyId);
+      const albums = await galleryService.getAlbums(circleId);
       dispatch({ type: 'SET_ALBUMS', payload: albums });
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to load albums' });

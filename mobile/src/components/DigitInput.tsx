@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { View, TextInput, StyleSheet, NativeSyntheticEvent, TextInputKeyPressEventData, Platform } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface DigitInputProps {
     length?: number;
@@ -9,37 +10,29 @@ interface DigitInputProps {
 }
 
 export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onChange, error }) => {
+    const { theme } = useTheme();
     const inputs = useRef<Array<TextInput | null>>([]);
     const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-    // Sync internal focus if value updates externally (optional, mainly for initial render)
-
+    // ... (logic remains same)
     const handleChange = (text: string, index: number) => {
-        // Allow only numbers
         const cleaned = text.replace(/[^0-9]/g, '');
-        if (!cleaned) {
-            // Handle deletion if empty passed (though usually handled by backspace)
-            return;
-        }
+        if (!cleaned) return;
 
         const valArr = value.padEnd(length, ' ').split('');
 
-        // If user pasted a long string (e.g. "123456")
         if (cleaned.length > 1) {
             const newValue = cleaned.slice(0, length);
             onChange(newValue);
-            // Focus last filled
             const nextIndex = Math.min(newValue.length, length - 1);
             inputs.current[nextIndex]?.focus();
             return;
         }
 
-        // Single digit entry
-        valArr[index] = cleaned[0]; // Take first char if multiple somehow
+        valArr[index] = cleaned[0];
         const newValue = valArr.join('').trim();
         onChange(newValue);
 
-        // Auto focus next
         if (index < length - 1) {
             inputs.current[index + 1]?.focus();
         }
@@ -48,19 +41,12 @@ export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onCh
     const handleKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>, index: number) => {
         if (e.nativeEvent.key === 'Backspace') {
             const valArr = value.padEnd(length, ' ').split('');
-
-            // If current box has a value, clear it. If empty, move back and clear previous.
-            // Actually, standard behavior:
-            // If cursor at filled box: Clear box, keep focus? Or clear and move back?
-            // Usually: Backspace on empty box -> Move focus back. Backspace on filled -> Clear.
-
             const currentChar = valArr[index];
 
             if (currentChar && currentChar !== ' ') {
-                valArr[index] = ' '; // Clear
+                valArr[index] = ' ';
                 onChange(valArr.join('').trim());
             } else {
-                // Empty box, move back
                 if (index > 0) {
                     const prevIndex = index - 1;
                     valArr[prevIndex] = ' ';
@@ -71,10 +57,7 @@ export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onCh
         }
     };
 
-    const getParams = (index: number) => {
-        const char = value[index] || '';
-        return char;
-    };
+    const getParams = (index: number) => value[index] || '';
 
     return (
         <View style={styles.container}>
@@ -84,8 +67,19 @@ export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onCh
                     ref={(ref) => (inputs.current[index] = ref)}
                     style={[
                         styles.box,
-                        focusedIndex === index && styles.boxFocused,
-                        error && styles.boxError,
+                        {
+                            borderColor: theme.colors.border,
+                            borderRadius: theme.radius.input,
+                            backgroundColor: theme.colors.inputBackground,
+                        },
+                        focusedIndex === index && {
+                            borderColor: theme.colors.primary,
+                            backgroundColor: '#FFF',
+                            borderWidth: 2,
+                        },
+                        error && {
+                            borderColor: theme.colors.error,
+                        },
                     ]}
                     value={getParams(index)}
                     onChangeText={(text) => handleChange(text, index)}
@@ -93,9 +87,9 @@ export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onCh
                     onFocus={() => setFocusedIndex(index)}
                     onBlur={() => setFocusedIndex(-1)}
                     keyboardType="number-pad"
-                    maxLength={Platform.OS === 'ios' ? 1 : undefined} // Android sometimes bugs with maxLength 1 + onChange
+                    maxLength={Platform.OS === 'ios' ? 1 : undefined}
                     selectTextOnFocus={true}
-                    caretHidden={true} // Hide cursor for cleaner look?
+                    caretHidden={true}
                     contextMenuHidden={true}
                 />
             ))}
@@ -106,31 +100,19 @@ export const DigitInput: React.FC<DigitInputProps> = ({ length = 10, value, onCh
 const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
-        justifyContent: 'space-between', // Distribute evenly
-        gap: 4, // Minimal gap
+        justifyContent: 'space-between',
+        gap: 4,
         width: '100%',
     },
     box: {
-        flex: 1, // Grow to fill width
-        aspectRatio: 0.8, // Taller than wide
+        flex: 1,
+        aspectRatio: 0.8,
         borderWidth: 1,
-        borderColor: '#E0E0E0',
-        borderRadius: 8,
         textAlign: 'center',
         fontSize: 18,
         color: '#333',
-        backgroundColor: '#FAFAFA',
         padding: 0,
-        // Max width to prevent looking huge on large screens?
         maxWidth: 40,
         height: 48,
-    },
-    boxFocused: {
-        borderColor: '#FA7272',
-        backgroundColor: '#FFF',
-        borderWidth: 2,
-    },
-    boxError: {
-        borderColor: 'red',
     },
 });

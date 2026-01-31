@@ -98,10 +98,10 @@ export function Analytics() {
   ]
 
   const topContent = [
-    { title: 'Johnson Family Reunion 2024', views: 2340, engagement: 92 },
+    { title: 'Johnson Circle Reunion 2024', views: 2340, engagement: 92 },
     { title: 'Grandma\'s Apple Pie Recipe', views: 1890, engagement: 88 },
     { title: 'Birthday Celebration Photos', views: 1560, engagement: 85 },
-    { title: 'Family Tree Update', views: 1230, engagement: 78 },
+    { title: 'Circle Tree Update', views: 1230, engagement: 78 },
     { title: 'Holiday Memories', views: 980, engagement: 82 }
   ]
 
@@ -317,3 +317,4 @@ export function Analytics() {
     </div>
   )
 }
+

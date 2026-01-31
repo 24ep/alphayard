@@ -240,24 +240,24 @@ class NotificationServiceClass {
     }
   }
 
-  // Send family notification
-  async sendFamilyNotification(
-    familyId: string,
+  // Send circle notification
+  async sendCircleNotification(
+    circleId: string,
     type: NotificationType,
     title: string,
     message: string,
     data?: Record<string, any>
   ): Promise<void> {
     try {
-      await apiClient.post('/notifications/family', {
-        familyId,
+      await apiClient.post('/notifications/circle', {
+        circleId,
         type,
         title,
         message,
         data,
       });
     } catch (error) {
-      console.error('Error sending family notification:', error);
+      console.error('Error sending circle notification:', error);
       throw error;
     }
   }
@@ -280,7 +280,7 @@ class NotificationServiceClass {
           warning: true,
           error: true,
           system: true,
-          hourse: true,
+          Circle: true,
           finance: true,
           health: true,
         },
@@ -335,4 +335,5 @@ export const notificationService = NotificationServiceClass.getInstance();
 
 // Export class as default for getInstance() pattern
 export default NotificationServiceClass;
+
 

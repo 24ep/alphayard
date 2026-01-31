@@ -5,7 +5,8 @@ import { userLocationService } from '../services/userLocationService';
 const router = Router();
 
 // Apply authentication to all routes
-router.use(authenticateToken);
+// Apply authentication to all routes
+router.use(authenticateToken as any);
 
 /**
  * GET /user/locations

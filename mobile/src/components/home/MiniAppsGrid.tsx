@@ -1,9 +1,49 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { miniAppsStyles as styles } from '../../styles/home/miniApps';
-import IconIon from 'react-native-vector-icons/Ionicons';
-import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
+import { 
+  Flower2, 
+  UtensilsCrossed, 
+  Newspaper, 
+  Bitcoin, 
+  Heart, 
+  Gamepad2, 
+  Plane, 
+  Music, 
+  Banknote, 
+  ShoppingCart, 
+  LayoutGrid,
+  Star
+} from 'lucide-react-native';
 import { ScalePressable } from '../common/ScalePressable';
+
+// Wrapped Icon components for type safety
+const Flower2Icon = Flower2 as any;
+const UtensilsCrossedIcon = UtensilsCrossed as any;
+const NewspaperIcon = Newspaper as any;
+const BitcoinIcon = Bitcoin as any;
+const HeartIcon = Heart as any;
+const Gamepad2Icon = Gamepad2 as any;
+const PlaneIcon = Plane as any;
+const MusicIcon = Music as any;
+const BanknoteIcon = Banknote as any;
+const ShoppingCartIcon = ShoppingCart as any;
+const LayoutGridIcon = LayoutGrid as any;
+const StarIcon = Star as any;
+
+const ICON_MAP: Record<string, any> = {
+    'flower': Flower2Icon,
+    'chef-hat': UtensilsCrossedIcon,
+    'newspaper': NewspaperIcon,
+    'bitcoin': BitcoinIcon,
+    'heart': HeartIcon,
+    'game-controller': Gamepad2Icon,
+    'airplane': PlaneIcon,
+    'musical-notes': MusicIcon,
+    'cash': BanknoteIcon,
+    'cart': ShoppingCartIcon,
+    'apps': LayoutGridIcon,
+};
 
 interface MiniApp {
     id: string;
@@ -75,19 +115,15 @@ export const MiniAppsGrid: React.FC<MiniAppsGridProps> = ({ onSeeAllPress, hideT
                                     onPress={isSeeMore ? onSeeAllPress : () => console.log('Open', app.label)}
                                 >
                                     <View style={[styles.iconContainer, isSeeMore && { backgroundColor: '#F3F4F6' }]}>
-                                        {app.iconType === 'mc' ? (
-                                            <IconMC
-                                                name={app.icon}
-                                                size={24}
-                                                color={isSeeMore ? '#6B7280' : app.color}
-                                            />
-                                        ) : (
-                                            <IconIon
-                                                name={app.icon}
-                                                size={24}
-                                                color={isSeeMore ? '#6B7280' : app.color}
-                                            />
-                                        )}
+                                        {(() => {
+                                            const Icon = ICON_MAP[app.icon] || StarIcon;
+                                            return (
+                                                <Icon
+                                                    size={24}
+                                                    color={isSeeMore ? '#6B7280' : app.color}
+                                                />
+                                            );
+                                        })()}
                                     </View>
                                     <Text style={[styles.appLabel, isSeeMore && { color: '#6B7280' }]}>{app.label}</Text>
                                 </ScalePressable>

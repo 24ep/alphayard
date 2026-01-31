@@ -2,10 +2,10 @@ import { api } from './index';
 
 export interface Chat {
   id: string;
-  type: 'hourse' | 'direct' | 'group';
+  type: 'Circle' | 'direct' | 'group';
   name: string;
   description?: string;
-  familyId: string;
+  circleId: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -57,7 +57,7 @@ export interface MessageReaction {
 }
 
 export interface CreateChatRequest {
-  type: 'hourse' | 'direct' | 'group';
+  type: 'Circle' | 'direct' | 'group';
   name?: string;
   description?: string;
   participants?: string[];
@@ -78,8 +78,8 @@ export const chatApi = {
   },
 
   // Get user's chats
-  getChats: async (): Promise<{ success: boolean; chats: Chat[] }> => {
-    const response = await api.get('/chat');
+  getChats: async (circleId: string): Promise<{ success: boolean; data: Chat[] }> => {
+    const response = await api.get(`/chat/families/${circleId}/rooms`);
     return response.data;
   },
 
@@ -96,8 +96,8 @@ export const chatApi = {
   },
 
   // Get chat messages
-  getMessages: async (chatId: string, params?: { limit?: number; offset?: number; before?: string; after?: string }): Promise<{ success: boolean; messages: Message[]; pagination: any }> => {
-    const response = await api.get(`/chat/${chatId}/messages`, { params });
+  getMessages: async (chatId: string, params?: { limit?: number; offset?: number; before?: string; after?: string }): Promise<{ success: boolean; data: Message[]; pagination: any }> => {
+    const response = await api.get(`/chat/rooms/${chatId}/messages`, { params });
     return response.data;
   },
 
@@ -154,3 +154,4 @@ export const chatApi = {
     return response.data;
   },
 };
+

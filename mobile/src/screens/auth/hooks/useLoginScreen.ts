@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useToast } from 'native-base';
 import { useAuth } from '../../../contexts/AuthContext';
 import { LoginFormState, LoginHandlers } from '../types';
+import { isDev } from '../../../utils/isDev';
 
 export const useLoginScreen = () => {
   const navigation = useNavigation();
@@ -59,7 +60,7 @@ export const useLoginScreen = () => {
   }, [email, password]);
 
   // Debug: Log auth state (development only)
-  if (__DEV__) {
+  if (isDev) {
     console.log('LoginScreen:', isAuthenticated ? 'authenticated' : 'not authenticated');
   }
 

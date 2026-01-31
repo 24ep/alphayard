@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
@@ -6,82 +6,106 @@ import { PinProvider } from './src/contexts/PinContext';
 import { SocketProvider } from './src/contexts/SocketContext';
 import { MainContentProvider } from './src/contexts/MainContentContext';
 import { UserDataProvider } from './src/contexts/UserDataContext';
+import { CircleProvider } from './src/contexts/CircleContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
+import { BrandingProvider } from './src/contexts/BrandingContext';
 import { NotificationProvider } from './src/contexts/NotificationContext';
+import { ThemeProvider } from './src/contexts/ThemeContext';
 import { NativeBaseProvider, extendTheme } from 'native-base';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useFonts } from 'expo-font';
 import {
-  IBMPlexSansThai_400Regular,
-  IBMPlexSansThai_500Medium,
-  IBMPlexSansThai_600SemiBold,
-  IBMPlexSansThai_700Bold
-} from '@expo-google-fonts/ibm-plex-sans-thai';
-import { theme } from './src/styles/theme'; // Import custom theme
+  Inter_300Light,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter';
+import { theme } from './src/styles/theme';
+import appConfigService from './src/services/appConfigService';
+import analyticsService from './src/services/analytics/AnalyticsService';
 
-// Extend NativeBase theme to use our font
 const nativeBaseTheme = extendTheme({
   fontConfig: {
-    IBMPlexSansThai: {
-      400: {
-        normal: 'IBMPlexSansThai_400Regular',
-      },
-      500: {
-        normal: 'IBMPlexSansThai_500Medium',
-      },
-      600: {
-        normal: 'IBMPlexSansThai_600SemiBold',
-      },
-      700: {
-        normal: 'IBMPlexSansThai_700Bold',
-      },
+    Inter: {
+      300: { normal: 'Inter_300Light' },
+      400: { normal: 'Inter_400Regular' },
+      500: { normal: 'Inter_500Medium' },
+      600: { normal: 'Inter_600SemiBold' },
+      700: { normal: 'Inter_700Bold' },
     },
   },
   fonts: {
-    heading: 'IBMPlexSansThai',
-    body: 'IBMPlexSansThai',
+    heading: 'Inter',
+    body: 'Inter',
     mono: 'Courier',
   },
-  // Merge other custom theme values if compatible, or just use typography for now
   colors: theme.colors,
 });
 
 const App = () => {
   const [fontsLoaded] = useFonts({
-    IBMPlexSansThai_400Regular,
-    IBMPlexSansThai_500Medium,
-    IBMPlexSansThai_600SemiBold,
-    IBMPlexSansThai_700Bold,
+    Inter_300Light,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
-  console.log('🚀 App Starting...');
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        console.log('🚀 App Starting... Fetching config');
+        const config = await appConfigService.getAppConfig();
+        const settings = config.configuration?.settings || {};
+        
+        // Initialize Analytics
+        if (settings.google_analytics_id) {
+          analyticsService.updateConfig({
+            googleAnalyticsId: settings.google_analytics_id,
+            enableDebugLogs: true // Defaulting to true for visibility now
+          });
+        }
+      } catch (error) {
+        console.error('Failed to initialize app config:', error);
+      }
+    };
+
+    initApp();
+  }, []);
 
   if (!fontsLoaded) {
-    return null; // Or a loading spinner
+    return null;
   }
 
   return (
-    <NativeBaseProvider theme={nativeBaseTheme}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NativeBaseProvider theme={nativeBaseTheme}>
         <SafeAreaProvider>
-          <LanguageProvider>
-            <NotificationProvider>
-              <AuthProvider>
-                <PinProvider>
-                  <SocketProvider>
-                    <MainContentProvider>
-                      <UserDataProvider>
-                        <RootNavigator />
-                      </UserDataProvider>
-                    </MainContentProvider>
-                  </SocketProvider>
-                </PinProvider>
-              </AuthProvider>
-            </NotificationProvider>
-          </LanguageProvider>
+          <BrandingProvider>
+            <LanguageProvider>
+              <ThemeProvider>
+                <NotificationProvider>
+                  <AuthProvider>
+                    <PinProvider>
+                      <SocketProvider>
+                        <MainContentProvider>
+                          <UserDataProvider>
+                            <CircleProvider>
+                              <RootNavigator />
+                            </CircleProvider>
+                          </UserDataProvider>
+                        </MainContentProvider>
+                      </SocketProvider>
+                    </PinProvider>
+                  </AuthProvider>
+                </NotificationProvider>
+              </ThemeProvider>
+            </LanguageProvider>
+          </BrandingProvider>
         </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </NativeBaseProvider>
+      </NativeBaseProvider>
+    </GestureHandlerRootView>
   );
 };
 

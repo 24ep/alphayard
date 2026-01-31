@@ -1,7 +1,7 @@
 import express from 'express';
 import http from 'http';
 import https from 'https';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember } from '../middleware/auth';
 import { storageService } from '../services/storageService';
 import StorageController from '../controllers/StorageController';
 import { pool } from '../config/database';
@@ -31,9 +31,9 @@ router.get('/proxy/:fileId', async (req, res) => {
     try {
         const { fileId } = req.params;
 
-        // Look up the file URL from database
+        // Look up the file metadata from database
         const { rows } = await pool.query(
-            'SELECT url, mime_type, file_name FROM files WHERE id = $1',
+            'SELECT mime_type, file_name, uploaded_by FROM files WHERE id = $1',
             [fileId]
         );
 
@@ -42,10 +42,19 @@ router.get('/proxy/:fileId', async (req, res) => {
         }
 
         const file = rows[0];
-        const imageUrl = file.url;
+        
+        // Reconstruct key: uploads/userId/fileName
+        // Note: This assumes standard storageService path structure. 
+        // ideally storageService should expose a method to get key from fileId, but this works for now.
+        const uploadPath = process.env.UPLOAD_PATH || 'uploads';
+        const key = `${uploadPath}/${file.uploaded_by}/${file.file_name}`;
 
-        // Fetch the image from MinIO/S3
-        const imageData = await fetchUrl(imageUrl);
+        // Fetch the image from MinIO/S3 using storageService
+        const imageData = await storageService.downloadFile(key);
+
+        if (!imageData) {
+             return res.status(404).json({ error: 'File content not found' });
+        }
 
         // Set appropriate headers for cross-origin image loading
         res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
@@ -61,9 +70,19 @@ router.get('/proxy/:fileId', async (req, res) => {
     }
 });
 
-// All other routes require authentication and family membership
+// All other routes require authentication
 router.use(authenticateToken as any);
-router.use(requireFamilyMember as any);
+
+// Check for circle membership, unless admin
+const requirecircleOrAdmin = async (req: any, res: any, next: any) => {
+    // If admin, skip circle check
+    if (req.user && (req.user.role === 'admin' || req.user.type === 'admin')) {
+        return next();
+    }
+    return requireCircleMember(req, res, next);
+};
+
+router.use(requirecircleOrAdmin);
 
 // Get files
 router.get('/files', StorageController.getFiles);
@@ -93,3 +112,4 @@ router.patch('/files/:id/favorite', StorageController.toggleFavorite);
 router.patch('/files/:id/shared', StorageController.toggleShared);
 
 export default router;
+

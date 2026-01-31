@@ -1,7 +1,7 @@
 import express from 'express';
 import { body, query } from 'express-validator';
 import { pool } from '../config/database';
-import { authenticateToken, requireFamilyMember } from '../middleware/auth';
+import { authenticateToken, requireCircleMember } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 
 const router = express.Router();
@@ -18,7 +18,7 @@ if ((process.env.NODE_ENV || 'development') !== 'production') {
       const dayMs = 24 * 60 * 60 * 1000;
       const mock = [
         { id: 'm1', title: 'Mock Standup', description: 'Daily sync', startDate: new Date(now.getTime() + dayMs).toISOString(), endDate: new Date(now.getTime() + dayMs + 3600000).toISOString(), allDay: false, location: 'Online', color: '#93C5FD' },
-        { id: 'm2', title: 'Mock Family Dinner', description: '', startDate: new Date(now.getTime() + 2 * dayMs).toISOString(), endDate: new Date(now.getTime() + 2 * dayMs + 7200000).toISOString(), allDay: false, location: 'Home', color: '#FCA5A5' },
+        { id: 'm2', title: 'Mock circle Dinner', description: '', startDate: new Date(now.getTime() + 2 * dayMs).toISOString(), endDate: new Date(now.getTime() + 2 * dayMs + 7200000).toISOString(), allDay: false, location: 'Home', color: '#FCA5A5' },
       ];
       return res.json({ events: mock });
     } catch {
@@ -30,50 +30,50 @@ if ((process.env.NODE_ENV || 'development') !== 'production') {
 // All other routes require auth
 router.use(authenticateToken as any);
 
-// Get events for current user's hourse (or specified familyId if provided and user is a member)
+// Get events for current user's circle (or specified circleId if provided and user is a member)
 router.get(
   '/events',
   [
     query('startDate').optional().isISO8601(),
     query('endDate').optional().isISO8601(),
     query('type').optional().isString(),
-    query('familyId').optional().isUUID(),
+    query('circleId').optional().isUUID(),
     query('createdBy').optional().isUUID(),
   ],
   validateRequest,
   async (req: any, res: any) => {
     try {
-      const { startDate, endDate, type, familyId: queryFamilyId, createdBy } = req.query as Record<string, string>;
+      const { startDate, endDate, type, circleId: querycircleId, createdBy } = req.query as Record<string, string>;
 
-      // Determine familyId: either provided or user's current hourse
-      let familyId = (req as any).familyId as string | undefined;
-      if (queryFamilyId) {
-        // Verify membership in requested hourse
+      // Determine circleId: either provided or user's current circle
+      let circleId = (req as any).circleId as string | undefined;
+      if (querycircleId) {
+        // Verify membership in requested circle
         const { rows: membership } = await pool.query(
-          'SELECT family_id FROM family_members WHERE family_id = $1 AND user_id = $2',
-          [queryFamilyId, req.user.id]
+          'SELECT circle_id FROM circle_members WHERE circle_id = $1 AND user_id = $2',
+          [querycircleId, req.user.id]
         );
         if (membership.length === 0) {
-          return res.status(403).json({ error: 'Access denied', message: 'Not a member of the requested hourse' });
+          return res.status(403).json({ error: 'Access denied', message: 'Not a member of the requested circle' });
         }
-        familyId = queryFamilyId;
+        circleId = querycircleId;
       }
 
-      if (!familyId) {
+      if (!circleId) {
         // Try to infer from membership
         const { rows: membership } = await pool.query(
-          'SELECT family_id FROM family_members WHERE user_id = $1 LIMIT 1',
+          'SELECT circle_id FROM circle_members WHERE user_id = $1 LIMIT 1',
           [req.user.id]
         );
-        familyId = membership[0]?.family_id;
+        circleId = membership[0]?.circle_id;
       }
 
-      if (!familyId) {
-        return res.status(400).json({ error: 'No hourse context', message: 'Join or select a hourse first' });
+      if (!circleId) {
+        return res.status(400).json({ error: 'No circle context', message: 'Join or select a circle first' });
       }
 
-      let sql = 'SELECT * FROM events WHERE family_id = $1';
-      const params: any[] = [familyId];
+      let sql = 'SELECT * FROM events WHERE circle_id = $1';
+      const params: any[] = [circleId];
       let paramIdx = 2;
 
       if (startDate) {
@@ -108,7 +108,7 @@ router.get(
 router.post(
   '/events',
   [
-    requireFamilyMember as any,
+    requireCircleMember as any,
     body('title').isString().isLength({ min: 1 }),
     body('startDate').isISO8601(),
     body('endDate').optional().isISO8601(),
@@ -125,7 +125,7 @@ router.post(
   validateRequest,
   async (req: any, res: any) => {
     try {
-      const familyId = (req as any).familyId as string;
+      const circleId = (req as any).circleId as string;
       const {
         title,
         description,
@@ -142,13 +142,13 @@ router.post(
       } = req.body;
 
       const { rows } = await pool.query(
-        `INSERT INTO events (family_id, created_by, title, description, start_date, end_date, is_all_day, 
+        `INSERT INTO events (circle_id, created_by, title, description, start_date, end_date, is_all_day, 
                             event_type, location, location_latitude, location_longitude, is_recurring, 
                             recurrence_rule, reminder_minutes, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW())
          RETURNING *`,
         [
-          familyId,
+          circleId,
           req.user.id,
           title,
           description ?? null,
@@ -177,7 +177,7 @@ router.post(
 router.put(
   '/events/:eventId',
   [
-    requireFamilyMember as any,
+    requireCircleMember as any,
     body('title').optional().isString().isLength({ min: 1 }),
     body('startDate').optional().isISO8601(),
     body('endDate').optional().isISO8601(),
@@ -194,15 +194,15 @@ router.put(
   validateRequest,
   async (req: any, res: any) => {
     try {
-      const familyId = (req as any).familyId as string;
+      const circleId = (req as any).circleId as string;
       const { eventId } = req.params;
 
-      // Ensure event belongs to hourse
+      // Ensure event belongs to circle
       const { rows: existingRows } = await pool.query(
-        'SELECT id, family_id FROM events WHERE id = $1',
+        'SELECT id, circle_id FROM events WHERE id = $1',
         [eventId]
       );
-      if (existingRows.length === 0 || existingRows[0].family_id !== familyId) {
+      if (existingRows.length === 0 || existingRows[0].circle_id !== circleId) {
         return res.status(404).json({ error: 'Event not found' });
       }
 
@@ -246,16 +246,16 @@ router.put(
 );
 
 // Delete event
-router.delete('/events/:eventId', requireFamilyMember as any, async (req: any, res: any) => {
+router.delete('/events/:eventId', requireCircleMember as any, async (req: any, res: any) => {
   try {
-    const familyId = (req as any).familyId as string;
+    const circleId = (req as any).circleId as string;
     const { eventId } = req.params;
 
     const { rows: existingRows } = await pool.query(
-      'SELECT id, family_id FROM events WHERE id = $1',
+      'SELECT id, circle_id FROM events WHERE id = $1',
       [eventId]
     );
-    if (existingRows.length === 0 || existingRows[0].family_id !== familyId) {
+    if (existingRows.length === 0 || existingRows[0].circle_id !== circleId) {
       return res.status(404).json({ error: 'Event not found' });
     }
 
@@ -268,5 +268,6 @@ router.delete('/events/:eventId', requireFamilyMember as any, async (req: any, r
 });
 
 export default router;
+
 
 

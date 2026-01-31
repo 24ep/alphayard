@@ -240,6 +240,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to create version on page update
+DROP TRIGGER IF EXISTS trigger_create_page_version ON pages;
 CREATE TRIGGER trigger_create_page_version
     AFTER UPDATE ON pages
     FOR EACH ROW
@@ -272,8 +273,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update hierarchy on insert/update
+DROP TRIGGER IF EXISTS trigger_update_page_hierarchy ON page_hierarchy;
 CREATE TRIGGER trigger_update_page_hierarchy
-    BEFORE INSERT OR UPDATE ON page_hierarchy
+    AFTER INSERT OR UPDATE ON page_hierarchy
     FOR EACH ROW
     EXECUTE FUNCTION update_page_hierarchy();
 
@@ -298,6 +300,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger for audit logging
+DROP TRIGGER IF EXISTS trigger_log_page_audit ON pages;
 CREATE TRIGGER trigger_log_page_audit
     AFTER INSERT OR UPDATE OR DELETE ON pages
     FOR EACH ROW
@@ -323,6 +326,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to enforce URL uniqueness for published pages
+DROP TRIGGER IF EXISTS trigger_check_published_url ON pages;
 CREATE TRIGGER trigger_check_published_url
     BEFORE INSERT OR UPDATE ON pages
     FOR EACH ROW

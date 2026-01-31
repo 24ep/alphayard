@@ -63,7 +63,7 @@ export interface ContentInteraction {
 
 export class CMSService {
   // Content Management
-  async getContent(familyId: string, params?: {
+  async getContent(circleId: string, params?: {
     contentTypeId?: string;
     categoryId?: string;
     status?: string;
@@ -72,7 +72,7 @@ export class CMSService {
     offset?: number;
   }): Promise<Content[]> {
     try {
-      const response = await api.get(`/cms/families/${familyId}/content`, { params });
+      const response = await api.get(`/cms/families/${circleId}/content`, { params });
       return response.data.content;
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -90,7 +90,7 @@ export class CMSService {
     }
   }
 
-  async createContent(familyId: string, contentData: {
+  async createContent(circleId: string, contentData: {
     content_type_id: string;
     category_id?: string;
     title: string;
@@ -106,7 +106,7 @@ export class CMSService {
     tags?: string[];
   }): Promise<Content> {
     try {
-      const response = await api.post(`/cms/families/${familyId}/content`, contentData);
+      const response = await api.post(`/cms/families/${circleId}/content`, contentData);
       return response.data.content;
     } catch (error) {
       console.error('Error creating content:', error);
@@ -198,9 +198,9 @@ export class CMSService {
   }
 
   // Categories
-  async getCategories(familyId: string): Promise<Category[]> {
+  async getCategories(circleId: string): Promise<Category[]> {
     try {
-      const response = await api.get(`/cms/families/${familyId}/categories`);
+      const response = await api.get(`/cms/families/${circleId}/categories`);
       return response.data.categories;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -208,7 +208,7 @@ export class CMSService {
     }
   }
 
-  async createCategory(familyId: string, categoryData: {
+  async createCategory(circleId: string, categoryData: {
     name: string;
     description?: string;
     color?: string;
@@ -217,7 +217,7 @@ export class CMSService {
     sort_order?: number;
   }): Promise<Category> {
     try {
-      const response = await api.post(`/cms/families/${familyId}/categories`, categoryData);
+      const response = await api.post(`/cms/families/${circleId}/categories`, categoryData);
       return response.data.category;
     } catch (error) {
       console.error('Error creating category:', error);
@@ -226,9 +226,9 @@ export class CMSService {
   }
 
   // Analytics
-  async getContentAnalytics(familyId: string, dateFrom?: string, dateTo?: string): Promise<any[]> {
+  async getContentAnalytics(circleId: string, dateFrom?: string, dateTo?: string): Promise<any[]> {
     try {
-      const response = await api.get(`/cms/families/${familyId}/analytics/content`, {
+      const response = await api.get(`/cms/families/${circleId}/analytics/content`, {
         params: { dateFrom, dateTo }
       });
       return response.data.analytics;
@@ -238,9 +238,9 @@ export class CMSService {
     }
   }
 
-  async getPopularContent(familyId: string, limit: number = 10): Promise<Content[]> {
+  async getPopularContent(circleId: string, limit: number = 10): Promise<Content[]> {
     try {
-      const response = await api.get(`/cms/families/${familyId}/content/popular`, {
+      const response = await api.get(`/cms/families/${circleId}/content/popular`, {
         params: { limit }
       });
       return response.data.content;
@@ -294,3 +294,4 @@ export class CMSService {
 }
 
 export const cmsService = new CMSService();
+

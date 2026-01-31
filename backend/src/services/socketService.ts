@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/UserModel';
 import { query } from '../config/database';
+import { config } from '../config/env';
 import crypto from 'crypto';
 
 const logger = console; // Use console as fallback
@@ -9,7 +10,7 @@ const logger = console; // Use console as fallback
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   user?: any;
-  familyIds?: string[];
+  circleIds?: string[];
 }
 
 // ChatMessage interface removed - not used
@@ -76,7 +77,7 @@ class SocketService {
         }
 
         // Verify JWT token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+        const decoded = jwt.verify(token, config.JWT_SECRET) as any;
         if (decoded.userId !== userId) {
           return next(new Error('Invalid token'));
         }
@@ -89,7 +90,7 @@ class SocketService {
 
         socket.userId = userId;
         socket.user = user;
-        socket.familyIds = user.familyIds;
+        socket.circleIds = user.circleIds;
 
         next();
       } catch (error) {
@@ -114,10 +115,10 @@ class SocketService {
     // Store connected user
     this.connectedUsers.set(userId, socket);
 
-    // Join user's hourse rooms
-    if (user.familyIds && user.familyIds.length > 0) {
-      user.familyIds.forEach((familyId: any) => {
-        const roomId = `family_${familyId}`;
+    // Join user's circle rooms
+    if (user.circleIds && user.circleIds.length > 0) {
+      user.circleIds.forEach((circleId: any) => {
+        const roomId = `circle_${circleId}`;
         socket.join(roomId);
         this.addUserToRoom(userId, roomId);
       });
@@ -235,15 +236,15 @@ class SocketService {
         VALUES ($1, $2, $3, $4, $5, $6)
       `, [
         messageId,
-        data.familyId, // Assuming familyId maps to room_id for now
+        data.circleId, // Assuming circleId maps to room_id for now
         userId,
         messageData.content,
         messageData.type,
         messageData.timestamp
       ]);
 
-      // Broadcast to hourse room
-      const roomId = `family_${data.familyId}`;
+      // Broadcast to circle room
+      const roomId = `circle_${data.circleId}`;
       socket.to(roomId).emit('chat:message', {
         ...messageData,
         id: messageId,
@@ -264,7 +265,7 @@ class SocketService {
 
   private handleTypingStatus(socket: AuthenticatedSocket, data: any) {
     const userId = socket.userId!;
-    const roomId = `family_${data.familyId}`;
+    const roomId = `circle_${data.circleId}`;
 
     socket.to(roomId).emit('chat:typing', {
       userId,
@@ -290,10 +291,10 @@ class SocketService {
         'location.lastUpdated': new Date(),
       });
 
-      // Broadcast to hourse members
-      if (user.familyIds) {
-        user.familyIds.forEach((familyId: any) => {
-          const roomId = `family_${familyId}`;
+      // Broadcast to circle members
+      if (user.circleIds) {
+        user.circleIds.forEach((circleId: any) => {
+          const roomId = `circle_${circleId}`;
           socket.to(roomId).emit('location:update', locationData);
         });
       }
@@ -418,10 +419,10 @@ class SocketService {
       // const alert = new EmergencyAlertModel(alertData);
       // await alert.save();
 
-      // Broadcast to hourse members
-      if (user.familyIds) {
-        user.familyIds.forEach((familyId: any) => {
-          const roomId = `family_${familyId}`;
+      // Broadcast to circle members
+      if (user.circleIds) {
+        user.circleIds.forEach((circleId: any) => {
+          const roomId = `circle_${circleId}`;
           socket.to(roomId).emit('emergency:alert', {
             ...alertData,
             id: 'stub-alert-id', // alert._id,
@@ -430,7 +431,7 @@ class SocketService {
       }
 
       // Send push notifications
-      await this.sendEmergencyNotifications(user.familyIds, alertData);
+      await this.sendEmergencyNotifications(user.circleIds, alertData);
 
       logger.warn(`Emergency alert: stub-alert-id by ${userId}`); // alert._id
     } catch (error) {
@@ -451,11 +452,11 @@ class SocketService {
       //   resolvedAt: new Date(),
       // });
 
-      // Notify hourse members
+      // Notify circle members
       const user = socket.user!;
-      if (user.familyIds) {
-        user.familyIds.forEach((familyId: any) => {
-          const roomId = `family_${familyId}`;
+      if (user.circleIds) {
+        user.circleIds.forEach((circleId: any) => {
+          const roomId = `circle_${circleId}`;
           socket.to(roomId).emit('emergency:resolved', alertId);
         });
       }
@@ -512,11 +513,11 @@ class SocketService {
       logger.error('Failed to update user online status:', error);
     });
 
-    // Notify hourse members
+    // Notify circle members
     const userSocket = this.connectedUsers.get(userId);
-    if (userSocket && userSocket.user?.familyIds) {
-      userSocket.user.familyIds.forEach((familyId: any) => {
-        const roomId = `family_${familyId}`;
+    if (userSocket && userSocket.user?.circleIds) {
+      userSocket.user.circleIds.forEach((circleId: any) => {
+        const roomId = `circle_${circleId}`;
         this.io.to(roomId).emit(isOnline ? 'user:online' : 'user:offline', userId);
       });
     }
@@ -531,18 +532,18 @@ class SocketService {
     });
   }
 
-  private async sendEmergencyNotifications(familyIds: string[], alertData: any) {
+  private async sendEmergencyNotifications(circleIds: string[], alertData: any) {
     try {
-      // Get all hourse members' device tokens
-      // const familyMembers = await UserModel.find({ ... });
+      // Get all circle members' device tokens
+      // const circleMembers = await UserModel.find({ ... });
       const res = await query(`
         SELECT u.raw_user_meta_data->'deviceTokens' as device_tokens
-        FROM auth.users u
-        JOIN public.family_members fm ON u.id = fm.user_id
-        WHERE fm.family_id = ANY($1)
+        FROM public.users u
+        JOIN public.circle_members fm ON u.id = fm.user_id
+        WHERE fm.circle_id = ANY($1)
         AND u.raw_user_meta_data->'deviceTokens' IS NOT NULL
         AND jsonb_array_length(u.raw_user_meta_data->'deviceTokens') > 0
-      `, [familyIds]);
+      `, [circleIds]);
 
       const deviceTokens = res.rows.flatMap(r => r.device_tokens || []);
 

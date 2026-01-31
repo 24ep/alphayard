@@ -76,7 +76,7 @@ export interface WeatherData {
 export interface WeatherAlert {
   id: string;
   userId: string;
-  familyId: string;
+  circleId: string;
   type: 'temperature' | 'rain' | 'snow' | 'wind' | 'storm' | 'air_quality' | 'uv' | 'custom';
   condition: 'above' | 'below' | 'equals';
   value: number;
@@ -95,7 +95,7 @@ export interface WeatherAlert {
 
 export interface WeatherPreferences {
   userId: string;
-  familyId: string;
+  circleId: string;
   defaultLocation: {
     name: string;
     latitude: number;
@@ -179,9 +179,9 @@ class WeatherService {
     }
   }
 
-  async getUserWeatherAlerts(userId: string, familyId: string): Promise<WeatherAlert[]> {
+  async getUserWeatherAlerts(userId: string, circleId: string): Promise<WeatherAlert[]> {
     try {
-      const response = await apiClient.get(`/weather/alerts/user?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/weather/alerts/user?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get user weather alerts:', error);
@@ -234,9 +234,9 @@ class WeatherService {
     }
   }
 
-  async getUserPreferences(userId: string, familyId: string): Promise<WeatherPreferences> {
+  async getUserPreferences(userId: string, circleId: string): Promise<WeatherPreferences> {
     try {
-      const response = await apiClient.get(`/weather/preferences?userId=${userId}&familyId=${familyId}`);
+      const response = await apiClient.get(`/weather/preferences?userId=${userId}&circleId=${circleId}`);
       return response.data;
     } catch (error) {
       console.error('Failed to get user preferences:', error);
@@ -244,9 +244,9 @@ class WeatherService {
     }
   }
 
-  async updateUserPreferences(userId: string, familyId: string, preferences: Partial<WeatherPreferences>): Promise<WeatherPreferences> {
+  async updateUserPreferences(userId: string, circleId: string, preferences: Partial<WeatherPreferences>): Promise<WeatherPreferences> {
     try {
-      const response = await apiClient.put(`/weather/preferences?userId=${userId}&familyId=${familyId}`, preferences);
+      const response = await apiClient.put(`/weather/preferences?userId=${userId}&circleId=${circleId}`, preferences);
       
       analyticsService.trackEvent('weather_preferences_updated', {
         userId,
@@ -341,7 +341,7 @@ class WeatherService {
     }
   }
 
-  async subscribeToWeatherUpdates(userId: string, familyId: string, location: {
+  async subscribeToWeatherUpdates(userId: string, circleId: string, location: {
     name: string;
     latitude: number;
     longitude: number;
@@ -349,7 +349,7 @@ class WeatherService {
     try {
       await apiClient.post('/weather/subscribe', {
         userId,
-        familyId,
+        circleId,
         location
       });
       
@@ -363,9 +363,9 @@ class WeatherService {
     }
   }
 
-  async unsubscribeFromWeatherUpdates(userId: string, familyId: string): Promise<void> {
+  async unsubscribeFromWeatherUpdates(userId: string, circleId: string): Promise<void> {
     try {
-      await apiClient.delete(`/weather/subscribe?userId=${userId}&familyId=${familyId}`);
+      await apiClient.delete(`/weather/subscribe?userId=${userId}&circleId=${circleId}`);
       
       analyticsService.trackEvent('weather_subscription_cancelled', {
         userId

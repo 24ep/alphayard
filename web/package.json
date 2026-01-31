@@ -1,7 +1,7 @@
 {
   "name": "bondarys-web",
   "version": "1.0.0",
-  "description": "Bondarys Web Application - Premium macOS-inspired family management platform",
+  "description": "Bondarys Web Application - Premium macOS-inspired Circle management platform",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
@@ -38,3 +38,4 @@
     "typescript": "5.9.3"
   }
 }
+

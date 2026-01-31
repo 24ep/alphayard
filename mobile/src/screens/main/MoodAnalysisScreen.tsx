@@ -49,7 +49,7 @@ const MoodAnalysisScreen: React.FC = () => {
                         {/* Overview Card (Bar Chart) */}
                         <Box bg="white" borderRadius="xl" shadow={2} p={5}>
                             <Text style={styles.cardTitle}>Mood Overview (30 Days)</Text>
-                            <Text style={styles.cardSubtitle}>Family average is looking <Text style={{ fontWeight: 'bold', color: '#10B981' }}>Good</Text></Text>
+                            <Text style={styles.cardSubtitle}>Circle average is looking <Text style={{ fontWeight: 'bold', color: '#10B981' }}>Good</Text></Text>
 
                             <Center mt={2}>
                                 <BarChart
@@ -97,7 +97,7 @@ const MoodAnalysisScreen: React.FC = () => {
                             />
                         </Box>
 
-                        {/* Family Members Heatmap (Simulated 30-day row) */}
+                        {/* Circle Members Heatmap (Simulated 30-day row) */}
                         <Box bg="white" borderRadius="xl" shadow={2} p={5}>
                             <Text style={styles.cardTitle}>Member History (30 Days)</Text>
                             <Text style={styles.cardSubtitle} style={{ marginBottom: 16 }}>Detailed daily breakdown per person</Text>
@@ -143,3 +143,4 @@ const styles = StyleSheet.create({
 });
 
 export default MoodAnalysisScreen;
+

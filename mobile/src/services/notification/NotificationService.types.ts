@@ -4,14 +4,14 @@ export type NotificationType =
   | 'warning' 
   | 'error' 
   | 'system' 
-  | 'hourse' 
+  | 'Circle' 
   | 'finance' 
   | 'health';
 
 export interface Notification {
   id: string;
   userId?: string;
-  familyId?: string;
+  circleId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -38,4 +38,5 @@ export interface NotificationSettings {
     end: string; // HH:mm format
   };
 }
+
 

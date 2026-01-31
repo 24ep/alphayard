@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 
 /**
  * App Configuration Controller
  * Manages dynamic app configuration similar to Adobe Experience Manager (AEM)
  * Handles themes, screens, assets, feature flags, etc.
+ * 
+ * REFACTORED: Using direct PostgreSQL pool instead of Supabase client
  */
 export class AppConfigController {
 
@@ -14,35 +16,37 @@ export class AppConfigController {
    */
   async getAppConfig(req: Request, res: Response) {
     try {
-      const { platform, version } = req.query;
+      const { platform } = req.query;
 
-      // Fetch all configuration data in parallel
+      // Fetch all configuration data in parallel using direct SQL
       const [
         configResult,
         screensResult,
         themesResult,
         featuresResult,
-        assetsResult
+        assetsResult,
+        brandingResult
       ] = await Promise.all([
-        supabase.from('app_configuration').select('*').eq('is_active', true),
-        supabase.from('app_screens').select('*').eq('is_active', true),
-        supabase.from('app_themes').select('*').eq('is_active', true),
-        supabase.from('app_feature_flags').select('*'),
-        supabase.from('app_assets').select('*').eq('is_active', true)
+        pool.query('SELECT * FROM app_configuration WHERE is_active = true'),
+        pool.query('SELECT * FROM app_screens WHERE is_active = true'),
+        pool.query('SELECT * FROM app_themes WHERE is_active = true'),
+        pool.query('SELECT * FROM app_feature_flags'),
+        pool.query('SELECT * FROM app_assets WHERE is_active = true'),
+        pool.query("SELECT * FROM app_settings WHERE key = 'branding' LIMIT 1")
       ]);
 
       // Transform configuration into key-value object
       const configuration: Record<string, any> = {};
-      if (configResult.data) {
-        configResult.data.forEach(config => {
+      if (configResult.rows) {
+        configResult.rows.forEach((config: any) => {
           configuration[config.config_key] = config.config_value;
         });
       }
 
       // Transform screens into key-value object
       const screens: Record<string, any> = {};
-      if (screensResult.data) {
-        screensResult.data.forEach(screen => {
+      if (screensResult.rows) {
+        screensResult.rows.forEach((screen: any) => {
           screens[screen.screen_key] = {
             name: screen.screen_name,
             type: screen.screen_type,
@@ -53,12 +57,12 @@ export class AppConfigController {
       }
 
       // Get default theme
-      const defaultTheme = themesResult.data?.find(t => t.is_default) || themesResult.data?.[0];
+      const defaultTheme = themesResult.rows?.find((t: any) => t.is_default) || themesResult.rows?.[0];
 
-      // Filter feature flags based on platform and version
-      let features = featuresResult.data || [];
+      // Filter feature flags based on platform
+      let features = featuresResult.rows || [];
       if (platform) {
-        features = features.filter(f =>
+        features = features.filter((f: any) =>
           !f.target_platforms ||
           f.target_platforms.length === 0 ||
           f.target_platforms.includes(platform as string)
@@ -66,16 +70,16 @@ export class AppConfigController {
       }
 
       // Filter assets based on platform
-      let assets = assetsResult.data || [];
+      let assets = assetsResult.rows || [];
       if (platform) {
-        assets = assets.filter(a =>
+        assets = assets.filter((a: any) =>
           a.platform === 'all' || a.platform === platform
         );
       }
 
       // Transform assets into grouped object
       const assetsByType: Record<string, any[]> = {};
-      assets.forEach(asset => {
+      assets.forEach((asset: any) => {
         if (!assetsByType[asset.asset_type]) {
           assetsByType[asset.asset_type] = [];
         }
@@ -93,13 +97,14 @@ export class AppConfigController {
         version: '1.0.0',
         timestamp: new Date().toISOString(),
         configuration,
+        branding: brandingResult.rows[0]?.value || null,
         screens,
         theme: defaultTheme ? {
           key: defaultTheme.theme_key,
           name: defaultTheme.theme_name,
           config: defaultTheme.theme_config
         } : null,
-        features: features.reduce((acc, f) => {
+        features: features.reduce((acc: Record<string, any>, f: any) => {
           acc[f.feature_key] = {
             enabled: f.is_enabled,
             rollout: f.rollout_percentage,
@@ -124,14 +129,14 @@ export class AppConfigController {
     try {
       const { screenKey } = req.params;
 
-      const { data, error } = await supabase
-        .from('app_screens')
-        .select('*')
-        .eq('screen_key', screenKey)
-        .eq('is_active', true)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM app_screens WHERE screen_key = $1 AND is_active = true LIMIT 1',
+        [screenKey]
+      );
 
-      if (error || !data) {
+      const data = rows[0];
+
+      if (!data) {
         // Return default screen config if not found (prevents 404 errors)
         return res.json({
           screen: {
@@ -178,28 +183,24 @@ export class AppConfigController {
       }
 
       // First get current version
-      const { data: currentData } = await supabase
-        .from('app_screens')
-        .select('version')
-        .eq('screen_key', screenKey)
-        .single();
+      const { rows: currentRows } = await pool.query(
+        'SELECT version FROM app_screens WHERE screen_key = $1',
+        [screenKey]
+      );
 
-      const { data, error } = await supabase
-        .from('app_screens')
-        .update({
-          configuration,
-          updated_by: userId,
-          version: (currentData?.version || 0) + 1
-        })
-        .eq('screen_key', screenKey)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE app_screens 
+         SET configuration = $1, updated_by = $2, version = $3, updated_at = NOW()
+         WHERE screen_key = $4
+         RETURNING *`,
+        [configuration, userId, (currentRows[0]?.version || 0) + 1, screenKey]
+      );
 
-      if (error) {
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Screen not found' });
       }
 
-      res.json({ screen: data });
+      res.json({ screen: rows[0] });
     } catch (error) {
       console.error('Error updating screen config:', error);
       res.status(500).json({ error: 'Failed to update screen configuration' });
@@ -211,20 +212,71 @@ export class AppConfigController {
    */
   async getThemes(req: Request, res: Response) {
     try {
-      const { data, error } = await supabase
-        .from('app_themes')
-        .select('*')
-        .eq('is_active', true)
-        .order('is_default', { ascending: false });
+      const { rows } = await pool.query(
+        'SELECT * FROM app_themes WHERE is_active = true ORDER BY is_default DESC'
+      );
 
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ themes: data });
+      res.json({ themes: rows });
     } catch (error) {
       console.error('Error fetching themes:', error);
       res.status(500).json({ error: 'Failed to fetch themes' });
+    }
+  }
+
+  /**
+   * Update theme configuration (Admin only)
+   */
+  async updateTheme(req: any, res: Response) {
+    try {
+      const { themeKey } = req.params;
+      const { theme_config, theme_name, is_default } = req.body;
+      const userId = req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+
+      // If setting as default, unset others first
+      if (is_default) {
+        await pool.query(
+          'UPDATE app_themes SET is_default = false WHERE theme_key != $1',
+          [themeKey]
+        );
+      }
+
+      // Build dynamic update
+      const updates: string[] = ['updated_by = $1', 'updated_at = NOW()'];
+      const params: any[] = [userId];
+      let paramIndex = 2;
+
+      if (theme_config !== undefined) {
+        updates.push(`theme_config = $${paramIndex++}`);
+        params.push(theme_config);
+      }
+      if (theme_name !== undefined) {
+        updates.push(`theme_name = $${paramIndex++}`);
+        params.push(theme_name);
+      }
+      if (is_default !== undefined) {
+        updates.push(`is_default = $${paramIndex++}`);
+        params.push(is_default);
+      }
+
+      params.push(themeKey);
+
+      const { rows } = await pool.query(
+        `UPDATE app_themes SET ${updates.join(', ')} WHERE theme_key = $${paramIndex} RETURNING *`,
+        params
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Theme not found' });
+      }
+
+      res.json({ theme: rows[0] });
+    } catch (error) {
+      console.error('Error updating theme:', error);
+      res.status(500).json({ error: 'Failed to update theme' });
     }
   }
 
@@ -235,14 +287,14 @@ export class AppConfigController {
     try {
       const { assetKey } = req.params;
 
-      const { data, error } = await supabase
-        .from('app_assets')
-        .select('*')
-        .eq('asset_key', assetKey)
-        .eq('is_active', true)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM app_assets WHERE asset_key = $1 AND is_active = true LIMIT 1',
+        [assetKey]
+      );
 
-      if (error || !data) {
+      const data = rows[0];
+
+      if (!data) {
         // Return default asset if not found (prevents 404 errors in development)
         console.warn(`[APP_CONFIG] Asset not found: ${assetKey}. Returning fallback.`);
 
@@ -282,24 +334,19 @@ export class AppConfigController {
       const { assetType } = req.params;
       const { platform } = req.query;
 
-      let query = supabase
-        .from('app_assets')
-        .select('*')
-        .eq('asset_type', assetType)
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
+      let sql = 'SELECT * FROM app_assets WHERE asset_type = $1 AND is_active = true';
+      const params: any[] = [assetType];
 
       if (platform) {
-        query = query.or(`platform.eq.all,platform.eq.${platform}`);
+        sql += " AND (platform = 'all' OR platform = $2)";
+        params.push(platform);
       }
 
-      const { data, error } = await query;
+      sql += ' ORDER BY priority DESC';
 
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
+      const { rows } = await pool.query(sql, params);
 
-      res.json({ assets: data });
+      res.json({ assets: rows });
     } catch (error) {
       console.error('Error fetching assets:', error);
       res.status(500).json({ error: 'Failed to fetch assets' });
@@ -316,22 +363,26 @@ export class AppConfigController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const assetData = {
-        ...req.body,
-        updated_by: userId
-      };
+      const { asset_key, asset_name, asset_type, asset_url, platform, priority, metadata, dimensions } = req.body;
 
-      const { data, error } = await supabase
-        .from('app_assets')
-        .upsert(assetData)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `INSERT INTO app_assets (asset_key, asset_name, asset_type, asset_url, platform, priority, metadata, dimensions, updated_by, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+         ON CONFLICT (asset_key) DO UPDATE SET
+           asset_name = EXCLUDED.asset_name,
+           asset_type = EXCLUDED.asset_type,
+           asset_url = EXCLUDED.asset_url,
+           platform = EXCLUDED.platform,
+           priority = EXCLUDED.priority,
+           metadata = EXCLUDED.metadata,
+           dimensions = EXCLUDED.dimensions,
+           updated_by = EXCLUDED.updated_by,
+           updated_at = NOW()
+         RETURNING *`,
+        [asset_key, asset_name, asset_type, asset_url, platform || 'all', priority || 0, metadata || {}, dimensions || {}, userId]
+      );
 
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ asset: data });
+      res.json({ asset: rows[0] });
     } catch (error) {
       console.error('Error upserting asset:', error);
       res.status(500).json({ error: 'Failed to save asset' });
@@ -343,22 +394,14 @@ export class AppConfigController {
    */
   async getFeatureFlags(req: Request, res: Response) {
     try {
-      const { platform, version } = req.query;
+      const { platform } = req.query;
 
-      let query = supabase
-        .from('app_feature_flags')
-        .select('*');
-
-      const { data, error } = await query;
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
-      }
+      const { rows } = await pool.query('SELECT * FROM app_feature_flags');
 
       // Filter by platform if specified
-      let features = data || [];
+      let features = rows || [];
       if (platform) {
-        features = features.filter(f =>
+        features = features.filter((f: any) =>
           !f.target_platforms ||
           f.target_platforms.length === 0 ||
           f.target_platforms.includes(platform as string)
@@ -367,7 +410,7 @@ export class AppConfigController {
 
       // Transform to simple object
       const flags: Record<string, boolean> = {};
-      features.forEach(f => {
+      features.forEach((f: any) => {
         flags[f.feature_key] = f.is_enabled;
       });
 
@@ -391,22 +434,31 @@ export class AppConfigController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const updateData: any = { updated_by: userId };
-      if (is_enabled !== undefined) updateData.is_enabled = is_enabled;
-      if (rollout_percentage !== undefined) updateData.rollout_percentage = rollout_percentage;
+      const updates: string[] = ['updated_by = $1', 'updated_at = NOW()'];
+      const params: any[] = [userId];
+      let paramIndex = 2;
 
-      const { data, error } = await supabase
-        .from('app_feature_flags')
-        .update(updateData)
-        .eq('feature_key', featureKey)
-        .select()
-        .single();
-
-      if (error) {
-        return res.status(400).json({ error: error.message });
+      if (is_enabled !== undefined) {
+        updates.push(`is_enabled = $${paramIndex++}`);
+        params.push(is_enabled);
+      }
+      if (rollout_percentage !== undefined) {
+        updates.push(`rollout_percentage = $${paramIndex++}`);
+        params.push(rollout_percentage);
       }
 
-      res.json({ feature: data });
+      params.push(featureKey);
+
+      const { rows } = await pool.query(
+        `UPDATE app_feature_flags SET ${updates.join(', ')} WHERE feature_key = $${paramIndex} RETURNING *`,
+        params
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Feature flag not found' });
+      }
+
+      res.json({ feature: rows[0] });
     } catch (error) {
       console.error('Error updating feature flag:', error);
       res.status(500).json({ error: 'Failed to update feature flag' });
@@ -420,18 +472,16 @@ export class AppConfigController {
     try {
       const { configKey } = req.params;
 
-      const { data, error } = await supabase
-        .from('app_configuration')
-        .select('config_value')
-        .eq('config_key', configKey)
-        .eq('is_active', true)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT config_value FROM app_configuration WHERE config_key = $1 AND is_active = true LIMIT 1',
+        [configKey]
+      );
 
-      if (error || !data) {
+      if (rows.length === 0) {
         return res.status(404).json({ error: 'Configuration not found' });
       }
 
-      res.json({ value: data.config_value });
+      res.json({ value: rows[0].config_value });
     } catch (error) {
       console.error('Error fetching config value:', error);
       res.status(500).json({ error: 'Failed to fetch configuration value' });
@@ -452,28 +502,24 @@ export class AppConfigController {
       }
 
       // First get current version
-      const { data: currentData } = await supabase
-        .from('app_configuration')
-        .select('version')
-        .eq('config_key', configKey)
-        .single();
+      const { rows: currentRows } = await pool.query(
+        'SELECT version FROM app_configuration WHERE config_key = $1',
+        [configKey]
+      );
 
-      const { data, error } = await supabase
-        .from('app_configuration')
-        .update({
-          config_value: value,
-          updated_by: userId,
-          version: (currentData?.version || 0) + 1
-        })
-        .eq('config_key', configKey)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE app_configuration 
+         SET config_value = $1, updated_by = $2, version = $3, updated_at = NOW()
+         WHERE config_key = $4
+         RETURNING *`,
+        [value, userId, (currentRows[0]?.version || 0) + 1, configKey]
+      );
 
-      if (error) {
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Configuration not found' });
       }
 
-      res.json({ config: data });
+      res.json({ config: rows[0] });
     } catch (error) {
       console.error('Error updating config value:', error);
       res.status(500).json({ error: 'Failed to update configuration value' });
@@ -482,4 +528,3 @@ export class AppConfigController {
 }
 
 export const appConfigController = new AppConfigController();
-

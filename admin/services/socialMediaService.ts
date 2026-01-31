@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ? `${process.env.NEXT_PUBLIC_API_URL}/api` : 'http://localhost:4000/api';
 
-export interface Family {
+export interface Circle {
   id: string;
   name: string;
   description?: string;
@@ -11,14 +11,14 @@ export interface Family {
 
 export interface SocialPost {
   id: string;
-  family_id: string;
+  Circle_id: string;
   author_id: string;
   content: string;
   type: 'text' | 'image' | 'video' | 'event';
   media_urls?: string[];
   tags?: string[];
   location?: string;
-  visibility: 'public' | 'family' | 'friends';
+  visibility: 'public' | 'Circle' | 'friends';
   status: 'active' | 'hidden' | 'deleted' | 'under_review';
   likes_count: number;
   shares_count: number;
@@ -37,7 +37,7 @@ export interface SocialPost {
     last_name: string;
     avatar_url?: string;
   };
-  family?: {
+  Circle?: {
     id: string;
     name: string;
   };
@@ -94,7 +94,7 @@ export interface SocialActivity {
 }
 
 export interface PostFilters {
-  familyId?: string;
+  CircleId?: string;
   status?: string;
   type?: string;
   reported?: boolean;
@@ -111,7 +111,7 @@ export interface PostAnalytics {
   engagement_rate: number;
 }
 
-export interface FamilyAnalytics {
+export interface CircleAnalytics {
   total_posts: number;
   active_posts: number;
   reported_posts: number;
@@ -123,9 +123,9 @@ export const socialMediaService = {
   // FAMILIES
   // =============================================
 
-  async getFamilies(): Promise<Family[]> {
+  async getFamilies(): Promise<Circle[]> {
     try {
-      const response = await axios.get(`${API_BASE}/social-media/families`);
+      const response = await axios.get(`${API_BASE}/social-media/circles`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching families:', error);
@@ -141,7 +141,7 @@ export const socialMediaService = {
     try {
       const params = new URLSearchParams();
       
-      if (filters?.familyId) params.append('familyId', filters.familyId);
+      if (filters?.CircleId) params.append('CircleId', filters.CircleId);
       if (filters?.status) params.append('status', filters.status);
       if (filters?.type) params.append('type', filters.type);
       if (filters?.reported !== undefined) params.append('reported', filters.reported.toString());
@@ -168,13 +168,13 @@ export const socialMediaService = {
   },
 
   async createPost(postData: {
-    family_id: string;
+    Circle_id: string;
     content: string;
     type?: 'text' | 'image' | 'video' | 'event';
     media_urls?: string[];
     tags?: string[];
     location?: string;
-    visibility?: 'public' | 'family' | 'friends';
+    visibility?: 'public' | 'Circle' | 'friends';
   }): Promise<SocialPost> {
     try {
       const response = await axios.post(`${API_BASE}/social-media/posts`, postData);
@@ -366,13 +366,14 @@ export const socialMediaService = {
     }
   },
 
-  async getFamilyAnalytics(familyId: string): Promise<FamilyAnalytics> {
+  async getCircleAnalytics(CircleId: string): Promise<CircleAnalytics> {
     try {
-      const response = await axios.get(`${API_BASE}/social-media/families/${familyId}/analytics`);
+      const response = await axios.get(`${API_BASE}/social-media/circles/${CircleId}/analytics`);
       return response.data.data;
     } catch (error) {
-      console.error('Error fetching family analytics:', error);
+      console.error('Error fetching Circle analytics:', error);
       throw error;
     }
   }
 };
+

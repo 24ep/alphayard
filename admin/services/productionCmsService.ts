@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios'
+import { API_BASE_URL } from './apiConfig'
 
 // Types
 export interface ContentPage {
@@ -133,8 +134,9 @@ class ProductionCmsService {
   private baseURL: string
 
   constructor() {
-    // Use env if provided; default to backend root (without /api) because CMS routes are mounted at /cms
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+    // Use shared configuration
+    // API_BASE_URL is imported from ./apiConfig and already includes /api/v1
+    this.baseURL = API_BASE_URL;
     
     this.api = axios.create({
       baseURL: this.baseURL,

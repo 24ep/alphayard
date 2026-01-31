@@ -790,7 +790,7 @@ export const richTextEditorStyles = `
   background: #f3f4f6;
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
+  font-Circle: 'Courier New', monospace;
   font-size: 0.875rem;
 }
 
@@ -1006,3 +1006,4 @@ export const richTextEditorStyles = `
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 `
+

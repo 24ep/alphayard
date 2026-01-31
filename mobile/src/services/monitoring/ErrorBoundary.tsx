@@ -13,6 +13,7 @@ import {
 } from 'native-base';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import analyticsService from '../analytics/AnalyticsService';
+import { isDev } from '../../utils/isDev';
 
 interface Props {
   children: ReactNode;
@@ -149,7 +150,7 @@ class ErrorBoundary extends Component<Props, State> {
               </Button>
             </VStack>
 
-            {__DEV__ && this.state.error && (
+            {isDev && this.state.error && (
               <VStack space={2} w="full" mt={4}>
                 <Text fontSize="sm" fontWeight="semibold" color="gray.700">
                   Debug Information:

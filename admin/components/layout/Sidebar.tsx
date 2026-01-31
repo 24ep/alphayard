@@ -18,12 +18,12 @@ import { Tooltip } from '../ui/Tooltip'
 interface SidebarProps {
   activeModule: string
   setActiveModule: (module: string) => void
-  familyCount?: number
+  CircleCount?: number
   safetyCount?: number
   ticketCount?: number
 }
 
-export function Sidebar({ activeModule, setActiveModule, familyCount, safetyCount, ticketCount }: SidebarProps) {
+export function Sidebar({ activeModule, setActiveModule, CircleCount, safetyCount, ticketCount }: SidebarProps) {
   const [branding, setBranding] = useState<{ adminAppName?: string; logoUrl?: string } | null>(null)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -64,11 +64,11 @@ export function Sidebar({ activeModule, setActiveModule, familyCount, safetyCoun
       description: 'Language settings'
     },
     { 
-      id: 'families', 
-      label: 'Families', 
+      id: 'circles', 
+      label: 'Circles', 
       icon: UserGroupIcon,
-      badge: familyCount?.toString() || '0',
-      description: 'Family management'
+      badge: CircleCount?.toString() || '0',
+      description: 'Circle management'
     },
     { 
       id: 'safety', 
@@ -126,12 +126,12 @@ export function Sidebar({ activeModule, setActiveModule, familyCount, safetyCoun
             />
           ) : (
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <span className="text-white font-bold text-xl">B</span>
+              <span className="text-white font-bold text-xl">A</span>
             </div>
           )}
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold text-gray-900 truncate">{branding?.adminAppName || 'Bondarys'}</h1>
+              <h1 className="text-lg font-bold text-gray-900 truncate">{branding?.adminAppName || 'Appkit'}</h1>
               <p className="text-xs text-gray-500 truncate">Admin Console</p>
             </div>
           )}
@@ -206,3 +206,4 @@ export function Sidebar({ activeModule, setActiveModule, familyCount, safetyCoun
     </aside>
   )
 }
+

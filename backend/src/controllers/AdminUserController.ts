@@ -3,9 +3,10 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../config/database';
 import { AdminRequest } from '../middleware/adminAuth';
+import { config } from '../config/env';
+import { logger } from '../middleware/logger';
 
 export class AdminUserController {
-    private jwtSecret = process.env.JWT_SECRET || 'bondarys-dev-secret-key';
 
     /**
      * Admin login with database-backed authentication
@@ -13,30 +14,41 @@ export class AdminUserController {
     async login(req: any, res: Response) {
         try {
             const { email, password } = req.body;
+            logger.info(`[AdminLogin] Attempt for email: ${email}, password length: ${password ? password.length : 0}`);
 
             if (!email || !password) {
+                logger.warn('[AdminLogin] Missing email or password');
                 return res.status(400).json({ error: 'Email and password are required' });
             }
 
-            // Find admin user by email
+            // Find admin user by email (joined with users table)
             const query = `
-        SELECT au.*, ar.name as role_name, ar.permissions
+        SELECT au.*, u.email, u.password_hash, 
+               u.first_name, u.last_name,
+               ar.name as role_name, ar.permissions
         FROM admin_users au
-        LEFT JOIN admin_roles ar ON au.role_id = ar.id
-        WHERE au.email = $1 AND au.is_active = true
+        JOIN users u ON au.user_id = u.id
+        LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
+        WHERE u.email = $1 AND au.is_active = true
       `;
             const { rows } = await pool.query(query, [email.toLowerCase()]);
             const adminUser = rows[0];
 
             if (!adminUser) {
+                logger.warn(`[AdminLogin] No active admin user found for: ${email}`);
                 return res.status(401).json({ error: 'Invalid email or password' });
             }
+
+            logger.info(`[AdminLogin] Found user: ${adminUser.email}, hashing comparison...`);
 
             // Verify password
             const isValidPassword = await bcrypt.compare(password, adminUser.password_hash);
             if (!isValidPassword) {
+                logger.warn(`[AdminLogin] Password mismatch for: ${email}`);
                 return res.status(401).json({ error: 'Invalid email or password' });
             }
+
+            logger.info(`[AdminLogin] Success for: ${email}`);
 
             // Update last login
             await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [adminUser.id]);
@@ -54,7 +66,8 @@ export class AdminUserController {
             // Generate JWT token
             const token = jwt.sign(
                 {
-                    id: adminUser.id,
+                    id: adminUser.user_id, // Use users.id for compatibility with authenticateToken
+                    adminId: adminUser.id,   // Keep admin_users.id as administrative identifier
                     email: adminUser.email,
                     firstName: adminUser.first_name,
                     lastName: adminUser.last_name,
@@ -62,7 +75,7 @@ export class AdminUserController {
                     permissions,
                     type: 'admin'
                 },
-                this.jwtSecret,
+                this.getJwtSecret(),
                 { expiresIn: '24h' }
             );
 
@@ -94,13 +107,17 @@ export class AdminUserController {
             }
 
             const query = `
-        SELECT au.id, au.email, au.first_name, au.last_name, au.is_active, au.last_login,
+        SELECT au.id, u.email, 
+               u.first_name, 
+               u.last_name,
+               au.is_active, au.last_login,
                ar.name as role_name, ar.permissions
         FROM admin_users au
-        LEFT JOIN admin_roles ar ON au.role_id = ar.id
-        WHERE au.id = $1
+        JOIN users u ON au.user_id = u.id
+        LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
+        WHERE au.user_id = $1
       `;
-            const { rows } = await pool.query(query, [req.admin.id]);
+            const { rows } = await pool.query(query, [req.admin?.id]);
             const adminUser = rows[0];
 
             if (!adminUser) {
@@ -137,6 +154,9 @@ export class AdminUserController {
     /**
      * Change admin password
      */
+    /**
+     * Change admin password
+     */
     async changePassword(req: AdminRequest, res: Response) {
         try {
             if (!req.admin) {
@@ -153,8 +173,14 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'New password must be at least 8 characters' });
             }
 
-            // Get current password hash
-            const { rows } = await pool.query(`SELECT password_hash FROM admin_users WHERE id = $1`, [req.admin.id]);
+            // Get current password hash and user_id from users table
+            const { rows } = await pool.query(`
+                SELECT u.password_hash, u.id as user_id 
+                FROM admin_users au 
+                JOIN users u ON au.user_id = u.id 
+                WHERE au.user_id = $1
+            `, [req.admin?.id]);
+            
             if (rows.length === 0) {
                 return res.status(404).json({ error: 'User not found' });
             }
@@ -167,7 +193,9 @@ export class AdminUserController {
 
             // Hash new password
             const newHash = await bcrypt.hash(newPassword, 10);
-            await pool.query(`UPDATE admin_users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [newHash, req.admin.id]);
+            
+            // Update password in users table
+            await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [newHash, rows[0].user_id]);
 
             res.json({ success: true, message: 'Password changed successfully' });
         } catch (error: any) {
@@ -179,13 +207,20 @@ export class AdminUserController {
     /**
      * List all admin users (requires users:read permission)
      */
+    /**
+     * List all admin users (requires users:read permission)
+     */
     async listUsers(req: AdminRequest, res: Response) {
         try {
             const query = `
-        SELECT au.id, au.email, au.first_name, au.last_name, au.is_active, au.last_login, au.created_at,
+        SELECT au.id, u.email, 
+               u.first_name, 
+               u.last_name,
+               au.is_active, au.last_login, au.created_at,
                ar.name as role_name
         FROM admin_users au
-        LEFT JOIN admin_roles ar ON au.role_id = ar.id
+        JOIN users u ON au.user_id = u.id
+        LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
         ORDER BY au.created_at DESC
       `;
             const { rows } = await pool.query(query);
@@ -200,6 +235,9 @@ export class AdminUserController {
     /**
      * Create new admin user (requires users:write permission)
      */
+    /**
+     * Create new admin user (requires users:write permission)
+     */
     async createUser(req: AdminRequest, res: Response) {
         try {
             const { email, password, firstName, lastName, roleId } = req.body;
@@ -208,24 +246,47 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'Email and password are required' });
             }
 
-            // Check if email already exists
-            const existing = await pool.query(`SELECT id FROM admin_users WHERE email = $1`, [email.toLowerCase()]);
-            if (existing.rows.length > 0) {
-                return res.status(400).json({ error: 'Email already in use' });
+            // Check if email already exists in users table
+            const existing = await pool.query(`SELECT id FROM users WHERE email = $1`, [email.toLowerCase()]);
+            let userId = existing.rows.length > 0 ? existing.rows[0].id : null;
+
+            // If user doesn't exist, create them
+            if (!userId) {
+                const passwordHash = await bcrypt.hash(password, 10);
+                const metadata = { first_name: firstName, last_name: lastName, role: 'admin' };
+                
+                const newUser = await pool.query(`
+                    INSERT INTO users (email, password_hash, first_name, last_name, is_active)
+                    VALUES ($1, $2, $3, $4, true)
+                    RETURNING id
+                `, [email.toLowerCase(), passwordHash, firstName, lastName]);
+                userId = newUser.rows[0].id;
             }
 
-            // Hash password
-            const passwordHash = await bcrypt.hash(password, 10);
+            // Check if already an admin
+            const existingAdmin = await pool.query(`SELECT id FROM admin_users WHERE user_id = $1`, [userId]);
+            if (existingAdmin.rows.length > 0) {
+                return res.status(400).json({ error: 'User is already an admin' });
+            }
 
-            // Insert user
+            // Create admin user entry
             const query = `
-        INSERT INTO admin_users (email, password_hash, first_name, last_name, role_id)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id, email, first_name, last_name, created_at
+        INSERT INTO admin_users (user_id, admin_role_id, is_active)
+        VALUES ($1, $2, true)
+        RETURNING id, created_at
       `;
-            const { rows } = await pool.query(query, [email.toLowerCase(), passwordHash, firstName, lastName, roleId]);
+            const { rows } = await pool.query(query, [userId, roleId]);
 
-            res.status(201).json({ success: true, user: rows[0] });
+            res.status(201).json({ 
+                success: true, 
+                user: {
+                    id: rows[0].id,
+                    email: email.toLowerCase(),
+                    firstName,
+                    lastName,
+                    createdAt: rows[0].created_at
+                } 
+            });
         } catch (error: any) {
             console.error('Create user error:', error);
             res.status(500).json({ error: 'Failed to create user' });
@@ -240,20 +301,39 @@ export class AdminUserController {
             const { id } = req.params;
             const { firstName, lastName, roleId, isActive } = req.body;
 
+            // Get user_id from admin_users
+            const adminRes = await pool.query(`SELECT user_id FROM admin_users WHERE id = $1`, [id]);
+            if (adminRes.rows.length === 0) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+            const userId = adminRes.rows[0].user_id;
+
+            // Update users table for profile info
+            if (firstName !== undefined || lastName !== undefined) {
+                 const updates: string[] = [];
+                 const params: any[] = [];
+                 let pIdx = 1;
+
+                 if (firstName !== undefined) {
+                     updates.push(`first_name = $${pIdx++}`);
+                     params.push(firstName);
+                 }
+                 if (lastName !== undefined) {
+                     updates.push(`last_name = $${pIdx++}`);
+                     params.push(lastName);
+                 }
+
+                 params.push(userId);
+                 await pool.query(`UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${pIdx}`, params);
+            }
+
+            // Update admin_users for role and status
             const updates: string[] = [];
             const values: any[] = [];
             let paramIndex = 1;
 
-            if (firstName !== undefined) {
-                updates.push(`first_name = $${paramIndex++}`);
-                values.push(firstName);
-            }
-            if (lastName !== undefined) {
-                updates.push(`last_name = $${paramIndex++}`);
-                values.push(lastName);
-            }
             if (roleId !== undefined) {
-                updates.push(`role_id = $${paramIndex++}`);
+                updates.push(`admin_role_id = $${paramIndex++}`);
                 values.push(roleId);
             }
             if (isActive !== undefined) {
@@ -261,21 +341,18 @@ export class AdminUserController {
                 values.push(isActive);
             }
 
-            if (updates.length === 0) {
-                return res.status(400).json({ error: 'No fields to update' });
+            if (updates.length > 0) {
+                updates.push(`updated_at = NOW()`);
+                values.push(id); // id is the last param for WHERE clause
+                const query = `UPDATE admin_users SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
+                await pool.query(query, values);
             }
 
-            updates.push(`updated_at = NOW()`);
-            values.push(id);
+            // Return updated user (fetch fresh)
+            // ... reuse logic from list/get or just return success
+            // For now return success as constructing the full object requires joins
+            res.json({ success: true, message: "User updated successfully" });
 
-            const query = `UPDATE admin_users SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-            const { rows } = await pool.query(query, values);
-
-            if (rows.length === 0) {
-                return res.status(404).json({ error: 'User not found' });
-            }
-
-            res.json({ success: true, user: rows[0] });
         } catch (error: any) {
             console.error('Update user error:', error);
             res.status(500).json({ error: 'Failed to update user' });
@@ -314,6 +391,9 @@ export class AdminUserController {
             console.error('List roles error:', error);
             res.status(500).json({ error: 'Failed to list roles' });
         }
+    }
+    private getJwtSecret() {
+        return config.JWT_SECRET;
     }
 }
 

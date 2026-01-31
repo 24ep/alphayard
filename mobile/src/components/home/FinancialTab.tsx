@@ -2,7 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { homeStyles } from '../../styles/homeStyles';
 import { GoalsCard } from './GoalsCard';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  ArrowLeft, 
+  PlusCircle, 
+  Banknote, 
+  Wallet, 
+  PieChart, 
+  Donut, 
+  Settings, 
+  X, 
+  Circle, 
+  Pencil, 
+  Trash2, 
+  Plus 
+} from 'lucide-react-native';
+
+const ArrowLeftIcon = ArrowLeft as any;
+const PlusCircleIcon = PlusCircle as any;
+const BanknoteIcon = Banknote as any;
+const WalletIcon = Wallet as any;
+const PieChartIcon = PieChart as any;
+const DonutIcon = Donut as any;
+const SettingsIcon = Settings as any;
+const XIcon = X as any;
+const CircleIcon = Circle as any;
+const PencilIcon = Pencil as any;
+const Trash2Icon = Trash2 as any;
+const PlusIcon = Plus as any;
+
 import { LinearGradient } from 'expo-linear-gradient';
 import { financeService, FinancialAccount, FinancialTransaction } from '../../services/financeService';
 
@@ -47,8 +74,8 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
     }
   };
 
-  const assets = accounts.filter(a => ['cash', 'bank', 'investment'].includes(a.type)).reduce((sum, a) => sum + Number(a.balance), 0);
-  const liabilities = accounts.filter(a => ['credit_card', 'loan'].includes(a.type)).reduce((sum, a) => sum + Number(a.balance), 0);
+  const assets = accounts.filter((a: FinancialAccount) => ['cash', 'bank', 'investment'].includes(a.type)).reduce((sum: number, a: FinancialAccount) => sum + Number(a.balance), 0);
+  const liabilities = accounts.filter((a: FinancialAccount) => ['credit_card', 'loan'].includes(a.type)).reduce((sum: number, a: FinancialAccount) => sum + Number(a.balance), 0);
   const netWorth = assets - liabilities;
 
   // Mock data preserved for UI structure until fully replaced
@@ -75,7 +102,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
     { id: 'f3', name: 'บัตรเครดิต', due: '22nd', value: 300 },
   ];
   const mockGoals = [
-    { id: '1', name: 'hourse Vacation Fund', amount: '$2,500', progress: 75, target: '$3,000', targetDate: 'Dec 20, 2025' },
+    { id: '1', name: 'Circle Vacation Fund', amount: '$2,500', progress: 75, target: '$3,000', targetDate: 'Dec 20, 2025' },
     { id: '2', name: 'Home Renovation', amount: '$8,200', progress: 45, target: '$18,000', targetDate: 'Mar 15, 2026' },
   ];
 
@@ -95,9 +122,9 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
       {onBack && (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 }}>
           <TouchableOpacity onPress={onBack} style={{ padding: 8, marginRight: 8, backgroundColor: '#F3F4F6', borderRadius: 20 }}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#1F2937" />
+            <ArrowLeftIcon size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#1F2937', fontFamily: 'IBMPlexSansThai_700Bold' }}>Financial Overview</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#1F2937', fontCIRCLE: 'Inter_700Bold' }}>Financial Overview</Text>
         </View>
       )}
 
@@ -110,12 +137,12 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
           </View>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
             <View style={[homeStyles.assetCard, { flex: 1, padding: 12 }]}>
-              <Text style={homeStyles.assetCardTitle}>ทรัพย์สิน</Text>
-              <Text style={homeStyles.assetCardValue}>{fmt(assets)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#6B7280' }}>ทรัพย์สิน</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#10B981' }}>{fmt(assets)}</Text>
             </View>
             <View style={[homeStyles.assetCard, { flex: 1, padding: 12 }]}>
-              <Text style={homeStyles.assetCardTitle}>หนี้สิน</Text>
-              <Text style={homeStyles.assetCardValue}>{fmt(liabilities)}</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#6B7280' }}>หนี้สิน</Text>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#EF4444' }}>{fmt(liabilities)}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -126,17 +153,21 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>Accounts</Text>
           <TouchableOpacity onPress={() => setAddAccountVisible(true)} testID="add-account-btn">
-            <MaterialCommunityIcons name="plus-circle" size={24} color="#007BFF" />
+            <PlusCircleIcon size={24} color="#007BFF" />
           </TouchableOpacity>
         </View>
         <View style={{ paddingHorizontal: 20 }}>
           {loading ? (
             <Text>Loading accounts...</Text>
           ) : (
-            accounts.map((acc) => (
+            accounts.map((acc: FinancialAccount) => (
               <View key={acc.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  <MaterialCommunityIcons name={acc.type === 'bank' ? 'bank' : 'wallet'} size={24} color={acc.color || "#555"} />
+                  {acc.type === 'bank' ? (
+                    <BanknoteIcon size={24} color={acc.color || "#555"} />
+                  ) : (
+                    <WalletIcon size={24} color={acc.color || "#555"} />
+                  )}
                   <View>
                     <Text style={{ fontWeight: '600', color: '#333' }}>{acc.name}</Text>
                     <Text style={{ fontSize: 12, color: '#666' }}>{acc.type}</Text>
@@ -154,14 +185,14 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
         <View style={homeStyles.sectionHeader}>
           <Text style={homeStyles.sectionTitle}>Recent Transactions</Text>
           <TouchableOpacity onPress={() => setAddTransactionVisible(true)} testID="add-transaction-btn">
-            <MaterialCommunityIcons name="plus-circle" size={24} color="#007BFF" />
+            <PlusCircleIcon size={24} color="#007BFF" />
           </TouchableOpacity>
         </View>
         <View style={{ paddingHorizontal: 20 }}>
           {loading ? (
             <Text>Loading transactions...</Text>
           ) : (
-            transactions.map((tx) => (
+            transactions.map((tx: FinancialTransaction) => (
               <View key={tx.id} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#eee' }}>
                 <View>
                   <Text style={{ fontWeight: '600', color: '#333' }}>{tx.note || 'Transaction'}</Text>
@@ -183,12 +214,12 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
         </View>
         <View style={{ flexDirection: 'row', gap: 12, paddingHorizontal: 20 }}>
           <TouchableOpacity style={[homeStyles.assetCard, { flex: 1, padding: 16, alignItems: 'center' }]} onPress={() => setDrawerOpen({ type: DrawerType.Assets })}>
-            <MaterialCommunityIcons name="chart-pie" size={28} color="#10B981" />
+            <PieChartIcon size={28} color="#10B981" />
             <Text style={{ marginTop: 8, fontWeight: '700', color: '#111827' }}>ทรัพย์สิน</Text>
             <Text style={{ color: '#6B7280' }}>{assetCats.length} หมวด</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[homeStyles.assetCard, { flex: 1, padding: 16, alignItems: 'center' }]} onPress={() => setDrawerOpen({ type: DrawerType.Liabilities })}>
-            <MaterialCommunityIcons name="chart-pie" size={28} color="#EF4444" />
+            <PieChartIcon size={28} color="#EF4444" />
             <Text style={{ marginTop: 8, fontWeight: '700', color: '#111827' }}>หนี้สิน</Text>
             <Text style={{ color: '#6B7280' }}>{liabilityCats.length} หมวด</Text>
           </TouchableOpacity>
@@ -203,10 +234,10 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 8, flexWrap: 'wrap' }}>
           {(['Month', 'Quarter', 'Year'] as Period[]).map(p => <PeriodChip key={`inc-${p}`} label={p} />)}
         </View>
-        <View style={homeStyles.familyLocationMap}>
-          <View style={homeStyles.familyLocationMapPlaceholder}>
-            <MaterialCommunityIcons name="chart-donut" size={28} color="#9CA3AF" />
-            <Text style={homeStyles.attnMetaText}>รายได้เดือนปัจจุบัน (ตัวอย่าง)</Text>
+        <View style={homeStyles.section}>
+          <View style={homeStyles.mapPlaceholder}>
+            <DonutIcon size={28} color="#9CA3AF" />
+            <Text style={{ fontSize: 12, color: '#6B7280' }}>รายได้เดือนปัจจุบัน (ตัวอย่าง)</Text>
           </View>
         </View>
       </View>
@@ -219,10 +250,10 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
         <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginBottom: 8, flexWrap: 'wrap' }}>
           {(['Month', 'Quarter', 'Year'] as Period[]).map(p => <PeriodChip key={`exp-${p}`} label={p} />)}
         </View>
-        <View style={homeStyles.familyLocationMap}>
-          <View style={homeStyles.familyLocationMapPlaceholder}>
-            <MaterialCommunityIcons name="chart-donut" size={28} color="#9CA3AF" />
-            <Text style={homeStyles.attnMetaText}>ค่าใช้จ่ายเดือนปัจจุบัน (ตัวอย่าง)</Text>
+        <View style={homeStyles.section}>
+          <View style={homeStyles. circleLocationMapPlaceholder}>
+            <DonutIcon size={28} color="#9CA3AF" />
+            <Text style={{ fontSize: 12, color: '#6B7280' }}>ค่าใช้จ่ายเดือนปัจจุบัน (ตัวอย่าง)</Text>
           </View>
         </View>
       </View>
@@ -266,7 +297,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
             </View>
           </View>
           <TouchableOpacity style={[homeStyles.portfolioItem, { padding: 12, alignItems: 'center', justifyContent: 'center' }]}>
-            <MaterialCommunityIcons name="cog" size={18} color="#6B7280" />
+            <SettingsIcon size={18} color="#6B7280" />
             <Text style={{ marginTop: 6, color: '#6B7280' }}>ตั้งค่างบประมาณ</Text>
           </TouchableOpacity>
         </View>
@@ -288,7 +319,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
               <View style={homeStyles.categoryDrawerHeaderContent}>
                 <View style={homeStyles.categoryDrawerTitleRow}>
                   <View style={[homeStyles.categoryDrawerIcon, { backgroundColor: '#10B981' }]}>
-                    <MaterialCommunityIcons name="chart-pie" size={24} color="#FFFFFF" />
+                    <PieChartIcon size={24} color="#FFFFFF" />
                   </View>
                   <View style={homeStyles.categoryDrawerTitleContainer}>
                     <Text style={homeStyles.categoryDrawerTitle}>หมวดหมู่ทรัพย์สิน</Text>
@@ -296,7 +327,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                   </View>
                 </View>
                 <TouchableOpacity style={homeStyles.categoryDrawerCloseButton} onPress={closeDrawer}>
-                  <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+                  <XIcon size={24} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -305,7 +336,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                 <View key={c.id} style={homeStyles.categoryDrawerItem}>
                   <View style={homeStyles.categoryDrawerItemLeft}>
                     <View style={[homeStyles.categoryDrawerItemIcon, { backgroundColor: 'rgba(16,185,129,0.15)' }]}>
-                      <MaterialCommunityIcons name="checkbox-blank-circle" size={16} color="#10B981" />
+                      <CircleIcon size={16} color="#10B981" />
                     </View>
                   </View>
                   <View style={homeStyles.categoryDrawerItemContent}>
@@ -313,13 +344,13 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                     <Text style={homeStyles.categoryDrawerItemDescription}>{fmt(c.value)}</Text>
                   </View>
                   <View style={homeStyles.categoryDrawerItemRight}>
-                    <TouchableOpacity><MaterialCommunityIcons name="pencil" size={18} color="#6B7280" /></TouchableOpacity>
-                    <TouchableOpacity style={{ marginLeft: 12 }}><MaterialCommunityIcons name="trash-can" size={18} color="#EF4444" /></TouchableOpacity>
+                    <TouchableOpacity><PencilIcon size={18} color="#6B7280" /></TouchableOpacity>
+                    <TouchableOpacity style={{ marginLeft: 12 }}><Trash2Icon size={18} color="#EF4444" /></TouchableOpacity>
                   </View>
                 </View>
               ))}
               <TouchableOpacity style={[homeStyles.portfolioItem, { padding: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 }]}>
-                <MaterialCommunityIcons name="plus" size={18} color="#10B981" />
+                <PlusIcon size={18} color="#10B981" />
                 <Text style={{ marginTop: 6, color: '#10B981' }}>เพิ่มหมวดหมู่</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -334,7 +365,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
               <View style={homeStyles.categoryDrawerHeaderContent}>
                 <View style={homeStyles.categoryDrawerTitleRow}>
                   <View style={[homeStyles.categoryDrawerIcon, { backgroundColor: '#EF4444' }]}>
-                    <MaterialCommunityIcons name="chart-pie" size={24} color="#FFFFFF" />
+                    <PieChartIcon size={24} color="#FFFFFF" />
                   </View>
                   <View style={homeStyles.categoryDrawerTitleContainer}>
                     <Text style={homeStyles.categoryDrawerTitle}>หมวดหมู่หนี้สิน</Text>
@@ -342,7 +373,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                   </View>
                 </View>
                 <TouchableOpacity style={homeStyles.categoryDrawerCloseButton} onPress={closeDrawer}>
-                  <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+                  <XIcon size={24} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -351,7 +382,7 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                 <View key={c.id} style={homeStyles.categoryDrawerItem}>
                   <View style={homeStyles.categoryDrawerItemLeft}>
                     <View style={[homeStyles.categoryDrawerItemIcon, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-                      <MaterialCommunityIcons name="checkbox-blank-circle" size={16} color="#EF4444" />
+                      <CircleIcon size={16} color="#EF4444" />
                     </View>
                   </View>
                   <View style={homeStyles.categoryDrawerItemContent}>
@@ -359,13 +390,13 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
                     <Text style={homeStyles.categoryDrawerItemDescription}>{fmt(c.value)}</Text>
                   </View>
                   <View style={homeStyles.categoryDrawerItemRight}>
-                    <TouchableOpacity><MaterialCommunityIcons name="pencil" size={18} color="#6B7280" /></TouchableOpacity>
-                    <TouchableOpacity style={{ marginLeft: 12 }}><MaterialCommunityIcons name="trash-can" size={18} color="#EF4444" /></TouchableOpacity>
+                    <TouchableOpacity><PencilIcon size={18} color="#6B7280" /></TouchableOpacity>
+                    <TouchableOpacity style={{ marginLeft: 12 }}><Trash2Icon size={18} color="#EF4444" /></TouchableOpacity>
                   </View>
                 </View>
               ))}
               <TouchableOpacity style={[homeStyles.portfolioItem, { padding: 12, alignItems: 'center', justifyContent: 'center', marginTop: 8 }]}>
-                <MaterialCommunityIcons name="plus" size={18} color="#EF4444" />
+                <PlusIcon size={18} color="#EF4444" />
                 <Text style={{ marginTop: 6, color: '#EF4444' }}>เพิ่มหมวดหมู่</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -388,3 +419,5 @@ export const FinancialTab: React.FC<FinancialTabProps> = ({ onBack }) => {
     </ScrollView>
   );
 };
+
+

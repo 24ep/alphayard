@@ -37,7 +37,7 @@ export const NotificationScreen: React.FC = () => {
     const getNotificationIcon = (type: string) => {
         switch (type) {
             case 'message': return 'message-text';
-            case 'hourse': return 'account-group'; // 'hourse' means family/house in this app context
+            case 'Circle': return 'account-group'; // 'Circle' means circle/house in this app context
             case 'reminder': return 'bell';
             case 'system': return 'cog';
             default: return 'bell';
@@ -47,7 +47,7 @@ export const NotificationScreen: React.FC = () => {
     const getNotificationColor = (type: string) => {
         switch (type) {
             case 'message': return '#3B82F6';
-            case 'hourse': return '#FFB6C1';
+            case 'Circle': return '#FFB6C1';
             case 'reminder': return '#F59E0B';
             case 'system': return '#6B7280';
             default: return '#6B7280';
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
         marginRight: 12,
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
     },
     backButton: {
         marginRight: 16,
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: '600',
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
     },
     headerActions: {
         flexDirection: 'row',
@@ -259,14 +259,14 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginTop: 16,
         marginBottom: 8,
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
     },
     emptyStateSubtitle: {
         fontSize: 14,
         color: '#9CA3AF',
         textAlign: 'center',
         lineHeight: 20,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
     },
     notificationItem: {
         paddingHorizontal: 20,
@@ -302,12 +302,12 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: '#374151',
         flex: 1,
-        fontFamily: theme.typography.fontFamily.medium,
+        fontCIRCLE: theme.typography.fontCIRCLE.medium,
     },
     notificationTitleUnread: {
         fontWeight: '600',
         color: '#1F2937',
-        fontFamily: theme.typography.fontFamily.bold,
+        fontCIRCLE: theme.typography.fontCIRCLE.bold,
     },
     unreadDot: {
         width: 8,
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         lineHeight: 18,
         marginBottom: 8,
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
     },
     notificationFooter: {
         flexDirection: 'row',
@@ -331,8 +331,10 @@ const styles = StyleSheet.create({
     notificationTimestamp: {
         fontSize: 12,
         color: '#9CA3AF',
-        fontFamily: theme.typography.fontFamily.regular,
+        fontCIRCLE: theme.typography.fontCIRCLE.regular,
     },
 });
 
 export default NotificationScreen;
+
+

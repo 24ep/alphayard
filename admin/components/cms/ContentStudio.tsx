@@ -426,20 +426,19 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
               responsiveDirection={{ md: 'row' }}
               justify="between"
               align="start"
-              gap="lg"
+              gap="md"
             >
               <div>
                 <ResponsiveText
-                  size={{ default: 'xl', md: '2xl' }}
+                  size={{ default: 'lg', md: 'xl' }} 
                   weight="bold"
-                  color="gray"
-                  className="mb-2"
+                  className="mb-1 text-white"
                 >
-                  <DocumentTextIcon className="h-6 w-6 inline mr-2" />
+                  <DocumentTextIcon className="h-5 w-5 inline mr-2 text-white" />
                   Content Studio
                 </ResponsiveText>
                 <ResponsiveText
-                  size={{ default: 'sm', md: 'base' }}
+                  size={{ default: 'xs', md: 'sm' }}
                   color="gray"
                 >
                   Professional content management and creation studio
@@ -453,7 +452,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
               >
                 <button
                   onClick={() => setCurrentMode('analytics')}
-                  className="content-button content-button-secondary w-full md:w-auto"
+                  className="content-button content-button-secondary w-full md:w-auto text-xs"
                   aria-label="View analytics"
                 >
                   <ChartBarIcon className="h-4 w-4 mr-2" />
@@ -461,7 +460,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 </button>
                 <button
                   onClick={() => setCurrentMode('templates')}
-                  className="content-button content-button-secondary w-full md:w-auto"
+                  className="content-button content-button-secondary w-full md:w-auto text-xs"
                   aria-label="Browse templates"
                 >
                   <RectangleStackIcon className="h-4 w-4 mr-2" />
@@ -469,7 +468,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 </button>
                 <button
                   onClick={handleCreateNew}
-                  className="content-button content-button-primary w-full md:w-auto"
+                  className="content-button content-button-primary w-full md:w-auto text-xs"
                   aria-label="Create new content"
                 >
                   <PlusIcon className="h-4 w-4 mr-2" />
@@ -484,18 +483,18 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
             <ResponsiveFlex
               direction="col"
               responsiveDirection={{ sm: 'row' }}
-              gap="md"
+              gap="sm"
               align="stretch"
             >
               <div className="flex-1 relative">
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search content... (Ctrl+F)"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="content-input pl-10"
+                  className="content-input pl-9 py-1.5 text-sm"
                   aria-label="Search content"
                 />
               </div>
@@ -509,7 +508,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="content-input w-full sm:w-48"
+                  className="content-input w-full sm:w-40 py-1.5 text-sm"
                   aria-label="Filter by type"
                 >
                   <option value="all">All Types</option>
@@ -522,7 +521,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="content-input w-full sm:w-48"
+                  className="content-input w-full sm:w-40 py-1.5 text-sm"
                   aria-label="Filter by status"
                 >
                   <option value="all">All Status</option>
@@ -530,6 +529,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                   <option value="published">Published</option>
                   <option value="archived">Archived</option>
                 </select>
+
 
                 <select
                   value={filterDate}
@@ -608,7 +608,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
 
           {/* Bulk Actions */}
           {bulkSelection.length > 0 && (
-            <div className="content-card bg-blue-50 border-blue-200">
+            <div className="content-card bg-blue-900/20 border-blue-900/50">
               <ResponsiveFlex
                 direction="col"
                 responsiveDirection={{ sm: 'row' }}
@@ -617,8 +617,8 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 gap="md"
               >
                 <div className="flex items-center space-x-2">
-                  <CheckCircleIcon className="h-5 w-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">
+                  <CheckCircleIcon className="h-5 w-5 text-blue-400" />
+                  <span className="font-medium text-blue-100">
                     {bulkSelection.length} item{bulkSelection.length !== 1 ? 's' : ''} selected
                   </span>
                 </div>
@@ -630,7 +630,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
                 >
                   <button
                     onClick={handleBulkDelete}
-                    className="content-button content-button-secondary text-red-600 hover:bg-red-50 w-full sm:w-auto"
+                    className="content-button content-button-secondary text-red-400 hover:bg-red-900/20 w-full sm:w-auto"
                     aria-label="Delete selected items"
                   >
                     <TrashIcon className="h-4 w-4 mr-2" />
@@ -693,13 +693,13 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
 
           {/* Delete Confirmation Modal */}
           {showDeleteConfirm && (
-            <div className="modal-overlay">
-              <div className="modal-content">
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+              <div className="bg-supabase-dark border border-supabase-border rounded-lg p-6 max-w-md w-full shadow-2xl">
                 <div className="flex items-center space-x-3 mb-4">
-                  <ExclamationTriangleIcon className="h-6 w-6 text-red-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">Delete Content</h3>
+                  <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+                  <h3 className="text-lg font-semibold text-white">Delete Content</h3>
                 </div>
-                <p className="text-gray-600 mb-6">
+                <p className="text-gray-400 mb-6">
                   Are you sure you want to delete this content? This action cannot be undone.
                 </p>
                 <div className="flex space-x-3 justify-end">
@@ -796,7 +796,7 @@ const ContentStudioItem: React.FC<ContentStudioItemProps> = ({
           type="checkbox"
           checked={isSelected}
           onChange={(e) => onSelect(e.target.checked)}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 bg-supabase-black border-supabase-border rounded"
           aria-label={`Select ${content.title}`}
         />
         <TypeIcon className="h-6 w-6 text-gray-500" />

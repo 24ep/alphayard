@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View, ViewStyle } from 'react-native';
+import { Platform, View, ViewStyle, StyleSheet } from 'react-native';
 
 // Platform-specific imports
 let NativeBlurView: any = View;
@@ -28,15 +28,16 @@ export const BlurView: React.FC<BlurViewProps> = ({
 }) => {
   if (Platform.OS === 'web') {
     // Web fallback using CSS backdrop-filter
+    const flatStyle = StyleSheet.flatten(style);
     const webStyle: ViewStyle = {
-      ...style,
+      ...flatStyle,
       // @ts-ignore - backdrop-filter is not in React Native types but works on web
       backdropFilter: `blur(${intensity / 5}px)`,
-      backgroundColor: tint === 'dark' 
+      backgroundColor: flatStyle?.backgroundColor || (tint === 'dark' 
         ? `rgba(0, 0, 0, ${intensity / 200})` 
         : tint === 'light'
         ? `rgba(255, 255, 255, ${intensity / 200})`
-        : `rgba(128, 128, 128, ${intensity / 200})`,
+        : `rgba(128, 128, 128, ${intensity / 200})`),
     };
 
     return (

@@ -46,7 +46,7 @@ interface FileItem {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
-  familyId: string;
+  circleId: string;
   isShared: boolean;
   isFavorite: boolean;
   parentId?: string;
@@ -67,13 +67,13 @@ interface StorageStats {
 }
 
 interface StorageAppProps {
-  familyId: string;
+  circleId: string;
   onFilePress?: (file: FileItem) => void;
   onFolderPress?: (folder: FileItem) => void;
 }
 
 const StorageApp: React.FC<StorageAppProps> = ({
-  familyId,
+  circleId,
   onFilePress,
   onFolderPress,
 }) => {
@@ -121,14 +121,14 @@ const StorageApp: React.FC<StorageAppProps> = ({
       const mockFiles: FileItem[] = [
         {
           id: '1',
-          name: 'hourse Documents',
+          name: 'Circle Documents',
           type: 'folder',
           size: 0,
-          path: '/hourse Documents',
+          path: '/Circle Documents',
           createdAt: new Date('2024-01-15'),
           updatedAt: new Date('2024-01-20'),
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
           isFavorite: false,
           children: [],
@@ -142,22 +142,22 @@ const StorageApp: React.FC<StorageAppProps> = ({
           createdAt: new Date('2024-01-10'),
           updatedAt: new Date('2024-01-18'),
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
           isFavorite: true,
           children: [],
         },
         {
           id: '3',
-          name: 'hourse Budget.xlsx',
+          name: 'Circle Budget.xlsx',
           type: 'file',
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           size: 524288, // 512KB
-          path: '/hourse Budget.xlsx',
+          path: '/Circle Budget.xlsx',
           createdAt: new Date('2024-01-12'),
           updatedAt: new Date('2024-01-19'),
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
           isFavorite: false,
         },
@@ -171,7 +171,7 @@ const StorageApp: React.FC<StorageAppProps> = ({
           createdAt: new Date('2024-01-08'),
           updatedAt: new Date('2024-01-15'),
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: false,
           isFavorite: false,
         },
@@ -185,7 +185,7 @@ const StorageApp: React.FC<StorageAppProps> = ({
           createdAt: new Date('2024-01-05'),
           updatedAt: new Date('2024-01-10'),
           createdBy: user?.id || '',
-          familyId,
+          circleId,
           isShared: true,
           isFavorite: true,
         },
@@ -250,7 +250,7 @@ const StorageApp: React.FC<StorageAppProps> = ({
         createdAt: new Date(),
         updatedAt: new Date(),
         createdBy: user?.id || '',
-        familyId,
+        circleId,
         isShared: false,
         isFavorite: false,
         children: [],
@@ -490,7 +490,7 @@ const StorageApp: React.FC<StorageAppProps> = ({
         />
         <VStack flex={1}>
           <Text style={textStyles.h3} color={textColor} fontWeight="600">
-            hourse Storage
+            Circle Storage
           </Text>
           <Text style={textStyles.caption} color={colors.gray[600]}>
             {files.length} items • {formatFileSize(storageStats.usedSpace)} used

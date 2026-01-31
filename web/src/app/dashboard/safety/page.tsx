@@ -64,13 +64,13 @@ export default function SafetyPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Safety</h1>
-        <p className="text-gray-600 mt-1">Family safety and location tracking</p>
+        <p className="text-gray-600 mt-1">Circle safety and location tracking</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Family Locations</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Circle Locations</h2>
             <MapPinIcon className="w-6 h-6 text-macos-blue-600" />
           </div>
           {locations.length === 0 ? (
@@ -127,4 +127,5 @@ export default function SafetyPage() {
     </div>
   )
 }
+
 

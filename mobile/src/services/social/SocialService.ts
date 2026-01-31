@@ -1,10 +1,13 @@
 import { Platform } from 'react-native';
 import { socialApi } from '../api/social';
+import { CircleStatusFilters, CircleStatusUpdate, CircleLocationUpdate } from '../api/circleStatus';
+export type { CircleStatusFilters, CircleStatusUpdate, CircleLocationUpdate };
 import { storageApi } from '../api/storage';
-import { SocialPost } from '../../types/home';
+import { SocialPost, CreateSocialPostRequest, UpdateSocialPostRequest, SocialPostInteraction } from '../../types/home';
+export type { SocialPost, CreateSocialPostRequest, UpdateSocialPostRequest, SocialPostInteraction };
 
 export interface SocialPostFilters {
-  familyId?: string;
+  circleId?: string;
   authorId?: string;
   search?: string;
   tags?: string[];
@@ -12,36 +15,7 @@ export interface SocialPostFilters {
   dateTo?: string;
   limit?: number;
   offset?: number;
-}
-
-export interface CreateSocialPostRequest {
-  content: string;
-  familyId: string;
-  media?: {
-    type: 'image' | 'video';
-    url: string;
-  };
-  location?: string;
-  latitude?: number;
-  longitude?: number;
-  tags?: string[];
-}
-
-export interface UpdateSocialPostRequest {
-  content?: string;
-  media?: {
-    type: 'image' | 'video';
-    url: string;
-  };
-  location?: string;
-  tags?: string[];
-}
-
-export interface SocialPostInteraction {
-  postId: string;
-  type: 'like' | 'comment' | 'share';
-  userId: string;
-  data?: any;
+  following?: boolean;
 }
 
 class SocialService {
@@ -228,9 +202,9 @@ class SocialService {
     }
   }
 
-  async addComment(postId: string, content: string, media?: { type: string; url: string }): Promise<any> {
+  async addComment(postId: string, content: string, media?: { type: string; url: string }, parentId?: string): Promise<any> {
     try {
-      const response = await socialApi.addComment(postId, content, media);
+      const response = await socialApi.addComment(postId, content, media, parentId);
       return response.comment;
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -238,15 +212,30 @@ class SocialService {
     }
   }
 
-  async getTrendingTags(familyId?: string): Promise<string[]> {
+  async getTrendingTags(circleId?: string): Promise<string[]> {
     try {
-      const response = await socialApi.getTrendingTags(familyId);
+      const response = await socialApi.getTrendingTags(circleId);
       return response.tags || [];
     } catch (error) {
       console.error('Error fetching trending tags:', error);
       return [];
     }
   }
+
+  async reportPost(postId: string, reason: string, description?: string): Promise<any> {
+    try {
+      const response = await socialApi.reportPost({
+        post_id: postId,
+        reason,
+        description
+      });
+      return response.report;
+    } catch (error) {
+      console.error('Error reporting post:', error);
+      throw error;
+    }
+  }
 }
 
 export const socialService = new SocialService();
+

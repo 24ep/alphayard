@@ -10,11 +10,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { PinKeypad } from '../../components/auth/PinKeypad';
 import { usePin } from '../../contexts/PinContext';
+import { useTheme } from '../../contexts/ThemeContext';
+import { ImageBackground } from 'react-native';
 
 type SetupStep = 'enter' | 'confirm';
 
 export const PinSetupScreen: React.FC = () => {
     const { setupPin } = usePin();
+    const { theme } = useTheme();
     const [step, setStep] = useState<SetupStep>('enter');
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -75,47 +78,108 @@ export const PinSetupScreen: React.FC = () => {
         ? 'Enter a 6-digit PIN to secure your app'
         : 'Re-enter your PIN to confirm';
 
+    const renderContent = () => (
+        <View style={styles.content}>
+            {/* Header */}
+            <View style={styles.header}>
+                {step === 'confirm' && (
+                    <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                        <Icon name="arrow-left" size={24} color="#FFF" />
+                    </TouchableOpacity>
+                )}
+                <View style={styles.iconContainer}>
+                    <Icon name="lock-outline" size={48} color="#FFF" />
+                </View>
+            </View>
+
+            {/* PIN Card */}
+            <View style={styles.card}>
+                <PinKeypad
+                    pin={currentPin}
+                    onPinChange={handlePinChange}
+                    title={title}
+                    subtitle={subtitle}
+                    error={error}
+                />
+
+                {isSubmitting && (
+                    <Text style={styles.submittingText}>Setting up PIN...</Text>
+                )}
+
+                {/* Step Indicator */}
+                <View style={styles.stepIndicator}>
+                    <View style={[styles.stepDot, step === 'enter' && styles.stepDotActive]} />
+                    <View style={[styles.stepDot, step === 'confirm' && styles.stepDotActive]} />
+                </View>
+            </View>
+        </View>
+    );
+
+    // Helper to get background from screens array or legacy fields
+    const getBackgroundConfig = () => {
+        // First check screens array (new dynamic approach)
+        if (theme.branding?.screens && Array.isArray(theme.branding.screens)) {
+            const pinScreen = theme.branding.screens.find((s: any) => s.id === 'pin' || s.id === 'pin-setup');
+            if (pinScreen?.background) {
+                const bg = pinScreen.background;
+                if (typeof bg === 'object' && bg.image) {
+                    return { imageUrl: bg.image, resizeMode: pinScreen.resizeMode || 'cover' };
+                } else if (typeof bg === 'string' && bg) {
+                    return { imageUrl: bg, resizeMode: pinScreen.resizeMode || 'cover' };
+                }
+            }
+            // Also check 'login' screen as fallback for PIN pages
+            const loginScreen = theme.branding.screens.find((s: any) => s.id === 'login');
+            if (loginScreen?.background) {
+                const bg = loginScreen.background;
+                if (typeof bg === 'object' && bg.image) {
+                    return { imageUrl: bg.image, resizeMode: loginScreen.resizeMode || 'cover' };
+                } else if (typeof bg === 'string' && bg) {
+                    return { imageUrl: bg, resizeMode: loginScreen.resizeMode || 'cover' };
+                }
+            }
+        }
+        // Fall back to legacy pinBackgroundImage
+        if (theme.branding?.pinBackgroundImage) {
+            return { imageUrl: theme.branding.pinBackgroundImage, resizeMode: theme.branding.pinBackgroundResizeMode || 'cover' };
+        }
+        return null;
+    };
+
+    const bgConfig = getBackgroundConfig();
+
     return (
         <SafeAreaView style={styles.container}>
-            <LinearGradient
-                colors={['#FA7272', '#FFBBB4']}
-                style={styles.gradient}
-            >
-                <View style={styles.content}>
-                    {/* Header */}
-                    <View style={styles.header}>
-                        {step === 'confirm' && (
-                            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                                <Icon name="arrow-left" size={24} color="#FFF" />
-                            </TouchableOpacity>
-                        )}
-                        <View style={styles.iconContainer}>
-                            <Icon name="lock-outline" size={48} color="#FFF" />
-                        </View>
-                    </View>
+            {(() => {
+                if (bgConfig?.imageUrl) {
+                    console.log('[PinSetupScreen] Using Background:', bgConfig.imageUrl);
+                    return (
+                        <ImageBackground
+                            source={{ uri: bgConfig.imageUrl }}
+                            style={styles.container}
+                            resizeMode={bgConfig.resizeMode}
+                            onError={(e) => console.log('[PinSetupScreen] Image Load Error:', e.nativeEvent.error)}
+                        >
+                            <LinearGradient
+                                colors={['rgba(250, 114, 114, 0.4)', 'rgba(255, 187, 180, 0.4)']}
+                                style={styles.gradient}
+                            >
+                                {renderContent()}
+                            </LinearGradient>
+                        </ImageBackground>
+                    );
+                }
 
-                    {/* PIN Card */}
-                    <View style={styles.card}>
-                        <PinKeypad
-                            pin={currentPin}
-                            onPinChange={handlePinChange}
-                            title={title}
-                            subtitle={subtitle}
-                            error={error}
-                        />
-
-                        {isSubmitting && (
-                            <Text style={styles.submittingText}>Setting up PIN...</Text>
-                        )}
-
-                        {/* Step Indicator */}
-                        <View style={styles.stepIndicator}>
-                            <View style={[styles.stepDot, step === 'enter' && styles.stepDotActive]} />
-                            <View style={[styles.stepDot, step === 'confirm' && styles.stepDotActive]} />
-                        </View>
-                    </View>
-                </View>
-            </LinearGradient>
+                console.log('[PinSetupScreen] Falling back to LinearGradient');
+                return (
+                    <LinearGradient
+                        colors={['#FA7272', '#FFBBB4']}
+                        style={styles.gradient}
+                    >
+                        {renderContent()}
+                    </LinearGradient>
+                );
+            })()}
         </SafeAreaView>
     );
 };

@@ -108,7 +108,7 @@ const ExpensesWidget: React.FC<ExpensesWidgetProps> = ({
           paidBy: 'Emma',
           sharedWith: ['Sarah', 'Mike'],
           isRecurring: false,
-          notes: 'hourse dinner',
+          notes: 'Circle dinner',
         },
         {
           id: '4',
@@ -320,7 +320,7 @@ const ExpensesWidget: React.FC<ExpensesWidgetProps> = ({
         <View style={styles.emptyContainer}>
           <Icon name="cash-outline" size={48} color="#9E9E9E" />
           <Text style={styles.emptyText}>No expenses recorded</Text>
-          <Text style={styles.emptySubtext}>Start tracking your hourse expenses</Text>
+          <Text style={styles.emptySubtext}>Start tracking your Circle expenses</Text>
         </View>
       ) : (
         <>

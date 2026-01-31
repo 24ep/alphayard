@@ -144,7 +144,7 @@ export default function ProjectsPage() {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Project Templates</h2>
           <div className="space-y-2">
             <div className="p-3 bg-gray-50 rounded-macos hover:bg-gray-100 cursor-pointer transition-macos">
-              <p className="font-medium text-gray-900">Family Vacation Planning</p>
+              <p className="font-medium text-gray-900">Circle Vacation Planning</p>
               <p className="text-sm text-gray-600">Pre-configured vacation project</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-macos hover:bg-gray-100 cursor-pointer transition-macos">
@@ -157,4 +157,5 @@ export default function ProjectsPage() {
     </div>
   )
 }
+
 

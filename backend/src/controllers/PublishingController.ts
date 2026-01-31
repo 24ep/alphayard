@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { supabase } from '../config/supabase';
+import { pool } from '../config/database';
 
 export class PublishingController {
   /**
@@ -9,21 +9,15 @@ export class PublishingController {
     try {
       const { pageId } = req.params;
 
-      const { data, error } = await supabase
-        .from('publishing_workflows')
-        .select('*')
-        .eq('page_id', pageId)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT * FROM publishing_workflows WHERE page_id = $1',
+        [pageId]
+      );
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-        console.error('Error fetching workflow:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ workflow: data || null });
-    } catch (error) {
+      res.json({ workflow: rows[0] || null });
+    } catch (error: any) {
       console.error('Error fetching workflow:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -40,49 +34,21 @@ export class PublishingController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // Check if workflow exists
-      const { data: existing } = await supabase
-        .from('publishing_workflows')
-        .select('id')
-        .eq('page_id', pageId)
-        .single();
+      const { rows } = await pool.query(
+        `INSERT INTO publishing_workflows (page_id, requires_approval, approval_status, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (page_id) DO UPDATE SET 
+           requires_approval = EXCLUDED.requires_approval,
+           approval_status = EXCLUDED.approval_status,
+           updated_at = NOW()
+         RETURNING *`,
+        [pageId, requiresApproval || false, requiresApproval ? 'pending' : null]
+      );
 
-      let data, error;
-
-      if (existing) {
-        // Update existing workflow
-        ({ data, error } = await supabase
-          .from('publishing_workflows')
-          .update({
-            requires_approval: requiresApproval,
-            approval_status: requiresApproval ? 'pending' : null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('page_id', pageId)
-          .select()
-          .single());
-      } else {
-        // Create new workflow
-        ({ data, error } = await supabase
-          .from('publishing_workflows')
-          .insert({
-            page_id: pageId,
-            requires_approval: requiresApproval || false,
-            approval_status: requiresApproval ? 'pending' : null
-          })
-          .select()
-          .single());
-      }
-
-      if (error) {
-        console.error('Error creating/updating workflow:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ workflow: data });
-    } catch (error) {
+      res.json({ workflow: rows[0] });
+    } catch (error: any) {
       console.error('Error creating/updating workflow:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -98,64 +64,27 @@ export class PublishingController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // Get or create workflow
-      let { data: workflow } = await supabase
-        .from('publishing_workflows')
-        .select('*')
-        .eq('page_id', pageId)
-        .single();
-
-      if (!workflow) {
-        // Create workflow if it doesn't exist
-        const { data: newWorkflow, error: createError } = await supabase
-          .from('publishing_workflows')
-          .insert({
-            page_id: pageId,
-            requires_approval: true,
-            approval_status: 'pending'
-          })
-          .select()
-          .single();
-
-        if (createError) {
-          console.error('Error creating workflow:', createError);
-          return res.status(400).json({ error: createError.message });
-        }
-
-        workflow = newWorkflow;
-      } else {
-        // Update workflow status
-        const { data: updatedWorkflow, error: updateError } = await supabase
-          .from('publishing_workflows')
-          .update({
-            requires_approval: true,
-            approval_status: 'pending',
-            approved_by: null,
-            approved_at: null,
-            rejection_reason: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('page_id', pageId)
-          .select()
-          .single();
-
-        if (updateError) {
-          console.error('Error updating workflow:', updateError);
-          return res.status(400).json({ error: updateError.message });
-        }
-
-        workflow = updatedWorkflow;
-      }
-
-      // TODO: Send notification to approvers
+      const { rows } = await pool.query(
+        `INSERT INTO publishing_workflows (page_id, requires_approval, approval_status, updated_at)
+         VALUES ($1, true, 'pending', NOW())
+         ON CONFLICT (page_id) DO UPDATE SET 
+           requires_approval = true,
+           approval_status = 'pending',
+           approved_by = null,
+           approved_at = null,
+           rejection_reason = null,
+           updated_at = NOW()
+         RETURNING *`,
+        [pageId]
+      );
 
       res.json({ 
-        workflow,
+        workflow: rows[0],
         message: 'Approval requested successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error requesting approval:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -163,6 +92,7 @@ export class PublishingController {
    * Approve page for publishing
    */
   async approvePage(req: any, res: Response) {
+    const client = await pool.connect();
     try {
       const { pageId } = req.params;
       const userId = req.user?.id || req.admin?.id;
@@ -171,50 +101,46 @@ export class PublishingController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      // Update workflow
-      const { data: workflow, error: workflowError } = await supabase
-        .from('publishing_workflows')
-        .update({
-          approval_status: 'approved',
-          approved_by: userId,
-          approved_at: new Date().toISOString(),
-          rejection_reason: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('page_id', pageId)
-        .select()
-        .single();
+      await client.query('BEGIN');
 
-      if (workflowError) {
-        console.error('Error approving page:', workflowError);
-        return res.status(400).json({ error: workflowError.message });
+      const { rows: workflowRows } = await client.query(
+        `UPDATE publishing_workflows SET 
+          approval_status = 'approved',
+          approved_by = $1,
+          approved_at = NOW(),
+          rejection_reason = null,
+          updated_at = NOW()
+         WHERE page_id = $2 RETURNING *`,
+        [userId, pageId]
+      );
+
+      if (workflowRows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Workflow not found' });
       }
 
-      // Publish the page
-      const { data: page, error: publishError } = await supabase
-        .from('pages')
-        .update({
-          status: 'published',
-          published_at: new Date().toISOString(),
-          updated_by: userId
-        })
-        .eq('id', pageId)
-        .select()
-        .single();
+      const { rows: pageRows } = await client.query(
+        `UPDATE pages SET 
+          status = 'published',
+          published_at = NOW(),
+          updated_by = $1
+         WHERE id = $2 RETURNING *`,
+        [userId, pageId]
+      );
 
-      if (publishError) {
-        console.error('Error publishing page:', publishError);
-        return res.status(400).json({ error: publishError.message });
-      }
+      await client.query('COMMIT');
 
       res.json({ 
-        workflow,
-        page,
+        workflow: workflowRows[0],
+        page: pageRows[0],
         message: 'Page approved and published successfully'
       });
-    } catch (error) {
+    } catch (error: any) {
+      await client.query('ROLLBACK');
       console.error('Error approving page:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
+    } finally {
+      client.release();
     }
   }
 
@@ -235,33 +161,28 @@ export class PublishingController {
         return res.status(400).json({ error: 'Rejection reason is required' });
       }
 
-      const { data: workflow, error } = await supabase
-        .from('publishing_workflows')
-        .update({
-          approval_status: 'rejected',
-          approved_by: userId,
-          approved_at: new Date().toISOString(),
-          rejection_reason: reason,
-          updated_at: new Date().toISOString()
-        })
-        .eq('page_id', pageId)
-        .select()
-        .single();
+      const { rows } = await pool.query(
+        `UPDATE publishing_workflows SET 
+          approval_status = 'rejected',
+          approved_by = $1,
+          approved_at = NOW(),
+          rejection_reason = $2,
+          updated_at = NOW()
+         WHERE page_id = $3 RETURNING *`,
+        [userId, reason, pageId]
+      );
 
-      if (error) {
-        console.error('Error rejecting page:', error);
-        return res.status(400).json({ error: error.message });
+      if (rows.length === 0) {
+        return res.status(404).json({ error: 'Workflow not found' });
       }
 
-      // TODO: Send notification to page creator
-
       res.json({ 
-        workflow,
+        workflow: rows[0],
         message: 'Page rejected'
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting page:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -272,35 +193,32 @@ export class PublishingController {
     try {
       const { limit = 50, offset = 0 } = req.query;
 
-      const { data, error } = await supabase
-        .from('publishing_workflows')
-        .select(`
-          *,
-          pages (
-            id,
-            title,
-            slug,
-            description,
-            status,
-            created_by,
-            updated_by,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('approval_status', 'pending')
-        .order('created_at', { ascending: false })
-        .range(parseInt(String(offset)), parseInt(String(offset)) + parseInt(String(limit)) - 1);
+      // Using a JOIN to get page data along with workflow
+      const { rows } = await pool.query(
+        `SELECT pw.*, 
+                json_build_object(
+                  'id', p.id,
+                  'title', p.title,
+                  'slug', p.slug,
+                  'description', p.description,
+                  'status', p.status,
+                  'created_by', p.created_by,
+                  'updated_by', p.updated_by,
+                  'created_at', p.created_at,
+                  'updated_at', p.updated_at
+                ) as pages
+         FROM publishing_workflows pw
+         JOIN pages p ON pw.page_id = p.id
+         WHERE pw.approval_status = 'pending'
+         ORDER BY pw.created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [parseInt(String(limit)), parseInt(String(offset))]
+      );
 
-      if (error) {
-        console.error('Error fetching pending approvals:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ pendingApprovals: data });
-    } catch (error) {
+      res.json({ pendingApprovals: rows });
+    } catch (error: any) {
       console.error('Error fetching pending approvals:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -311,22 +229,18 @@ export class PublishingController {
     try {
       const { limit = 50, offset = 0 } = req.query;
 
-      const { data, error } = await supabase
-        .from('pages')
-        .select('*')
-        .eq('status', 'scheduled')
-        .order('scheduled_for', { ascending: true })
-        .range(parseInt(String(offset)), parseInt(String(offset)) + parseInt(String(limit)) - 1);
+      const { rows } = await pool.query(
+        `SELECT * FROM pages 
+         WHERE status = 'scheduled' 
+         ORDER BY scheduled_for ASC 
+         LIMIT $1 OFFSET $2`,
+        [parseInt(String(limit)), parseInt(String(offset))]
+      );
 
-      if (error) {
-        console.error('Error fetching scheduled pages:', error);
-        return res.status(400).json({ error: error.message });
-      }
-
-      res.json({ scheduledPages: data });
-    } catch (error) {
+      res.json({ scheduledPages: rows });
+    } catch (error: any) {
       console.error('Error fetching scheduled pages:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 
@@ -335,35 +249,35 @@ export class PublishingController {
    */
   async getPublishingStats(req: any, res: Response) {
     try {
-      // Get counts for different statuses
-      const { data: statusCounts, error: statusError } = await supabase
-        .from('pages')
-        .select('status');
+      // Get counts for different statuses in one query
+      const { rows: statusRows } = await pool.query(
+        `SELECT status, count(*) FROM pages GROUP BY status`
+      );
 
-      if (statusError) {
-        console.error('Error fetching status counts:', statusError);
-        return res.status(400).json({ error: statusError.message });
-      }
+      const { rows: pendingRows } = await pool.query(
+        `SELECT count(*) FROM publishing_workflows WHERE approval_status = 'pending'`
+      );
 
-      // Get pending approvals count
-      const { data: pendingApprovals, error: approvalError } = await supabase
-        .from('publishing_workflows')
-        .select('id')
-        .eq('approval_status', 'pending');
+      const statusMap: Record<string, number> = {};
+      let total = 0;
+      statusRows.forEach(row => {
+        statusMap[row.status] = parseInt(row.count);
+        total += parseInt(row.count);
+      });
 
       const stats = {
-        total: statusCounts.length,
-        draft: statusCounts.filter(p => p.status === 'draft').length,
-        scheduled: statusCounts.filter(p => p.status === 'scheduled').length,
-        published: statusCounts.filter(p => p.status === 'published').length,
-        archived: statusCounts.filter(p => p.status === 'archived').length,
-        pendingApprovals: !approvalError ? (pendingApprovals?.length || 0) : 0
+        total,
+        draft: statusMap['draft'] || 0,
+        scheduled: statusMap['scheduled'] || 0,
+        published: statusMap['published'] || 0,
+        archived: statusMap['archived'] || 0,
+        pendingApprovals: parseInt(pendingRows[0].count)
       };
 
       res.json({ stats });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching publishing stats:', error);
-      res.status(500).json({ error: 'Internal server error' });
+      res.status(500).json({ error: 'Internal server error', message: error.message });
     }
   }
 }

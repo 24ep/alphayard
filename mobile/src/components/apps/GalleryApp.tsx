@@ -31,25 +31,25 @@ import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';
 import { useAuth } from '../../contexts/AuthContext';
 import { useGallery } from '../../contexts/GalleryContext';
-import { useFamily } from '../../hooks/useFamily';
+import { useCircle } from '../../hooks/useCircle';
 import PhotoGrid from '../gallery/PhotoGrid';
 import AlbumList from '../gallery/AlbumList';
 import GalleryHeader from '../gallery/GalleryHeader';
 import { Photo, Album } from '../../types/gallery';
 
 interface GalleryAppProps {
-  familyId?: string;
+  circleId?: string;
   onPhotoPress?: (photo: Photo) => void;
   onAlbumPress?: (album: Album) => void;
 }
 
 const GalleryApp: React.FC<GalleryAppProps> = ({
-  familyId: propFamilyId,
+  circleId: propCircleId,
   onPhotoPress,
   onAlbumPress,
 }) => {
   const { user } = useAuth();
-  const { currentFamily } = useFamily();
+  const { currentCircle } = useCircle();
   const {
     photos,
     albums,
@@ -79,7 +79,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
   const cardBgColor = useColorModeValue(colors.gray[50], colors.gray[700]);
   const textColor = useColorModeValue(colors.gray[800], colors.white[500]);
 
-  const familyId = propFamilyId || currentFamily?.id || '';
+  const circleId = propCircleId || currentCircle?.id || '';
 
   // Form state
   const [albumForm, setAlbumForm] = React.useState({
@@ -89,11 +89,11 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
   });
 
   useEffect(() => {
-    if (familyId) {
-      loadPhotos(familyId);
-      loadAlbums(familyId);
+    if (circleId) {
+      loadPhotos(circleId);
+      loadAlbums(circleId);
     }
-  }, [familyId, loadPhotos, loadAlbums]);
+  }, [circleId, loadPhotos, loadAlbums]);
 
   useEffect(() => {
     if (error) {
@@ -133,7 +133,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
         name: albumForm.name.trim(),
         description: albumForm.description.trim(),
         isShared: albumForm.isShared,
-        familyId,
+        circleId,
         createdBy: user?.id || '',
         members: [user?.id || ''],
       });
@@ -212,7 +212,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
     <Box flex={1}>
       {/* Header */}
       <GalleryHeader
-        title="hourse Gallery"
+        title="Circle Gallery"
         photoCount={photos.length}
         albumCount={albums.length}
         onAddPress={handleCreateAlbum}
@@ -356,7 +356,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
                   
                   {selectedAlbum.isShared && (
                     <Text style={textStyles.caption} color={colors.primary[500]}>
-                      Shared with hourse
+                      Shared with Circle
                     </Text>
                   )}
                 </VStack>
@@ -423,7 +423,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({
 
               <FormControl>
                 <FormControl.Label>
-                  <Text style={textStyles.h4} color={textColor}>Share with hourse</Text>
+                  <Text style={textStyles.h4} color={textColor}>Share with Circle</Text>
                 </FormControl.Label>
                 <Switch
                   isChecked={albumForm.isShared}

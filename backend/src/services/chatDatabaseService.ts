@@ -6,9 +6,9 @@ const enrichChatRoom = (row: any) => {
   return {
     ...row,
     id: row.id,
-    familyId: row.family_id,
+    circleId: row.circle_id,
     name: row.name,
-    type: row.type || 'hourse',
+    type: row.type || 'circle',
     description: '', // Schema doesn't have description
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -18,7 +18,7 @@ const enrichChatRoom = (row: any) => {
     toJSON: function () {
       return {
         id: this.id,
-        familyId: this.familyId,
+        circleId: this.circleId,
         name: this.name,
         type: this.type,
         createdAt: this.createdAt,
@@ -27,18 +27,18 @@ const enrichChatRoom = (row: any) => {
     },
 
     isParticipant: async (userId: string) => {
-      // In this schema, all family members are participants
+      // In this schema, all circle members are participants
       const res = await pool.query(
-        'SELECT 1 FROM family_members WHERE family_id = $1 AND user_id = $2',
-        [row.family_id, userId]
+        'SELECT 1 FROM circle_members WHERE circle_id = $1 AND user_id = $2',
+        [row.circle_id, userId]
       );
       return res.rows.length > 0;
     },
 
     isAdmin: async (userId: string) => {
       const res = await pool.query(
-        "SELECT 1 FROM family_members WHERE family_id = $1 AND user_id = $2 AND role = 'admin'",
-        [row.family_id, userId]
+        "SELECT 1 FROM circle_members WHERE circle_id = $1 AND user_id = $2 AND role = 'admin'",
+        [row.circle_id, userId]
       );
       return res.rows.length > 0;
     },
@@ -46,10 +46,10 @@ const enrichChatRoom = (row: any) => {
     getParticipants: async () => {
       const res = await pool.query(
         `SELECT u.id as user_id, u.first_name, u.last_name, u.avatar_url, fm.role, fm.joined_at 
-             FROM family_members fm
+             FROM circle_members fm
              JOIN users u ON u.id = fm.user_id
-             WHERE fm.family_id = $1`,
-        [row.family_id]
+             WHERE fm.circle_id = $1`,
+        [row.circle_id]
       );
       return res.rows.map((p: any) => ({
         user_id: p.user_id,
@@ -140,8 +140,8 @@ const enrichMessage = (row: any) => {
 }
 
 export const Chat = {
-  async findByFamilyId(familyId: string) {
-    const res = await pool.query('SELECT * FROM chat_rooms WHERE family_id = $1', [familyId]);
+  async findBycircleId(circleId: string) {
+    const res = await pool.query('SELECT * FROM chat_rooms WHERE circle_id = $1', [circleId]);
     return res.rows.map(enrichChatRoom);
   },
 
@@ -151,15 +151,15 @@ export const Chat = {
   },
 
   async create(data: any) {
-    const { familyId, name, type } = data;
+    const { circleId, name, type } = data;
     const res = await pool.query(
-      'INSERT INTO chat_rooms (family_id, name, type) VALUES ($1, $2, $3) RETURNING *',
-      [familyId, name, type || 'hourse']
+      'INSERT INTO chat_rooms (circle_id, name, type) VALUES ($1, $2, $3) RETURNING *',
+      [circleId, name, type || 'circle']
     );
     return enrichChatRoom(res.rows[0]);
   },
 
-  // Participants managed via Family in this schema
+  // Participants managed via circle in this schema
   async addParticipant(...args: any[]) { return { success: true }; },
   async removeParticipant(...args: any[]) { return { success: true }; }
 };
@@ -231,7 +231,7 @@ export const ChatDatabaseService = {
 
   // Legacy Adapter Methods for Socket support
   findChatRoomById: Chat.findById,
-  findByFamilyId: Chat.findByFamilyId,
+  findBycircleId: Chat.findBycircleId,
   createChatRoom: Chat.create,
 
   isParticipant: async (chatId: string, userId: string) => {
@@ -326,3 +326,4 @@ export const ChatDatabaseService = {
     return true;
   }
 };
+

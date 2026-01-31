@@ -12,7 +12,7 @@ import { Box, HStack, VStack, Icon, Avatar, Badge, Progress } from 'native-base'
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
-import { useFamily } from '../../hooks/useFamily';
+import { useCircle } from '../../hooks/useCircle';
 import aiAgentService from '../../services/ai/AIAgentService';
 import { analyticsService } from '../../services/analytics/AnalyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -23,7 +23,7 @@ interface AIFeature {
   description: string;
   icon: string;
   color: string;
-  category: 'hourse' | 'safety' | 'communication' | 'productivity' | 'entertainment';
+  category: 'Circle' | 'safety' | 'communication' | 'productivity' | 'entertainment';
   enabled: boolean;
   usage: number;
 }
@@ -31,7 +31,7 @@ interface AIFeature {
 const AIAssistantScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { hourse } = useFamily();
+  const { Circle } = useCircle();
   const [loading, setLoading] = useState(true);
   const [aiFeatures, setAiFeatures] = useState<AIFeature[]>([]);
   const [conversationCount, setConversationCount] = useState(0);
@@ -43,17 +43,17 @@ const AIAssistantScreen: React.FC = () => {
 
   const initializeAIAssistant = async () => {
     try {
-      if (user && hourse) {
-        await aiAgentService.initialize(user.id, hourse.id);
+      if (user && Circle) {
+        await aiAgentService.initialize(user.id, Circle.id);
         
         const features: AIFeature[] = [
           {
-            id: 'family_management',
-            title: 'hourse Management',
-            description: 'Add, remove, and manage hourse members',
+            id: 'circle_management',
+            title: 'Circle Management',
+            description: 'Add, remove, and manage Circle members',
             icon: 'account-group',
             color: '#4A90E2',
-            category: 'hourse',
+            category: 'Circle',
             enabled: true,
             usage: 85,
           },
@@ -80,7 +80,7 @@ const AIAssistantScreen: React.FC = () => {
           {
             id: 'location_tracking',
             title: 'Location Tracking',
-            description: 'Find hourse members and share locations',
+            description: 'Find Circle members and share locations',
             icon: 'map-marker-radius',
             color: '#F39C12',
             category: 'safety',
@@ -90,7 +90,7 @@ const AIAssistantScreen: React.FC = () => {
           {
             id: 'expense_manager',
             title: 'Expense Manager',
-            description: 'Track hourse expenses and budgets',
+            description: 'Track Circle expenses and budgets',
             icon: 'cash-multiple',
             color: '#9B59B6',
             category: 'productivity',
@@ -110,17 +110,17 @@ const AIAssistantScreen: React.FC = () => {
           {
             id: 'health_monitor',
             title: 'Health Monitor',
-            description: 'Track hourse health and wellness',
+            description: 'Track Circle health and wellness',
             icon: 'heart-pulse',
             color: '#E67E22',
-            category: 'hourse',
+            category: 'Circle',
             enabled: true,
             usage: 58,
           },
           {
             id: 'notes_organizer',
             title: 'Notes Organizer',
-            description: 'Create and organize hourse notes',
+            description: 'Create and organize Circle notes',
             icon: 'note-text',
             color: '#34495E',
             category: 'productivity',
@@ -130,7 +130,7 @@ const AIAssistantScreen: React.FC = () => {
           {
             id: 'gaming_companion',
             title: 'Gaming Companion',
-            description: 'hourse gaming sessions and activities',
+            description: 'Circle gaming sessions and activities',
             icon: 'gamepad-variant',
             color: '#E91E63',
             category: 'entertainment',
@@ -150,7 +150,7 @@ const AIAssistantScreen: React.FC = () => {
 
         analyticsService.trackEvent('ai_assistant_opened', {
           userId: user.id,
-          familyId: hourse.id,
+          circleId: Circle.id,
           featureCount: features.length,
         });
       }
@@ -169,9 +169,9 @@ const AIAssistantScreen: React.FC = () => {
     });
 
     switch (feature.id) {
-      case 'family_management':
+      case 'circle_management':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'Help me manage my hourse members' 
+          initialMessage: 'Help me manage my Circle members' 
         } as never);
         break;
       case 'safety_monitoring':
@@ -186,12 +186,12 @@ const AIAssistantScreen: React.FC = () => {
         break;
       case 'location_tracking':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'I need to find my hourse members' 
+          initialMessage: 'I need to find my Circle members' 
         } as never);
         break;
       case 'expense_manager':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'Help me manage hourse expenses' 
+          initialMessage: 'Help me manage Circle expenses' 
         } as never);
         break;
       case 'shopping_assistant':
@@ -201,17 +201,17 @@ const AIAssistantScreen: React.FC = () => {
         break;
       case 'health_monitor':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'Help me track hourse health' 
+          initialMessage: 'Help me track Circle health' 
         } as never);
         break;
       case 'notes_organizer':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'Help me organize hourse notes' 
+          initialMessage: 'Help me organize Circle notes' 
         } as never);
         break;
       case 'gaming_companion':
         navigation.navigate('AIChat' as never, { 
-          initialMessage: 'I want to set up hourse gaming' 
+          initialMessage: 'I want to set up Circle gaming' 
         } as never);
         break;
       default:
@@ -222,7 +222,7 @@ const AIAssistantScreen: React.FC = () => {
   const handleStartChat = () => {
     analyticsService.trackEvent('ai_chat_started', {
       userId: user?.id,
-      familyId: hourse?.id,
+      circleId: Circle?.id,
     });
     navigation.navigate('AIChat' as never);
   };
@@ -230,11 +230,11 @@ const AIAssistantScreen: React.FC = () => {
   const handleEmergencyAlert = async () => {
     try {
       await aiAgentService.processMessage('Send emergency alert');
-      Alert.alert('Emergency Alert', 'Emergency alert has been sent to all hourse members!');
+      Alert.alert('Emergency Alert', 'Emergency alert has been sent to all Circle members!');
       
       analyticsService.trackEvent('ai_emergency_alert_sent', {
         userId: user?.id,
-        familyId: hourse?.id,
+        circleId: Circle?.id,
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to send emergency alert');
@@ -248,7 +248,7 @@ const AIAssistantScreen: React.FC = () => {
       
       analyticsService.trackEvent('ai_safety_checkin', {
         userId: user?.id,
-        familyId: hourse?.id,
+        circleId: Circle?.id,
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to record safety check-in');
@@ -271,7 +271,7 @@ const AIAssistantScreen: React.FC = () => {
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      hourse: '#4A90E2',
+      Circle: '#4A90E2',
       safety: '#E74C3C',
       communication: '#27AE60',
       productivity: '#9B59B6',
@@ -305,7 +305,7 @@ const AIAssistantScreen: React.FC = () => {
             </Avatar>
             <VStack flex={1}>
               <Text style={styles.title}>AI Assistant</Text>
-              <Text style={styles.subtitle}>Your intelligent hourse companion</Text>
+              <Text style={styles.subtitle}>Your intelligent Circle companion</Text>
             </VStack>
             <TouchableOpacity
               style={styles.helpButton}
@@ -384,7 +384,7 @@ const AIAssistantScreen: React.FC = () => {
           </HStack>
         </Box>
 
-        {['hourse', 'safety', 'communication', 'productivity', 'entertainment'].map(category => {
+        {['Circle', 'safety', 'communication', 'productivity', 'entertainment'].map(category => {
           const categoryFeatures = aiFeatures.filter(f => f.category === category);
           if (categoryFeatures.length === 0) return null;
 

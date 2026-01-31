@@ -31,7 +31,7 @@ interface Preferences {
   };
   privacy: {
     locationSharing: boolean;
-    profileVisibility: 'public' | 'hourse' | 'private';
+    profileVisibility: 'public' | 'circle' | 'private';
     dataSharing: boolean;
   };
 }
@@ -106,8 +106,8 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     switch (subscription.plan) {
       case 'premium':
         return { text: t('subscription.premium'), color: '#FFD700' };
-      case 'hourse':
-        return { text: t('subscription.hourse'), color: '#FF6B6B' };
+      case 'circle':
+        return { text: t('subscription.circle'), color: '#FF6B6B' };
       case 'basic':
         return { text: t('subscription.basic'), color: '#4ECDC4' };
       default:

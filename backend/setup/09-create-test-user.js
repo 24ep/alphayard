@@ -1,23 +1,21 @@
 #!/usr/bin/env node
 
-const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcrypt');
+const { Pool } = require('pg');
+const bcrypt = require('bcryptjs'); // Use bcryptjs to match backend dependencies if bcrypt not found, checking package.json next step
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 async function main() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ Missing SUPABASE_URL or SUPABASE key in .env');
-    console.log('\nPlease ensure your .env file has:');
-    console.log('  SUPABASE_URL=your_supabase_url');
-    console.log('  SUPABASE_SERVICE_ROLE_KEY=your_service_role_key');
-    process.exit(1);
-  }
+  // Use DB vars
+  const dbConfig = {
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432'),
+    database: process.env.DB_NAME || 'postgres',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+  };
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  const pool = new Pool(dbConfig);
 
   console.log('🔧 Creating test user...\n');
 
@@ -30,14 +28,17 @@ async function main() {
   };
 
   try {
-    // Check if user already exists
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id, email')
-      .eq('email', testUser.email)
-      .single();
+    // Check connection
+    await pool.query('SELECT 1');
 
-    if (existingUser) {
+    // Check if user already exists
+    const existingRes = await pool.query(
+      'SELECT id, email FROM users WHERE email = $1',
+      [testUser.email]
+    );
+
+    if (existingRes.rows.length > 0) {
+      const existingUser = existingRes.rows[0];
       console.log('✅ Test user already exists:');
       console.log(`   Email: ${testUser.email}`);
       console.log(`   Password: ${testUser.password}`);
@@ -49,31 +50,16 @@ async function main() {
     const password_hash = await bcrypt.hash(testUser.password, 10);
 
     // Create user
-    const { data: newUser, error } = await supabase
-      .from('users')
-      .insert({
-        email: testUser.email,
-        password_hash,
-        first_name: testUser.first_name,
-        last_name: testUser.last_name,
-        is_active: true,
-        email_verified: true
-      })
-      .select()
-      .single();
+    // Note: Assuming 'users' table schema matches what was in supabase.from('users')
+    // We need to handle optional fields if they are constrained
+    const insertRes = await pool.query(
+      `INSERT INTO users (email, password_hash, first_name, last_name, is_active, is_email_verified)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, email`,
+      [testUser.email, password_hash, testUser.first_name, testUser.last_name, true, true]
+    );
 
-    if (error) {
-      console.error('❌ Error creating user:', error.message);
-      
-      // If table doesn't exist, provide helpful message
-      if (error.code === '42P01' || error.message.includes('relation') || error.message.includes('does not exist')) {
-        console.log('\n⚠️  The users table does not exist yet.');
-        console.log('   Please run the database migrations first:');
-        console.log('   node backend/setup/07-bootstrap-core-tables.js\n');
-      }
-      
-      process.exit(1);
-    }
+    const newUser = insertRes.rows[0];
 
     console.log('✅ Test user created successfully!\n');
     console.log('📧 Login Credentials:');
@@ -83,8 +69,16 @@ async function main() {
     console.log('💡 You can now use these credentials to log in to the mobile app.\n');
 
   } catch (error) {
-    console.error('❌ Unexpected error:', error.message || error);
+    console.error('❌ Error creating user:', error.message);
+      
+    if (error.code === '42P01') { // Undefined table
+      console.log('\n⚠️  The users table does not exist yet.');
+      console.log('   Please run the database migrations first.');
+    }
+    
     process.exit(1);
+  } finally {
+    await pool.end();
   }
 }
 

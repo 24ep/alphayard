@@ -105,19 +105,19 @@ export class ChatService {
   }
 
   /**
-   * Create default hourse chat room
+   * Create default circle chat room
    */
-  static async createDefaultFamilyChat(familyId: string, createdBy: string) {
+  static async createDefaultcircleChat(circleId: string, createdBy: string) {
     try {
       const { rows } = await pool.query(
-        `INSERT INTO chat_rooms (family_id, name, type, description, created_by, settings, is_active)
+        `INSERT INTO chat_rooms (circle_id, name, type, description, created_by, settings, is_active)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
         [
-          familyId,
-          'hourse Chat',
-          'hourse',
-          'Default hourse chat room',
+          circleId,
+          'circle Chat',
+          'circle',
+          'Default circle chat room',
           createdBy,
           JSON.stringify({
             allowFileSharing: true,
@@ -140,7 +140,7 @@ export class ChatService {
   /**
    * Get chat statistics
    */
-  static async getChatStats(familyId: string) {
+  static async getChatStats(circleId: string) {
     try {
       const { rows } = await pool.query(
         `SELECT 
@@ -148,8 +148,8 @@ export class ChatService {
            (SELECT count(*) FROM messages m WHERE m.chat_room_id = cr.id) as message_count,
            (SELECT max(created_at) FROM messages m WHERE m.chat_room_id = cr.id) as last_message_at
          FROM chat_rooms cr
-         WHERE cr.family_id = $1 AND cr.is_active = true`,
-        [familyId]
+         WHERE cr.circle_id = $1 AND cr.is_active = true`,
+        [circleId]
       );
 
       return rows.map(chat => ({
@@ -265,3 +265,4 @@ export class ChatService {
     }
   }
 }
+

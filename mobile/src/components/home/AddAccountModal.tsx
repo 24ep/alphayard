@@ -1,6 +1,27 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  Landmark, 
+  Wallet, 
+  TrendingUp, 
+  CreditCard, 
+  X,
+  Star
+} from 'lucide-react-native';
+
+const LandmarkIcon = Landmark as any;
+const WalletIcon = Wallet as any;
+const TrendingUpIcon = TrendingUp as any;
+const CreditCardIcon = CreditCard as any;
+const XIcon = X as any;
+const StarIcon = Star as any;
+
+const ICON_MAP: Record<string, any> = {
+    'bank': LandmarkIcon,
+    'wallet': WalletIcon,
+    'chart-line': TrendingUpIcon,
+    'credit-card': CreditCardIcon,
+};
 import { financeService } from '../../services/financeService';
 
 interface AddAccountModalProps {
@@ -57,7 +78,7 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({ visible, onClo
                     <View style={styles.header}>
                         <Text style={styles.title}>Add Account</Text>
                         <TouchableOpacity onPress={onClose}>
-                            <MaterialCommunityIcons name="close" size={24} color="#333" />
+                            <XIcon size={24} color="#333" />
                         </TouchableOpacity>
                     </View>
 
@@ -89,11 +110,15 @@ export const AddAccountModal: React.FC<AddAccountModalProps> = ({ visible, onClo
                                     style={[styles.typeButton, type === t.id && styles.typeButtonActive]}
                                     onPress={() => setType(t.id)}
                                 >
-                                    <MaterialCommunityIcons
-                                        name={t.icon as any}
-                                        size={24}
-                                        color={type === t.id ? '#fff' : '#555'}
-                                    />
+                                    {(() => {
+                                        const Icon = ICON_MAP[t.icon] || StarIcon;
+                                        return (
+                                            <Icon
+                                                size={24}
+                                                color={type === t.id ? '#fff' : '#555'}
+                                            />
+                                        );
+                                    })()}
                                     <Text style={[styles.typeLabel, type === t.id && styles.typeLabelActive]}>
                                         {t.label}
                                     </Text>

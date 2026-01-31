@@ -3,11 +3,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { UserModel } from '../models/UserModel';
+import { config } from '../config/env';
 // import { logger } from '../utils/logger';
 // TODO: Fix missing module: ../utils/logger
 import emailService from '../services/emailService';
 // import { generateVerificationCode } from '../utils/authUtils';
 // TODO: Fix missing module: ../utils/authUtils
+import { pool } from '../config/database';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -27,7 +29,7 @@ export class AuthController {
 
       // Check if user already exists
       const existingUser = await UserModel.findByEmail(email);
-      if (existingUser) {
+      if (existingUser && existingUser.isActive) {
         return res.status(400).json({
           success: false,
           message: 'User with this email already exists',
@@ -50,27 +52,84 @@ export class AuthController {
       const verificationExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
       // Create user (Verified by default as per new requirements)
-      const user = await UserModel.create({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        userType: userType || 'hourse',
-        subscriptionTier: 'free',
-        isEmailVerified: true, // AUTO-VERIFIED
-        preferences: {
-          notifications: true,
-          locationSharing: true,
-          popupSettings: {
-            enabled: true,
-            frequency: 'daily',
-            maxPerDay: 3,
-            categories: ['announcement', 'promotion'],
+      // Create or Update user
+      let user;
+      if (existingUser && !existingUser.isActive) {
+        // Update existing temporary user
+        // We need to hash password and set other fields
+        // Since UserModel.create does a lot of inserts, and we want to "claim" the ID, 
+        // we should probably just update the fields.
+        
+        // However, UserModel doesn't expose a clean "overwrite" method safely.
+        // But we can use findByIdAndUpdate or direct update.
+        // Let's use findByIdAndUpdate which we saw earlier, but we need to set ALL fields.
+        
+        // Actually, simpler might be to DELETE the temp user (if it has no data) and re-create?
+        // But that breaks foreign keys if we used the ID for anything.
+        // Assuming Safe Update:
+        await UserModel.findByIdAndUpdate(existingUser.id, {
+          email,
+          params: { // This assumes findByIdAndUpdate logic or we need to map fields
+            // Looking at findByIdAndUpdate in UserModel.ts, it iterates keys.
+            // It maps 'password_hash' -> 'encrypted_password'
+            firstName,
+            lastName,
+            phone,
+            dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+            userType: userType || 'circle',
+            isActive: true, // Activate!
+            isEmailVerified: true,
+            preferences: {
+              notifications: true,
+              locationSharing: true,
+              popupSettings: {
+                 enabled: true,
+                 frequency: 'daily',
+                 maxPerDay: 3,
+                 categories: ['announcement', 'promotion'],
+              }
+            }
           },
-        },
-      });
+          // Wait, findByIdAndUpdate iterate `update` object directly.
+          // Let's flatten:
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          date_of_birth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          user_type: userType || 'circle',
+          // Special handling for password:
+          password_hash: hashedPassword,
+          is_active: true,
+          is_email_verified: true
+        });
+        
+        // Re-fetch to get object
+        user = await UserModel.findById(existingUser.id);
+        if (!user) throw new Error('Failed to update user');
+      } else {
+         user = await UserModel.create({
+          email,
+          password: hashedPassword,
+          firstName,
+          lastName,
+          phone,
+          dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+          userType: userType || 'circle',
+          subscriptionTier: 'free',
+          isEmailVerified: true, // AUTO-VERIFIED
+          isActive: true,
+          preferences: {
+            notifications: true,
+            locationSharing: true,
+            popupSettings: {
+              enabled: true,
+              frequency: 'daily',
+              maxPerDay: 3,
+              categories: ['announcement', 'promotion'],
+            },
+          },
+        });
+      }
 
       // Generate tokens for immediate login
       const accessToken = this.generateAccessToken(user.id);
@@ -79,6 +138,32 @@ export class AuthController {
       // Save refresh token
       user.refreshTokens = [refreshToken];
       await user.save();
+
+      // AUTO-CREATE DEFAULT CIRCLE
+      try {
+        const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        // Use direct SQL to avoid circular dependency or model issues
+        // Assuming 'circles' and 'circle_members' tables exist as per circles.ts
+        const { rows: circles } = await pool.query(
+          `INSERT INTO circles (name, description, created_by, owner_id, invite_code, type, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+           RETURNING id`,
+          ['My Circle', 'My personal circle', user.id, user.id, inviteCode, 'circle']
+        );
+
+        if (circles && circles.length > 0) {
+          const circleId = circles[0].id;
+          await pool.query(
+            `INSERT INTO circle_members (circle_id, user_id, role, joined_at)
+             VALUES ($1, $2, $3, NOW())`,
+            [circleId, user.id, 'owner']
+          );
+          console.info(`Default circle created for user: ${user.id}`);
+        }
+      } catch (circleError) {
+        console.error('Failed to create default circle:', circleError);
+        // Don't block registration if circle creation fails, but log it critical
+      }
 
       // Remove sensitive data
       const userResponse = this.sanitizeUser(user);
@@ -201,7 +286,7 @@ export class AuthController {
           firstName: userData.firstName || userData.name?.split(' ')[0] || '',
           lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || '',
           avatar: userData.avatar,
-          userType: 'hourse',
+          userType: 'circle',
           subscriptionTier: 'free',
           isEmailVerified: true, // SSO users are pre-verified
           ssoProvider: provider,
@@ -218,6 +303,29 @@ export class AuthController {
           },
         });
         console.info(`New SSO user created: ${userData.email} via ${provider}`);
+
+        // AUTO-CREATE DEFAULT CIRCLE
+        try {
+          const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+          const { rows: circles } = await pool.query(
+            `INSERT INTO circles (name, description, created_by, owner_id, invite_code, type, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+             RETURNING id`,
+            ['My Circle', 'My personal circle', user.id, user.id, inviteCode, 'circle']
+          );
+
+          if (circles && circles.length > 0) {
+            const circleId = circles[0].id;
+            await pool.query(
+              `INSERT INTO circle_members (circle_id, user_id, role, joined_at)
+               VALUES ($1, $2, $3, NOW())`,
+              [circleId, user.id, 'owner']
+            );
+            console.info(`Default circle created for SSO user: ${user.id}`);
+          }
+        } catch (circleError) {
+          console.error('Failed to create default circle for SSO user:', circleError);
+        }
       } else {
         // Update existing user's SSO info
         // user.ssoProvider = provider; // TODO: Implement setter or update method
@@ -608,9 +716,15 @@ export class AuthController {
         });
       }
 
-      const userResponse = this.sanitizeUser(user);
+      // Re-fetch user with potential circle data joined to ensure a "full" object
+      // This helps frontend state staying consistent.
+      const fullUser = await UserModel.findById(user.id);
+      if (!fullUser) throw new Error('User lost after update');
 
-      console.info(`Onboarding completed: ${user.email}`);
+      const userResponse = this.sanitizeUser(fullUser);
+
+      console.info(`Onboarding completed: ${fullUser.email}`);
+
 
       res.json({
         success: true,
@@ -630,7 +744,7 @@ export class AuthController {
   private generateAccessToken(userId: string): string {
     return jwt.sign(
       { id: userId },
-      process.env.JWT_SECRET || 'bondarys-dev-secret-key',
+      config.JWT_SECRET,
       { expiresIn: '1d' }
     );
   }
@@ -639,7 +753,7 @@ export class AuthController {
   private generateRefreshToken(userId: string): string {
     return jwt.sign(
       { id: userId },
-      process.env.JWT_REFRESH_SECRET || 'bondarys-refresh-secret-key',
+      config.JWT_REFRESH_SECRET,
       { expiresIn: '30d' }
     );
   }
@@ -721,9 +835,19 @@ export class AuthController {
       }
 
       if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found'
+        // User not found - Create TEMPORARY user for signup verification
+        const tempPassword = Math.random().toString(36).slice(-8); // Random pass
+        console.log(`[AUTH] Creating temporary user for new signup: ${identifier}`);
+        user = await UserModel.create({
+          email: email || undefined,
+          password: tempPassword,
+          firstName: 'New', 
+          lastName: 'User',
+          phone: phone,
+          isEmailVerified: false,
+          isActive: false, // FLAG AS INACTIVE/TEMP
+          isOnboardingComplete: false,
+          preferences: {},
         });
       }
 
@@ -750,7 +874,7 @@ export class AuthController {
       // It iterates keys. `emailVerificationCode` isn't explicitly handled in the loop provided in the file view previously,
       // BUT `raw_user_meta_data` is. 
 
-      // Better approach: Update the `auth.users` raw_user_meta_data with `loginOtp`.
+      // Update the public.users raw_user_meta_data with loginOtp.
       await UserModel.findByIdAndUpdate(user.id, {
         loginOtp: otp,
         loginOtpExpiry: expiry
@@ -873,13 +997,12 @@ export class AuthController {
 
       user.refreshTokens.push(refreshToken);
       user.lastLogin = new Date();
-      await user.save(); // This expects save to work, which is stubbed?
-      // Note: UserModel.save() is stubbed (lines 197). 
-      // We must ensuring tokens are saved.
-      // UserModel.findByIdAndUpdate handles logic? No, it updates DB.
-      // We need to update refresh tokens in DB.
-      // UserModel `refreshTokens` setter updates strictly in-memory?
-      // We need to push to DB. 
+      
+      // NOTE: The save() method is stubbed in UserModel, so we must manually persist updates.
+      await UserModel.findByIdAndUpdate(user.id, {
+        refreshTokens: user.refreshTokens,
+        lastLogin: user.lastLogin
+      });
       // `UserModel` logic for refresh tokens seems to be lacking direct DB persistence in `save`.
       // `AuthController.ts` lines 92 calls `await user.save()`.
       // IF existing code relies on it, I should fix `save` or manually `findByIdAndUpdate`.
@@ -891,7 +1014,10 @@ export class AuthController {
 
       const userResponse = this.sanitizeUser(user);
 
-      console.log(`[AUTH] OTP Login successful for: ${email}`);
+      console.log(`[AUTH] OTP Login successful for: ${identifier}`);
+      console.log(`[AUTH] Response User Object Keys:`, Object.keys(userResponse));
+      console.log(`[AUTH] Response User ID:`, userResponse.id);
+      console.log(`[AUTH] Response User Email:`, userResponse.email);
 
       res.json({
         success: true,

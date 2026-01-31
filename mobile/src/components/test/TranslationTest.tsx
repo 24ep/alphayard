@@ -14,8 +14,8 @@ const TranslationTest: React.FC = () => {
     'nav.settings',
     'ui.button.save',
     'ui.button.cancel',
-    'hourse.loadError',
-    'profile.familySettings',
+    'Circle.loadError',
+    'profile.circleSettings',
     'auth.login',
     'auth.register'
   ];
@@ -67,3 +67,4 @@ const styles = StyleSheet.create({
 });
 
 export default TranslationTest;
+

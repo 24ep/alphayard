@@ -28,7 +28,6 @@ app.use('/api/admin/auth', adminUsersRoutes);
 // Standard auth routes (for mobile app)
 import authRoutes from './routes/auth';
 import socialRoutes from './routes/social.mobile';
-import { initializeSupabase } from './services/supabaseService';
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/auth', authRoutes); // Also mount without v1 prefix
@@ -41,8 +40,11 @@ const PORT = parseInt(process.env.PORT || '3000');
 
 async function start() {
     try {
-        await initializeSupabase();
-        console.log('✅ Supabase initialized');
+        // Database verification instead of Supabase
+        const { pool } = require('./config/database');
+        await pool.query('SELECT 1');
+        console.log('✅ Database connection verified');
+        
         server.listen(PORT, () => {
             console.log(`🚀 Minimal server running on port ${PORT}`);
             console.log(`📱 Mobile login: POST http://127.0.0.1:${PORT}/api/v1/auth/login`);

@@ -41,7 +41,7 @@ export interface Database {
             };
             privacy: {
               location_sharing: boolean;
-              profile_visibility: 'public' | 'hourse' | 'private';
+              profile_visibility: 'public' | 'Circle' | 'private';
               data_sharing: boolean;
             };
           };
@@ -50,8 +50,8 @@ export interface Database {
             status: string;
             expires_at: string;
           } | null;
-          family_id: string | null;
-          family_role: 'admin' | 'member' | null;
+          circle_id: string | null;
+          circle_role: 'admin' | 'member' | null;
           emergency_contacts: Array<{
             id: string;
             name: string;
@@ -83,7 +83,7 @@ export interface Database {
             };
             privacy: {
               location_sharing: boolean;
-              profile_visibility: 'public' | 'hourse' | 'private';
+              profile_visibility: 'public' | 'Circle' | 'private';
               data_sharing: boolean;
             };
           };
@@ -92,8 +92,8 @@ export interface Database {
             status: string;
             expires_at: string;
           } | null;
-          family_id?: string | null;
-          family_role?: 'admin' | 'member' | null;
+          circle_id?: string | null;
+          circle_role?: 'admin' | 'member' | null;
           emergency_contacts?: Array<{
             id: string;
             name: string;
@@ -125,7 +125,7 @@ export interface Database {
             };
             privacy: {
               location_sharing: boolean;
-              profile_visibility: 'public' | 'hourse' | 'private';
+              profile_visibility: 'public' | 'Circle' | 'private';
               data_sharing: boolean;
             };
           };
@@ -134,8 +134,8 @@ export interface Database {
             status: string;
             expires_at: string;
           } | null;
-          family_id?: string | null;
-          family_role?: 'admin' | 'member' | null;
+          circle_id?: string | null;
+          circle_role?: 'admin' | 'member' | null;
           emergency_contacts?: Array<{
             id: string;
             name: string;

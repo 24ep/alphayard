@@ -13,7 +13,7 @@ interface Location {
   accuracy?: number;
 }
 
-interface FamilyLocation {
+interface CircleLocation {
   id: string;
   userId: string;
   userName: string;
@@ -26,11 +26,11 @@ interface FamilyLocation {
 
 interface LocationContextType {
   currentLocation: Location | null;
-  familyLocations: FamilyLocation[];
+  circleLocations: CircleLocation[];
   isLoading: boolean;
   error: string | null;
   updateLocation: (latitude: number, longitude: number) => Promise<void>;
-  refreshFamilyLocations: () => Promise<void>;
+  refreshCircleLocations: () => Promise<void>;
   shareLocation: () => Promise<void>;
 }
 
@@ -42,7 +42,7 @@ interface LocationProviderProps {
 
 export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) => {
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
+  const [circleLocations, setCircleLocations] = useState<CircleLocation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuth();
@@ -84,9 +84,9 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
           });
         }
 
-        // Fetch family locations if authenticated (this doesn't require location permission)
+        // Fetch circle locations if authenticated (this doesn't require location permission)
         if (isMounted && isAuthenticated) {
-          await refreshFamilyLocations();
+          await refreshCircleLocations();
         }
       } catch (e) {
         // Handle permission errors gracefully
@@ -115,12 +115,12 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     };
   }, [isAuthenticated]);
 
-  // Refresh family locations when authentication state changes
+  // Refresh circle locations when authentication state changes
   useEffect(() => {
     if (isAuthenticated) {
-      refreshFamilyLocations();
+      refreshCircleLocations();
     } else {
-      setFamilyLocations([]);
+      setCircleLocations([]);
     }
   }, [isAuthenticated]);
 
@@ -151,21 +151,21 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
     }
   };
 
-  const refreshFamilyLocations = async () => {
+  const refreshCircleLocations = async () => {
     try {
       setIsLoading(true);
       setError(null);
 
       if (!isAuthenticated) {
-        setFamilyLocations([]);
+        setCircleLocations([]);
         return;
       }
 
       const response = await api.get('/location');
       const { locations } = response.data;
 
-      // Transform API response to FamilyLocation format
-      const transformedLocations: FamilyLocation[] = locations.map((loc: any) => ({
+      // Transform API response to CircleLocation format
+      const transformedLocations: CircleLocation[] = locations.map((loc: any) => ({
         id: loc.userId || loc.id,
         userId: loc.userId,
         userName: loc.user ? `${loc.user.firstName || ''} ${loc.user.lastName || ''}`.trim() : 'Unknown',
@@ -176,10 +176,10 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
         isOnline: true, // Could be enhanced with presence data
       }));
 
-      setFamilyLocations(transformedLocations);
+      setCircleLocations(transformedLocations);
     } catch (err) {
-      console.error('Failed to refresh family locations:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh hourse locations');
+      console.error('Failed to refresh circle locations:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh Circle locations');
       // Keep previous locations on error
     } finally {
       setIsLoading(false);
@@ -203,11 +203,11 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 
   const value: LocationContextType = {
     currentLocation,
-    familyLocations,
+    circleLocations,
     isLoading,
     error,
     updateLocation,
-    refreshFamilyLocations,
+    refreshCircleLocations,
     shareLocation,
   };
 

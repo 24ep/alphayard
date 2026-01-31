@@ -53,7 +53,7 @@ const PrivacyScreen: React.FC = () => {
                   3. Location Information
                 </Heading>
                 <Text color="gray.700" fontSize="sm" lineHeight="md">
-                  With your consent, we may collect and process your location information to provide hourse safety features.
+                  With your consent, we may collect and process your location information to provide Circle safety features.
                 </Text>
               </VStack>
 

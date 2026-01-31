@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, Animated, Alert } from 'react-native';
+import { View, Animated, Alert, ImageBackground } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
@@ -7,12 +8,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import { homeStyles } from '../../styles/homeStyles';
 import { SocialTab } from '../../components/home/SocialTab';
 import { useUserData } from '../../contexts/UserDataContext';
-import { useHomeScreen } from '../../hooks/home/useHomeScreen';
+import { useLegacyHomeScreen } from '../../hooks/home/useLegacyHomeScreen';
 import { FloatingCreatePostButton } from '../../components/home/FloatingCreatePostButton';
 import { CreatePostModal } from '../../components/home/CreatePostModal';
 import { CommentDrawer } from '../../components/home/CommentDrawer';
 import { WelcomeSection } from '../../components/home/WelcomeSection';
-import { useHomeBackground } from '../../hooks/useAppConfig';
+import { ScreenBackground } from '../../components/ScreenBackground';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { socialService } from '../../services/dataServices';
@@ -20,8 +21,8 @@ import { SortOrder, GeoScope, DistanceUnit, CustomCoordinates } from '../../comp
 import { LocationFilterDrawer } from '../../components/social/LocationFilterDrawer';
 
 const SocialScreen: React.FC = () => {
-    useHomeBackground();
-    const { families, selectedFamily } = useUserData();
+    const { families, selectedCircle } = useUserData();
+    // useHomeBackground();
     const [socialRefreshKey, setSocialRefreshKey] = useState(0);
     const [isPosting, setIsPosting] = useState(false);
 
@@ -43,7 +44,7 @@ const SocialScreen: React.FC = () => {
         handleAddComment,
         handleLikeComment,
         handleLinkPress,
-    } = useHomeScreen();
+    } = useLegacyHomeScreen();
 
     const [postMedia, setPostMedia] = useState<{ type: 'image' | 'video'; uri: string } | null>(null);
     const [postLocationLabel, setPostLocationLabel] = useState<string | null>(null);
@@ -109,23 +110,23 @@ const SocialScreen: React.FC = () => {
         try {
             setIsPosting(true);
             if (!families || families.length === 0) {
-                Alert.alert('No Family Found', 'You need to join a family to post.');
+                Alert.alert('No Circle Found', 'You need to join a circle to post.');
                 setIsPosting(false);
                 return;
             }
 
-            const matchingFamily = (families as any[]).find(f => f.name === selectedFamily);
-            const targetFamilyId = matchingFamily?.id || (families as any[])[0]?.id;
+            const matchingCircle = (families as any[]).find(f => f.name === selectedCircle);
+            const targetCircleId = matchingCircle?.id || (families as any[])[0]?.id;
 
-            if (!targetFamilyId) {
-                Alert.alert('Error', 'Could not determine which family to post to.');
+            if (!targetCircleId) {
+                Alert.alert('Error', 'Could not determine which circle to post to.');
                 setIsPosting(false);
                 return;
             }
 
             const created = {
                 content: newPostContent,
-                familyId: targetFamilyId,
+                circleId: targetCircleId,
                 media: postMedia ? { type: postMedia.type, url: postMedia.uri } : undefined,
                 location: postLocationLabel || undefined,
                 latitude: postCoordinates?.latitude,
@@ -148,7 +149,7 @@ const SocialScreen: React.FC = () => {
         }
     };
 
-    const currentFamilyId = (families as any[]).find(f => f.name === selectedFamily)?.id;
+    const currentCircleId = (families as any[]).find(f => f.name === selectedCircle)?.id;
 
     const { animateToHome, cardMarginTopAnim } = useNavigationAnimation();
 
@@ -158,18 +159,7 @@ const SocialScreen: React.FC = () => {
         }, [animateToHome])
     );
 
-    const BackgroundWrapper = useMemo(() => {
-        return ({ children }: { children: React.ReactNode }) => (
-            <LinearGradient
-                colors={['#FA7272', '#FFBBB4', '#FFFFFF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1 }}
-            >
-                {children}
-            </LinearGradient>
-        );
-    }, []);
+    const { theme } = useTheme();
 
     // Filter state lifted from SocialTab
     const [sortOrder, setSortOrder] = useState<SortOrder>('recent');
@@ -180,30 +170,41 @@ const SocialScreen: React.FC = () => {
     const [customCoordinates, setCustomCoordinates] = useState<CustomCoordinates | undefined>();
     const [locationFilterVisible, setLocationFilterVisible] = useState(false);
 
-    const getHeaderTitle = () => {
+    const getHeaderLabel = () => {
         if (geoScope === 'worldwide') return 'Worldwide';
         if (geoScope === 'country') return selectedCountry || 'Country';
         if (geoScope === 'custom') return customCoordinates?.name || 'Custom';
+        if (geoScope === 'following') return 'Following';
         // Nearby
         const dist = distanceUnit === 'mile' ? (distanceKm || 0) * 0.621371 : (distanceKm || 0);
         return `Nearby ${dist.toFixed(0)}${distanceUnit === 'mile' ? 'mi' : 'km'}`;
     };
 
+    const getHeaderIcon = () => {
+        if (geoScope === 'worldwide') return 'earth';
+        if (geoScope === 'country') return 'flag';
+        if (geoScope === 'custom') return 'crosshairs-gps';
+        if (geoScope === 'following') return 'account-group';
+        return 'map-marker-radius'; // Nearby
+    };
+
     return (
-        <BackgroundWrapper>
+        <ScreenBackground screenId="social">
             <SafeAreaView style={homeStyles.container}>
                 <WelcomeSection
                     mode="social"
-                    title={getHeaderTitle()}
+                    title={getHeaderLabel()}
+                    labelAbove="Social Feed"
+                    leftIcon={getHeaderIcon()}
                     onTitlePress={() => setLocationFilterVisible(true)}
-                // Removed onLocationFilterPress logic as it's now title based
-                />
+                >
+                    <View style={{ height: 20 }} />
+                </WelcomeSection>
 
                 <Animated.View style={[
                     homeStyles.mainContentCard,
                     {
                         transform: [{ translateY: cardMarginTopAnim }],
-                        marginTop: -16,
                         backgroundColor: '#FFFFFF',
                         flex: 1,
                     }
@@ -211,7 +212,7 @@ const SocialScreen: React.FC = () => {
                     <View style={{ flex: 1, paddingTop: 10 }}>
                         <SocialTab
                             onCommentPress={handleCommentPress}
-                            familyId={currentFamilyId}
+                            circleId={currentCircleId}
                             refreshKey={socialRefreshKey}
                             // Pass Filter Props
                             geoScope={geoScope}
@@ -274,8 +275,9 @@ const SocialScreen: React.FC = () => {
                     onLinkPress={handleLinkPress}
                 />
             </SafeAreaView>
-        </BackgroundWrapper>
+        </ScreenBackground>
     );
 };
 
 export default SocialScreen;
+

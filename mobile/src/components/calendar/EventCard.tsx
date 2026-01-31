@@ -19,7 +19,7 @@ export interface Event {
   endDate: string;
   allDay: boolean;
   location?: string;
-  type: 'hourse' | 'personal' | 'work' | 'school' | 'medical' | 'other';
+  type: 'Circle' | 'personal' | 'work' | 'school' | 'medical' | 'other';
   color: string;
   attendees: string[];
   createdBy: string;
@@ -94,7 +94,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   const getTypeIcon = (type: Event['type']) => {
     switch (type) {
-      case 'hourse': return 'people-outline';
+      case 'Circle': return 'people-outline';
       case 'work': return 'briefcase-outline';
       case 'school': return 'school-outline';
       case 'medical': return 'medical-outline';
@@ -114,7 +114,7 @@ export const EventCard: React.FC<EventCardProps> = ({
 
   const getTypeColor = (type: Event['type']) => {
     switch (type) {
-      case 'hourse': return '#e91e63';
+      case 'Circle': return '#e91e63';
       case 'work': return '#2196f3';
       case 'school': return '#9c27b0';
       case 'medical': return '#f44336';

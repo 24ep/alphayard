@@ -1,11 +1,11 @@
 # Bondarys Web Application
 
-Ultra-clean and premium web application for family management with deep planning and socializing capabilities, featuring a macOS-inspired design system.
+Ultra-clean and premium web application for Circle management with deep planning and socializing capabilities, featuring a macOS-inspired design system.
 
 ## Features
 
 ### Core Features (Mobile Parity)
-- **Family Management**: Create and manage family groups
+- **Circle Management**: Create and manage Circle groups
 - **Social Feed**: Posts, comments, and reactions
 - **Calendar**: Basic calendar with events
 - **Tasks**: Task management and tracking
@@ -18,7 +18,7 @@ Ultra-clean and premium web application for family management with deep planning
 
 ### Advanced Features (Web-Only)
 - **Advanced Calendar**: Multi-view (Month/Week/Day/Agenda/Timeline), recurring events, time zones
-- **Analytics Dashboard**: Interactive charts, family insights, social metrics
+- **Analytics Dashboard**: Interactive charts, Circle insights, social metrics
 - **Advanced Social**: Groups, events, forums, polls, social graphs
 - **Project Planning**: Gantt charts, timelines, task dependencies, templates
 
@@ -124,4 +124,5 @@ npm run lint
 ## License
 
 MIT
+
 

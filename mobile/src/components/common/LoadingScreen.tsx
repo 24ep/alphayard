@@ -128,14 +128,14 @@ const styles = StyleSheet.create({
     textShadowRadius: 0,
     ...Platform.select({
       ios: {
-        fontFamily: 'System',
+        fontCIRCLE: 'System',
         fontWeight: '500',
         textShadowColor: '#FFFFFF',
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 0,
       },
       android: {
-        fontFamily: 'sans-serif-medium',
+        fontCIRCLE: 'sans-serif-medium',
         elevation: 0,
         textShadowColor: '#FFFFFF',
         textShadowOffset: { width: 1, height: 1 },

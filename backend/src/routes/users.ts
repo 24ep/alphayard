@@ -16,8 +16,10 @@ router.get('/', async (_req: any, res: any) => {
     const result = await pool.query(`
       SELECT 
         id, email, first_name, last_name, phone, avatar_url, date_of_birth, 
-        user_type, subscription_tier, family_ids, is_onboarding_complete, 
-        preferences, role, is_active, created_at, updated_at
+        user_type, 
+        (SELECT json_agg(circle_id) FROM circle_members WHERE user_id = users.id) as circle_ids,
+        is_onboarding_complete, 
+        preferences, raw_user_meta_data->>'role' as role, is_active, created_at, updated_at
       FROM users
       ORDER BY created_at DESC
     `);
@@ -32,9 +34,8 @@ router.get('/', async (_req: any, res: any) => {
       phone: u.phone || undefined,
       avatar: u.avatar_url || undefined,
       dateOfBirth: u.date_of_birth || undefined,
-      userType: (u.user_type || 'hourse') as 'hourse' | 'children' | 'seniors',
-      subscriptionTier: (u.subscription_tier || 'free') as 'free' | 'premium' | 'elite',
-      familyIds: u.family_ids || [],
+      userType: (u.user_type || 'circle') as 'circle' | 'children' | 'seniors',
+      circleIds: u.circle_ids || [],
       isOnboardingComplete: u.is_onboarding_complete || false,
       preferences: u.preferences || {
         notifications: true,
@@ -46,7 +47,7 @@ router.get('/', async (_req: any, res: any) => {
           categories: ['announcement', 'promotion']
         }
       },
-      role: (u.role || 'user') as 'admin' | 'moderator' | 'user' | 'family_admin',
+      role: (u.role || 'user') as 'admin' | 'moderator' | 'user' | 'circle_admin',
       status: (u.is_active ? 'active' : 'inactive') as 'active' | 'inactive' | 'pending' | 'suspended',
       isVerified: true,
       createdAt: u.created_at,
@@ -68,8 +69,10 @@ router.get('/profile', async (req: any, res: any) => {
     const result = await pool.query(`
       SELECT 
         id, email, first_name, last_name, avatar_url, phone, date_of_birth, 
-        user_type, subscription_tier, family_ids, is_onboarding_complete, 
-        preferences, role, is_active, created_at, updated_at
+        user_type, 
+        (SELECT json_agg(circle_id) FROM circle_members WHERE user_id = users.id) as circle_ids,
+        is_onboarding_complete, 
+        preferences, raw_user_meta_data->>'role' as role, is_active, created_at, updated_at
       FROM users
       WHERE id = $1
     `, [req.user.id]);
@@ -92,9 +95,8 @@ router.get('/profile', async (req: any, res: any) => {
         avatar: user.avatar_url,
         phone: user.phone,
         dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'hourse',
-        subscriptionTier: user.subscription_tier || 'free',
-        familyIds: user.family_ids || [],
+        userType: user.user_type || 'circle',
+        circleIds: user.circle_ids || [],
         isOnboardingComplete: user.is_onboarding_complete || false,
         preferences: user.preferences || {
           notifications: true,
@@ -185,3 +187,4 @@ router.put('/profile', [
 });
 
 export default router;
+

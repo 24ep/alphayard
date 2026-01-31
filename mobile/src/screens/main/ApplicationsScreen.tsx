@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   Dimensions,
   TextInput,
@@ -16,12 +15,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import IconIon from 'react-native-vector-icons/Ionicons';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../../types/navigation';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../hooks/useAuth';
-import { useFamily } from '../../hooks/useFamily';
+import { useCircle } from '../../hooks/useCircle';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { colors } from '../../theme/colors';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { useApplicationListBackground } from '../../hooks/useAppConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -77,7 +76,7 @@ const ApplicationsScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const { user } = useAuth();
-  const { currentFamily } = useFamily();
+  const { currentCircle } = useCircle();
 
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,7 +89,7 @@ const ApplicationsScreen: React.FC = () => {
     {
       id: 'gallery',
       name: 'Gallery',
-      description: 'hourse photo sharing',
+      description: 'Circle photo sharing',
       icon: 'image',
       color: '#FF6B6B',
       route: 'Gallery',
@@ -114,7 +113,7 @@ const ApplicationsScreen: React.FC = () => {
     {
       id: 'social',
       name: 'Social',
-      description: 'hourse social network',
+      description: 'Circle social network',
       icon: 'people',
       color: '#FFA07A',
       route: 'Social',
@@ -174,7 +173,7 @@ const ApplicationsScreen: React.FC = () => {
     {
       id: 'goals',
       name: 'Goals',
-      description: 'hourse goals',
+      description: 'Circle goals',
       icon: 'trophy',
       color: '#F8C471',
       route: 'Goals',
@@ -186,7 +185,7 @@ const ApplicationsScreen: React.FC = () => {
     {
       id: 'location',
       name: 'Location',
-      description: 'hourse tracking',
+      description: 'Circle tracking',
       icon: 'location',
       color: '#3498DB',
       route: 'Location',
@@ -210,7 +209,7 @@ const ApplicationsScreen: React.FC = () => {
     {
       id: 'budget',
       name: 'Budget',
-      description: 'hourse budget',
+      description: 'Circle budget',
       icon: 'wallet',
       color: '#27AE60',
       route: 'Budget',
@@ -266,14 +265,14 @@ const ApplicationsScreen: React.FC = () => {
       gradient: ['#C0392B', '#D0493B'],
     },
 
-    // hourse Settings
+    // Circle Settings
     {
-      id: 'hourse',
-      name: 'hourse',
-      description: 'hourse settings',
+      id: 'Circle',
+      name: 'Circle',
+      description: 'Circle settings',
       icon: 'people-circle',
       color: '#9B59B6',
-      route: 'hourse',
+      route: 'Circle',
       category: 'settings',
       gradient: ['#9B59B6', '#AB69C6'],
     },
@@ -442,7 +441,7 @@ const ApplicationsScreen: React.FC = () => {
       },
       {
         title: 'Settings',
-        apps: appsList.filter(app => ['hourse'].includes(app.id))
+        apps: appsList.filter(app => ['Circle'].includes(app.id))
       }
     ];
 
@@ -479,13 +478,17 @@ const ApplicationsScreen: React.FC = () => {
     return <LoadingSpinner fullScreen />;
   }
 
+  /* 
+   * NEW: Use dynamic background instead of hardcoded LinearGradient
+   */
+  const { background: dynamicBackground, loading: backgroundLoading } = useApplicationListBackground();
+
   const filteredApps = getFilteredApps();
 
   return (
-    <LinearGradient
-      colors={['#FA7272', '#FFBBB4', '#FFFFFF']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <ScreenBackground
+      background={dynamicBackground}
+      loading={backgroundLoading}
       style={styles.container}
     >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -567,7 +570,7 @@ const ApplicationsScreen: React.FC = () => {
           </ScrollView>
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </ScreenBackground>
   );
 };
 

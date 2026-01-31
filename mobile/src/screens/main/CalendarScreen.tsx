@@ -50,9 +50,9 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
 
   const { cardMarginTopAnim, animateToHome } = useNavigationAnimation();
 
-  // Family selection (match Gallery/Home header outside the card)
-  const [showFamilyDropdown, setShowFamilyDropdown] = useState(false);
-  const [selectedFamily, _setSelectedFamily] = useState('Smith Family');
+  // Circle selection (match Gallery/Home header outside the card)
+  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
+  const [selectedCircle, _setSelectedCircle] = useState('Smith Circle');
 
   // Calendar state
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
@@ -572,3 +572,4 @@ const styles = StyleSheet.create({
 });
 
 export default CalendarScreen;
+

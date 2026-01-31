@@ -28,195 +28,141 @@ interface ChatMessage {
   isOwnMessage: boolean;
 }
 
+import { chatApi } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import { useSocket } from '../../contexts/SocketContext';
+
 interface RouteParams {
-  familyId: string;
-  familyName: string;
-  memberId: string;
-  memberName: string;
-  memberType?: string;
-  isGroupChat: boolean;
+  chatId: string;
+  chatName: string;
+  circleId?: string;
+  memberName?: string;
 }
 
 const IndividualChatScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const params = route.params as RouteParams;
+  const { chatId, chatName } = params;
+
+  const { user } = useAuth();
+  const { on, off, isConnected, sendMessage } = useSocket();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
-  const recordingAnimation = useRef(new Animated.Value(0)).current;
-
-  // Mock messages for individual chat
-  const mockMessages: ChatMessage[] = [
-    {
-      id: '1',
-      text: 'Hey! How are you doing today?',
-      senderId: 'member',
-      senderName: params.memberName,
-      senderAvatar: `https://api.dicebear.com/7.x/personas/svg?seed=${params.memberName.toLowerCase()}&backgroundColor=ffd5dc`,
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000), // 3 hours ago
-      isOwnMessage: false,
-    },
-    {
-      id: '2',
-      text: 'I\'m doing great! Just finished my work. How about you?',
-      senderId: 'user',
-      senderName: 'You',
-      senderAvatar: 'https://api.dicebear.com/7.x/personas/svg?seed=user&backgroundColor=4f46e5',
-      timestamp: new Date(Date.now() - 2.5 * 60 * 60 * 1000), // 2.5 hours ago
-      isOwnMessage: true,
-    },
-    {
-      id: '3',
-      text: 'Pretty good! Are you free for dinner tonight?',
-      senderId: 'member',
-      senderName: params.memberName,
-      senderAvatar: `https://api.dicebear.com/7.x/personas/svg?seed=${params.memberName.toLowerCase()}&backgroundColor=ffd5dc`,
-      timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000), // 1 hour ago
-      isOwnMessage: false,
-    },
-    {
-      id: '4',
-      text: 'Yes, that sounds great! What time?',
-      senderId: 'user',
-      senderName: 'You',
-      senderAvatar: 'https://api.dicebear.com/7.x/personas/svg?seed=user&backgroundColor=4f46e5',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-      isOwnMessage: true,
-    },
-    {
-      id: '5',
-      text: 'How about 7 PM? I\'ll pick you up.',
-      senderId: 'member',
-      senderName: params.memberName,
-      senderAvatar: `https://api.dicebear.com/7.x/personas/svg?seed=${params.memberName.toLowerCase()}&backgroundColor=ffd5dc`,
-      timestamp: new Date(Date.now() - 10 * 60 * 1000), // 10 minutes ago
-      isOwnMessage: false,
-    },
-  ];
 
   useEffect(() => {
-    setMessages(mockMessages);
-  }, []);
+    loadMessages();
 
-  const handleSendMessage = () => {
-    if (newMessage.trim()) {
-      const message: ChatMessage = {
-        id: Date.now().toString(),
-        text: newMessage.trim(),
-        senderId: 'user',
-        senderName: 'You',
-        senderAvatar: 'https://api.dicebear.com/7.x/personas/svg?seed=user&backgroundColor=4f46e5',
-        timestamp: new Date(),
-        isOwnMessage: true,
-      };
-      
-      setMessages(prev => [...prev, message]);
-      setNewMessage('');
-      
-      // Scroll to bottom
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    // Listen for incoming messages
+    on('new-message', (data: any) => {
+        // If message belongs to this chat
+        if (data.chatId === chatId || data.message?.chatRoomId === chatId) {
+           const msg = data.message || data;
+           addMessageToState(msg);
+        }
+    });
+
+    return () => {
+      off('new-message');
+    };
+  }, [chatId]);
+
+  const loadMessages = async () => {
+    try {
+      setLoading(true);
+      const res = await chatApi.getMessages(chatId);
+      if (res.success && res.data) {
+        // Map API messages to UI format
+        const formatted = res.data.map((m: any) => ({
+          id: m.id,
+          text: m.content,
+          senderId: m.senderId,
+          senderName: m.sender?.firstName || 'Unknown',
+          senderAvatar: m.sender?.avatarUrl,
+          timestamp: new Date(m.createdAt),
+          isOwnMessage: m.senderId === user?.id
+        }));
+        setMessages(formatted.reverse()); // Assuming API returns newest first? Usually older first is better for chat lists but let's check
+      }
+    } catch (err) {
+      console.error('Failed to load messages', err);
+    } finally {
+      setLoading(false);
     }
   };
 
+  const addMessageToState = (m: any) => {
+      const newMsg = {
+          id: m.id || Date.now().toString(),
+          text: m.content || m.text,
+          senderId: m.senderId,
+          senderName: m.sender?.firstName || m.senderName || 'Unknown',
+          senderAvatar: m.sender?.avatarUrl,
+          timestamp: new Date(m.createdAt || Date.now()),
+          isOwnMessage: m.senderId === user?.id
+      };
+      setMessages(prev => [...prev, newMsg]);
+      setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+
+  const handleFileSelect = () => {
+      // Placeholder for file selection
+      handleMoreOptions();
+  };
+
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+        const text = newMessage.trim();
+        setNewMessage(''); // Clear immediately for UX
+
+        // Optimistic update
+        /* 
+        const optimMsg = {
+            id: Date.now().toString(),
+            text: text,
+            senderId: user?.id || 'me',
+            senderName: 'You',
+            senderAvatar: user?.avatarUrl,
+            timestamp: new Date(),
+            isOwnMessage: true
+        };
+        setMessages(prev => [...prev, optimMsg]);
+        */
+
+        if (isConnected && sendMessage) {
+            sendMessage(chatId, text, 'text');
+        } else {
+            // Fallback to API
+            await chatApi.sendMessage(chatId, { content: text, type: 'text' });
+            loadMessages(); // Reload to get the real message back
+        }
+    } catch (err) {
+        console.error('Failed to send', err);
+        Alert.alert('Error', 'Failed to send message');
+    }
+  };
+
+  // Voice/Video call handlers - Placeholder for now
   const handleVoiceCall = () => {
-    Alert.alert(
-      'Voice Call',
-      `Start voice call with ${params.memberName}?`,
-      [
+    Alert.alert('Voice Call', `Start voice call with ${chatName}?`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => {
-          console.log('Starting voice call...');
-          // Navigate to voice call screen
-          navigation.navigate('VoiceCall', {
-            familyId: params.familyId,
-            familyName: params.familyName,
-            memberId: params.memberId,
-            memberName: params.memberName,
-            isVideoCall: false,
-          });
-        }},
-      ]
-    );
+        { text: 'Call', onPress: () => console.log('Call started') }
+    ]);
   };
 
   const handleVideoCall = () => {
-    Alert.alert(
-      'Video Call',
-      `Start video call with ${params.memberName}?`,
-      [
+    Alert.alert('Video Call', `Start video call with ${chatName}?`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Call', onPress: () => {
-          console.log('Starting video call...');
-          // Navigate to video call screen
-          navigation.navigate('VideoCall', {
-            familyId: params.familyId,
-            familyName: params.familyName,
-            memberId: params.memberId,
-            memberName: params.memberName,
-            isVideoCall: true,
-          });
-        }},
-      ]
-    );
-  };
-
-  const handleVoiceMessage = () => {
-    if (!isRecording) {
-      // Start recording
-      setIsRecording(true);
-      setIsVoiceMode(true);
-      
-      // Start recording animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(recordingAnimation, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(recordingAnimation, {
-            toValue: 0,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-      
-      console.log('Started recording voice message...');
-    } else {
-      // Stop recording
-      setIsRecording(false);
-      setIsVoiceMode(false);
-      recordingAnimation.stopAnimation();
-      
-      console.log('Stopped recording voice message...');
-      
-      // Simulate sending voice message
-      const voiceMessage: ChatMessage = {
-        id: Date.now().toString(),
-        text: '🎤 Voice message',
-        senderId: 'user',
-        senderName: 'You',
-        senderAvatar: 'https://api.dicebear.com/7.x/personas/svg?seed=user&backgroundColor=4f46e5',
-        timestamp: new Date(),
-        isOwnMessage: true,
-      };
-      
-      setMessages(prev => [...prev, voiceMessage]);
-      
-      // Scroll to bottom
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    }
+        { text: 'Call', onPress: () => console.log('Video Call started') }
+    ]);
   };
 
   const formatTime = (timestamp: Date) => {
@@ -241,14 +187,14 @@ const IndividualChatScreen: React.FC = () => {
   };
 
   const renderMemberAvatar = () => {
-    const avatarSeed = params.memberName.toLowerCase().replace(/\s+/g, '-');
+    const avatarSeed = (chatName || 'User').toLowerCase().replace(/\s+/g, '-');
     const avatarUrl = `https://api.dicebear.com/7.x/personas/svg?seed=${avatarSeed}&backgroundColor=ffd5dc`;
     
     return (
       <View style={styles.memberAvatar}>
         <View style={styles.avatarContent}>
           <Text style={styles.avatarText}>
-            {params.memberName.charAt(0).toUpperCase()}
+            {(chatName || 'C').charAt(0).toUpperCase()}
           </Text>
           {isOnline && <View style={styles.onlineIndicator} />}
         </View>
@@ -263,13 +209,13 @@ const IndividualChatScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackPress}>
-          <IconIon name="arrow-back" size={24} color="#FFFFFF" />
+          <IconIon name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
         
         <View style={styles.headerInfo}>
           {renderMemberAvatar()}
           <View style={styles.headerText}>
-            <Text style={styles.memberName}>{params.memberName}</Text>
+            <Text style={styles.memberName}>{chatName || 'Chat'}</Text>
             <Text style={styles.memberStatus}>
               {isOnline ? 'Online' : 'Offline'}
             </Text>
@@ -278,15 +224,15 @@ const IndividualChatScreen: React.FC = () => {
         
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.callButton} onPress={handleVoiceCall}>
-            <IconIon name="call" size={20} color="#FFFFFF" />
+            <IconIon name="call" size={20} color="#333333" />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.videoCallButton} onPress={handleVideoCall}>
-            <IconIon name="videocam" size={20} color="#FFFFFF" />
+            <IconIon name="videocam" size={20} color="#333333" />
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.moreButton} onPress={handleMoreOptions}>
-            <IconIon name="ellipsis-vertical" size={24} color="#FFFFFF" />
+            <IconIon name="ellipsis-vertical" size={24} color="#333333" />
           </TouchableOpacity>
         </View>
       </View>
@@ -364,7 +310,7 @@ const IndividualChatScreen: React.FC = () => {
                 <View style={styles.avatarContainer}>
                   <View style={styles.avatar}>
                     <Text style={styles.avatarText}>
-                      {params.memberName.charAt(0).toUpperCase()}
+                      {(chatName || 'C').charAt(0).toUpperCase()}
                     </Text>
                     <View style={styles.onlineIndicator} />
                   </View>
@@ -385,22 +331,20 @@ const IndividualChatScreen: React.FC = () => {
 
         {/* Input */}
         <View style={styles.inputContainer}>
-          <TouchableOpacity style={styles.attachButton}>
-            <IconIon name="add" size={24} color="#666" />
-          </TouchableOpacity>
-          
-          {!isVoiceMode ? (
-            <>
-              <TextInput
+          <View style={styles.inputWrapper}>
+             <TouchableOpacity style={styles.attachButton} onPress={handleFileSelect}>
+                <IconIon name="add" size={24} color="#666" />
+             </TouchableOpacity>
+
+             <TextInput
                 style={styles.textInput}
                 value={newMessage}
                 onChangeText={setNewMessage}
                 placeholder="Type a message..."
                 placeholderTextColor="#999"
-                multiline
                 maxLength={500}
               />
-              
+
               <TouchableOpacity
                 style={[styles.sendButton, newMessage.trim() ? styles.sendButtonActive : null]}
                 onPress={handleSendMessage}
@@ -408,49 +352,11 @@ const IndividualChatScreen: React.FC = () => {
               >
                 <IconIon 
                   name="send" 
-                  size={20} 
+                  size={16} 
                   color={newMessage.trim() ? "#FFFFFF" : "#999"} 
                 />
               </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.voiceButton} onPress={handleVoiceMessage}>
-                <IconIon name="mic" size={20} color="#666" />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.voiceInputContainer}>
-                <Animated.View style={[
-                  styles.recordingIndicator,
-                  {
-                    opacity: recordingAnimation,
-                    transform: [{
-                      scale: recordingAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 1.2],
-                      })
-                    }]
-                  }
-                ]}>
-                  <IconIon name="mic" size={24} color="#FF5A5A" />
-                </Animated.View>
-                <Text style={styles.recordingText}>
-                  {isRecording ? 'Recording... Tap to stop' : 'Tap to record voice message'}
-                </Text>
-              </View>
-              
-              <TouchableOpacity
-                style={[styles.sendButton, styles.sendButtonActive]}
-                onPress={handleVoiceMessage}
-              >
-                <IconIon 
-                  name={isRecording ? "stop" : "mic"} 
-                  size={20} 
-                  color="#FFFFFF" 
-                />
-              </TouchableOpacity>
-            </>
-          )}
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -467,7 +373,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FF5A5A',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     padding: 8,
@@ -511,7 +419,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     position: 'relative',
-    backgroundColor: '#FF5A5A',
+    backgroundColor: '#F0F0F0',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -521,11 +429,11 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#333333',
   },
   memberStatus: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#666666',
   },
   moreButton: {
     padding: 8,
@@ -645,37 +553,39 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E0E0E0',
   },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    width: '100%',
+  },
   attachButton: {
     padding: 8,
-    marginRight: 8,
   },
   textInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    height: 40,
     fontSize: 16,
     color: '#333333',
+    paddingHorizontal: 8,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#E0E0E0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: 4,
   },
   sendButtonActive: {
     backgroundColor: '#FF5A5A',

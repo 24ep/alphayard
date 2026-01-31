@@ -13,7 +13,7 @@ async function setupFinanceDb() {
             CREATE TABLE IF NOT EXISTS financial_accounts (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-                family_id UUID REFERENCES families(id) ON DELETE SET NULL,
+                family_id UUID REFERENCES circles(id) ON DELETE SET NULL,
                 name VARCHAR(255) NOT NULL,
                 type VARCHAR(50) NOT NULL,
                 balance DECIMAL(15, 2) DEFAULT 0,

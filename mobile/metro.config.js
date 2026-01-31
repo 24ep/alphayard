@@ -22,9 +22,10 @@ config.resolver.alias = {
   '@hooks': path.resolve(__dirname, 'src/hooks'),
   '@contexts': path.resolve(__dirname, 'src/contexts'),
   '@store': path.resolve(__dirname, 'src/store'),
-  'react': path.resolve(__dirname, 'node_modules/react'),
-  'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
-  // 'react-native': path.resolve(__dirname, 'node_modules/react-native'),
+  'react': path.resolve(__dirname, '../node_modules/react'),
+  'react-dom': path.resolve(__dirname, '../node_modules/react-dom'),
+  'react-native': path.resolve(__dirname, '../node_modules/react-native'),
+  'react-native-svg': path.resolve(__dirname, 'node_modules/react-native-svg'),
   'styled-components': path.resolve(__dirname, 'node_modules/styled-components'),
 };
 
@@ -35,11 +36,17 @@ config.resolver.extraNodeModules = {
 
 // Prevent Metro from seeing the root node_modules for React
 const rootNodeModules = path.resolve(__dirname, '..', 'node_modules');
+const packages = path.resolve(__dirname, '..', 'packages');
+
+config.watchFolders = [
+  __dirname,
+  rootNodeModules,
+  packages,
+];
+
 config.resolver.blockList = [
-  // Block root React to avoid duplicates (safely handling Windows backslashes)
-  new RegExp(`${rootNodeModules.replace(/\\/g, '\\\\')}\\\\react\\\\.*`),
-  new RegExp(`${rootNodeModules.replace(/\\/g, '\\\\')}\\\\react-dom\\\\.*`),
-  new RegExp(`${rootNodeModules.replace(/\\/g, '\\\\')}\\\\react-native\\\\.*`),
+  // Block nested react-native in expo if present
+  /.*node_modules\/expo\/node_modules\/react-native\/.*/,
 ];
 
 // Add transformer configuration
@@ -53,26 +60,19 @@ config.transformer = {
   }),
 };
 
-/*
-// Patch resolver to ensure PlatformConstants polyfill loads first and handle Web aliasing
-const originalResolveRequest = config.resolver.resolveRequest;
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  // Alias react-native to react-native-web on web platform
-  if (platform === 'web' && moduleName === 'react-native') {
-    return context.resolveRequest(context, 'react-native-web', platform);
-  }
-
-  // If resolving the main entry point, ensure polyfill is loaded
-  if (moduleName === './index' || moduleName === 'index.js') {
-    // This ensures polyfill loads first
-  }
-  return originalResolveRequest
-    ? originalResolveRequest(context, moduleName, platform)
-    : context.resolveRequest(context, moduleName, platform);
-};
-*/
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (platform === 'web') {
+    // Fix for react-native-svg web resolution issue
+    // In v15+, some files try to import from './web/utils' which is a directory containing index.js
+    if (context.originModulePath.includes('react-native-svg') && (moduleName === './web/utils' || moduleName === '../web/utils')) {
+      const originDir = path.dirname(context.originModulePath);
+      const target = moduleName === './web/utils' ? 'web/utils/index.js' : '../web/utils/index.js';
+      return {
+        filePath: path.resolve(originDir, target),
+        type: 'sourceFile',
+      };
+    }
+
     // Alias main react-native package
     if (moduleName === 'react-native') {
       return context.resolveRequest(context, 'react-native-web', platform);
@@ -126,6 +126,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         type: 'sourceFile',
       };
     }
+  } else {
+    // NATIVE PLATFORM RESOLUTION
+    // rely on standard resolution + aliases
+
   }
   return context.resolveRequest(context, moduleName, platform);
 };

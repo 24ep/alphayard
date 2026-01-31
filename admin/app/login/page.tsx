@@ -1,121 +1,237 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authService } from '../../services/authService'
+import { settingsService } from '../../services/settingsService'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Separator } from '@/components/ui/Separator'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Layers } from 'lucide-react'
+
+import { Suspense } from 'react'
+
+function LoginPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [appName, setAppName] = useState('Appkit Admin')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [loginBgStyle, setLoginBgStyle] = useState<React.CSSProperties>({})
+  const [loginBgVideo, setLoginBgVideo] = useState<string | undefined>(undefined)
+
+  // Check if already authenticated andload settings
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+        const redirect = searchParams?.get('redirect') || '/dashboard'
+        router.push(redirect)
+        return
+    }
+    
+    // Load background settings
+    settingsService.getBranding().then(settings => {
+        if (settings?.adminAppName) {
+            setAppName(settings.adminAppName)
+        }
+        if (settings?.logoUrl) {
+            setLogoUrl(settings.logoUrl)
+        }
+
+        if (settings?.loginBackground) {
+            const bg = settings.loginBackground
+            let style: React.CSSProperties = {}
+            let videoUrl: string | undefined
+    
+            if (bg.type === 'solid' && bg.value) {
+                style.backgroundColor = bg.value
+            } else if (bg.type === 'gradient' && bg.value) {
+                 // Fallback if gradient object missing but value present
+                 style.background = bg.value
+            } else if (bg.type === 'gradient' && bg.gradientStops) {
+                 // Construct gradient from stops if available (adapting from existing type)
+                style.background = `linear-gradient(${bg.gradientDirection?.replace('to-', 'to ') || 'to right'}, ${bg.gradientStops?.map(s => `${s.color} ${s.position}%`).join(', ')})`
+            } else if (bg.type === 'image' && bg.value) {
+              style.backgroundImage = `url(${bg.value})`
+              style.backgroundSize = 'cover'
+              style.backgroundPosition = 'center'
+            } else if (bg.type === 'video' && bg.value) {
+              videoUrl = bg.value
+            }
+    
+            setLoginBgStyle(style)
+            setLoginBgVideo(videoUrl)
+        }
+    })
+  }, [router, searchParams])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError('')
+
+    try {
+        await authService.login({ email, password })
+        const redirect = searchParams?.get('redirect') || '/dashboard'
+        router.push(redirect)
+    } catch (err: any) {
+        setError(err.message || 'Login failed - please check your credentials')
+    } finally {
+        setIsLoading(false)
+    }
+  }
+
+  return (
+    <div className="h-screen w-full flex flex-col md:flex-row relative overflow-hidden text-gray-900" style={loginBgStyle}>
+
+      {/* Helper for video background */}
+      {loginBgVideo && (
+        <div className="absolute inset-0 w-full h-full overflow-hidden">
+          <video
+            src={loginBgVideo}
+            className="absolute inset-0 w-full h-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            style={{ filter: 'brightness(0.6)' }}
+          />
+        </div>
+      )}
+
+      {/* Default background if none set */}
+      {Object.keys(loginBgStyle).length === 0 && !loginBgVideo && (
+         <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-gray-200" />
+      )}
+
+      {/* Left Column - App Name & Description */}
+      <div className="flex-1 flex flex-col justify-center p-8 md:p-12 lg:p-20 relative z-10 pointer-events-none">
+        <div className="max-w-3xl space-y-6 pointer-events-auto">
+          <div className="flex items-center space-x-4 mb-2">
+            <div className="p-3 bg-white/50 backdrop-blur-sm rounded-xl border border-gray-200 shadow-sm">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />
+              ) : (
+                <Layers className="h-10 w-10 text-blue-600 fill-blue-600/10" />
+              )}
+            </div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 drop-shadow-sm">
+              {appName}
+            </h1>
+          </div>
+          <p className="text-xl md:text-2xl text-gray-600 font-light max-w-lg leading-relaxed ml-1">
+            Access your administration console to manage content, users, and settings.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Column - Login Panel (40% width on Desktop) */}
+      <div className="w-full md:w-[40%] min-w-[320px] p-4 md:p-6 flex flex-col justify-center relative z-10 h-full">
+        <Card
+          className="w-full h-full relative border border-gray-200 shadow-2xl backdrop-blur-xl flex flex-col justify-center rounded-2xl"
+          style={{
+            backgroundColor: 'rgba(255, 255, 255, 0.8)',
+            borderColor: 'rgba(229, 231, 235, 0.5)',
+          }}
+        >
+          <CardHeader className="space-y-1 pb-2 flex flex-col items-center">
+            <CardTitle className="text-3xl font-bold tracking-tight text-center">
+              Sign in
+            </CardTitle>
+            <CardDescription className="text-center text-gray-500 text-lg">
+              Welcome back
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6 px-8 md:px-12">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="font-medium">Email</Label>
+                <div className="relative group">
+                  <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="bg-white/50 border-white/30 focus:bg-white/90 transition-all hover:bg-white/70"
+                    style={{ paddingLeft: '2.5rem' }}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 transition-colors group-focus-within:text-blue-600" />
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-10 bg-white/50 border-white/30 focus:bg-white/90 transition-all hover:bg-white/70"
+                    style={{ paddingLeft: '2.5rem' }}
+                    required
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {error && (
+                <Alert variant="destructive" className="border-red-500 animate-in fade-in zoom-in-95 duration-200">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>
+                    {error}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5" disabled={isLoading}>
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+
+             <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full bg-gray-200/50" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-transparent px-2 text-gray-500 backdrop-blur-sm rounded-full">
+                       Secure Login
+                    </span>
+                  </div>
+              </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
-    const router = useRouter()
-    const searchParams = useSearchParams()
-    const [email, setEmail] = useState('')
-    const [password, setPassword] = useState('')
-    const [error, setError] = useState('')
-    const [loading, setLoading] = useState(false)
-
-    // Check if already authenticated
-    useEffect(() => {
-        if (authService.isAuthenticated()) {
-            const redirect = searchParams?.get('redirect') || '/dashboard'
-            router.push(redirect)
-        }
-    }, [router, searchParams])
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setLoading(true)
-        setError('')
-
-        try {
-            await authService.login({ email, password })
-            const redirect = searchParams?.get('redirect') || '/dashboard'
-            router.push(redirect)
-        } catch (err: any) {
-            setError(err.message || 'Login failed - please check your credentials')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900">
-            <div className="max-w-md w-full mx-4">
-                <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20">
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                            Bondarys Admin
-                        </h1>
-                        <p className="text-gray-300">
-                            Sign in to access the admin panel
-                        </p>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-200 mb-2">
-                                Email
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                required
-                                className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                placeholder="admin@bondarys.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-200 mb-2">
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                required
-                                className="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                        </div>
-
-                        {error && (
-                            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-3 text-red-200 text-sm">
-                                {error}
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {loading ? (
-                                <span className="flex items-center justify-center">
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Signing in...
-                                </span>
-                            ) : (
-                                'Sign In'
-                            )}
-                        </button>
-                    </form>
-
-                    <div className="mt-6 text-center text-sm text-gray-400">
-                        <p>Default credentials:</p>
-                        <p className="mt-1">
-                            <code className="bg-white/10 px-2 py-1 rounded">admin@bondarys.com</code>
-                        </p>
-                        <p className="mt-1">
-                            <code className="bg-white/10 px-2 py-1 rounded">admin123</code>
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
+  return (
+    <Suspense fallback={<div className="h-screen w-full flex items-center justify-center bg-gray-50">Loading...</div>}>
+      <LoginPageContent />
+    </Suspense>
+  )
 }

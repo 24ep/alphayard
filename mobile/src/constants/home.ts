@@ -167,10 +167,10 @@ export const REPORT_OPTIONS: ReportOption[] = [
 
 export const AVAILABLE_WIDGETS: Widget[] = [
   {
-    id: 'hourse-members',
-    name: 'hourse Members',
-    description: 'Show hourse member avatars and status',
-    category: 'hourse',
+    id: 'Circle-members',
+    name: 'Circle Members',
+    description: 'Show Circle member avatars and status',
+    category: 'Circle',
     enabled: true,
   },
   {
@@ -195,10 +195,10 @@ export const AVAILABLE_WIDGETS: Widget[] = [
     enabled: true,
   },
   {
-    id: 'hourse-status-cards',
-    name: 'hourse Status Cards',
-    description: 'Show hourse member status information',
-    category: 'hourse',
+    id: 'Circle-status-cards',
+    name: 'Circle Status Cards',
+    description: 'Show Circle member status information',
+    category: 'Circle',
     enabled: true,
   },
   {
@@ -223,7 +223,7 @@ export const WALLET_ICONS = [
   'ethereum',
 ];
 
-export const FAMILY_MEMBER_TYPES = [
+export const CIRCLE_MEMBER_TYPES = [
   'parent',
   'child',
   'spouse',
@@ -238,9 +238,9 @@ export const FAMILY_MEMBER_TYPES = [
 
 // Social posts are now fetched from socialService.getPosts()
 
-// Family status cards are now fetched from familyStatusService.getFamilyMembers()
+// Circle status cards are now fetched from circleStatusService.getCircleMembers()
 
-// Family status members are now fetched from familyStatusService.getFamilyMembers()
+// Circle status members are now fetched from circleStatusService.getCircleMembers()
 
 // Appointments are now fetched from appointmentService.getTodaysAppointments()
 
@@ -251,3 +251,5 @@ export const FAMILY_MEMBER_TYPES = [
 // Location data is now fetched from locationDataService.getLocations()
 
 // Widget types are now fetched from widgetService.getWidgetTypes()
+
+

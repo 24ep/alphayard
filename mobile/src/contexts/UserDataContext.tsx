@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
-import { api, safetyApi, locationApi } from '../services/api';
+import { safetyApi, locationApi } from '../services/api';
 import { emotionService, EmotionRecord } from '../services/emotionService';
-import { locationService, FamilyLocation } from '../services/location/locationService';
+import { locationService, CircleLocation } from '../services/location/locationService';
+import collectionService from '../services/collectionService';
 
 // Define types based on what was in HomeScreen
-export interface FamilyMember {
+export interface CircleMember {
     id: string;
     name: string;
     userName: string;
@@ -32,7 +33,7 @@ export interface FamilyMember {
     temperature: number | null;
 }
 
-export interface Family {
+export interface Circle {
     id: string;
     name: string;
     type: string;
@@ -41,7 +42,7 @@ export interface Family {
     createdAt: string;
     ownerId: string;
     avatar_url: string | null;
-    members: FamilyMember[];
+    members: CircleMember[];
     stats: {
         totalMessages: number;
         totalLocations: number;
@@ -50,12 +51,12 @@ export interface Family {
 }
 
 interface UserDataContextValue {
-    families: Family[];
-    selectedFamily: string | null; // Name of the selected family
-    setSelectedFamily: (name: string) => void;
+    families: Circle[];
+    selectedCircle: string | null; // Name of the selected circle
+    setSelectedCircle: (name: string) => void;
 
-    familyStatusMembers: FamilyMember[];
-    familyLocations: FamilyLocation[];
+    circleStatusMembers: CircleMember[];
+    circleLocations: CircleLocation[];
 
     emotionData: EmotionRecord[];
     safetyStats: any;
@@ -73,14 +74,14 @@ const UserDataContext = createContext<UserDataContextValue | undefined>(undefine
 export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const { user } = useAuth();
 
-    const [families, setFamilies] = useState<Family[]>([]);
-    const [selectedFamily, setSelectedFamily] = useState<string | null>(null);
+    const [families, setFamilies] = useState<Circle[]>([]);
+    const [selectedCircle, setSelectedCircle] = useState<string | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
     const [emotionData, setEmotionData] = useState<EmotionRecord[]>([]);
-    const [familyLocations, setFamilyLocations] = useState<FamilyLocation[]>([]);
+    const [circleLocations, setCircleLocations] = useState<CircleLocation[]>([]);
 
     const [safetyStats, setSafetyStats] = useState<any>(null);
     const [locationStats, setLocationStats] = useState<any>(null);
@@ -88,69 +89,71 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
     // Backend integration functions
     const loadFamilies = async () => {
         try {
-            const response: any = await api.get('/families/my-hourse');
-            const hourse = response?.hourse;
+            // Updated to use the dynamic collection system
+            // We fetch the 'circles' collection which contains the circle metadata
+            const response = await collectionService.getCollectionItems('circles');
+            
+            if (response.items && response.items.length > 0) {
+                // Map dynamic items to the app's internal Circle structure
+                const circles = response.items.map((item: any) => {
+                    // Try to map members if they exist in the dynamic data (e.g. relation)
+                    // If not, we might need a separate fetch for 'circle_members', but for now handle what we have
+                    const membersRaw = item.members || []; 
+                    
+                    const members = membersRaw.map((member: any) => ({
+                         id: member.id,
+                        name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
+                        userName: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
+                        role: member.role || 'member',
+                        notifications: 0,
+                        lastLocationUpdate: member.joinedAt || new Date().toISOString(),
+                        address: member.address,
+                        placeLabel: member.placeLabel,
+                        isOnline: !!member.isOnline,
+                        avatar: member.avatar || member.avatarUrl || '',
+                        status: member.isOnline ? ('online' as const) : ('offline' as const),
+                        lastActive: new Date(),
+                        heartRate: 0,
+                        heartRateHistory: [],
+                        steps: 0,
+                        sleepHours: 0,
+                        location: member.location || 'Not Available',
+                        batteryLevel: 0,
+                        isEmergency: false,
+                        mood: member.mood,
+                        activity: null,
+                        temperature: null,
+                    }));
 
-            if (hourse) {
-                const members = (hourse.members || []).map((member: any) => ({
-                    id: member.id,
-                    name: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
-                    userName: `${member.firstName || ''} ${member.lastName || ''}`.trim() || member.email || 'Member',
-                    role: member.role,
-                    notifications: typeof member.notifications === 'number' ? member.notifications : 0,
-                    lastLocationUpdate: member.joinedAt, // Fallback
-                    address: member.address,
-                    placeLabel: member.placeLabel,
-                    isOnline: !!member.isOnline,
-                    avatar: member.avatar || member.avatarUrl || '',
+                    return {
+                        id: item.id,
+                        name: item.name || item.title || 'My Circle',
+                        type: item.type || 'family',
+                        description: item.description || '',
+                        inviteCode: item.inviteCode || item.invite_code || '',
+                        createdAt: item.createdAt,
+                        ownerId: item.ownerId || item.owner_id,
+                        avatar_url: item.avatar || item.avatarUrl || null,
+                        members,
+                        stats: item.stats || {
+                             totalMessages: 0,
+                            totalLocations: 0,
+                            totalMembers: members.length
+                        }
+                    };
+                });
 
-                    // Flatten status mapping here for easier consumption
-                    status: member.isOnline ? ('online' as const) : ('offline' as const),
-                    lastActive: member.lastActive ? new Date(member.lastActive) : new Date(member.joinedAt || Date.now()),
-                    heartRate: member.heartRate ?? 0,
-                    heartRateHistory: member.heartRateHistory || [],
-                    steps: member.steps ?? 0,
-                    sleepHours: member.sleepHours ?? 0,
-                    location: member.location || 'Not Available',
-                    batteryLevel: member.batteryLevel ?? 0,
-                    isEmergency: !!member.isEmergency,
-                    mood: member.mood,
-                    activity: member.activity,
-                    temperature: member.temperature,
-                }));
+                setFamilies(circles);
 
-                const familyForState: Family = {
-                    id: hourse.id,
-                    name: hourse.name,
-                    type: hourse.type,
-                    description: hourse.description,
-                    inviteCode: hourse.invite_code,
-                    createdAt: hourse.created_at,
-                    ownerId: hourse.owner_id,
-                    avatar_url: hourse.avatar || null,
-                    members,
-                    stats: hourse.stats || {
-                        totalMessages: 0,
-                        totalLocations: 0,
-                        totalMembers: members.length,
-                    },
-                };
-
-                setFamilies([familyForState]);
-
-                // Default selection if not set
-                if (!selectedFamily) {
-                    setSelectedFamily(familyForState.name);
+                if (!selectedCircle && circles.length > 0) {
+                    setSelectedCircle(circles[0].name);
                 }
             } else {
                 setFamilies([]);
             }
         } catch (error: any) {
-            if (error?.code === 'NOT_FOUND' || error?.response?.status === 404) {
-                setFamilies([]);
-                return;
-            }
-            console.error('Error loading families:', error);
+            console.error('Error loading circles from collection:', error);
+            // Fallback or empty state
             setFamilies([]);
         }
     };
@@ -223,7 +226,7 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
         if (user) {
             // Set up real-time location tracking
             const unsubscribe = locationService.subscribe((locations) => {
-                setFamilyLocations(locations);
+                setCircleLocations(locations);
             });
             locationService.setCurrentUser(user);
 
@@ -236,12 +239,12 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
 
     useEffect(() => {
         if (families && families.length > 0) {
-            locationService.setFamilyData(families);
+            locationService.setCircleData(families);
         }
     }, [families]);
 
-    // Derived state: familyStatusMembers (including current user)
-    const currentUserMember: FamilyMember = {
+    // Derived state: circleStatusMembers (including current user)
+    const currentUserMember: CircleMember = {
         id: user?.id || 'current-user',
         name: user ? `${user.firstName} ${user.lastName}` : 'You',
         userName: user ? `${user.firstName} ${user.lastName}` : 'You', // Adding missing prop
@@ -265,7 +268,7 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     // Combine members from all families (or selected)
-    // For now just taking members from the first loaded family or empty
+    // For now just taking members from the first loaded circle or empty
     const loadedMembers = families.length > 0 ? families[0].members : [];
 
     // Filter out current user from loaded members if they exist there to avoid dupe, 
@@ -273,15 +276,15 @@ export const UserDataProvider: React.FC<{ children: ReactNode }> = ({ children }
     // Actually HomeScreen implementation just flattens all members.
     const otherMembers = loadedMembers.filter(m => m.id !== user?.id);
 
-    const familyStatusMembers = [currentUserMember, ...otherMembers];
+    const circleStatusMembers = [currentUserMember, ...otherMembers];
 
     return (
         <UserDataContext.Provider value={{
             families,
-            selectedFamily,
-            setSelectedFamily,
-            familyStatusMembers,
-            familyLocations,
+            selectedCircle,
+            setSelectedCircle,
+            circleStatusMembers,
+            circleLocations,
             emotionData,
             safetyStats,
             locationStats,
@@ -300,3 +303,4 @@ export const useUserData = (): UserDataContextValue => {
     if (!ctx) throw new Error('useUserData must be used within UserDataProvider');
     return ctx;
 };
+

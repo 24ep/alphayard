@@ -1,7 +1,7 @@
 import { ContentPage } from './productionCmsService'
+import { API_BASE_URL } from './apiConfig'
 
 // API base should point to backend root (CMS is mounted at /cms)
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 export interface SaveResponse {
   success: boolean

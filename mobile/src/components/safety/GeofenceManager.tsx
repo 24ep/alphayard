@@ -35,14 +35,14 @@ import { locationService, Geofence } from '../../services/locationService';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface GeofenceManagerProps {
-  familyId: string;
+  circleId: string;
   onGeofenceCreated?: (geofence: Geofence) => void;
   onGeofenceUpdated?: (geofence: Geofence) => void;
   onGeofenceDeleted?: (geofenceId: string) => void;
 }
 
 const GeofenceManager: React.FC<GeofenceManagerProps> = ({
-  familyId,
+  circleId,
   onGeofenceCreated,
   onGeofenceUpdated,
   onGeofenceDeleted,
@@ -142,7 +142,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
         longitude: formData.longitude,
         radius: formData.radius,
         isActive: true,
-        familyId,
+        circleId,
         members: [user?.id || ''],
         notifications: formData.notifications,
       };
@@ -427,7 +427,7 @@ const GeofenceManager: React.FC<GeofenceManagerProps> = ({
             No safety zones
           </Text>
           <Text style={textStyles.caption} color={colors.gray[500]} textAlign="center">
-            Create safety zones to get notified when hourse members enter or leave important areas
+            Create safety zones to get notified when Circle members enter or leave important areas
           </Text>
           <Button
             mt={4}

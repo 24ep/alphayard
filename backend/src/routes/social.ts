@@ -33,7 +33,7 @@ router.get('/families', async (req: any, res: any) => {
 /**
  * GET /api/social-media/posts
  * Query params:
- * - familyId: string (optional, 'all' for all families)
+ * - circleId: string (optional, 'all' for all families)
  * - status: string (optional, 'all' for all statuses)
  * - type: string (optional, 'all' for all types)
  * - reported: boolean (optional)
@@ -49,7 +49,7 @@ router.get('/families', async (req: any, res: any) => {
 router.get('/posts', async (req: any, res: any) => {
   try {
     const {
-      familyId,
+      circleId,
       status,
       type,
       reported,
@@ -78,7 +78,7 @@ router.get('/posts', async (req: any, res: any) => {
       locationType: locationType as 'hometown' | 'workplace' | 'school' | 'all' | undefined
     };
 
-    const posts = await socialMediaService.getPosts(familyId as string, filters);
+    const posts = await socialMediaService.getPosts(circleId as string, filters);
     res.json({ success: true, data: posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -115,13 +115,13 @@ router.post('/posts', async (req: any, res: any) => {
     console.log('Creating post. Body:', req.body);
     const postData = {
       ...req.body,
-      family_id: req.body.family_id || req.body.familyId,
+      circle_id: req.body.circle_id || req.body.circleId,
       author_id: req.user.id
     };
 
-    if (!postData.family_id) {
-      console.error('Missing family_id in createPost request');
-      return res.status(400).json({ success: false, error: 'family_id is required' });
+    if (!postData.circle_id) {
+      console.error('Missing circle_id in createPost request');
+      return res.status(400).json({ success: false, error: 'circle_id is required' });
     }
 
     const post = await socialMediaService.createPost(postData);
@@ -399,16 +399,16 @@ router.get('/posts/:postId/analytics', async (req: any, res: any) => {
 });
 
 /**
- * GET /api/social-media/families/:familyId/analytics
- * Get analytics for a family
+ * GET /api/social-media/families/:circleId/analytics
+ * Get analytics for a circle
  */
-router.get('/families/:familyId/analytics', async (req: any, res: any) => {
+router.get('/families/:circleId/analytics', async (req: any, res: any) => {
   try {
-    const { familyId } = req.params;
-    const analytics = await socialMediaService.getFamilyAnalytics(familyId);
+    const { circleId } = req.params;
+    const analytics = await socialMediaService.getcircleAnalytics(circleId);
     res.json({ success: true, data: analytics });
   } catch (error) {
-    console.error('Error fetching family analytics:', error);
+    console.error('Error fetching circle analytics:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -426,7 +426,7 @@ router.get('/trending-tags', async (req: any, res: any) => {
   try {
     res.json({
       success: true,
-      tags: ['family', 'vacation', 'groceries', 'weekend', 'planning']
+      tags: ['circle', 'vacation', 'groceries', 'weekend', 'planning']
     });
   } catch (error) {
     console.error('Get trending tags error:', error);
@@ -531,3 +531,4 @@ router.get('/profile-filters', async (_req: any, res: any) => {
 });
 
 export default router;
+

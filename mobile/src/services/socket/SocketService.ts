@@ -23,7 +23,7 @@ export interface SocketEvents {
   'location:update': (data: { userId: string; latitude: number; longitude: number; accuracy?: number; address?: string; timestamp: string }) => void;
 
   // Safety events
-  'safety:alert': (data: { id: string; type: string; message: string; location?: any; userId: string; familyId: string; timestamp: string; status: string }) => void;
+  'safety:alert': (data: { id: string; type: string; message: string; location?: any; userId: string; circleId: string; timestamp: string; status: string }) => void;
 
   // Presence events
   'user:online': (data: { userId: string; timestamp: string }) => void;
@@ -222,7 +222,7 @@ class SocketService {
   }
 
   // =============================================
-  // hourse METHODS
+  // Circle METHODS
   // =============================================
 
   updateStatus(status: string, message?: string): void {

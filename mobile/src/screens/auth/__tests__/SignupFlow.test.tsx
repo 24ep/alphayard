@@ -13,7 +13,7 @@ const mockUserData = {
     firstName: 'John',
     lastName: 'Doe',
     phoneNumber: '+1234567890',
-    familyName: 'Doe Family',
+    circleName: 'Doe Circle',
     dateOfBirth: '1990-01-15',
 };
 
@@ -245,7 +245,7 @@ describe('SignupFlow Validation', () => {
             expect(mockUserData.firstName).toBeTruthy();
             expect(mockUserData.lastName).toBeTruthy();
             expect(mockUserData.phoneNumber).toBeTruthy();
-            expect(mockUserData.familyName).toBeTruthy();
+            expect(mockUserData.circleName).toBeTruthy();
             expect(mockUserData.dateOfBirth).toBeTruthy();
         });
 
@@ -266,3 +266,4 @@ describe('SignupFlow Validation', () => {
         });
     });
 });
+

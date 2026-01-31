@@ -3,22 +3,22 @@ import { ChatDatabaseService } from '../services/chatDatabaseService';
 
 export class ChatController {
   /**
-   * Get all chat rooms for a hourse
+   * Get all chat rooms for a circle
    */
   static async getChatRooms(req: any, res: Response) {
     try {
-      const { familyId } = req.params;
+      const { circleId } = req.params;
       const userId = req.user?.id;
 
-      if (!familyId) {
+      if (!circleId) {
         return res.status(400).json({
-          error: 'hourse ID is required',
-          message: 'Please provide a valid hourse ID'
+          error: 'circle ID is required',
+          message: 'Please provide a valid circle ID'
         });
       }
 
-      // Get all chat rooms for the hourse
-      const chatRooms = await ChatDatabaseService.findByFamilyId(familyId);
+      // Get all chat rooms for the circle
+      const chatRooms = await ChatDatabaseService.findBycircleId(circleId);
 
       // Filter to only show rooms the user is a participant in
       const userChatRooms = [];
@@ -59,14 +59,14 @@ export class ChatController {
    */
   static async createChatRoom(req: any, res: Response) {
     try {
-      const { familyId } = req.params;
+      const { circleId } = req.params;
       const { name, type = 'group', description, avatarUrl, settings = {} } = req.body;
       const userId = req.user?.id;
 
-      if (!familyId) {
+      if (!circleId) {
         return res.status(400).json({
-          error: 'hourse ID is required',
-          message: 'Please provide a valid hourse ID'
+          error: 'circle ID is required',
+          message: 'Please provide a valid circle ID'
         });
       }
 
@@ -79,7 +79,7 @@ export class ChatController {
 
       // Create the chat room
       const chatRoom = await ChatDatabaseService.createChatRoom({
-        familyId,
+        circleId,
         name,
         type,
         description,
@@ -816,3 +816,4 @@ export class ChatController {
     }
   }
 }
+
