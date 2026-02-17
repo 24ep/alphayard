@@ -4,19 +4,17 @@ import RedisStore from 'rate-limit-redis';
 import Redis from 'ioredis';
 import { Request, Response, NextFunction, Application } from 'express';
 
-// Create Redis client (using ioredis)
-const redisClient = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: Number(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD,
-});
-
-redisClient.on('error', (err) => console.warn('[REDIS] Rate Limiter Redis error:', err.message));
+import redisService from '../services/redisService';
 
 const getStore = (prefix: string) => {
   return new RedisStore({
     // @ts-ignore
-    sendCommand: (...args: string[]) => redisClient.call(...args),
+    sendCommand: async (...args: any[]) => {
+      const client = await redisService.getClient();
+      if (!client) return null;
+      // Use any cast to avoid TS rest parameter spread issues on call
+      return await (client as any).call(...args);
+    },
     prefix: `rate_limit:${prefix}:`,
   });
 };

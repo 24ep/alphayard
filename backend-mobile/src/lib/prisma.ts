@@ -7,6 +7,7 @@
 //
 // ============================================================================
 
+import { Pool } from 'pg';
 import { PrismaClient } from '../../prisma/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -16,10 +17,12 @@ declare global {
   var prisma: PrismaClient | undefined;
 }
 
-// Create the PostgreSQL adapter
-const adapter = new PrismaPg({
+// Create the PostgreSQL pool and adapter
+const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+const adapter = new PrismaPg(pool);
 
 export const prisma = global.prisma || new PrismaClient({
   adapter,

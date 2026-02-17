@@ -1,49 +1,42 @@
 import Redis from 'ioredis';
 import { Request, Response, NextFunction } from 'express';
+import redisService from '../services/redisService';
 
-const redisClient = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
+// For backward compatibility with any direct redisClient usage within this file or elsewhere
+// We use a Proxy to lazily access the centralized redisService
+const redisClient = new Proxy({}, {
+  get: (target, prop) => {
+    // Return a function that will fetch the client and call the property
+    return async (...args: any[]) => {
+      const client = await redisService.getClient();
+      if (!client) {
+        console.error(`[REDIS_PROXY] Client not available for ${String(prop)}`);
+        return null;
+      }
+      return await (client as any)[prop](...args);
+    };
+  }
 });
-
-redisClient.on('error', (err) => console.error('[REDIS] Cache Redis error:', err));
 
 export const cacheUtils = {
   set: async (key: string, data: any, ttl?: number) => {
-    try {
-      const value = JSON.stringify(data);
-      if (ttl) {
-        await redisClient.setex(key, ttl, value);
-      } else {
-        await redisClient.set(key, value);
-      }
-      return true;
-    } catch (error) {
-      console.error('Cache set error:', error);
-      return false;
-    }
+    return await redisService.set(key, data, ttl);
   },
 
   get: async (key: string) => {
-    try {
-      const data = await redisClient.get(key);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error('Cache get error:', error);
-      return null;
-    }
+    return await redisService.get(key);
   },
 
   delete: async (key: string) => {
-    try {
-      await redisClient.del(key);
-      return true;
-    } catch (error) {
-      console.error('Cache delete error:', error);
-      return false;
-    }
-  }
+    return await redisService.del(key);
+  },
+
+  // @ts-ignore
+  sendCommand: async (...args: any[]) => {
+    const client = await redisService.getClient();
+    if (!client) return null;
+    return await (client as any).call(...args);
+  },
 };
 
 export const cacheMiddleware = (prefix: string, ttl: number = 300) => {

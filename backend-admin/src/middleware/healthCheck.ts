@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import Redis from 'ioredis';
+import redisService from '../services/redisService';
 import { auditService, AuditCategory } from '../services/auditService';
 
 interface HealthCheckResult {
@@ -28,19 +28,10 @@ interface HealthCheckItem {
 
 class HealthCheckService {
   private startTime: Date;
-  private redis: Redis;
   private version: string;
-
   constructor() {
     this.startTime = new Date();
     this.version = process.env.npm_package_version || '1.0.0';
-    
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: Number(process.env.REDIS_PORT) || 6379,
-      password: process.env.REDIS_PASSWORD,
-      maxRetriesPerRequest: 3,
-    });
   }
 
   /**
@@ -201,7 +192,9 @@ class HealthCheckService {
     const startTime = Date.now();
     
     try {
-      await this.redis.ping();
+      const client = await redisService.getClient();
+      if (!client) throw new Error('Redis client unavailable');
+      await client.ping();
       
       const responseTime = Date.now() - startTime;
       

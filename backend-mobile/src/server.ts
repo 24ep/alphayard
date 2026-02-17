@@ -15,8 +15,8 @@ import rateLimit from 'express-rate-limit';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as Sentry from '@sentry/node';
-import Redis from 'ioredis';
 import { createAdapter } from '@socket.io/redis-adapter';
+import redisService from './services/redisService';
 import cluster from 'cluster';
 import os from 'os';
 
@@ -61,17 +61,9 @@ function startServer() {
   const app = express();
   const server = createServer(app);
 
-  let redisClient: Redis | null = null;
-  let redisSubscriber: Redis | null = null;
-
-  if (process.env.REDIS_URL) {
-    try {
-      redisClient = new Redis(process.env.REDIS_URL);
-      redisSubscriber = new Redis(process.env.REDIS_URL);
-    } catch (error) {
-      console.warn('⚠️ Redis connection failed');
-    }
-  }
+  // We'll initialize these later in initializeServices after connecting
+  let redisClient: any = null;
+  let redisSubscriber: any = null;
 
   const io = new Server(server, {
     cors: {
@@ -113,10 +105,15 @@ function startServer() {
   async function initializeServices() {
     try {
       const { prisma } = require('./config/database');
-      await prisma.$queryRaw`SELECT 1`;
+      const client = await redisService.getClient();
+      if (client) {
+        // Create a duplicate for subscriber
+        const subscriber = client.duplicate();
+        io.adapter(createAdapter(client, subscriber));
+      }
       initializeSocket(io);
 
-      const PORT = process.env.MOBILE_PORT || 4000;
+      const PORT = Number(process.env.MOBILE_PORT || 4000);
       server.listen(PORT, '::', () => {
         console.log(`🚀 UniApps Mobile Backend Server running on port ${PORT}`);
       });

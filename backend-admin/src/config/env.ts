@@ -52,6 +52,7 @@ const envSchema = z.object({
   AWS_S3_ENDPOINT: z.string().optional(),
 
   // Redis (optional)
+  REDIS_URL: z.string().optional(),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.string().transform(Number).default('6379'),
   REDIS_PASSWORD: z.string().optional(),

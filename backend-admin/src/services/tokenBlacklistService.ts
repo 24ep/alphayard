@@ -1,17 +1,10 @@
-import { Redis } from 'ioredis';
+import redisService from './redisService';
 import { auditService, AuditCategory, AuditAction } from './auditService';
 
 class TokenBlacklistService {
-  private redis: Redis;
   private blacklistedTokens: Map<string, { userId: string; expiresAt: Date }> = new Map();
 
   constructor() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: Number(process.env.REDIS_PORT) || 6379,
-      password: process.env.REDIS_PASSWORD,
-    });
-
     // Clean up expired tokens every hour
     setInterval(() => this.cleanupExpiredTokens(), 60 * 60 * 1000);
   }
@@ -24,11 +17,11 @@ class TokenBlacklistService {
       // Store in Redis with TTL
       const ttl = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
       if (ttl > 0) {
-        await this.redis.setex(`blacklist:${token}`, ttl, JSON.stringify({
+        await redisService.set(`blacklist:${token}`, {
           userId,
           blacklistedAt: new Date().toISOString(),
           expiresAt: expiresAt.toISOString()
-        }));
+        }, ttl);
       }
 
       // Also store in memory for fallback
@@ -56,7 +49,7 @@ class TokenBlacklistService {
   async isTokenBlacklisted(token: string): Promise<boolean> {
     try {
       // Check Redis first (fast)
-      const redisResult = await this.redis.get(`blacklist:${token}`);
+      const redisResult = await redisService.get(`blacklist:${token}`);
       if (redisResult) {
         return true;
       }
@@ -138,6 +131,18 @@ class TokenBlacklistService {
     return require('crypto').createHash('sha256').update(token).digest('hex').substring(0, 16);
   }
 }
+
+// For backward compatibility with any direct redisClient usage within this file or elsewhere
+// We use a Proxy to lazily access the centralized redisService
+const redisClient = new Proxy({}, {
+  get: (target, prop) => {
+    return async (...args: any[]) => {
+      const client = await redisService.getClient();
+      if (!client) return null;
+      return await (client as any)[prop](...args);
+    };
+  }
+});
 
 export const tokenBlacklistService = new TokenBlacklistService();
 export default tokenBlacklistService;

@@ -1,7 +1,8 @@
 import Redis from 'ioredis';
+import { config } from '../config/env';
 
 class RedisService {
-    private client: Redis | null = null;
+    public client: Redis | null = null;
     private isConnected: boolean = false;
 
     /**
@@ -12,18 +13,35 @@ class RedisService {
             return;
         }
 
-        const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-        
+        const redisOptions: any = {
+            maxRetriesPerRequest: 3,
+            enableReadyCheck: true,
+            lazyConnect: true,
+            retryStrategy: (times: number) => {
+                const delay = Math.min(times * 100, 3000);
+                return delay;
+            },
+        };
+
+        if (config.REDIS_PASSWORD) {
+            redisOptions.password = config.REDIS_PASSWORD;
+        }
+
         try {
-            this.client = new Redis(redisUrl, {
-                maxRetriesPerRequest: 3,
-                enableReadyCheck: true,
-                lazyConnect: true,
-                retryStrategy: (times) => {
-                    // Reconnect after increasing delay
-                    const delay = Math.min(times * 100, 3000);
-                    return delay;
-                },
+            if (config.REDIS_URL) {
+                this.client = new Redis(config.REDIS_URL, redisOptions);
+            } else {
+                this.client = new Redis({
+                    host: config.REDIS_HOST,
+                    port: config.REDIS_PORT,
+                    ...redisOptions
+                });
+            }
+
+            // Universal error handler to prevent "Unhandled error event"
+            this.client.on('error', (err) => {
+                console.error('[RedisService] Redis error:', err.message);
+                this.isConnected = false;
             });
 
             this.client.on('connect', () => {
@@ -31,16 +49,14 @@ class RedisService {
                 console.log('[RedisService] Connected to Redis');
             });
 
-            this.client.on('error', (err) => {
-                console.error('[RedisService] Redis error:', err.message);
-                this.isConnected = false;
-            });
-
             this.client.on('close', () => {
                 this.isConnected = false;
             });
 
-            await this.client.connect();
+            // Trigger connection
+            await this.client.connect().catch(err => {
+                console.warn('[RedisService] Early connection failed, ioredis will retry:', err.message);
+            });
         } catch (error) {
             console.error('[RedisService] Failed to connect to Redis:', error);
             this.client = null;
@@ -51,7 +67,7 @@ class RedisService {
     /**
      * Get Redis client (auto-connects if needed)
      */
-    private async getClient(): Promise<Redis | null> {
+    public async getClient(): Promise<Redis | null> {
         if (!this.client || !this.isConnected) {
             await this.connect();
         }
