@@ -139,15 +139,15 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
 
         res.json({
             stats: {
-                totalUsers: parseInt(total_users),
-                activeUsers: parseInt(active_users),
-                totalFamilies: parseInt(total_families),
-                activeSubscriptions: parseInt(active_subscriptions),
-                totalScreens: parseInt(total_screens),
-                recentUsers: parseInt(recent_users),
-                recentFamilies: parseInt(recent_families),
-                recentAlerts: parseInt(recent_alerts),
-                recentMessages: parseInt(recent_messages),
+                totalUsers: Number(total_users),
+                activeUsers: Number(active_users),
+                totalFamilies: Number(total_families),
+                activeSubscriptions: Number(active_subscriptions),
+                totalScreens: Number(total_screens),
+                recentUsers: Number(recent_users),
+                recentFamilies: Number(recent_families),
+                recentAlerts: Number(recent_alerts),
+                recentMessages: Number(recent_messages),
                 revenue: {
                     totalRevenue: parseFloat(String(revenue.total_revenue || 0)),
                     avgRevenue: parseFloat(String(revenue.avg_revenue || 0)),
@@ -155,8 +155,8 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                 },
             },
             userGrowth: userGrowth.map(row => ({
-                _id: { year: parseInt(row.year), month: parseInt(row.month), day: parseInt(row.day) },
-                count: parseInt(row.count)
+                _id: { year: Number(row.year), month: Number(row.month), day: Number(row.day) },
+                count: Number(row.count)
             })),
         });
     } catch (error: any) {

@@ -44,13 +44,13 @@ router.get('/stats', requirePermission('tickets', 'view'), async (req: Request, 
     res.json({
       success: true,
       stats: {
-        total: parseInt(stats.total || '0'),
-        open: parseInt(stats.open || '0'),
-        inProgress: parseInt(stats.in_progress || '0'),
-        resolved: parseInt(stats.resolved || '0'),
-        closed: parseInt(stats.closed || '0'),
-        overdue: parseInt(stats.overdue || '0'),
-        avgResolutionTime: Math.round(parseFloat(avgResult[0]?.avg_hours || '0'))
+        total: Number(stats.total || 0),
+        open: Number(stats.open || 0),
+        inProgress: Number(stats.in_progress || 0),
+        resolved: Number(stats.resolved || 0),
+        closed: Number(stats.closed || 0),
+        overdue: Number(stats.overdue || 0),
+        avgResolutionTime: Math.round(Number(avgResult[0]?.avg_hours || 0))
       }
     });
   } catch (error) {

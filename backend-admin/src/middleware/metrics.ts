@@ -1,12 +1,13 @@
 ﻿import { Request, Response, NextFunction } from 'express';
 import { promisify } from 'util';
-import { register, Counter, Histogram, Gauge, Registry } from 'prom-client';
+import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 
 // Create a custom registry for our metrics
 const registry = new Registry();
 
 // Default metrics (process info, etc.)
-register.collectDefaultMetrics({
+collectDefaultMetrics({
+  register: registry,
   prefix: 'appkit_',
   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
 });
@@ -205,7 +206,7 @@ class MetricsService {
     });
 
     if (labels) {
-      gauge.labels(Object.values(labels)).set(value);
+      gauge.labels(labels).set(value);
     } else {
       gauge.set(value);
     }
@@ -230,7 +231,8 @@ class MetricsService {
    */
   resetMetrics(): void {
     registry.clear();
-    register.collectDefaultMetrics({
+    collectDefaultMetrics({
+      register: registry,
       prefix: 'appkit_',
       gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
     });
