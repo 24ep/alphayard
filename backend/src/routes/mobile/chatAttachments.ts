@@ -1,50 +1,24 @@
 import express from 'express';
-import multer from 'multer';
 import { authenticateToken, requireCircleMember } from '../../middleware/auth';
+import storageService from '../../services/storageService';
 
-// Chat/message/attachment persistence is disabled in this local setup.
-// Routes will return stubbed success responses so the rest of the app can run.
+// Chat attachments now use S3/MinIO storage for persistence
 const router = express.Router();
 
-import fs from 'fs';
-import path from 'path';
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads/chat');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-random.ext
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Allow all file types for now
-    cb(null, true);
-  }
+// Configure multer for S3 uploads (memory storage)
+const upload = storageService.getMulterConfig({
+  maxSize: 50 * 1024 * 1024, // 50MB limit
 });
 
 // All routes require authentication and circle membership
 router.use(authenticateToken as any);
 router.use(requireCircleMember as any);
 
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import chatService from '../../services/chatService';
 
 /**
- * Upload attachment for a message
+ * Upload attachment for a message - uses S3/MinIO storage
  */
 router.post('/messages/:messageId/attachments', upload.single('file'), async (req: any, res: any) => {
   try {
@@ -58,23 +32,36 @@ router.post('/messages/:messageId/attachments', upload.single('file'), async (re
       });
     }
 
-    // Construct URLs
-    // Relative URL (safer for mobile clients with different base URLs)
-    const relativeUrl = `/uploads/chat/${file.filename}`;
-    // Absolute URL (for convenience)
-    const fullUrl = `${req.protocol}://${req.get('host')}/uploads/chat/${file.filename}`;
+    const userId = req.user?.id || 'system';
+    const circleId = req.user?.circleId || null;
+
+    // Upload to S3/MinIO
+    const uploaded = await storageService.uploadFile(file, userId, circleId, {
+      folder: 'chat',
+      metadata: { messageId }
+    });
+
+    if (!uploaded || !uploaded.url) {
+      return res.status(500).json({
+        error: 'Upload failed',
+        message: 'Failed to upload file to storage'
+      });
+    }
+
+    // Use the S3 proxy URL
+    const fileUrl = uploaded.url;
 
     // Determine metadata key based on mimetype
     const isImage = file.mimetype.startsWith('image/');
     const metadataKey = isImage ? 'imageUrl' : 'fileUrl';
 
     // Update message metadata in database
-    await pool.query(
-      `UPDATE chat_messages 
-       SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object($1::text, $2::text, 'fileName', $3::text, 'fileSize', $4::numeric, 'mimeType', $5::text),
+    await prisma.$executeRawUnsafe(
+      `UPDATE bondarys.chat_messages 
+       SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object($1::text, $2::text, 'fileName', $3::text, 'fileSize', $4::numeric, 'mimeType', $5::text, 'entityId', $6::text),
        updated_at = NOW()
-       WHERE id = $6`,
-      [metadataKey, relativeUrl, file.originalname, file.size, file.mimetype, messageId]
+       WHERE id = $7`,
+      metadataKey, fileUrl, file.originalname, file.size, file.mimetype, uploaded.id, messageId
     );
 
     // Broadcast update via Socket.io
@@ -91,12 +78,11 @@ router.post('/messages/:messageId/attachments', upload.single('file'), async (re
     res.status(201).json({
       success: true,
       data: {
-        id: file.filename,
+        id: uploaded.id,
         file_name: file.originalname,
         file_size: file.size,
         mime_type: file.mimetype,
-        url: relativeUrl,
-        fullUrl: fullUrl
+        url: fileUrl
       }
     });
   } catch (error) {

@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 const APP_ID = '0c9a083f-b369-4805-8a4f-b04ca57cba5a';
 
@@ -65,23 +65,23 @@ async function seed() {
         console.log(`Deep Seeding styles for Bondarys app...`);
         
         // 1. Update applications table settings field
-        await pool.query(
-            "UPDATE applications SET settings = jsonb_set(COALESCE(settings, '{}'), '{branding}', $1), name = 'Bondarys' WHERE id = $2",
-            [JSON.stringify(branding), APP_ID]
+        await prisma.$executeRawUnsafe(
+            "UPDATE core.applications SET settings = jsonb_set(COALESCE(settings, '{}'), '{branding}', $1), name = 'Bondarys' WHERE id = $2",
+            JSON.stringify(branding), APP_ID
         );
 
         // 2. Also update branding field in applications table (if used separately)
-        await pool.query(
-            "UPDATE applications SET branding = $1 WHERE id = $2",
-            [JSON.stringify(branding), APP_ID]
+        await prisma.$executeRawUnsafe(
+            "UPDATE core.applications SET branding = $1 WHERE id = $2",
+            JSON.stringify(branding), APP_ID
         );
 
         // 3. Update app_settings table for mobile backend
-        await pool.query(
+        await prisma.$executeRawUnsafe(
             `INSERT INTO app_settings (key, value) 
              VALUES ('branding', $1)
              ON CONFLICT (key) DO UPDATE SET value = $1`,
-            [JSON.stringify(branding)]
+            JSON.stringify(branding)
         );
 
         console.log('✅ Mobile styles extracted and seeded successfully!');

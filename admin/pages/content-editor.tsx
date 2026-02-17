@@ -105,7 +105,7 @@ const ContentEditorPage: React.FC = () => {
           <p className="text-gray-600 mb-4">The requested content could not be found.</p>
           <button
             onClick={() => router.push('/content')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
           >
             Back to Content List
           </button>

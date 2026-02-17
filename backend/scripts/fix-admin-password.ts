@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { pool } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 
 async function fixAdminPassword() {
     try {
@@ -10,21 +10,19 @@ async function fixAdminPassword() {
         console.log('Generated hash for "admin123":', hash);
         
         // Update the admin user's password
-        const result = await pool.query(
-            `UPDATE admin_users SET password_hash = $1 WHERE email = $2 RETURNING email, first_name, last_name`,
-            [hash, 'admin@bondarys.com']
-        );
+        const result = await prisma.$queryRaw<Array<{ email: string; first_name: string; last_name: string }>>`
+            UPDATE admin_users SET password_hash = ${hash} WHERE email = ${'admin@bondarys.com'} RETURNING email, first_name, last_name
+        `;
         
-        if (result.rows.length > 0) {
-            console.log('\n✅ Password updated successfully for:', result.rows[0]);
+        if (result.length > 0) {
+            console.log('\n✅ Password updated successfully for:', result[0]);
             
             // Test the password
-            const testResult = await pool.query(
-                `SELECT password_hash FROM admin_users WHERE email = $1`,
-                ['admin@bondarys.com']
-            );
+            const testResult = await prisma.$queryRaw<Array<{ password_hash: string }>>`
+                SELECT password_hash FROM admin_users WHERE email = ${'admin@bondarys.com'}
+            `;
             
-            const isValid = await bcrypt.compare(password, testResult.rows[0].password_hash);
+            const isValid = await bcrypt.compare(password, testResult[0].password_hash);
             console.log('Password verification test:', isValid ? '✅ PASS' : '❌ FAIL');
         } else {
             console.log('❌ No admin user found to update');
@@ -33,7 +31,7 @@ async function fixAdminPassword() {
     } catch (error) {
         console.error('Error:', error);
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

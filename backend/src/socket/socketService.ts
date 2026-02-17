@@ -1,8 +1,9 @@
 import { Server, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import { config } from '../config/env';
 import { setupChatHandlers } from './chat';
+import { v4 as uuidv4 } from 'uuid';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -12,7 +13,136 @@ interface AuthenticatedSocket extends Socket {
 // In-memory store for online users (in production, use Redis)
 const onlineUsers = new Set<string>();
 
+// Store reference to io instance for external use
+let ioInstance: Server | null = null;
+
+// Helper function to send notification to a user via socket
+export const sendSocketNotification = async (
+  userId: string,
+  notification: {
+    type: string;
+    title: string;
+    message: string;
+    data?: any;
+    actionUrl?: string;
+  }
+) => {
+  try {
+    if (!ioInstance) {
+      console.warn('Socket.IO not initialized, cannot send notification');
+      return null;
+    }
+
+    const id = uuidv4();
+    const timestamp = new Date().toISOString();
+
+    // Save to database
+    // Using $queryRaw because the code uses 'message' and 'status' columns which don't match Prisma schema (body/isRead)
+    await prisma.$queryRaw`
+      INSERT INTO core.notifications (id, user_id, type, title, message, data, status, action_url, created_at)
+      VALUES (${id}::uuid, ${userId}::uuid, ${notification.type}, ${notification.title}, ${notification.message}, 
+        ${notification.data ? JSON.stringify(notification.data) : null}::jsonb, 'unread', ${notification.actionUrl}, NOW())
+    `;
+
+    const notificationPayload = {
+      id,
+      type: notification.type,
+      title: notification.title,
+      message: notification.message,
+      data: notification.data,
+      actionUrl: notification.actionUrl,
+      timestamp,
+    };
+
+    // Emit to user's notification room
+    ioInstance.to(`notifications:${userId}`).emit('notification:new', notificationPayload);
+    ioInstance.to(`user:${userId}`).emit('notification:new', notificationPayload);
+
+    console.log(`Notification sent to user ${userId}:`, notification.title);
+    return notificationPayload;
+  } catch (error) {
+    console.error('Error sending socket notification:', error);
+    return null;
+  }
+};
+
+// Helper function to send notification to all circle members
+export const sendCircleNotification = async (
+  circleId: string,
+  senderId: string,
+  notification: {
+    type: string;
+    title: string;
+    message: string;
+    data?: any;
+    actionUrl?: string;
+  }
+) => {
+  try {
+    if (!ioInstance) {
+      console.warn('Socket.IO not initialized, cannot send notification');
+      return;
+    }
+
+    // Get all circle members except sender
+    const circleMembers = await prisma.circleMember.findMany({
+      where: {
+        circleId: circleId,
+        userId: { not: senderId }
+      },
+      select: {
+        userId: true
+      }
+    });
+
+    const timestamp = new Date().toISOString();
+
+    for (const member of circleMembers) {
+      const id = uuidv4();
+      
+      // Save to database
+      // Using $queryRaw because the code uses 'message', 'status', and 'sender_id' columns which don't match Prisma schema
+      await prisma.$queryRaw`
+        INSERT INTO core.notifications (id, user_id, type, title, message, data, status, action_url, sender_id, created_at)
+        VALUES (${id}::uuid, ${member.userId}::uuid, ${notification.type}, ${notification.title}, ${notification.message},
+          ${notification.data ? JSON.stringify(notification.data) : null}::jsonb, 'unread', ${notification.actionUrl}, ${senderId}::uuid, NOW())
+      `;
+
+      const notificationPayload = {
+        id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        data: notification.data,
+        actionUrl: notification.actionUrl,
+        timestamp,
+      };
+
+      // Emit to user's notification room
+      ioInstance.to(`notifications:${member.userId}`).emit('notification:new', notificationPayload);
+      ioInstance.to(`user:${member.userId}`).emit('notification:new', notificationPayload);
+    }
+
+    console.log(`Circle notification sent to ${circleMembers.length} members`);
+  } catch (error) {
+    console.error('Error sending circle notification:', error);
+  }
+};
+
+// Check if user is online
+export const isUserOnline = (userId: string): boolean => {
+  return onlineUsers.has(userId);
+};
+
+// Get online users
+export const getOnlineUsers = (): string[] => {
+  return Array.from(onlineUsers);
+};
+
 export const initializeSocket = (io: Server) => {
+  // Store io instance for external use
+  ioInstance = io;
+
   // Authentication middleware for socket connections
   io.use(async (socket: any, next) => {
     try {
@@ -30,16 +160,15 @@ export const initializeSocket = (io: Server) => {
 
       console.log('[SOCKET AUTH] Token decoded for user ID:', decoded.id);
 
-      // Verify user exists and get circle info using native pg pool
+      // Verify user exists and get circle info using Prisma
       let user = null;
       let userError = null;
 
       try {
-        const userResult = await pool.query(
-          'SELECT id, email, is_active FROM users WHERE id = $1',
-          [decoded.id]
-        );
-        user = userResult.rows[0] || null;
+        user = await prisma.user.findUnique({
+          where: { id: decoded.id },
+          select: { id: true, email: true, isActive: true }
+        });
       } catch (err: any) {
         userError = err;
       }
@@ -56,25 +185,24 @@ export const initializeSocket = (io: Server) => {
         return next();
       }
 
-      if (!user || !user.is_active) {
-        console.log('[SOCKET AUTH] User not found or inactive:', { found: !!user, is_active: user?.is_active });
+      if (!user || !user.isActive) {
+        console.log('[SOCKET AUTH] User not found or inactive:', { found: !!user, isActive: user?.isActive });
         return next(new Error('Invalid token or inactive user'));
       }
 
-      // Get user's circle using native pg pool
+      // Get user's circle using Prisma
       let circleMember = null;
       try {
-        const circleResult = await pool.query(
-          'SELECT circle_id FROM circle_members WHERE user_id = $1 LIMIT 1',
-          [user.id]
-        );
-        circleMember = circleResult.rows[0] || null;
+        circleMember = await prisma.circleMember.findFirst({
+          where: { userId: user.id },
+          select: { circleId: true }
+        });
       } catch (err) {
         console.error('[SOCKET AUTH] circle lookup error:', err);
       }
 
       socket.userId = user.id;
-      socket.circleId = circleMember?.circle_id;
+      socket.circleId = circleMember?.circleId || null;
 
       console.log('[SOCKET AUTH] User authenticated:', { userId: socket.userId, circleId: socket.circleId });
       next();
@@ -117,15 +245,16 @@ export const initializeSocket = (io: Server) => {
 
         const { latitude, longitude, accuracy, address } = data;
 
-        // Save location to database using native pg pool
+        // Save location to database using Prisma
+        // Using $queryRaw because the code uses 'location_history' table which doesn't match Prisma schema (user_locations)
         const timestamp = new Date().toISOString();
 
         try {
-          await pool.query(
-            `INSERT INTO location_history (user_id, circle_id, latitude, longitude, accuracy, address, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [socket.userId, socket.circleId, latitude, longitude, accuracy || null, address || null, timestamp]
-          );
+          await prisma.$queryRaw`
+            INSERT INTO bondarys.location_history (user_id, circle_id, latitude, longitude, accuracy, address, created_at)
+            VALUES (${socket.userId}::uuid, ${socket.circleId}::uuid, ${latitude}::decimal, ${longitude}::decimal, 
+              ${accuracy || null}::decimal, ${address || null}, ${timestamp}::timestamptz)
+          `;
         } catch (dbError) {
           console.error('Error saving location to database:', dbError);
           // Continue to broadcast even if DB save fails
@@ -159,18 +288,19 @@ export const initializeSocket = (io: Server) => {
 
         const { type, message, location, severity } = data;
 
-        // Save alert to database using native pg pool
+        // Save alert to database using Prisma
+        // Using $queryRaw because the code uses 'safety_alerts' table which doesn't match Prisma schema (safety_incidents)
         const timestamp = new Date().toISOString();
 
         let alertData: any = null;
         try {
-          const result = await pool.query(
-            `INSERT INTO safety_alerts (user_id, circle_id, type, severity, message, location, is_resolved, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING *`,
-            [socket.userId, socket.circleId, type || 'custom', severity || 'urgent', message || '', location || null, false, timestamp, timestamp]
-          );
-          alertData = result.rows[0];
+          const result = await prisma.$queryRaw<any[]>`
+            INSERT INTO bondarys.safety_alerts (user_id, circle_id, type, severity, message, location, is_resolved, created_at, updated_at)
+            VALUES (${socket.userId}::uuid, ${socket.circleId}::uuid, ${type || 'custom'}, ${severity || 'urgent'}, 
+              ${message || ''}, ${location || null}::jsonb, false, ${timestamp}::timestamptz, ${timestamp}::timestamptz)
+            RETURNING *
+          `;
+          alertData = result[0] || null;
         } catch (dbError) {
           console.error('Error saving safety alert to database:', dbError);
           // Continue to broadcast even if DB save fails
@@ -212,22 +342,26 @@ export const initializeSocket = (io: Server) => {
           return;
         }
 
-        // Verify both users are in the same circle using native pg pool
+        // Verify both users are in the same circle using Prisma
         let requesterMember = null;
         let targetMember = null;
 
         try {
-          const requesterResult = await pool.query(
-            'SELECT circle_id FROM circle_members WHERE user_id = $1 AND circle_id = $2',
-            [socket.userId, socket.circleId]
-          );
-          requesterMember = requesterResult.rows[0] || null;
+          requesterMember = await prisma.circleMember.findFirst({
+            where: {
+              userId: socket.userId,
+              circleId: socket.circleId
+            },
+            select: { circleId: true }
+          });
 
-          const targetResult = await pool.query(
-            'SELECT circle_id FROM circle_members WHERE user_id = $1 AND circle_id = $2',
-            [targetUserId, socket.circleId]
-          );
-          targetMember = targetResult.rows[0] || null;
+          targetMember = await prisma.circleMember.findFirst({
+            where: {
+              userId: targetUserId,
+              circleId: socket.circleId
+            },
+            select: { circleId: true }
+          });
         } catch (err) {
           console.error('[SOCKET] Error verifying circle members:', err);
         }
@@ -237,20 +371,19 @@ export const initializeSocket = (io: Server) => {
           return;
         }
 
-        // Get requester's name using native pg pool
+        // Get requester's name using Prisma
         let requesterUser = null;
         try {
-          const userResult = await pool.query(
-            'SELECT first_name, last_name FROM users WHERE id = $1',
-            [socket.userId]
-          );
-          requesterUser = userResult.rows[0] || null;
+          requesterUser = await prisma.user.findUnique({
+            where: { id: socket.userId },
+            select: { firstName: true, lastName: true }
+          });
         } catch (err) {
           console.error('[SOCKET] Error getting requester name:', err);
         }
 
         const requesterName = requesterUser
-          ? `${requesterUser.first_name} ${requesterUser.last_name}`.trim()
+          ? `${requesterUser.firstName} ${requesterUser.lastName}`.trim()
           : 'Someone';
 
         // Emit location request to target user
@@ -274,6 +407,67 @@ export const initializeSocket = (io: Server) => {
           userId: socket.userId,
           isTyping: data.isTyping
         });
+      }
+    });
+
+    // =============================================
+    // NOTIFICATION HANDLERS
+    // =============================================
+
+    // Join user's personal notification room
+    if (socket.userId) {
+      socket.join(`user:${socket.userId}`);
+      console.log(`User ${socket.userId} joined notification room`);
+    }
+
+    // Subscribe to notifications
+    socket.on('notification:subscribe', () => {
+      if (socket.userId) {
+        socket.join(`notifications:${socket.userId}`);
+        console.log(`User ${socket.userId} subscribed to notifications`);
+      }
+    });
+
+    // Unsubscribe from notifications
+    socket.on('notification:unsubscribe', () => {
+      if (socket.userId) {
+        socket.leave(`notifications:${socket.userId}`);
+        console.log(`User ${socket.userId} unsubscribed from notifications`);
+      }
+    });
+
+    // Mark notification as read
+    socket.on('notification:mark-read', async (data) => {
+      try {
+        const { notificationId } = data;
+        if (!notificationId || !socket.userId) return;
+
+        // Using $queryRaw because the code uses 'status' column which doesn't match Prisma schema (isRead)
+        await prisma.$queryRaw`
+          UPDATE core.notifications SET status = 'read', updated_at = NOW() WHERE id = ${notificationId}::uuid AND user_id = ${socket.userId}::uuid
+        `;
+
+        // Emit to user's notification room
+        io.to(`notifications:${socket.userId}`).emit('notification:read', { notificationId });
+      } catch (error) {
+        console.error('Error marking notification as read:', error);
+      }
+    });
+
+    // Get unread notification count
+    socket.on('notification:get-count', async () => {
+      try {
+        if (!socket.userId) return;
+
+        // Using $queryRaw because the code uses 'status' column which doesn't match Prisma schema (isRead)
+        const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
+          SELECT COUNT(*) as count FROM core.notifications WHERE user_id = ${socket.userId}::uuid AND status = 'unread'
+        `;
+
+        socket.emit('notification:count', { unreadCount: Number(result[0]?.count || 0) });
+      } catch (error) {
+        console.error('Error getting notification count:', error);
+        socket.emit('notification:count', { unreadCount: 0 });
       }
     });
 

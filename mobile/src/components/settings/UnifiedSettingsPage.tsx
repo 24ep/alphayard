@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../../theme/colors';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { NotificationSettingsModal } from '../profile/NotificationSettingsModal';
@@ -113,6 +114,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
   const { t } = useTranslation();
   const { hasPin, resetPin } = usePin();
   const branding = useBranding();
+  const navigation = useNavigation<any>();
 
   // State for all settings
   const [notificationSettings, setNotificationSettings] = useState<NotificationPreferences>({
@@ -492,7 +494,7 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
               icon: 'cellphone-cog',
               title: 'Device logins',
               subtitle: 'Manage devices logged into your account',
-              onPress: () => Alert.alert(t('info'), 'Device login management coming soon'),
+              onPress: () => navigation.navigate('Devices'),
             },
           ]
         )}
@@ -610,8 +612,8 @@ export const UnifiedSettingsPage: React.FC<UnifiedSettingsPageProps> = ({
             {
               icon: 'shield-lock-outline',
               title: 'Security',
-              subtitle: 'Password, 2FA, recovery',
-              onPress: () => Alert.alert(t('info'), 'Security settings coming soon'),
+              subtitle: 'Password, 2FA, sessions, devices',
+              onPress: () => navigation.navigate('Security'),
             },
             {
               icon: 'lock-reset',

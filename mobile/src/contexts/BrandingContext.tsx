@@ -43,7 +43,12 @@ export const BrandingProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       // Update Analytics Service if config exists
       if (data.analytics) {
-        analyticsService.updateConfig(data.analytics)
+        analyticsService.updateConfig({
+          sentryDsn: data.analytics.sentryDsn,
+          mixpanelToken: data.analytics.mixpanelToken,
+          googleAnalyticsId: data.analytics.googleAnalyticsId,
+          enableDebugLogs: data.analytics.enableDebugLogs
+        })
       }
     } catch {
       // If fetch fails, we stick with cache (if any) or empty object

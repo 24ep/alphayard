@@ -39,10 +39,9 @@ import {
 export default function CollectionsIndexPage() {
     const router = useRouter()
     const { currentApp } = useApp()
-    const [dynamicCollections, setDynamicCollections] = useState<DynamicCollection[]>([])
-    const [loading, setLoading] = useState(true)
-    
     const [allCollections, setAllCollections] = useState<DynamicCollection[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         loadDynamicCollections()
@@ -50,11 +49,26 @@ export default function CollectionsIndexPage() {
 
     const loadDynamicCollections = async () => {
         setLoading(true)
+        setError(null)
         try {
             const types = await adminService.getEntityTypes(currentApp?.id)
-            setAllCollections(types)
-        } catch (error) {
+            if (Array.isArray(types)) {
+                // Filter out collections that have dedicated management pages and are NOT app-level:
+                // - 'users': Managed at /admin/identity/users (mobile app users - app-level but has dedicated UI)
+                // - 'admin-users': Managed at /settings/admin-users (appkit admin users - NOT app-level, separate system)
+                // Admin users are appkit-level (admin panel management), NOT app-level collections
+                // These are managed through dedicated routes and don't use the entity/collection system
+                const excludedNames = ['users', 'admin-users', 'admin_users']
+                const filteredTypes = types.filter(type => !excludedNames.includes(type.name))
+                setAllCollections(filteredTypes)
+            } else {
+                console.warn('getEntityTypes returned non-array:', types)
+                setAllCollections([])
+            }
+        } catch (error: any) {
             console.error('Failed to load dynamic collections:', error)
+            setError(error.message || 'Failed to load collections')
+            setAllCollections([])
         } finally {
             setLoading(false)
         }
@@ -236,6 +250,17 @@ export default function CollectionsIndexPage() {
             {loading ? (
                 <div className="flex items-center justify-center h-32">
                     <LoadingSpinner size="lg" />
+                </div>
+            ) : error ? (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800">{error}</p>
+                    <Button 
+                        variant="secondary" 
+                        onClick={loadDynamicCollections}
+                        className="mt-2"
+                    >
+                        Retry
+                    </Button>
                 </div>
             ) : (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
@@ -460,6 +485,7 @@ export default function CollectionsIndexPage() {
                             value={metadataForm.description}
                             onChange={(e) => setMetadataForm(prev => ({ ...prev, description: e.target.value }))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm min-h-[100px]"
+                            aria-label="Collection description"
                         />
                     </div>
                     <div className="space-y-2">
@@ -468,6 +494,7 @@ export default function CollectionsIndexPage() {
                             value={metadataForm.icon}
                             onChange={(e) => setMetadataForm(prev => ({ ...prev, icon: e.target.value }))}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                            aria-label="Collection icon"
                         >
                             <option value="collection">Collection</option>
                             <option value="users">Users</option>

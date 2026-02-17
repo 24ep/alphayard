@@ -1,18 +1,17 @@
 #!/usr/bin/env node
 
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
+const prisma = new PrismaClient();
+
 async function main() {
-  const url = process.env.DATABASE_URL;
-  if (!url) {
+  if (!process.env.DATABASE_URL) {
     console.log('❌ DATABASE_URL missing in root .env');
     process.exit(1);
   }
-  const client = new Client({ connectionString: url });
-  await client.connect();
-  await client.query(`
+  await prisma.$executeRawUnsafe(`
     CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
     RETURNS void
     LANGUAGE plpgsql
@@ -26,7 +25,7 @@ async function main() {
 
     GRANT EXECUTE ON FUNCTION public.exec_sql(text) TO service_role;
   `);
-  await client.end();
+  await prisma.$disconnect();
   console.log('✅ exec_sql function ready');
 }
 

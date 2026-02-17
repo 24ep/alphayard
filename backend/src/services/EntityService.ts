@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import { v4 as uuidv4 } from 'uuid';
 import {
     Entity,
@@ -10,6 +10,9 @@ import {
 /**
  * Unified Entity Service (The One-Stop Solution)
  * Provides high-performance, flexible data storage using JSONB and Generated Columns.
+ * 
+ * Note: This service uses $queryRaw for complex JSONB operations that are not
+ * directly supported by Prisma's query builder.
  */
 class EntityService {
 
@@ -18,35 +21,44 @@ class EntityService {
      */
     async createEntity(input: CreateEntityInput): Promise<Entity> {
         const id = (input as any).id || uuidv4();
-        const { rows } = await pool.query(
-            `INSERT INTO unified_entities (id, type, application_id, owner_id, status, data, metadata)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING *`,
-            [
-                id,
-                input.typeName,
-                input.applicationId || null,
-                input.ownerId || null,
-                (input as any).status || 'active',
-                JSON.stringify(input.attributes || {}),
-                JSON.stringify(input.metadata || {})
-            ]
-        );
+        
+        // Ensure ownerId is valid before inserting
+        if (input.ownerId) {
+            console.log('[EntityService] Verifying ownerId before insert:', { ownerId: input.ownerId, typeName: input.typeName });
+            const ownerCheck = await prisma.$queryRaw<any[]>`
+                SELECT id FROM core.users WHERE id = ${input.ownerId}::uuid
+            `;
+            console.log('[EntityService] Owner check result:', { ownerId: input.ownerId, found: ownerCheck.length > 0 });
+            if (ownerCheck.length === 0) {
+                console.error('[EntityService] CRITICAL: ownerId does not exist in core.users:', input.ownerId);
+                throw new Error(`Invalid owner_id: ${input.ownerId} does not exist in core.users table`);
+            }
+        } else {
+            console.log('[EntityService] No ownerId provided for entity creation');
+        }
 
-        return this.mapRowToEntity(rows[0]);
+        const result = await prisma.$queryRaw<any[]>`
+            INSERT INTO public.unified_entities (id, type, application_id, owner_id, status, data, metadata)
+            VALUES (${id}::uuid, ${input.typeName}, ${input.applicationId || null}::uuid, 
+                    ${input.ownerId || null}::uuid, ${(input as any).status || 'active'}, 
+                    ${JSON.stringify(input.attributes || {})}::jsonb, 
+                    ${JSON.stringify(input.metadata || {})}::jsonb)
+            RETURNING *
+        `;
+
+        return this.mapRowToEntity(result[0]);
     }
 
     /**
      * Get entity by ID
      */
     async getEntity(id: string): Promise<Entity | null> {
-        const { rows } = await pool.query(
-            `SELECT * FROM unified_entities WHERE id = $1`,
-            [id]
-        );
+        const result = await prisma.$queryRaw<any[]>`
+            SELECT * FROM public.unified_entities WHERE id = ${id}::uuid
+        `;
 
-        if (!rows[0]) return null;
-        return this.mapRowToEntity(rows[0]);
+        if (!result[0]) return null;
+        return this.mapRowToEntity(result[0]);
     }
 
     /**
@@ -54,35 +66,31 @@ class EntityService {
      */
     async updateEntity(id: string, input: UpdateEntityInput): Promise<Entity | null> {
         const updates: string[] = ['updated_at = NOW()'];
-        const values: any[] = [];
-        let paramIndex = 1;
+        const hasStatus = !!input.status;
+        const hasAttributes = !!input.attributes;
+        const hasMetadata = !!input.metadata;
 
-        if (input.status) {
-            updates.push(`status = $${paramIndex++}`);
-            values.push(input.status);
+        if (!hasStatus && !hasAttributes && !hasMetadata) {
+            return this.getEntity(id);
         }
 
-        if (input.attributes) {
-            // Merge JSONB data
-            updates.push(`data = data || $${paramIndex++}`);
-            values.push(JSON.stringify(input.attributes));
+        // Build dynamic update using raw query
+        let updateQuery = `UPDATE unified_entities SET updated_at = NOW()`;
+        
+        if (hasStatus) {
+            updateQuery += `, status = '${input.status}'`;
         }
-
-        if (input.metadata) {
-            // Merge JSONB metadata
-            updates.push(`metadata = metadata || $${paramIndex++}`);
-            values.push(JSON.stringify(input.metadata));
+        if (hasAttributes) {
+            updateQuery += `, data = data || '${JSON.stringify(input.attributes)}'::jsonb`;
         }
+        if (hasMetadata) {
+            updateQuery += `, metadata = metadata || '${JSON.stringify(input.metadata)}'::jsonb`;
+        }
+        
+        updateQuery += ` WHERE id = '${id}'::uuid RETURNING *`;
 
-        if (values.length === 0) return this.getEntity(id);
-
-        values.push(id);
-        const { rows } = await pool.query(
-            `UPDATE unified_entities SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-            values
-        );
-
-        return rows[0] ? this.mapRowToEntity(rows[0]) : null;
+        const result = await prisma.$queryRawUnsafe<any[]>(updateQuery);
+        return result[0] ? this.mapRowToEntity(result[0]) : null;
     }
 
     /**
@@ -90,17 +98,16 @@ class EntityService {
      */
     async deleteEntity(id: string, hard: boolean = false): Promise<boolean> {
         if (hard) {
-            const { rowCount } = await pool.query(
-                `DELETE FROM unified_entities WHERE id = $1`,
-                [id]
-            );
-            return (rowCount ?? 0) > 0;
+            const result = await prisma.$executeRaw`
+                DELETE FROM unified_entities WHERE id = ${id}::uuid
+            `;
+            return result > 0;
         } else {
-            const { rowCount } = await pool.query(
-                `UPDATE unified_entities SET status = 'deleted', updated_at = NOW() WHERE id = $1`,
-                [id]
-            );
-            return (rowCount ?? 0) > 0;
+            const result = await prisma.$executeRaw`
+                UPDATE unified_entities SET status = 'deleted', updated_at = NOW() 
+                WHERE id = ${id}::uuid
+            `;
+            return result > 0;
         }
     }
 
@@ -117,46 +124,40 @@ class EntityService {
         const limit = Math.min(options.limit || 20, 100);
         const offset = (page - 1) * limit;
 
-        let sql = `FROM unified_entities WHERE type = $1 AND status != 'deleted'`;
-        const params: any[] = [typeName];
-        let paramIndex = 2;
+        let whereClause = `type = '${typeName}' AND status != 'deleted'`;
 
         if (options.applicationId) {
-            sql += ` AND application_id = $${paramIndex++}`;
-            params.push(options.applicationId);
+            whereClause += ` AND application_id = '${options.applicationId}'::uuid`;
         }
 
         if (options.ownerId) {
-            sql += ` AND owner_id = $${paramIndex++}`;
-            params.push(options.ownerId);
+            whereClause += ` AND owner_id = '${options.ownerId}'::uuid`;
         }
 
-        // Search in JSONB data
         if ((options as any).search) {
-            sql += ` AND data::text ILIKE $${paramIndex++}`;
-            params.push(`%${(options as any).search}%`);
+            whereClause += ` AND data::text ILIKE '%${(options as any).search}%'`;
         }
 
-        // Custom Filters for JSONB
         if (options.filters) {
             for (const [key, value] of Object.entries(options.filters)) {
                 if (value === undefined || value === null) continue;
-                sql += ` AND data->>'${key}' = $${paramIndex++}`;
-                params.push(value.toString());
+                whereClause += ` AND data->>'${key}' = '${value}'`;
             }
         }
 
-        // Get total
-        const { rows: countRows } = await pool.query(`SELECT COUNT(*) as total ${sql}`, params);
-        const total = parseInt(countRows[0].total, 10);
+        // Get total count
+        const countResult = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT COUNT(*) as total FROM unified_entities WHERE ${whereClause}`
+        );
+        const total = parseInt(countResult[0].total, 10);
 
         // Get entities
         const orderBy = options.orderBy || 'created_at';
         const orderDir = options.orderDir || 'DESC';
-        
-        const { rows } = await pool.query(
-            `SELECT * ${sql} ORDER BY ${orderBy} ${orderDir} LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
-            [...params, limit, offset]
+
+        const rows = await prisma.$queryRawUnsafe<any[]>(
+            `SELECT * FROM unified_entities WHERE ${whereClause} 
+             ORDER BY ${orderBy} ${orderDir} LIMIT ${limit} OFFSET ${offset}`
         );
 
         return {
@@ -172,13 +173,12 @@ class EntityService {
      */
     async createRelation(sourceId: string, targetId: string, type: string, metadata: any = {}): Promise<boolean> {
         try {
-            await pool.query(
-                `INSERT INTO entity_relations (source_id, target_id, relation_type, metadata)
-                 VALUES ($1, $2, $3, $4)
-                 ON CONFLICT (source_id, target_id, relation_type) 
-                 DO UPDATE SET metadata = entity_relations.metadata || $4`,
-                [sourceId, targetId, type, JSON.stringify(metadata)]
-            );
+            await prisma.$executeRaw`
+                INSERT INTO entity_relations (source_id, target_id, relation_type, metadata)
+                VALUES (${sourceId}::uuid, ${targetId}::uuid, ${type}, ${JSON.stringify(metadata)}::jsonb)
+                ON CONFLICT (source_id, target_id, relation_type) 
+                DO UPDATE SET metadata = entity_relations.metadata || ${JSON.stringify(metadata)}::jsonb
+            `;
             return true;
         } catch (error) {
             console.error('Create relation failed:', error);
@@ -187,42 +187,39 @@ class EntityService {
     }
 
     async deleteRelation(sourceId: string, targetId: string, type: string): Promise<boolean> {
-        const { rowCount } = await pool.query(
-            `DELETE FROM entity_relations WHERE source_id = $1 AND target_id = $2 AND relation_type = $3`,
-            [sourceId, targetId, type]
-        );
-        return (rowCount ?? 0) > 0;
+        const result = await prisma.$executeRaw`
+            DELETE FROM entity_relations 
+            WHERE source_id = ${sourceId}::uuid AND target_id = ${targetId}::uuid AND relation_type = ${type}
+        `;
+        return result > 0;
     }
 
     async queryRelatedEntities(sourceId: string, relationType: string, targetTypeName?: string): Promise<Entity[]> {
-        let sql = `
+        let query = `
             SELECT e.*
             FROM entity_relations er
             JOIN unified_entities e ON er.target_id = e.id
-            WHERE er.source_id = $1 AND er.relation_type = $2
+            WHERE er.source_id = '${sourceId}'::uuid AND er.relation_type = '${relationType}'
         `;
-        const params: any[] = [sourceId, relationType];
 
         if (targetTypeName) {
-            sql += ` AND e.type = $3`;
-            params.push(targetTypeName);
+            query += ` AND e.type = '${targetTypeName}'`;
         }
 
-        sql += ` ORDER BY er.created_at DESC`;
+        query += ` ORDER BY er.created_at DESC`;
 
-        const { rows } = await pool.query(sql, params);
+        const rows = await prisma.$queryRawUnsafe<any[]>(query);
         return rows.map(this.mapRowToEntity);
     }
 
     async queryEntitiesByRelation(targetId: string, relationType: string): Promise<(Entity & { relation_metadata: any, joined_at: Date })[]> {
-        const { rows } = await pool.query(
-            `SELECT e.*, er.metadata as rel_meta, er.created_at as joined_at
-             FROM entity_relations er
-             JOIN unified_entities e ON er.source_id = e.id
-             WHERE er.target_id = $1 AND er.relation_type = $2
-             ORDER BY er.created_at ASC`,
-            [targetId, relationType]
-        );
+        const rows = await prisma.$queryRaw<any[]>`
+            SELECT e.*, er.metadata as rel_meta, er.created_at as joined_at
+            FROM entity_relations er
+            JOIN unified_entities e ON er.source_id = e.id
+            WHERE er.target_id = ${targetId}::uuid AND er.relation_type = ${relationType}
+            ORDER BY er.created_at ASC
+        `;
 
         return rows.map(row => ({
             ...this.mapRowToEntity(row),
@@ -232,10 +229,10 @@ class EntityService {
     }
 
     async hasRelation(sourceId: string, targetId: string, relationType: string): Promise<boolean> {
-        const { rows } = await pool.query(
-            'SELECT 1 FROM entity_relations WHERE source_id = $1 AND target_id = $2 AND relation_type = $3',
-            [sourceId, targetId, relationType]
-        );
+        const rows = await prisma.$queryRaw<any[]>`
+            SELECT 1 FROM entity_relations 
+            WHERE source_id = ${sourceId}::uuid AND target_id = ${targetId}::uuid AND relation_type = ${relationType}
+        `;
         return rows.length > 0;
     }
 
@@ -244,19 +241,17 @@ class EntityService {
      */
     async searchEntities(typeName: string, query: string, options: { applicationId?: string, limit?: number } = {}): Promise<Entity[]> {
         const limit = Math.min(options.limit || 20, 100);
-        let sql = `SELECT * FROM unified_entities WHERE type = $1 AND status != 'deleted' AND data::text ILIKE $2`;
-        const params: any[] = [typeName, `%${query}%`];
-        let paramIndex = 3;
+        
+        let sql = `SELECT * FROM unified_entities 
+                   WHERE type = '${typeName}' AND status != 'deleted' AND data::text ILIKE '%${query}%'`;
 
         if (options.applicationId) {
-            sql += ` AND application_id = $${paramIndex++}`;
-            params.push(options.applicationId);
+            sql += ` AND application_id = '${options.applicationId}'::uuid`;
         }
 
-        sql += ` ORDER BY created_at DESC LIMIT $${paramIndex}`;
-        params.push(limit);
+        sql += ` ORDER BY created_at DESC LIMIT ${limit}`;
 
-        const { rows } = await pool.query(sql, params);
+        const rows = await prisma.$queryRawUnsafe<any[]>(sql);
         return rows.map(this.mapRowToEntity.bind(this));
     }
 
@@ -280,17 +275,21 @@ class EntityService {
         } as any;
     }
 
-    // Legacy compatibility for entity types (can be removed later)
+    // Legacy compatibility for entity types
     async listEntityTypes(applicationId?: string): Promise<any[]> {
-        const { rows } = await pool.query(`
+        const excludedNames = ['users', 'admin-users', 'admin_users'];
+        
+        let query = `
             SELECT 
                 id, 
                 name, 
-                display_name as "displayName", 
+                display_name as "displayName",
+                title,
                 description, 
                 icon, 
                 category, 
-                api_endpoint as "apiEndpoint", 
+                api_endpoint as "apiEndpoint",
+                response_key as "responseKey",
                 columns, 
                 schema, 
                 is_system as "isSystem",
@@ -299,23 +298,227 @@ class EntityService {
                 can_update as "canUpdate",
                 can_delete as "canDelete"
             FROM entity_types 
-            ORDER BY category, title ASC
-        `);
+            WHERE name NOT IN ('users', 'admin-users', 'admin_users')
+        `;
+        
+        if (applicationId) {
+            query += ` AND (application_id = '${applicationId}'::uuid OR (is_system = true AND application_id IS NULL))`;
+        } else {
+            query += ` AND (application_id IS NOT NULL OR is_system = true)`;
+        }
+        
+        query += ` ORDER BY category, COALESCE(title, display_name, name) ASC`;
+        
+        const rows = await prisma.$queryRawUnsafe<any[]>(query);
         return rows;
     }
-    async getEntityType(typeName: string) { return { id: typeName, name: typeName, schema: {} }; }
-    async getEntityTypeById(id: string) { return { id, name: id, schema: {} }; }
+    
+    async getEntityType(typeName: string): Promise<any | null> {
+        const rows = await prisma.$queryRaw<any[]>`
+            SELECT 
+                id, 
+                name, 
+                display_name as "displayName",
+                title,
+                description, 
+                icon, 
+                category, 
+                api_endpoint as "apiEndpoint",
+                response_key as "responseKey",
+                columns, 
+                schema, 
+                is_system as "isSystem",
+                search_placeholder as "searchPlaceholder",
+                can_create as "canCreate",
+                can_update as "canUpdate",
+                can_delete as "canDelete"
+            FROM entity_types 
+            WHERE name = ${typeName}
+        `;
+        
+        return rows[0] || null;
+    }
+    
+    async getEntityTypeById(id: string): Promise<any | null> {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+        
+        let rows: any[] = [];
+        
+        if (isUUID) {
+            rows = await prisma.$queryRaw<any[]>`
+                SELECT 
+                    id, 
+                    name, 
+                    display_name as "displayName",
+                    title,
+                    description, 
+                    icon, 
+                    category, 
+                    api_endpoint as "apiEndpoint",
+                    response_key as "responseKey",
+                    columns, 
+                    schema, 
+                    is_system as "isSystem",
+                    search_placeholder as "searchPlaceholder",
+                    can_create as "canCreate",
+                    can_update as "canUpdate",
+                    can_delete as "canDelete"
+                FROM entity_types 
+                WHERE id = ${id}::uuid
+            `;
+        }
+        
+        if (rows.length === 0) {
+            rows = await prisma.$queryRaw<any[]>`
+                SELECT 
+                    id, 
+                    name, 
+                    display_name as "displayName",
+                    title,
+                    description, 
+                    icon, 
+                    category, 
+                    api_endpoint as "apiEndpoint",
+                    response_key as "responseKey",
+                    columns, 
+                    schema, 
+                    is_system as "isSystem",
+                    search_placeholder as "searchPlaceholder",
+                    can_create as "canCreate",
+                    can_update as "canUpdate",
+                    can_delete as "canDelete"
+                FROM entity_types 
+                WHERE name = ${id}
+            `;
+        }
 
-    async createEntityType(data: any) {
-        return { id: data.name, ...data };
+        return rows[0] || null;
     }
 
-    async updateEntityType(id: string, data: any) {
-        return { id, ...data };
+    async createEntityType(data: {
+        name: string;
+        displayName: string;
+        description?: string;
+        applicationId?: string;
+        schema?: any;
+        icon?: string;
+        category?: string;
+    }): Promise<any> {
+        const rows = await prisma.$queryRaw<any[]>`
+            INSERT INTO entity_types (
+                name, 
+                display_name, 
+                title,
+                description, 
+                icon, 
+                category, 
+                application_id,
+                schema,
+                api_endpoint,
+                can_create,
+                can_update,
+                can_delete
+            )
+            VALUES (
+                ${data.name}, 
+                ${data.displayName}, 
+                ${data.displayName}, 
+                ${data.description || null}, 
+                ${data.icon || 'collection'}, 
+                ${data.category || 'Custom'}, 
+                ${data.applicationId || null}::uuid,
+                ${JSON.stringify(data.schema || [])}::jsonb,
+                ${`/admin/entities/${data.name}`},
+                true,
+                true,
+                true
+            )
+            RETURNING 
+                id, 
+                name, 
+                display_name as "displayName",
+                title,
+                description, 
+                icon, 
+                category, 
+                api_endpoint as "apiEndpoint",
+                response_key as "responseKey",
+                columns, 
+                schema, 
+                is_system as "isSystem",
+                search_placeholder as "searchPlaceholder",
+                can_create as "canCreate",
+                can_update as "canUpdate",
+                can_delete as "canDelete"
+        `;
+        
+        return rows[0];
     }
 
-    async deleteEntityType(id: string) {
-        return true;
+    async updateEntityType(id: string, data: {
+        displayName?: string;
+        description?: string;
+        schema?: any;
+        icon?: string;
+        category?: string;
+    }): Promise<any | null> {
+        const updates: string[] = [];
+        
+        if (data.displayName !== undefined) {
+            updates.push(`display_name = '${data.displayName}'`);
+            updates.push(`title = '${data.displayName}'`);
+        }
+        if (data.description !== undefined) {
+            updates.push(`description = '${data.description}'`);
+        }
+        if (data.icon !== undefined) {
+            updates.push(`icon = '${data.icon}'`);
+        }
+        if (data.category !== undefined) {
+            updates.push(`category = '${data.category}'`);
+        }
+        if (data.schema !== undefined) {
+            updates.push(`schema = '${JSON.stringify(data.schema)}'::jsonb`);
+        }
+        
+        if (updates.length === 0) {
+            return this.getEntityTypeById(id);
+        }
+        
+        const query = `
+            UPDATE entity_types 
+            SET ${updates.join(', ')}, updated_at = NOW()
+            WHERE id = '${id}'::uuid OR name = '${id}'
+            RETURNING 
+                id, 
+                name, 
+                display_name as "displayName",
+                title,
+                description, 
+                icon, 
+                category, 
+                api_endpoint as "apiEndpoint",
+                response_key as "responseKey",
+                columns, 
+                schema, 
+                is_system as "isSystem",
+                search_placeholder as "searchPlaceholder",
+                can_create as "canCreate",
+                can_update as "canUpdate",
+                can_delete as "canDelete"
+        `;
+        
+        const rows = await prisma.$queryRawUnsafe<any[]>(query);
+        return rows[0] || null;
+    }
+
+    async deleteEntityType(id: string): Promise<boolean> {
+        const result = await prisma.$executeRaw`
+            DELETE FROM entity_types 
+            WHERE (id = ${id}::uuid OR name = ${id}) AND is_system = false
+        `;
+        
+        return result > 0;
     }
 }
 

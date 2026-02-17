@@ -1,5 +1,7 @@
-const { pool } = require('../config/database');
+const { PrismaClient } = require('../prisma/generated/prisma');
 const winston = require('winston');
+
+const prisma = new PrismaClient();
 
 // Configure logger
 const logger = winston.createLogger({
@@ -59,7 +61,9 @@ async function getDatabaseStats() {
       let status = '❌ Error';
 
       try {
-        const { rows } = await pool.query(`SELECT count(*) FROM ${tableName}`);
+        // Quote table name as PostgreSQL identifier to prevent SQL injection
+        const quotedTableName = `"${tableName.replace(/"/g, '""')}"`;
+        const rows = await prisma.$queryRawUnsafe(`SELECT count(*) as count FROM ${quotedTableName}`);
         recordCount = rows[0].count || 0;
         status = '✅ OK';
         totalRecords += parseInt(recordCount);
@@ -83,7 +87,7 @@ async function getDatabaseStats() {
 
     // Performance metrics
     const start = Date.now();
-    await pool.query('SELECT 1');
+    await prisma.$queryRawUnsafe('SELECT 1');
     const responseTime = Date.now() - start;
     
     console.log(`\n🏥 Health Status:`);
@@ -100,9 +104,11 @@ async function getDatabaseStats() {
     }
 
     console.log('\n✅ Database statistics gathered successfully!');
+    await prisma.$disconnect();
 
   } catch (error) {
     console.error('\n❌ Failed to gather database statistics:', error.message);
+    await prisma.$disconnect();
     process.exit(1);
   }
 }

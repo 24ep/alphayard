@@ -174,14 +174,14 @@ export const CommentDrawer: React.FC<CommentDrawerProps> = ({
         </View>
 
         {/* Render Replies (Simple filtering for now, ideally pre-processed) */}
-        {comments && comments.filter(c => c.parent_id === item.id).map(reply => (
+        {comments && comments.filter(c => (c.parent_id || c.parentId) === item.id).map(reply => (
           <CommentItem key={reply.id} item={reply} depth={depth + 1} />
         ))}
       </View>
     );
   };
 
-  const rootComments = comments ? comments.filter(c => !c.parent_id) : [];
+  const rootComments = comments ? comments.filter(c => !c.parent_id && !c.parentId) : [];
 
   const renderComment = ({ item, index }: { item: any, index: number }) => (
     <View>

@@ -99,6 +99,14 @@ export function Sidebar({ activeModule, setActiveModule, CircleCount, safetyCoun
       description: 'Content management'
     },
     { 
+      id: 'dev-hub', 
+      label: 'Dev Hub', 
+      icon: GlobeAltIcon,
+      badge: 'SDK',
+      description: 'Developer documentation',
+      onClick: () => window.location.href = '/dev-hub'
+    },
+    { 
       id: 'settings', 
       label: 'Settings', 
       icon: CogIcon,

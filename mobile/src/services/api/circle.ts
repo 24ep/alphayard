@@ -230,7 +230,7 @@ export const circleApi = {
     return response as any;
   },
 
-  // Shopping List APIs
+  // Shopping List APIs (use /shopping; legacy /circles/shopping-list returns 410)
   getShoppingList: async (): Promise<{ items: Array<{
     id: string;
     item: string;
@@ -242,8 +242,28 @@ export const circleApi = {
     createdAt: string;
     updatedAt: string;
   }> }> => {
-    const response = await api.get('/circles/shopping-list');
-    return response as any;
+    try {
+      const response = await api.get('/shopping');
+      const raw = (response as any)?.data;
+      const entities: any[] = raw?.data ?? raw?.entities ?? [];
+      const items = entities.map((e: any) => {
+        const att = e.attributes ?? e.data ?? {};
+        return {
+          id: e.id,
+          item: att.item ?? '',
+          quantity: att.quantity ?? '',
+          category: att.category ?? '',
+          completed: !!(att.completed),
+          list: att.list,
+          createdBy: e.ownerId,
+          createdAt: e.created_at ?? e.createdAt ?? new Date().toISOString(),
+          updatedAt: e.updated_at ?? e.updatedAt ?? new Date().toISOString(),
+        };
+      });
+      return { items };
+    } catch (_e) {
+      return { items: [] };
+    }
   },
 
   createShoppingItem: async (data: {
@@ -252,8 +272,10 @@ export const circleApi = {
     category?: string;
     list?: string;
   }): Promise<{ item: any }> => {
-    const response = await api.post('/circles/shopping-list', data);
-    return response as any;
+    const response = await api.post('/shopping', data);
+    const raw = (response as any)?.data;
+    const item = raw?.data ?? raw;
+    return { item: item ?? null };
   },
 
   updateShoppingItem: async (itemId: string, data: {
@@ -263,13 +285,15 @@ export const circleApi = {
     completed?: boolean;
     list?: string;
   }): Promise<{ item: any }> => {
-    const response = await api.put(`/circles/shopping-list/${itemId}`, data);
-    return response as any;
+    const response = await api.put(`/shopping/${itemId}`, data);
+    const raw = (response as any)?.data;
+    const item = raw?.data ?? raw;
+    return { item: item ?? null };
   },
 
   deleteShoppingItem: async (itemId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/circles/shopping-list/${itemId}`);
-    return response as any;
+    await api.delete(`/shopping/${itemId}`);
+    return { success: true, message: 'Item deleted' };
   },
 
   getCircleTypes: async (): Promise<{ success: boolean; data: CircleType[] }> => {

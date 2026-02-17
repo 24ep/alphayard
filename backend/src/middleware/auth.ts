@@ -1,14 +1,21 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../models/UserModel';
-import pool from '../config/database'; // Using postgres pool directly
+import { prisma } from '../lib/prisma';
 import { config } from '../config/env';
+import { tokenBlacklistService } from '../services/tokenBlacklistService';
 
 export interface AuthenticatedRequest extends Request {
   user: {
     id: string;
     email: string;
     role?: string;
+    type?: string;
+  };
+  admin?: {
+    id: string;
+    email: string;
+    type?: string;
   };
   circleId?: string;
   circleRole?: string;
@@ -42,45 +49,72 @@ export const authenticateToken = async (
     // Verified JWT token
     const jwtSecret = config.JWT_SECRET;
 
-    // DEV BYPASS: Allow mock-access-token for development
+    // PRODUCTION SECURITY: Reject mock tokens in production
     if (token === 'mock-access-token') {
-      // log('Using dev mock token');
-      // Use a known test user ID
+      if (process.env.NODE_ENV === 'production') {
+        log('Mock token attempted in production - blocked');
+        return res.status(401).json({
+          error: 'Access denied',
+          message: 'Invalid authentication method'
+        });
+      }
+      
+      // Development-only: Allow with warning
+      console.warn('[SECURITY WARNING] Using mock token in development mode');
       const TEST_USER_ID = 'f739edde-45f8-4aa9-82c8-c1876f434683';
 
-      // Add user info to request directly without DB check (or with DB check)
-      // We'll verify against DB to be safe and populate email correctly
-      const res = await pool.query('SELECT * FROM public.users WHERE id = $1', [TEST_USER_ID]);
-      let user = res.rows[0];
+      // Use Prisma to fetch user
+      const user = await prisma.user.findUnique({
+        where: { id: TEST_USER_ID }
+      });
 
       if (!user) {
-        // If test user missing in public.users, just mock it
-        user = { id: TEST_USER_ID, email: 'jaroonwitpool@gmail.com', is_active: true };
+        req.user = {
+          id: TEST_USER_ID,
+          email: 'dev-test@bondarys.local'
+        };
+      } else {
+        req.user = {
+          id: user.id,
+          email: user.email
+        };
       }
-
-      req.user = {
-        id: user.id || TEST_USER_ID,
-        email: user.email
-      };
       return next();
+    }
+
+    // Check if token is blacklisted
+    const isBlacklisted = await tokenBlacklistService.isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      log('Token is blacklisted');
+      return res.status(401).json({
+        error: 'Access denied',
+        message: 'Token has been invalidated'
+      });
     }
 
     const decoded = jwt.verify(token, jwtSecret) as any;
 
-    // log(`Token verified for ID: ${decoded.id}`);
+    console.log('[AUTH] Token decoded - ID:', decoded.id, 'Email:', decoded.email, 'Type:', decoded.type);
 
-    // SPECIAL CASE: Handle hardcoded 'admin' user from adminAuth.ts
-    if (decoded.id === 'admin') {
+    // SPECIAL CASE: Handle admin tokens (from adminAuth.ts)
+    if (decoded.type === 'admin' || decoded.id === 'admin' || decoded.role === 'admin' || decoded.role === 'super_admin') {
       req.user = {
-        id: 'admin',
-        email: 'admin@bondarys.com',
-        role: 'admin'
+        id: decoded.id || decoded.adminId || 'admin',
+        adminId: decoded.adminId || decoded.id,
+        email: decoded.email || 'admin@bondarys.com',
+        name: decoded.name,
+        role: decoded.role || 'admin',
+        permissions: decoded.permissions || [],
+        isSuperAdmin: decoded.isSuperAdmin || false,
+        type: decoded.type || 'admin'
       } as any;
       return next();
     }
 
     // Check if user still exists and is active
+    console.log('[AUTH] Looking up user by ID:', decoded.id);
     const user = await UserModel.findById(decoded.id);
+    console.log('[AUTH] User found:', user ? { id: user.id, email: user.email, isActive: user.isActive } : 'NOT FOUND');
 
     if (!user) {
       log(`User not found for ID: ${decoded.id}`);
@@ -150,31 +184,23 @@ export const optionalAuth = async (
     }
 
     const jwtSecret = config.JWT_SECRET;
-    const decoded = jwt.verify(
-      token,
-      jwtSecret
-    ) as any;
+    const decoded = jwt.verify(token, jwtSecret) as any;
 
-    const res = await pool.query(
-      `SELECT id, email, raw_user_meta_data, role FROM public.users WHERE id = $1`,
-      [decoded.id]
-    );
-    const user = res.rows[0];
+    // Use Prisma to fetch user
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true
+      }
+    });
 
     if (user) {
-      // Extract role from metadata or direct column
-      const meta = user.raw_user_meta_data || {};
-      const userRole = user.role || meta.role;
-      
       req.user = {
         id: user.id,
-        email: user.email,
-        role: userRole
+        email: user.email
       };
     }
-    
-    // Debug log provided token role vs db role
-    // console.log(`[authenticateToken] User: ${user?.email}, Role: ${req.user?.role}`);
 
     next();
   } catch (error) {
@@ -187,8 +213,6 @@ export const optionalAuth = async (
 export const requireRole = (requiredRole: string) => {
   return (req: any, res: Response, next: NextFunction) => {
     try {
-      // Extract role from a trusted source. Prefer upstream assignment (e.g., gateway),
-      // fallback to JWT claim parsed earlier into req as needed by your stack.
       const roleFromRequest = (req as any).userRole || (req as any).user?.role;
       try {
         require('fs').appendFileSync('debug_auth.log', `[${new Date().toISOString()}] [requireRole] User: ${req.user?.id}, Role from request: ${roleFromRequest}, Required: ${requiredRole}\n`);
@@ -230,11 +254,14 @@ export const requireCircleMember = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { rows } = await pool.query(
-      'SELECT circle_id, role FROM circle_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id]
-    );
-    const circleMember = rows[0];
+    // Use Prisma to find circle membership
+    const circleMember = await prisma.circleMember.findFirst({
+      where: { userId: req.user.id },
+      select: {
+        circleId: true,
+        role: true
+      }
+    });
 
     if (!circleMember) {
       res.status(403).json({
@@ -245,7 +272,7 @@ export const requireCircleMember = async (
     }
 
     // Add circle info to request
-    req.circleId = circleMember.circle_id;
+    req.circleId = circleMember.circleId;
     req.circleRole = circleMember.role;
 
     next();
@@ -265,14 +292,17 @@ export const optionalCircleMember = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { rows } = await pool.query(
-      'SELECT circle_id, role FROM circle_members WHERE user_id = $1 LIMIT 1',
-      [req.user.id]
-    );
-    const circleMember = rows[0];
+    // Use Prisma to find circle membership
+    const circleMember = await prisma.circleMember.findFirst({
+      where: { userId: req.user.id },
+      select: {
+        circleId: true,
+        role: true
+      }
+    });
 
     if (circleMember) {
-      req.circleId = circleMember.circle_id;
+      req.circleId = circleMember.circleId;
       req.circleRole = circleMember.role;
     }
 
@@ -289,11 +319,17 @@ export const requireCircleOwner = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { rows } = await pool.query(
-      "SELECT circle_id, role FROM circle_members WHERE user_id = $1 AND role = 'owner' LIMIT 1",
-      [req.user.id]
-    );
-    const circleMember = rows[0];
+    // Use Prisma to find owner membership
+    const circleMember = await prisma.circleMember.findFirst({
+      where: {
+        userId: req.user.id,
+        role: 'owner'
+      },
+      select: {
+        circleId: true,
+        role: true
+      }
+    });
 
     if (!circleMember) {
       res.status(403).json({
@@ -303,7 +339,7 @@ export const requireCircleOwner = async (
       return;
     }
 
-    req.circleId = circleMember.circle_id;
+    req.circleId = circleMember.circleId;
     req.circleRole = circleMember.role;
 
     next();
@@ -316,6 +352,7 @@ export const requireCircleOwner = async (
     return;
   }
 };
+
 // Check for Admin Access
 export const requireAdmin = async (
   req: AuthenticatedRequest,
@@ -323,15 +360,35 @@ export const requireAdmin = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { rows } = await pool.query(
-      "SELECT is_active as is_super_admin, role, raw_user_meta_data->>'role' as meta_role FROM public.users WHERE id = $1",
-      [req.user.id]
-    );
-    const user = rows[0];
+    // Check if user is from admin_users table (type: 'admin' in token)
+    if (req.user.type === 'admin') {
+      // Use Prisma to verify admin user exists and is active
+      const adminUser = await prisma.adminUser.findUnique({
+        where: { id: req.user.id },
+        select: {
+          id: true,
+          isActive: true
+        }
+      });
+      
+      if (adminUser && adminUser.isActive !== false) {
+        // Store admin info for later use
+        req.admin = req.user;
+        next();
+        return;
+      }
+    }
 
-    if (user && (user.is_super_admin || user.role === 'admin' || user.role === 'super_admin' || user.meta_role === 'admin' || user.meta_role === 'super_admin')) {
-      next();
-      return;
+    // Fallback: Check regular users table for active status
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        isActive: true
+      }
+    });
+
+    if (user && user.isActive) {
+      // User exists and is active, but not an admin - deny access
     }
 
     res.status(403).json({

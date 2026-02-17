@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,53 +13,50 @@ import {
   StyleSheet,
   Switch,
   ActivityIndicator,
+  Dimensions,
+  StatusBar,
+  Animated,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  ArrowLeft, 
-  Camera, 
-  Copy, 
-  Share2, 
-  Mail, 
-  QrCode, 
-  MapPin, 
-  MessageCircle, 
-  AlertTriangle, 
-  Calendar, 
-  CreditCard, 
-  ShoppingCart, 
-  Activity, 
+import {
+  ArrowLeft,
+  Copy,
+  Share2,
+  Mail,
+  QrCode,
+  MapPin,
+  MessageCircle,
+  AlertTriangle,
+  Calendar,
+  CreditCard,
+  ShoppingCart,
+  Activity,
   Gamepad2,
-  Plus,
-  Check
+  Check,
+  Users,
+  Settings,
+  Lock,
+  Globe,
+  ChevronRight,
+  Pencil,
+  Image as ImageIcon,
+  Info,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { CircleSelectionTabs } from '../../components/common/CircleSelectionTabs';
-import { InlineWysiwygEditor } from '../../components/common/InlineWysiwygEditor';
 import { circleApi } from '../../services/api';
-import { useBranding } from '../../contexts/BrandingContext';
+import { ScreenBackground } from '../../components/ScreenBackground';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
-const CheckIcon = Check as any;
-const ArrowLeftIcon = ArrowLeft as any;
-const CameraIcon = Camera as any;
-const CopyIcon = Copy as any;
-const Share2Icon = Share2 as any;
-const MailIcon = Mail as any;
-const QrCodeIcon = QrCode as any;
-const PlusIcon = Plus as any;
-const MapPinIcon = MapPin as any;
-const MessageCircleIcon = MessageCircle as any;
-const AlertTriangleIcon = AlertTriangle as any;
-const CalendarIcon = Calendar as any;
-const CreditCardIcon = CreditCard as any;
-const ShoppingCartIcon = ShoppingCart as any;
-const ActivityIcon = Activity as any;
-const Gamepad2Icon = Gamepad2 as any;
+const { width } = Dimensions.get('window');
 
-const THEME_COLOR = '#FA7272'; // Premium accent color
+const TABS = [
+  { key: 'info', label: 'Circle Info', icon: Info },
+  { key: 'member', label: 'Members', icon: Users },
+  { key: 'settings', label: 'Settings', icon: Settings },
+];
 
 interface CircleSettingsScreenProps {
   navigation: any;
+  route?: { params?: { initialTab?: string } };
 }
 
 interface CircleData {
@@ -67,10 +64,12 @@ interface CircleData {
   name: string;
   story: string;
   logo?: string;
+  coverPhoto?: string;
   inviteCode?: string;
   inviteCodeExpiry?: string;
   settings?: CircleSettings;
-  members?: any[]; // Added members to data
+  members?: any[];
+  privacy?: 'public' | 'private';
 }
 
 interface CircleSettings {
@@ -82,25 +81,34 @@ interface CircleSettings {
   allowCircleShopping: boolean; 
   allowCircleHealth: boolean; 
   allowCircleEntertainment: boolean; 
-  allowGallery: boolean; // Added
-  circleType: string; // Added
+  allowGallery: boolean;
+  circleType: string;
 }
 
-const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation }) => {
+const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation, route }) => {
   const [circleData, setCircleData] = useState<CircleData>({
     id: '',
     name: '',
     story: '',
     logo: '',
+    coverPhoto: '',
     inviteCode: '',
     inviteCodeExpiry: '',
     members: [],
+    privacy: 'private',
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [storyText, setStoryText] = useState('');
+  const initialTab = route?.params?.initialTab;
+  const [activeTabIndex, setActiveTabIndex] = useState(() => {
+    const idx = TABS.findIndex(t => t.key === initialTab);
+    return idx >= 0 ? idx : 0;
+  });
+  const scrollViewRef = useRef<ScrollView>(null);
+  const tabScrollX = useRef(new Animated.Value(0)).current;
   const [moduleSettings, setModuleSettings] = useState<CircleSettings>({
     allowLocationSharing: true,
     allowChatMessages: true,
@@ -114,38 +122,17 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
     circleType: 'family',
   });
 
-  /* eslint-disable @typescript-eslint/no-unused-vars */
-  const routeParams = (navigation as any).getState()?.routes?.find((r: any) => r.name === 'CircleSettings')?.params;
-  const initialTab = routeParams?.initialTab || 'info';
-  const [activeTab, setActiveTab] = useState(initialTab);
-
-  const { categories } = useBranding();
-  const tabsConfig = React.useMemo(() => {
-    if (!categories) return {};
-    // Try specific circle config first
-    let comp = null;
-    for (const cat of categories) {
-        comp = cat.components.find(c => c.id === 'circle-selection-tabs');
-        if (comp) break;
-    }
-    // Fallback to generic if not found
-    if (!comp) {
-        for (const cat of categories) {
-            comp = cat.components.find(c => c.id === 'selection-tabs');
-            if (comp) break;
-        }
-    }
-    return comp?.config || {};
-  }, [categories]);
-
-  const tabs = [
-    { id: 'info', label: 'General', icon: 'info' },
-    { id: 'members', label: 'Members', icon: 'users' },
-    { id: 'config', label: 'Features', icon: 'settings' },
-  ];
-
   useEffect(() => {
     loadCircleData();
+  }, []);
+
+  useEffect(() => {
+    if (scrollViewRef.current && activeTabIndex >= 0) {
+      const timer = setTimeout(() => {
+        (scrollViewRef.current as any)?.scrollTo({ x: activeTabIndex * width, animated: false });
+      }, 150);
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   const loadCircleData = async () => {
@@ -157,11 +144,9 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
         const primaryCircle = circles[0];
         const settings = (primaryCircle.settings || {}) as any;
         
-        // Mock members if not present in API (assuming generic API structure)
         const mockMembers = primaryCircle.members || [
-            { id: '1', name: 'You', avatar: null, status: 'online' },
-            { id: '2', name: 'Partner', avatar: null, status: 'offline' },
-             // Add more mocks if needed to test collision
+            { id: '1', name: 'You', avatar: null, status: 'online', role: 'admin' },
+            { id: '2', name: 'Partner', avatar: null, status: 'offline', role: 'member' },
         ];
 
         setCircleData({
@@ -169,9 +154,11 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
           name: primaryCircle.name,
           story: primaryCircle.description || '',
           logo: '', 
+          coverPhoto: '',
           inviteCode: '', 
           inviteCodeExpiry: '',
           members: mockMembers,
+          privacy: settings.privacy || 'private',
           settings: {
             allowLocationSharing: settings.allowLocationSharing ?? true,
             allowChatMessages: settings.allowChatMessages ?? true,
@@ -237,6 +224,26 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
       Alert.alert('Error', 'Failed to update circle story');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCoverPhotoUpload = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const imageUri = result.assets[0].uri;
+        setCircleData(prev => ({ ...prev, coverPhoto: imageUri }));
+        Alert.alert('Success', 'Cover photo updated successfully');
+      }
+    } catch (error) {
+      console.error('Error uploading cover photo:', error);
+      Alert.alert('Error', 'Failed to upload cover photo');
     }
   };
 
@@ -340,6 +347,7 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
     try {
       setSaving(true);
       const apiSettings = {
+        ...moduleSettings,
         allowLocationSharing: moduleSettings.allowLocationSharing,
         allowChatMessages: moduleSettings.allowChatMessages,
         allowSafetyAlerts: moduleSettings.allowSafetyAlerts,
@@ -350,7 +358,8 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
         allowCircleEntertainment: moduleSettings.allowCircleEntertainment,
         allowGallery: moduleSettings.allowGallery,
         circleType: moduleSettings.circleType,
-      };
+      } as any;
+      if (circleData.privacy !== undefined) apiSettings.privacy = circleData.privacy;
 
       await circleApi.updateCircle(circleData.id, { settings: apiSettings });
       setCircleData(prev => ({ ...prev, settings: moduleSettings }));
@@ -363,428 +372,657 @@ const CircleSettingsScreen: React.FC<CircleSettingsScreenProps> = ({ navigation 
     }
   };
 
-  const ModuleToggle = ({ 
+  const handleVisibilityChange = (privacy: 'public' | 'private') => {
+    setCircleData(prev => ({ ...prev, privacy }));
+  };
+
+  const handleSaveVisibility = async () => {
+    try {
+      setSaving(true);
+      await circleApi.updateCircle(circleData.id, {
+        settings: { ...moduleSettings, privacy: circleData.privacy } as any,
+      });
+      Alert.alert('Success', 'Visibility updated');
+    } catch (error) {
+      console.error('Error updating visibility:', error);
+      Alert.alert('Error', 'Failed to update visibility');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLeaveCircle = () => {
+    Alert.alert(
+      'Leave Circle',
+      `Are you sure you want to leave "${circleData.name}"? You will need to be invited again to rejoin.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await circleApi.leaveCircle(circleData.id);
+              Alert.alert('Success', 'You have left the circle');
+              navigation.goBack();
+            } catch (error: any) {
+              Alert.alert('Error', error?.message || 'Failed to leave circle');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const SettingItem = ({ 
+    icon: Icon, 
     title, 
-    description, 
-    value, 
-    onToggle, 
-    icon: Icon 
+    subtitle, 
+    onPress, 
+    rightComponent,
+    showChevron = true 
   }: { 
+    icon: any; 
     title: string; 
-    description: string; 
+    subtitle?: string; 
+    onPress?: () => void;
+    rightComponent?: React.ReactNode;
+    showChevron?: boolean;
+  }) => (
+    <TouchableOpacity 
+      style={styles.settingItem} 
+      onPress={onPress}
+      disabled={!onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.settingItemLeft}>
+        <View style={styles.settingIconContainer}>
+          <Icon size={20} color="#3B82F6" />
+        </View>
+        <View style={styles.settingItemContent}>
+          <Text style={styles.settingItemTitle}>{title}</Text>
+          {subtitle && <Text style={styles.settingItemSubtitle}>{subtitle}</Text>}
+        </View>
+      </View>
+      {rightComponent || (showChevron && <ChevronRight size={20} color="#6B7280" />)}
+    </TouchableOpacity>
+  );
+
+  const SettingToggle = ({ 
+    icon: Icon, 
+    title, 
+    subtitle, 
+    value, 
+    onToggle 
+  }: { 
+    icon: any; 
+    title: string; 
+    subtitle?: string; 
     value: boolean; 
     onToggle: () => void; 
-    icon: any; 
   }) => (
-    <View style={styles.moduleItem}>
-      <View style={styles.moduleHeaderSide}>
-        <View style={[styles.moduleIconContainer, { backgroundColor: value ? `${THEME_COLOR}20` : '#F3F4F6' }]}>
-          <Icon 
-            size={24} 
-            color={value ? THEME_COLOR : '#9CA3AF'} 
-          />
+    <View style={styles.settingItem}>
+      <View style={styles.settingItemLeft}>
+        <View style={styles.settingIconContainer}>
+          <Icon size={20} color="#3B82F6" />
         </View>
-        <View style={styles.moduleContent}>
-          <Text style={styles.moduleTitle}>{title}</Text>
-          <Text style={styles.moduleDescription}>{description}</Text>
+        <View style={styles.settingItemContent}>
+          <Text style={styles.settingItemTitle}>{title}</Text>
+          {subtitle && <Text style={styles.settingItemSubtitle}>{subtitle}</Text>}
         </View>
       </View>
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: '#E5E7EB', true: THEME_COLOR }}
-        thumbColor={'#FFFFFF'}
+        trackColor={{ false: '#E5E7EB', true: '#3B82F6' }}
+        thumbColor="#FFFFFF"
+        ios_backgroundColor="#E5E7EB"
       />
     </View>
   );
 
-  const renderInfoTab = () => (
-    <View style={styles.tabContent}>
-      {/* Circle Name */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Basic Info</Text>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Circle Name</Text>
-          <View style={styles.inputWrapper}>
-             <TextInput
-              style={styles.textInput}
-              value={circleData.name}
-              onChangeText={(text) => setCircleData(prev => ({ ...prev, name: text }))}
-              placeholder="Enter circle name"
-              placeholderTextColor="#9CA3AF"
-            />
-            <TouchableOpacity 
-                style={styles.inlineSaveButton}
-                onPress={handleSaveCircleName}
-                disabled={saving}
-            >
-                {saving ? <ActivityIndicator size="small" color="#FFF" /> : <CheckIcon size={16} color="#FFF" />}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
+  const activeTab = TABS[activeTabIndex]?.key ?? 'info';
 
-      {/* Circle Story */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Circle Story</Text>
-        <View style={styles.storyContainer}>
-            <InlineWysiwygEditor
-              value={storyText}
-              onChange={setStoryText}
-              placeholder="Tell your circle's story..."
-              minHeight={120}
-              maxHeight={250}
-              showToolbar={true}
-              editable={true}
-            />
-            <TouchableOpacity
-              style={[styles.saveButton, { marginTop: 12 }, saving && styles.saveButtonDisabled]}
-              onPress={handleSaveCircleStory}
-              disabled={saving}
-            >
-              <Text style={styles.saveButtonText}>
-                {saving ? 'Saving...' : 'Save Story'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-      </View>
+  const handleTabPress = (index: number) => {
+    setActiveTabIndex(index);
+    scrollViewRef.current?.scrollTo({ x: index * width, animated: true });
+  };
 
-      {/* Circle Type Selector */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Circle Type</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {['family', 'couple', 'friend', 'work', 'other'].map((type) => (
-                <TouchableOpacity
-                    key={type}
-                    onPress={() => setModuleSettings(prev => ({ ...prev, circleType: type }))}
-                    style={{
-                        paddingHorizontal: 16,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        backgroundColor: moduleSettings.circleType === type ? THEME_COLOR : '#F3F4F6',
-                        borderWidth: 1,
-                        borderColor: moduleSettings.circleType === type ? THEME_COLOR : '#E5E7EB',
-                    }}
-                >
-                    <Text style={{
-                        color: moduleSettings.circleType === type ? '#FFFFFF' : '#4B5563',
-                        fontWeight: '600',
-                        textTransform: 'capitalize'
-                    }}>
-                        {type}
-                    </Text>
-                </TouchableOpacity>
-            ))}
-        </ScrollView>
-        <TouchableOpacity 
-            style={[styles.saveButton, { marginTop: 12 }, saving && styles.saveButtonDisabled]}
-            onPress={handleSaveModules}
-            disabled={saving}
-        >
-            <Text style={styles.saveButtonText}>
-                {saving ? 'Saving...' : 'Save Type'}
-            </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderMembersTab = () => (
-      <View style={styles.tabContent}>
-          <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Active Members ({circleData.members?.length || 0})</Text>
-              {(circleData.members || []).map((member, index) => (
-                  <View key={member.id || index} style={styles.memberRow}>
-                       <View style={styles.memberAvatarContainer}>
-                            {member.avatar ? (
-                                <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
-                            ) : (
-                                <View style={[styles.memberAvatar, styles.placeholderAvatar, { backgroundColor: '#FFB6C1' }]}>
-                                    <Text style={styles.avatarText}>{member.name?.charAt(0) || '?'}</Text>
-                                </View>
-                            )}
-                       </View>
-                       <View style={styles.memberInfo}>
-                           <Text style={styles.memberName}>{member.name}</Text>
-                           <Text style={styles.memberStatus}>{member.status || 'Member'}</Text>
-                       </View>
-                       {/* Context menu or more actions could go here */}
-                  </View>
-              ))}
-          </View>
-      </View>
-  );
-
-  const renderConfigTab = () => (
-    <View style={styles.tabContent}>
-        <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Features</Text>
-            <View style={styles.modulesContainer}>
-                <ModuleToggle
-                title="Location Sharing"
-                description="Share real-time location"
-                value={moduleSettings.allowLocationSharing}
-                onToggle={() => handleToggleModule('allowLocationSharing')}
-                icon={MapPinIcon}
-                />
-                <ModuleToggle
-                title="Circle Chat"
-                description="Enable group chat"
-                value={moduleSettings.allowChatMessages}
-                onToggle={() => handleToggleModule('allowChatMessages')}
-                icon={MessageCircleIcon}
-                />
-                <ModuleToggle
-                title="Safety Alerts"
-                description="Allow SOS alerts"
-                value={moduleSettings.allowSafetyAlerts}
-                onToggle={() => handleToggleModule('allowSafetyAlerts')}
-                icon={AlertTriangleIcon}
-                />
-                <ModuleToggle
-                title="Shared Calendar"
-                description="Events and reminders"
-                value={moduleSettings.allowCalendarEvents}
-                onToggle={() => handleToggleModule('allowCalendarEvents')}
-                icon={CalendarIcon}
-                />
-                <ModuleToggle
-                title="Expenses"
-                description="Track shared expenses"
-                value={moduleSettings.allowCircleExpenses}
-                onToggle={() => handleToggleModule('allowCircleExpenses')}
-                icon={CreditCardIcon}
-                />
-                <ModuleToggle
-                title="Shopping List"
-                description="Shared grocery lists"
-                value={moduleSettings.allowCircleShopping}
-                onToggle={() => handleToggleModule('allowCircleShopping')}
-                icon={ShoppingCartIcon}
-                />
-                <ModuleToggle
-                title="Health & Wellness"
-                description="Track health stats"
-                value={moduleSettings.allowCircleHealth}
-                onToggle={() => handleToggleModule('allowCircleHealth')}
-                icon={ActivityIcon}
-                />
-                <ModuleToggle
-                title="Entertainment"
-                description="Manage subscriptions"
-                value={moduleSettings.allowCircleEntertainment}
-                onToggle={() => handleToggleModule('allowCircleEntertainment')}
-                icon={Gamepad2Icon}
-                />
-                <ModuleToggle
-                title="Gallery"
-                description="Shared photo album"
-                value={moduleSettings.allowGallery}
-                onToggle={() => handleToggleModule('allowGallery')}
-                icon={Image} // Using generic Image from react-native (actually need Lucide icon)
-                />
-                
-                <TouchableOpacity
-                style={[styles.saveButton, styles.modulesSaveButton, saving && styles.saveButtonDisabled]}
-                onPress={handleSaveModules}
-                disabled={saving}
-                >
-                <Text style={styles.saveButtonText}>
-                    {saving ? 'Saving...' : 'Update Features'}
-                </Text>
-                </TouchableOpacity>
-            </View>
-        </View>
-    </View>
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { x: tabScrollX } } }],
+    {
+      useNativeDriver: false,
+      listener: (event: any) => {
+        const offsetX = event.nativeEvent.contentOffset.x;
+        const index = Math.round(offsetX / width);
+        if (index !== activeTabIndex && index >= 0 && index < TABS.length) {
+          setActiveTabIndex(index);
+        }
+      },
+    }
   );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={THEME_COLOR} />
+        <LoadingSpinner size="large" />
       </View>
     );
   }
 
+  const memberCount = circleData.members?.length || 0;
+  const displayName = circleData.name?.trim() || 'Circle';
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <ArrowLeftIcon size={24} color="#1F2937" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Circle Settings</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <ScreenBackground screenId="circle">
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false}
-        style={styles.scrollView}
-      >
-        {/* Immersive Header */}
-        <View style={styles.heroSection}>
-            <View style={styles.logoContainer}>
-                {circleData.logo ? (
-                    <Image source={{ uri: circleData.logo }} style={styles.heroLogo} />
+        {/* Header - profile style */}
+        <View style={styles.header}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <ArrowLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Settings</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={styles.headerContent}>
+            <View style={styles.avatarContainer}>
+              {circleData.logo ? (
+                <Image source={{ uri: circleData.logo }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarText}>{displayName.charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+            </View>
+            <View style={styles.headerInfo}>
+              <Text style={styles.userName}>{displayName}</Text>
+              <View style={styles.contactRow}>
+                <Users size={14} color="#6B7280" />
+                <Text style={styles.contactText}>
+                  {memberCount} {memberCount === 1 ? 'member' : 'members'}
+                </Text>
+              </View>
+              <View style={styles.contactRow}>
+                {circleData.privacy === 'private' ? (
+                  <Lock size={14} color="#6B7280" />
                 ) : (
-                    <View style={styles.heroPlaceholderLogo}>
-                        <Text style={{ fontSize: 32, fontWeight: '700', color: '#9CA3AF' }}>
-                            {circleData.name?.charAt(0) || 'C'}
-                        </Text>
-                    </View>
+                  <Globe size={14} color="#6B7280" />
                 )}
-                <TouchableOpacity style={styles.heroEditButton} onPress={handleLogoUpload}>
-                    <CameraIcon size={16} color="#FFFFFF" />
-                </TouchableOpacity>
+                <Text style={styles.contactText}>
+                  {circleData.privacy === 'private' ? 'Private' : 'Public'}
+                </Text>
+              </View>
             </View>
-            
-            <Text style={styles.heroName}>{circleData.name || 'My Circle'}</Text>
-            
-            <View style={styles.badgeContainer}>
-                 <Text style={styles.badgeText}>Circle</Text>
-            </View>
-
-            <View style={styles.overlappingAvatars}>
-                {(circleData.members || []).slice(0, 4).map((member, index) => (
-                    <View key={index} style={[styles.avatarStackItem, { zIndex: 10 - index, marginLeft: index === 0 ? 0 : -15 }]}>
-                         {member.avatar ? (
-                            <Image source={{ uri: member.avatar }} style={styles.stackAvatar} />
-                         ) : (
-                            <View style={[styles.stackAvatar, { backgroundColor: '#FFB6C1', alignItems: 'center', justifyContent: 'center' }]}>
-                                <Text style={{ fontSize: 10, color: '#FFF', fontWeight: 'bold' }}>{member.name?.charAt(0)}</Text>
-                            </View>
-                         )}
-                    </View>
-                ))}
-                {(circleData.members?.length || 0) > 4 && (
-                     <View style={[styles.avatarStackItem, { zIndex: 0, marginLeft: -15, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }]}>
-                        <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#6B7280' }}>+{circleData.members!.length - 4}</Text>
-                     </View>
-                )}
-            </View>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setShowInviteModal(true)}
+            >
+              <Pencil size={20} color="#3B82F6" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Tabs */}
-        <View style={styles.tabsContainer}>
-            <View style={{ paddingTop: 0, paddingBottom: 0 }}>
-                <CircleSelectionTabs
-                    activeTab={activeTab}
-                    onTabPress={setActiveTab}
-                    tabs={tabs}
-                    activeColor={tabsConfig.activeColor || "#FA7272"}
-                    inactiveColor={tabsConfig.inactiveColor || "#F3F4F6"}
-                    activeTextColor={tabsConfig.activeTextColor || "#FA7272"}
-                    inactiveTextColor={tabsConfig.inactiveTextColor || "#6B7280"}
-                    activeIconColor={tabsConfig.activeIconColor || "#FFFFFF"}
-                    inactiveIconColor={tabsConfig.inactiveIconColor || "#6B7280"}
-                    menuBackgroundColor={tabsConfig.menuBackgroundColor || 'transparent'}
-                    menuShowShadow={tabsConfig.menuShowShadow}
-                    activeShowShadow={tabsConfig.activeShowShadow}
-                    inactiveShowShadow={tabsConfig.inactiveShowShadow}
-                    fit={true}
-                />
+        {/* Main content card - rounded top like profile */}
+        <View style={styles.mainContentCard}>
+          <View style={styles.tabBar}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabScrollContent}
+            >
+              {TABS.map((tab, index) => {
+                const isActive = activeTabIndex === index;
+                const Icon = tab.icon;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => handleTabPress(index)}
+                  >
+                    <Icon size={20} color={isActive ? '#3B82F6' : '#6B7280'} />
+                    <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <Animated.ScrollView
+            ref={scrollViewRef as any}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.tabContent}
+          >
+            {/* Tab 1: Circle Info */}
+            <View style={styles.tabPage}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabPageContent}>
+          <View style={styles.infoSection}>
+          <View style={styles.groupNameRow}>
+            <TextInput
+              style={styles.groupNameInput}
+              value={circleData.name}
+              onChangeText={(text) => setCircleData(prev => ({ ...prev, name: text }))}
+              placeholder="Circle Name"
+              placeholderTextColor="#65676B"
+              maxLength={50}
+            />
+            <TouchableOpacity 
+              style={styles.inlineSaveButton}
+              onPress={handleSaveCircleName}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#3B82F6" />
+              ) : (
+                <Check size={18} color="#3B82F6" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Member Count & Privacy Badge */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Users size={16} color="#65676B" />
+              <Text style={styles.metaText}>
+                {circleData.members?.length || 0} {circleData.members?.length === 1 ? 'member' : 'members'}
+              </Text>
             </View>
+            <View style={styles.privacyBadge}>
+              {circleData.privacy === 'private' ? (
+                <Lock size={14} color="#65676B" />
+              ) : (
+                <Globe size={14} color="#65676B" />
+              )}
+              <Text style={styles.privacyText}>
+                {circleData.privacy === 'private' ? 'Private' : 'Public'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <View style={styles.descriptionSection}>
+            <Text style={styles.descriptionLabel}>Description</Text>
+            <TextInput
+              style={styles.descriptionInput}
+              value={storyText}
+              onChangeText={setStoryText}
+              placeholder="What's this circle about?"
+              placeholderTextColor="#8A8D91"
+              multiline
+              numberOfLines={3}
+            />
+            <TouchableOpacity 
+              style={styles.saveDescriptionButton}
+              onPress={handleSaveCircleStory}
+              disabled={saving}
+            >
+              <Text style={styles.saveDescriptionText}>
+                {saving ? 'Saving...' : 'Save'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Circle Type */}
+          <View style={styles.circleTypeSection}>
+            <Text style={styles.circleTypeLabel}>Circle Type</Text>
+            <View style={styles.circleTypeBadge}>
+              <Text style={styles.circleTypeText}>
+                {moduleSettings.circleType || 'family'}
+              </Text>
+            </View>
+          </View>
+          </View>
+
+          <View style={styles.divider} />
+          <View style={styles.section}>
+            <SettingItem
+              icon={Share2}
+              title="Share Circle"
+              subtitle="Invite people to join"
+              onPress={() => setShowInviteModal(true)}
+            />
+            <SettingItem
+              icon={QrCode}
+              title="Invite Code"
+              subtitle={circleData.inviteCode ? `Code: ${circleData.inviteCode}` : 'Generate invite code'}
+              onPress={generateInviteCode}
+            />
+          </View>
+          <View style={{ height: 40 }} />
+              </ScrollView>
+            </View>
+
+            {/* Tab 2: Members */}
+            <View style={styles.tabPage}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabPageContent}>
+          <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Members</Text>
+            <TouchableOpacity onPress={() => setShowInviteModal(true)}>
+              <Text style={styles.sectionAction}>Add</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {(circleData.members || []).slice(0, 5).map((member, index) => (
+            <View key={member.id || index} style={styles.memberItem}>
+              <View style={styles.memberLeft}>
+                {member.avatar ? (
+                  <Image source={{ uri: member.avatar }} style={styles.memberAvatar} />
+                ) : (
+                  <View style={[styles.memberAvatar, styles.memberAvatarPlaceholder]}>
+                    <Text style={styles.memberAvatarText}>
+                      {member.name?.charAt(0) || '?'}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.memberInfo}>
+                  <Text style={styles.memberName}>{member.name}</Text>
+                  {member.role && (
+                    <Text style={styles.memberRole}>
+                      {member.role === 'admin' ? 'Admin' : 'Member'}
+                    </Text>
+                  )}
+                </View>
+              </View>
+              {member.role === 'admin' && (
+                <View style={styles.adminBadge}>
+                  <Text style={styles.adminBadgeText}>Admin</Text>
+                </View>
+              )}
+            </View>
+          ))}
+          
+          {(circleData.members?.length || 0) > 5 && (
+            <TouchableOpacity style={styles.seeAllButton}>
+              <Text style={styles.seeAllText}>
+                See all {circleData.members?.length} members
+              </Text>
+              <ChevronRight size={20} color="#3B82F6" />
+            </TouchableOpacity>
+          )}
+          </View>
+              </ScrollView>
+            </View>
+
+            {/* Tab 3: Settings (Features, Visibility, Danger zone) */}
+            <View style={styles.tabPage}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabPageContent}>
+                {/* Section 1: Feature config */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Features</Text>
+                  <Text style={styles.sectionSubtitle}>Choose which features are enabled for this circle.</Text>
+
+                  <SettingToggle
+                    icon={MapPin}
+                    title="Location Sharing"
+                    subtitle="Share real-time location with circle members"
+                    value={moduleSettings.allowLocationSharing}
+                    onToggle={() => handleToggleModule('allowLocationSharing')}
+                  />
+                  <SettingToggle
+                    icon={MessageCircle}
+                    title="Circle Chat"
+                    subtitle="Enable group chat for circle members"
+                    value={moduleSettings.allowChatMessages}
+                    onToggle={() => handleToggleModule('allowChatMessages')}
+                  />
+                  <SettingToggle
+                    icon={AlertTriangle}
+                    title="Safety Alerts"
+                    subtitle="Allow SOS and emergency alerts"
+                    value={moduleSettings.allowSafetyAlerts}
+                    onToggle={() => handleToggleModule('allowSafetyAlerts')}
+                  />
+                  <SettingToggle
+                    icon={Calendar}
+                    title="Shared Calendar"
+                    subtitle="Events and reminders"
+                    value={moduleSettings.allowCalendarEvents}
+                    onToggle={() => handleToggleModule('allowCalendarEvents')}
+                  />
+                  <SettingToggle
+                    icon={CreditCard}
+                    title="Expenses"
+                    subtitle="Track shared expenses"
+                    value={moduleSettings.allowCircleExpenses}
+                    onToggle={() => handleToggleModule('allowCircleExpenses')}
+                  />
+                  <SettingToggle
+                    icon={ShoppingCart}
+                    title="Shopping List"
+                    subtitle="Shared grocery lists"
+                    value={moduleSettings.allowCircleShopping}
+                    onToggle={() => handleToggleModule('allowCircleShopping')}
+                  />
+                  <SettingToggle
+                    icon={Activity}
+                    title="Health & Wellness"
+                    subtitle="Track health stats"
+                    value={moduleSettings.allowCircleHealth}
+                    onToggle={() => handleToggleModule('allowCircleHealth')}
+                  />
+                  <SettingToggle
+                    icon={Gamepad2}
+                    title="Entertainment"
+                    subtitle="Manage subscriptions"
+                    value={moduleSettings.allowCircleEntertainment}
+                    onToggle={() => handleToggleModule('allowCircleEntertainment')}
+                  />
+                  <SettingToggle
+                    icon={ImageIcon}
+                    title="Gallery"
+                    subtitle="Shared photo album"
+                    value={moduleSettings.allowGallery}
+                    onToggle={() => handleToggleModule('allowGallery')}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.saveFeaturesButton}
+                    onPress={handleSaveModules}
+                    disabled={saving}
+                  >
+                    <Text style={styles.saveFeaturesText}>
+                      {saving ? 'Saving...' : 'Save features'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Section 2: Visibility with preview */}
+                <View style={styles.divider} />
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Visibility</Text>
+                  <Text style={styles.sectionSubtitle}>Who can see this circle. Preview below.</Text>
+
+                  <View style={styles.visibilityOptions}>
+                    <TouchableOpacity
+                      style={[
+                        styles.visibilityOption,
+                        circleData.privacy === 'private' && styles.visibilityOptionActive,
+                      ]}
+                      onPress={() => handleVisibilityChange('private')}
+                    >
+                      <Lock size={20} color={circleData.privacy === 'private' ? '#3B82F6' : '#6B7280'} />
+                      <Text style={[
+                        styles.visibilityOptionLabel,
+                        circleData.privacy === 'private' && styles.visibilityOptionLabelActive,
+                      ]}>
+                        Private
+                      </Text>
+                      <Text style={styles.visibilityOptionHint}>Only members can see it</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.visibilityOption,
+                        circleData.privacy === 'public' && styles.visibilityOptionActive,
+                      ]}
+                      onPress={() => handleVisibilityChange('public')}
+                    >
+                      <Globe size={20} color={circleData.privacy === 'public' ? '#3B82F6' : '#6B7280'} />
+                      <Text style={[
+                        styles.visibilityOptionLabel,
+                        circleData.privacy === 'public' && styles.visibilityOptionLabelActive,
+                      ]}>
+                        Public
+                      </Text>
+                      <Text style={styles.visibilityOptionHint}>Discoverable by others</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.visibilityPreview}>
+                    <Text style={styles.visibilityPreviewLabel}>Preview</Text>
+                    <View style={styles.visibilityPreviewCard}>
+                      <View style={styles.visibilityPreviewHeader}>
+                        {circleData.logo ? (
+                          <Image source={{ uri: circleData.logo }} style={styles.visibilityPreviewAvatar} />
+                        ) : (
+                          <View style={[styles.visibilityPreviewAvatar, styles.avatarPlaceholder]}>
+                            <Text style={styles.avatarText}>{(circleData.name || 'C').charAt(0).toUpperCase()}</Text>
+                          </View>
+                        )}
+                        <View style={styles.visibilityPreviewInfo}>
+                          <Text style={styles.visibilityPreviewName}>{circleData.name || 'Circle'}</Text>
+                          <View style={styles.visibilityPreviewBadge}>
+                            {circleData.privacy === 'private' ? (
+                              <>
+                                <Lock size={12} color="#6B7280" />
+                                <Text style={styles.visibilityPreviewBadgeText}>Only members</Text>
+                              </>
+                            ) : (
+                              <>
+                                <Globe size={12} color="#6B7280" />
+                                <Text style={styles.visibilityPreviewBadgeText}>Discoverable</Text>
+                              </>
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.saveFeaturesButton}
+                    onPress={handleSaveVisibility}
+                    disabled={saving}
+                  >
+                    <Text style={styles.saveFeaturesText}>
+                      {saving ? 'Saving...' : 'Save visibility'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Section 3: Danger zone */}
+                <View style={styles.divider} />
+                <View style={styles.section}>
+                  <Text style={styles.dangerTitle}>Danger zone</Text>
+                  <Text style={styles.dangerSubtitle}>These actions are irreversible.</Text>
+                  <TouchableOpacity style={styles.dangerButton} onPress={handleLeaveCircle}>
+                    <Text style={styles.dangerButtonText}>Leave circle</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ height: 40 }} />
+              </ScrollView>
+            </View>
+          </Animated.ScrollView>
         </View>
-
-        {/* Tab Content */}
-        {activeTab === 'info' && renderInfoTab()}
-        {activeTab === 'members' && renderMembersTab()}
-        {activeTab === 'config' && renderConfigTab()}
-        
-        <View style={{ height: 100 }} /> 
-      </ScrollView>
-
-      {/* Floating Action Button for Invite */}
-      <TouchableOpacity 
-        style={styles.fab}
-        onPress={() => setShowInviteModal(true)}
-        activeOpacity={0.9}
-      >
-        <PlusIcon size={24} color="#FFFFFF" />
-        <Text style={styles.fabText}>Invite Member</Text>
-      </TouchableOpacity>
+      </View>
 
       {/* Invite Modal */}
       <Modal
-         visible={showInviteModal}
-         animationType="slide"
-         transparent={true}
-         onRequestClose={() => setShowInviteModal(false)}
-       >
-         <View style={styles.modalOverlay}>
-           <View style={styles.modalContent}>
-             <View style={styles.modalHeader}>
-               <Text style={styles.modalTitle}>Invite to Circle</Text>
-               <TouchableOpacity
-                 style={styles.closeButton}
-                 onPress={() => setShowInviteModal(false)}
-               >
-                 <Text style={{ fontSize: 24, color: '#9CA3AF' }}>×</Text>
-               </TouchableOpacity>
-             </View>
+        visible={showInviteModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Invite to Circle</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowInviteModal(false)}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
-             <View style={styles.modalBody}>
-                <View style={styles.inviteButtonsRow}>
-                    <TouchableOpacity
-                        style={[styles.actionButton, { flex: 1, marginRight: 8 }]}
-                        onPress={generateInviteCode}
-                    >
-                        <QrCodeIcon size={20} color={THEME_COLOR} />
-                        <Text style={styles.actionButtonText}>Generate Code</Text>
-                    </TouchableOpacity>
+            <View style={styles.modalBody}>
+              <TouchableOpacity
+                style={styles.modalActionButton}
+                onPress={generateInviteCode}
+              >
+                <QrCode size={24} color="#3B82F6" />
+                <View style={styles.modalActionContent}>
+                  <Text style={styles.modalActionTitle}>Generate Invite Code</Text>
+                  <Text style={styles.modalActionSubtitle}>Create a code to share</Text>
                 </View>
+                <ChevronRight size={20} color="#8A8D91" />
+              </TouchableOpacity>
 
-                {circleData.inviteCode && (
-                    <View style={styles.codeContainer}>
-                    <Text style={styles.codeLabel}>Invite Code:</Text>
-                    <View style={styles.codeDisplay}>
-                        <Text style={styles.codeText}>{circleData.inviteCode}</Text>
-                        <View style={styles.codeActions}>
-                            <TouchableOpacity style={styles.codeActionButton} onPress={copyInviteCode}>
-                                <CopyIcon size={16} color="#6B7280" />
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.codeActionButton} onPress={shareInviteCode}>
-                                <Share2Icon size={16} color="#6B7280" />
-                            </TouchableOpacity>
-                        </View>
+              {circleData.inviteCode && (
+                <View style={styles.codeContainer}>
+                  <Text style={styles.codeLabel}>Invite Code</Text>
+                  <View style={styles.codeDisplay}>
+                    <Text style={styles.codeText}>{circleData.inviteCode}</Text>
+                    <View style={styles.codeActions}>
+                      <TouchableOpacity style={styles.codeActionButton} onPress={copyInviteCode}>
+                        <Copy size={18} color="#3B82F6" />
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.codeActionButton} onPress={shareInviteCode}>
+                        <Share2 size={18} color="#3B82F6" />
+                      </TouchableOpacity>
                     </View>
-                    <Text style={styles.expiryText}>
-                        {formatExpiryTime(circleData.inviteCodeExpiry || '')}
-                    </Text>
-                    </View>
-                )}
-
-                <View style={styles.divider}>
-                    <Text style={styles.dividerText}>OR BY EMAIL</Text>
+                  </View>
+                  <Text style={styles.expiryText}>
+                    {formatExpiryTime(circleData.inviteCodeExpiry || '')}
+                  </Text>
                 </View>
-                
+              )}
+
+              <View style={styles.modalDivider}>
+                <View style={styles.modalDividerLine} />
+                <Text style={styles.modalDividerText}>OR</Text>
+                <View style={styles.modalDividerLine} />
+              </View>
+              
+              <View style={styles.emailSection}>
+                <Text style={styles.emailLabel}>Invite by Email</Text>
                 <View style={styles.emailInputContainer}>
-                     <MailIcon size={20} color="#9CA3AF" style={{ marginRight: 10 }} />
-                    <TextInput
-                        style={styles.emailInput}
-                        value={inviteEmail}
-                        onChangeText={setInviteEmail}
-                        placeholder="Enter email address"
-                        placeholderTextColor="#9CA3AF"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
+                  <Mail size={20} color="#8A8D91" />
+                  <TextInput
+                    style={styles.emailInput}
+                    value={inviteEmail}
+                    onChangeText={setInviteEmail}
+                    placeholder="Enter email address"
+                    placeholderTextColor="#8A8D91"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
                 </View>
                 
                 <TouchableOpacity
-                    style={[styles.modalButton, styles.sendButton, { marginTop: 16 }]}
-                    onPress={sendInviteEmail}
-                    disabled={saving}
+                  style={[styles.sendButton, saving && styles.sendButtonDisabled]}
+                  onPress={sendInviteEmail}
+                  disabled={saving || !inviteEmail.trim()}
                 >
-                    <Text style={styles.sendButtonText}>
-                        {saving ? 'Sending...' : 'Send Invite'}
-                    </Text>
+                  <Text style={styles.sendButtonText}>
+                    {saving ? 'Sending...' : 'Send Invite'}
+                  </Text>
                 </TouchableOpacity>
-             </View>
-           </View>
-         </View>
-       </Modal>
-
-    </SafeAreaView>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </ScreenBackground>
   );
 };
 
@@ -793,295 +1031,511 @@ export default CircleSettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  scrollView: {
-    flex: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
   },
+
+  // Header - profile style (transparent over gradient)
   header: {
+    backgroundColor: 'transparent',
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  avatarPlaceholder: {
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  headerInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  contactText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 6,
+    flex: 1,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Main content card - profile style
+  mainContentCard: {
+    flex: 1,
+    backgroundColor: '#FCFCFC',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  tabBar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  tabScrollContent: {
+    paddingHorizontal: 8,
+  },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginHorizontal: 4,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#3B82F6',
+  },
+  tabLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginLeft: 6,
+  },
+  tabLabelActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  tabContent: {
+    flex: 1,
+  },
+  tabPage: {
+    width: width,
+    flex: 1,
+  },
+  tabPageContent: {
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+
+  // Info Section
+  infoSection: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    position: 'relative',
+    zIndex: 2,
+  },
+  groupNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  groupNameInput: {
+    flex: 1,
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#050505',
+    paddingVertical: 4,
+  },
+  inlineSaveButton: {
+    padding: 8,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 16,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 15,
+    color: '#65676B',
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#F0F2F5',
+    borderRadius: 12,
+  },
+  privacyText: {
+    fontSize: 13,
+    color: '#65676B',
+    fontWeight: '500',
+  },
+  descriptionSection: {
+    marginTop: 8,
+  },
+  descriptionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#050505',
+    marginBottom: 8,
+  },
+  descriptionInput: {
+    fontSize: 15,
+    color: '#050505',
+    paddingVertical: 8,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  saveDescriptionButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  saveDescriptionText: {
+    fontSize: 15,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  circleTypeSection: {
+    marginTop: 16,
+  },
+  circleTypeLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#050505',
+    marginBottom: 8,
+  },
+  circleTypeBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E4E6EB',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  circleTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#050505',
+    textTransform: 'capitalize',
+  },
+
+  // Divider
+  divider: {
+    height: 8,
+    backgroundColor: '#F0F2F5',
+  },
+
+  // Section
+  section: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#050505',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: '#65676B',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  sectionAction: {
+    fontSize: 15,
+    color: '#3B82F6',
+    fontWeight: '600',
+    paddingHorizontal: 16,
+  },
+
+  // Setting Items
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    backgroundColor: '#FFFFFF', // Sticky-like appearance
-  },
-  backButton: {
-    padding: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-  },
-  
-  // Immersive Header Hero
-  heroSection: {
-    alignItems: 'center',
-    paddingVertical: 24,
     backgroundColor: '#FFFFFF',
   },
-  logoContainer: {
-    position: 'relative',
-    marginBottom: 16,
-  },
-  heroLogo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  heroPlaceholderLogo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  heroEditButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: THEME_COLOR,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  heroName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#1F2937',
-    marginBottom: 8,
-  },
-  badgeContainer: {
-    backgroundColor: '#FEF2F2',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FAC7C7',
-  },
-  badgeText: {
-    color: THEME_COLOR,
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  overlappingAvatars: {
+  settingItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 40,
+    flex: 1,
   },
-  avatarStackItem: {
+  settingIconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  stackAvatar: {
-    width: '100%',
-    height: '100%',
-  },
-
-  // Tabs
-  tabsContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-
-  // Content
-  tabContent: {
-    paddingHorizontal: 16,
-  },
-  section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  
-  // Basic Info Form
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginBottom: 6,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  textInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#1F2937',
-    backgroundColor: '#F9FAFB',
-    marginRight: 8,
-  },
-  inlineSaveButton: {
-    backgroundColor: THEME_COLOR,
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
     justifyContent: 'center',
-  },
-  saveButton: {
-    backgroundColor: THEME_COLOR,
-    paddingVertical: 14,
-    borderRadius: 16,
     alignItems: 'center',
+    marginRight: 12,
   },
-  saveButtonDisabled: {
-    backgroundColor: '#E5E7EB',
+  settingItemContent: {
+    flex: 1,
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+  settingItemTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#050505',
   },
-  storyContainer: {
-    gap: 12,
+  settingItemSubtitle: {
+    fontSize: 13,
+    color: '#65676B',
+    marginTop: 2,
   },
 
-  // Modules/Config
-  modulesContainer: {
-    gap: 16,
-  },
-  moduleItem: {
+  // Members
+  memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  moduleHeaderSide: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  moduleIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  moduleContent: {
-    flex: 1,
-  },
-  moduleTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  moduleDescription: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  modulesSaveButton: {
-    marginTop: 12,
-  },
-
-  // Member List
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
-  memberAvatarContainer: {
-    marginRight: 12,
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   memberAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
   },
-  placeholderAvatar: {
-    alignItems: 'center',
+  memberAvatarPlaceholder: {
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  avatarText: {
-    color: '#FFF',
+  memberAvatarText: {
+    fontSize: 16,
     fontWeight: '700',
-    fontSize: 18,
+    color: '#FFFFFF',
   },
   memberInfo: {
     flex: 1,
   },
   memberName: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#050505',
+  },
+  memberRole: {
+    fontSize: 13,
+    color: '#65676B',
+    marginTop: 2,
+  },
+  adminBadge: {
+    backgroundColor: '#E4E6EB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  adminBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#65676B',
+  },
+  seeAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  seeAllText: {
+    fontSize: 15,
+    color: '#3B82F6',
+    fontWeight: '600',
+    marginRight: 4,
+  },
+
+  // Buttons
+  saveFeaturesButton: {
+    backgroundColor: '#3B82F6',
+    marginHorizontal: 16,
+    marginTop: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveFeaturesText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+
+  // Visibility
+  visibilityOptions: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 16,
+  },
+  visibilityOption: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+  },
+  visibilityOptionActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  visibilityOptionLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
+    marginTop: 6,
+  },
+  visibilityOptionLabelActive: {
+    color: '#3B82F6',
+  },
+  visibilityOptionHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  visibilityPreview: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  visibilityPreviewLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  visibilityPreviewCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    overflow: 'hidden',
+  },
+  visibilityPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+  visibilityPreviewAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 12,
+  },
+  visibilityPreviewInfo: {
+    flex: 1,
+  },
+  visibilityPreviewName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#111827',
   },
-  memberStatus: {
+  visibilityPreviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  visibilityPreviewBadgeText: {
     fontSize: 12,
     color: '#6B7280',
   },
 
-  // FAB
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 20,
-    backgroundColor: THEME_COLOR,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 30,
-    shadowColor: THEME_COLOR,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    gap: 8,
-  },
-  fabText: {
-    color: '#FFFFFF',
+  // Danger Zone
+  dangerTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    fontSize: 16,
+    color: '#050505',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  dangerSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  dangerButton: {
+    marginHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: '#F0F2F5',
+    alignItems: 'center',
+  },
+  dangerButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#E41E3F',
   },
 
   // Modal
@@ -1092,77 +1546,80 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
-    top: 50,
-    left: 20,
-    right: 20,
     alignItems: 'center',
-    zIndex: 10,
     justifyContent: 'space-between',
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E4E6EB',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#1F2937',
+    color: '#050505',
   },
   closeButton: {
-    padding: 0,
+    padding: 4,
+  },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#65676B',
   },
   modalBody: {
-    gap: 16,
+    padding: 16,
   },
-  actionButton: {
+  modalActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
     paddingVertical: 16,
-    borderRadius: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#F0F2F5',
+    borderRadius: 12,
+    marginBottom: 16,
   },
-  inviteButtonsRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
+  modalActionContent: {
+    flex: 1,
+    marginLeft: 12,
   },
-  actionButtonText: {
-    color: '#1F2937',
-    fontSize: 16,
+  modalActionTitle: {
+    fontSize: 15,
     fontWeight: '600',
+    color: '#050505',
+  },
+  modalActionSubtitle: {
+    fontSize: 13,
+    color: '#65676B',
+    marginTop: 2,
   },
   codeContainer: {
-    padding: 16,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 16,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   codeLabel: {
     fontSize: 13,
-    color: '#6B7280',
+    fontWeight: '600',
+    color: '#65676B',
     marginBottom: 8,
   },
   codeDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    padding: 12,
+    backgroundColor: '#F0F2F5',
+    padding: 16,
     borderRadius: 12,
     marginBottom: 8,
   },
   codeText: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     letterSpacing: 2,
-    color: '#1F2937',
+    color: '#050505',
   },
   codeActions: {
     flexDirection: 'row',
@@ -1173,48 +1630,61 @@ const styles = StyleSheet.create({
   },
   expiryText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#65676B',
     textAlign: 'center',
   },
-  divider: {
+  modalDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 4,
+    marginVertical: 16,
   },
-  dividerText: {
-    fontSize: 12,
-    color: '#9CA3AF',
+  modalDividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E4E6EB',
+  },
+  modalDividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: '#65676B',
+    fontWeight: '500',
+  },
+  emailSection: {
+    marginTop: 8,
+  },
+  emailLabel: {
+    fontSize: 13,
     fontWeight: '600',
+    color: '#65676B',
+    marginBottom: 8,
   },
   emailInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    backgroundColor: '#F0F2F5',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
   },
   emailInput: {
     flex: 1,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1F2937',
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#050505',
+    marginLeft: 8,
   },
   sendButton: {
-    backgroundColor: THEME_COLOR,
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    borderRadius: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
+  },
+  sendButtonDisabled: {
+    backgroundColor: '#E4E6EB',
   },
   sendButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
-  modalButton: {}, // Helper
 });
-
-

@@ -3,12 +3,14 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import { emailService } from '../../services/emailService';
 import { authenticateToken } from '../../middleware/auth';
 import { AuthController } from '../../controllers/mobile/AuthController';
+import { ssoAuthController } from '../../controllers/mobile/SSOAuthController';
 import { UserModel } from '../../models/UserModel';
 import { config } from '../../config/env';
+import * as identityService from '../../services/identityService';
 
 const authController = new AuthController();
 
@@ -96,6 +98,33 @@ router.post('/otp/request', emailNormalization, (req: any, res: any) => authCont
 // Login with OTP
 router.post('/otp/login', emailNormalization, (req: any, res: any) => authController.loginWithOtp(req, res));
 
+// SSO Login endpoint (Google, Facebook, Apple)
+router.post('/sso', (req: any, res: any) => ssoAuthController.ssoLogin(req, res));
+
+// Get available SSO providers (public endpoint for mobile/web apps)
+router.get('/sso/providers', async (_req: any, res: any) => {
+  try {
+    const providers = await identityService.getOAuthProviders();
+    const enabledProviders = providers.filter(p => p.isEnabled);
+    
+    res.json({
+      success: true,
+      providers: enabledProviders.map(p => ({
+        id: p.id,
+        name: p.providerName,
+        displayName: p.displayName,
+        providerType: p.providerName,
+        iconUrl: p.iconUrl,
+        buttonColor: p.buttonColor,
+        displayOrder: p.displayOrder
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching SSO providers:', error);
+    res.json({ success: true, providers: [] });
+  }
+});
+
 // Refresh token endpoint
 // Refresh token endpoint
 router.post('/refresh', (req, res) => authController.refreshToken(req, res));
@@ -110,17 +139,17 @@ router.get('/me', authenticateToken as any, (req, res) => authController.getCurr
 // Get user profile (alias for /users/profile)
 router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
   try {
-    // Use native pg pool for profile lookup
-      const userResult = await pool.query(`
+    // Use Prisma for profile lookup
+      const userResult = await prisma.$queryRaw<any[]>`
       SELECT 
-        u.id, u.email, first_name, last_name, avatar_url, phone, date_of_birth, 
+        u.id, u.email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, 
         user_type, circle_ids, is_onboarding_complete, 
-        preferences, role, is_active, created_at, updated_at
-      FROM users u
-      WHERE u.id = $1
-    `, [req.user.id]);
+        preferences, preferences->>'role' as role, is_active, created_at, updated_at
+      FROM core.users u
+      WHERE u.id = ${req.user.id}
+    `;
 
-    const user = userResult.rows[0];
+    const user = userResult[0];
 
     if (!user) {
       return res.status(404).json({
@@ -129,16 +158,16 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
       });
     }
 
-    // Get user's circle using native pg pool
-    const circleResult = await pool.query(`
+    // Get user's circle using Prisma
+    const circleResult = await prisma.$queryRaw<any[]>`
       SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM entity_relations er
-      LEFT JOIN unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = $1 AND er.relation_type = 'member_of'
+      FROM public.entity_relations er
+      LEFT JOIN public.unified_entities e ON er.target_id = e.id
+      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
       LIMIT 1
-    `, [user.id]);
+    `;
 
-    const circleMember = circleResult.rows[0];
+    const circleMember = circleResult[0];
 
     res.json({
       user: {
@@ -200,7 +229,7 @@ router.put('/profile', [
 
     if (firstName) { fields.push(`first_name = $${idx++}`); params.push(firstName); }
     if (lastName) { fields.push(`last_name = $${idx++}`); params.push(lastName); }
-    if (phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(phone); }
+    if (phone !== undefined) { fields.push(`phone_number = $${idx++}`); params.push(phone); }
     if (dateOfBirth) { fields.push(`date_of_birth = $${idx++}`); params.push(dateOfBirth); }
     if (avatar !== undefined) { fields.push(`avatar_url = $${idx++}`); params.push(avatar); }
     if (preferences) { fields.push(`preferences = $${idx++}`); params.push(JSON.stringify(preferences)); }
@@ -209,14 +238,14 @@ router.put('/profile', [
     params.push(new Date().toISOString());
 
     const updateQuery = `
-      UPDATE users 
+      UPDATE core.users 
       SET ${fields.join(', ')} 
       WHERE id = $1 
-      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, circle_ids, is_onboarding_complete, preferences, updated_at
+      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, user_type, circle_ids, is_onboarding_complete, preferences, updated_at
     `;
 
-    const userResult = await pool.query(updateQuery, params);
-    const user = userResult.rows[0];
+    const userResult = await prisma.$queryRawUnsafe<any[]>(updateQuery, ...params);
+    const user = userResult[0];
 
     if (!user) {
       return res.status(404).json({
@@ -226,15 +255,15 @@ router.put('/profile', [
     }
 
     // Get user's circle
-    const circleResult = await pool.query(`
+    const circleResult = await prisma.$queryRaw<any[]>`
       SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM entity_relations er
-      LEFT JOIN unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = $1 AND er.relation_type = 'member_of'
+      FROM public.entity_relations er
+      LEFT JOIN public.unified_entities e ON er.target_id = e.id
+      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
       LIMIT 1
-    `, [user.id]);
+    `;
 
-    const circleMember = circleResult.rows[0];
+    const circleMember = circleResult[0];
 
     res.json({
       message: 'Profile updated successfully',
@@ -279,15 +308,15 @@ router.put('/profile', [
 // Complete onboarding
 router.post('/onboarding/complete', authenticateToken as any, async (req: any, res: any) => {
   try {
-    // Update user's onboarding status using native pg pool
-    const updateResult = await pool.query(`
-      UPDATE users 
-      SET is_onboarding_complete = true, updated_at = $1
-      WHERE id = $2
-      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, user_type, is_onboarding_complete, preferences, created_at, updated_at
-    `, [new Date().toISOString(), req.user.id]);
+    // Update user's onboarding status using Prisma
+    const updateResult = await prisma.$queryRaw<any[]>`
+      UPDATE core.users 
+      SET is_onboarding_complete = true, updated_at = ${new Date().toISOString()}
+      WHERE id = ${req.user.id}
+      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, user_type, is_onboarding_complete, preferences, created_at, updated_at
+    `;
 
-    const user = updateResult.rows[0];
+    const user = updateResult[0];
 
     if (!user) {
       return res.status(500).json({
@@ -297,15 +326,15 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
     }
 
     // Get user's circle
-    const circleResult = await pool.query(`
+    const circleResult = await prisma.$queryRaw<any[]>`
       SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM entity_relations er
-      LEFT JOIN unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = $1 AND er.relation_type = 'member_of'
+      FROM public.entity_relations er
+      LEFT JOIN public.unified_entities e ON er.target_id = e.id
+      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
       LIMIT 1
-    `, [user.id]);
+    `;
 
-    const circleMember = circleResult.rows[0];
+    const circleMember = circleResult[0];
 
     res.json({
       success: true,
@@ -316,7 +345,7 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
         lastName: user.last_name,
         avatarUrl: user.avatar_url,
         avatar: user.avatar_url,
-        phone: user.phone,
+        phone: user.phone_number,
         dateOfBirth: user.date_of_birth,
         userType: user.user_type || 'circle',
         circleIds: circleMember?.circle_id ? [circleMember.circle_id] : [],
@@ -364,12 +393,11 @@ router.post('/forgot-password', [
 
     const { email } = req.body;
 
-    // Find user by email using native pg pool
-    const userResult = await pool.query(
-      'SELECT id, email, first_name, last_name FROM users WHERE email = $1',
-      [email.toLowerCase()]
-    );
-    const user = userResult.rows[0];
+    // Find user by email using Prisma
+    const userResult = await prisma.$queryRaw<any[]>`
+      SELECT id, email, first_name, last_name FROM core.users WHERE email = ${email.toLowerCase()}
+    `;
+    const user = userResult[0];
 
     // Always return success to prevent email enumeration attacks
     if (!user) {
@@ -387,20 +415,18 @@ router.post('/forgot-password', [
     // Hash the token before storing
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-    // Store reset token in database using native pg pool
+    // Store reset token in database using Prisma
     // First, delete any existing reset tokens for this user
-    await pool.query(
-      'DELETE FROM password_reset_tokens WHERE user_id = $1',
-      [user.id]
-    );
+    await prisma.$executeRaw`
+      DELETE FROM password_reset_tokens WHERE user_id = ${user.id}
+    `;
 
     // Insert new reset token
     try {
-      await pool.query(
-        `INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at)
-         VALUES ($1, $2, $3, $4)`,
-        [user.id, hashedToken, expiresAt.toISOString(), new Date().toISOString()]
-      );
+      await prisma.$executeRaw`
+        INSERT INTO password_reset_tokens (user_id, token, expires_at, created_at)
+         VALUES (${user.id}, ${hashedToken}, ${expiresAt.toISOString()}, ${new Date().toISOString()})
+      `;
     } catch (tokenError) {
       console.error('Failed to create reset token:', tokenError);
       // Still return success to prevent email enumeration
@@ -462,15 +488,14 @@ router.post('/reset-password', [
     // Hash the token to match stored token
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // Find valid reset token using native pg pool
-    const tokenResult = await pool.query(
-      `SELECT user_id, expires_at 
-       FROM password_reset_tokens 
-       WHERE token = $1 AND expires_at > $2
-       LIMIT 1`,
-      [hashedToken, new Date().toISOString()]
-    );
-    const resetTokenData = tokenResult.rows[0];
+    // Find valid reset token using Prisma
+    const tokenResult = await prisma.$queryRaw<any[]>`
+      SELECT user_id, expires_at 
+      FROM password_reset_tokens 
+      WHERE token = ${hashedToken} AND expires_at > ${new Date().toISOString()}
+      LIMIT 1
+    `;
+    const resetTokenData = tokenResult[0];
 
     if (!resetTokenData) {
       return res.status(400).json({
@@ -482,14 +507,13 @@ router.post('/reset-password', [
     // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update user password using native pg pool
+    // Update user password using Prisma
     try {
-      await pool.query(
-        `UPDATE users 
-         SET password_hash = $1, updated_at = $2
-         WHERE id = $3`,
-        [hashedPassword, new Date().toISOString(), resetTokenData.user_id]
-      );
+      await prisma.$executeRaw`
+        UPDATE core.users 
+        SET password_hash = ${hashedPassword}, updated_at = ${new Date().toISOString()}
+        WHERE id = ${resetTokenData.user_id}::uuid
+      `;
     } catch (updateError) {
       console.error('Failed to update password:', updateError);
       return res.status(500).json({
@@ -499,10 +523,9 @@ router.post('/reset-password', [
     }
 
     // Delete the used reset token
-    await pool.query(
-      'DELETE FROM password_reset_tokens WHERE token = $1',
-      [hashedToken]
-    );
+    await prisma.$executeRaw`
+      DELETE FROM password_reset_tokens WHERE token = ${hashedToken}
+    `;
 
     res.json({
       success: true,

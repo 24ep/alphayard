@@ -4,15 +4,26 @@ import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authService } from '../../services/authService'
 import { settingsService } from '../../services/settingsService'
+import { identityService } from '../../services/identityService'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Label } from '@/components/ui/Label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Layers } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Layers, Chrome, Github, Twitter } from 'lucide-react'
 
 import { Suspense } from 'react'
+
+// Provider icons mapping
+const providerIcons: Record<string, any> = {
+  google: Chrome,
+  github: Github,
+  twitter: Twitter,
+  facebook: Layers, // Placeholder
+  microsoft: Layers, // Placeholder
+  apple: Layers, // Placeholder
+}
 
 function LoginPageContent() {
   const router = useRouter()
@@ -26,8 +37,10 @@ function LoginPageContent() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [loginBgStyle, setLoginBgStyle] = useState<React.CSSProperties>({})
   const [loginBgVideo, setLoginBgVideo] = useState<string | undefined>(undefined)
+  const [ssoProviders, setSsoProviders] = useState<any[]>([])
+  const [ssoLoading, setSsoLoading] = useState<string | null>(null)
 
-  // Check if already authenticated andload settings
+  // Check if already authenticated and load settings
   useEffect(() => {
     if (authService.isAuthenticated()) {
         const redirect = searchParams?.get('redirect') || '/dashboard'
@@ -35,41 +48,74 @@ function LoginPageContent() {
         return
     }
     
-    // Load background settings
-    settingsService.getBranding().then(settings => {
+    // Load background settings and SSO providers
+    const loadSettings = async () => {
+      try {
+        const settings = await settingsService.getBranding()
         if (settings?.adminAppName) {
-            setAppName(settings.adminAppName)
+          setAppName(settings.adminAppName)
         }
         if (settings?.logoUrl) {
-            setLogoUrl(settings.logoUrl)
+          setLogoUrl(settings.logoUrl)
         }
 
         if (settings?.loginBackground) {
-            const bg = settings.loginBackground
-            let style: React.CSSProperties = {}
-            let videoUrl: string | undefined
-    
-            if (bg.type === 'solid' && bg.value) {
-                style.backgroundColor = bg.value
-            } else if (bg.type === 'gradient' && bg.value) {
-                 // Fallback if gradient object missing but value present
-                 style.background = bg.value
-            } else if (bg.type === 'gradient' && bg.gradientStops) {
-                 // Construct gradient from stops if available (adapting from existing type)
-                style.background = `linear-gradient(${bg.gradientDirection?.replace('to-', 'to ') || 'to right'}, ${bg.gradientStops?.map(s => `${s.color} ${s.position}%`).join(', ')})`
-            } else if (bg.type === 'image' && bg.value) {
-              style.backgroundImage = `url(${bg.value})`
-              style.backgroundSize = 'cover'
-              style.backgroundPosition = 'center'
-            } else if (bg.type === 'video' && bg.value) {
-              videoUrl = bg.value
-            }
-    
-            setLoginBgStyle(style)
-            setLoginBgVideo(videoUrl)
+          const bg = settings.loginBackground
+          let style: React.CSSProperties = {}
+          let videoUrl: string | undefined
+  
+          if (bg.type === 'solid' && bg.value) {
+            style.backgroundColor = bg.value
+          } else if (bg.type === 'gradient' && bg.value) {
+            style.background = bg.value
+          } else if (bg.type === 'gradient' && bg.gradientStops) {
+            style.background = `linear-gradient(${bg.gradientDirection?.replace('to-', 'to ') || 'to right'}, ${bg.gradientStops?.map(s => `${s.color} ${s.position}%`).join(', ')})`
+          } else if (bg.type === 'image' && bg.value) {
+            style.backgroundImage = `url(${bg.value})`
+            style.backgroundSize = 'cover'
+            style.backgroundPosition = 'center'
+          } else if (bg.type === 'video' && bg.value) {
+            videoUrl = bg.value
+          }
+  
+          setLoginBgStyle(style)
+          setLoginBgVideo(videoUrl)
         }
-    })
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+      }
+
+      // Load SSO providers
+      loadSSOProviders()
+    }
+
+    loadSettings()
   }, [router, searchParams])
+
+  // Load SSO providers from identity service
+  const loadSSOProviders = async () => {
+    try {
+      const providers = await identityService.getOAuthProviders()
+      setSsoProviders(providers.filter((p: any) => p.isEnabled))
+    } catch (error) {
+      console.error('Failed to load SSO providers:', error)
+    }
+  }
+
+  // Handle SSO login
+  const handleSSOLogin = async (provider: string) => {
+    setSsoLoading(provider)
+    setError('')
+    
+    try {
+      // For now, redirect to SSO flow (this would typically open a popup or redirect)
+      const redirectUrl = searchParams?.get('redirect') || '/dashboard'
+      window.location.href = `/api/v1/admin/auth/sso/${provider}?redirect=${encodeURIComponent(redirectUrl)}`
+    } catch (error: any) {
+      setError(error.message || `Failed to login with ${provider}`)
+      setSsoLoading(null)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -210,6 +256,51 @@ function LoginPageContent() {
                 {isLoading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
+
+            {/* SSO Login Section */}
+            {ssoProviders.length > 0 && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full bg-gray-200/50" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white/80 px-2 text-gray-500 backdrop-blur-sm rounded-full">
+                      Or continue with
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600 text-center">
+                    Sign in with your social account
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {ssoProviders.map((provider: any) => {
+                      const IconComponent = providerIcons[provider.providerName] || Layers
+                      return (
+                        <Button
+                          key={provider.providerName}
+                          type="button"
+                          variant="outline"
+                          className="flex items-center gap-2 h-11 bg-white/60 border-white/40 hover:bg-white/80 transition-all"
+                          onClick={() => handleSSOLogin(provider.providerName)}
+                          disabled={ssoLoading === provider.providerName}
+                        >
+                          <IconComponent className="h-4 w-4" />
+                          <span className="text-sm">
+                            {ssoLoading === provider.providerName 
+                              ? 'Connecting...' 
+                              : provider.displayName || provider.providerName
+                            }
+                          </span>
+                        </Button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
 
              <div className="relative my-4">
                   <div className="absolute inset-0 flex items-center">

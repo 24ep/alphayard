@@ -1,11 +1,16 @@
 import { Router } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import { authenticateAdmin } from '../../middleware/adminAuth';
 import { authenticateToken } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = Router();
 
+// Apply admin auth to all routes
+router.use(authenticateAdmin as any);
+
 // Get all versions for a content page
-router.get('/pages/:pageId/versions', authenticateToken as any, async (req, res) => {
+router.get('/pages/:pageId/versions', requirePermission('pages', 'view'), async (req, res) => {
   try {
     const { pageId } = req.params;
     const { page = 1, page_size = 20 } = req.query;
@@ -13,11 +18,11 @@ router.get('/pages/:pageId/versions', authenticateToken as any, async (req, res)
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
     
-    const { rows: versions } = await pool.query(
+    const versions = await prisma.$queryRawUnsafe<any[]>(
       `SELECT v.*, 
               json_build_object('id', u.id, 'email', u.email, 'full_name', u.first_name || ' ' || u.last_name) as users
        FROM content_versions v
-       LEFT JOIN users u ON v.created_by = u.id
+       LEFT JOIN core.users u ON v.created_by = u.id
        WHERE v.page_id = $1
        ORDER BY v.version_number DESC
        LIMIT $2 OFFSET $3`,
@@ -35,11 +40,11 @@ router.get('/pages/:pageId/versions/:versionId', authenticateToken as any, async
   try {
     const { pageId, versionId } = req.params;
     
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT v.*, 
               json_build_object('id', u.id, 'email', u.email, 'full_name', u.first_name || ' ' || u.last_name) as users
        FROM content_versions v
-       LEFT JOIN users u ON v.created_by = u.id
+       LEFT JOIN core.users u ON v.created_by = u.id
        WHERE v.page_id = $1 AND v.id = $2`,
       [pageId, versionId]
     );
@@ -55,7 +60,7 @@ router.get('/pages/:pageId/versions/:versionId', authenticateToken as any, async
 });
 
 // Create a new version
-router.post('/pages/:pageId/versions', authenticateToken as any, async (req, res) => {
+router.post('/pages/:pageId/versions', requirePermission('pages', 'edit'), async (req, res) => {
   try {
     const { pageId } = req.params;
     const { 
@@ -70,37 +75,35 @@ router.post('/pages/:pageId/versions', authenticateToken as any, async (req, res
     }
 
     // Get the next version number
-    const { rows: lastVersionRows } = await pool.query(
+    const lastVersionRows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT version_number FROM content_versions WHERE page_id = $1 ORDER BY version_number DESC LIMIT 1',
-      [pageId]
+      pageId
     );
 
     const nextVersionNumber = (lastVersionRows[0]?.version_number || 0) + 1;
 
     // Create the new version
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO content_versions (
         page_id, version_number, title, content, change_description, is_auto_save, created_by, size_bytes
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [
-        pageId,
-        nextVersionNumber,
-        title,
-        JSON.stringify(content),
-        change_description || null,
-        is_auto_save,
-        (req as any).user?.id,
-        JSON.stringify(content).length
-      ]
+      pageId,
+      nextVersionNumber,
+      title,
+      JSON.stringify(content),
+      change_description || null,
+      is_auto_save,
+      (req as any).user?.id,
+      JSON.stringify(content).length
     );
 
     const version = rows[0];
 
     // Fetch user info for response
-    const { rows: userRows } = await pool.query(
-      "SELECT id, email, first_name || ' ' || last_name as full_name FROM users WHERE id = $1",
-      [version.created_by]
+    const userRows = await prisma.$queryRawUnsafe<any[]>(
+      "SELECT id, email, first_name || ' ' || last_name as full_name FROM core.users WHERE id = $1",
+      version.created_by
     );
     version.users = userRows[0] || null;
 
@@ -112,58 +115,55 @@ router.post('/pages/:pageId/versions', authenticateToken as any, async (req, res
 
 // Restore a version (creates a new version with restored content)
 router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken as any, async (req, res) => {
-  const client = await pool.connect();
   try {
     const { pageId, versionId } = req.params;
     const { restore_description } = req.body;
     
-    await client.query('BEGIN');
+    await prisma.$executeRawUnsafe('BEGIN');
 
     // Get the version to restore
-    const { rows: versionRows } = await client.query(
+    const versionRows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT * FROM content_versions WHERE page_id = $1 AND id = $2',
-      [pageId, versionId]
+      pageId, versionId
     );
 
     if (versionRows.length === 0) {
-      await client.query('ROLLBACK');
+      await prisma.$executeRawUnsafe('ROLLBACK');
       return res.status(404).json({ error: 'Version not found' });
     }
 
     const versionToRestore = versionRows[0];
 
     // Get the next version number
-    const { rows: lastVersionRows } = await client.query(
+    const lastVersionRows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT version_number FROM content_versions WHERE page_id = $1 ORDER BY version_number DESC LIMIT 1',
-      [pageId]
+      pageId
     );
 
     const nextVersionNumber = (lastVersionRows[0]?.version_number || 0) + 1;
 
     // Create a new version with the restored content
-    const { rows: restoredVersionRows } = await client.query(
+    const restoredVersionRows = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO content_versions (
         page_id, version_number, title, content, change_description, is_auto_save, created_by, size_bytes
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [
-        pageId,
-        nextVersionNumber,
-        `Restored from Version ${versionToRestore.version_number}`,
-        versionToRestore.content,
-        restore_description || `Restored from version ${versionToRestore.version_number}: ${versionToRestore.title}`,
-        false,
-        (req as any).user?.id,
-        versionToRestore.size_bytes
-      ]
+      pageId,
+      nextVersionNumber,
+      `Restored from Version ${versionToRestore.version_number}`,
+      versionToRestore.content,
+      restore_description || `Restored from version ${versionToRestore.version_number}: ${versionToRestore.title}`,
+      false,
+      (req as any).user?.id,
+      versionToRestore.size_bytes
     );
 
     const restoredVersion = restoredVersionRows[0];
 
     // Fetch user info for response
-    const { rows: userRows } = await client.query(
-      "SELECT id, email, first_name || ' ' || last_name as full_name FROM users WHERE id = $1",
-      [restoredVersion.created_by]
+    const userRows = await prisma.$queryRawUnsafe<any[]>(
+      "SELECT id, email, first_name || ' ' || last_name as full_name FROM core.users WHERE id = $1",
+      restoredVersion.created_by
     );
     restoredVersion.users = userRows[0] || null;
 
@@ -173,45 +173,43 @@ router.post('/pages/:pageId/versions/:versionId/restore', authenticateToken as a
         ? JSON.parse(versionToRestore.content) 
         : versionToRestore.content;
         
-    await client.query(
+    await prisma.$executeRawUnsafe(
       `UPDATE content_pages SET 
         components = $1, 
         updated_at = NOW(), 
         updated_by = $2 
        WHERE id = $3`,
-      [JSON.stringify(contentObj.components || []), (req as any).user?.id, pageId]
+      JSON.stringify(contentObj.components || []), (req as any).user?.id, pageId
     );
 
-    await client.query('COMMIT');
+    await prisma.$executeRawUnsafe('COMMIT');
 
     res.json({ 
       version: restoredVersion,
       message: 'Version restored successfully'
     });
   } catch (error: any) {
-    await client.query('ROLLBACK');
+    await prisma.$executeRawUnsafe('ROLLBACK');
     res.status(500).json({ error: error.message });
-  } finally {
-    client.release();
   }
 });
 
 // Delete a version
-router.delete('/pages/:pageId/versions/:versionId', authenticateToken as any, async (req, res) => {
+router.delete('/pages/:pageId/versions/:versionId', requirePermission('pages', 'delete'), async (req, res) => {
   try {
     const { pageId, versionId } = req.params;
     
     // Check if this is the only version
-    const { rows: countRows } = await pool.query(
+    const countRows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
       'SELECT COUNT(*) FROM content_versions WHERE page_id = $1',
       [pageId]
     );
 
-    if (parseInt(countRows[0].count) <= 1) {
+    if (parseInt(String(countRows[0].count)) <= 1) {
       return res.status(400).json({ error: 'Cannot delete the only version' });
     }
 
-    const { rowCount } = await pool.query(
+    const rowCount = await prisma.$executeRawUnsafe(
       'DELETE FROM content_versions WHERE page_id = $1 AND id = $2',
       [pageId, versionId]
     );
@@ -227,13 +225,13 @@ router.delete('/pages/:pageId/versions/:versionId', authenticateToken as any, as
 });
 
 // Compare two versions
-router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', authenticateToken as any, async (req, res) => {
+router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', requirePermission('pages', 'view'), async (req, res) => {
   try {
     const { pageId, versionId1, versionId2 } = req.params;
     
-    const { rows: versions } = await pool.query(
-      'SELECT * FROM content_versions WHERE page_id = $1 AND id = ANY($2)',
-      [pageId, [versionId1, versionId2]]
+    const versions = await prisma.$queryRawUnsafe<any[]>(
+      'SELECT * FROM content_versions WHERE page_id = $1 AND id = ANY($2::uuid[])',
+      pageId, [versionId1, versionId2]
     );
 
     if (versions.length !== 2) {
@@ -281,7 +279,7 @@ router.get('/pages/:pageId/versions/:versionId1/compare/:versionId2', authentica
 });
 
 // Auto-save functionality
-router.post('/pages/:pageId/auto-save', authenticateToken as any, async (req, res) => {
+router.post('/pages/:pageId/auto-save', requirePermission('pages', 'edit'), async (req, res) => {
   try {
     const { pageId } = req.params;
     const { content } = req.body;
@@ -293,51 +291,49 @@ router.post('/pages/:pageId/auto-save', authenticateToken as any, async (req, re
     // Check if there's a recent auto-save (within last 5 minutes)
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     
-    const { rows: recentAutoSaveRows } = await pool.query(
+    const recentAutoSaveRows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT id FROM content_versions 
        WHERE page_id = $1 AND is_auto_save = true AND created_at >= $2 
        ORDER BY created_at DESC LIMIT 1`,
-      [pageId, fiveMinutesAgo]
+      pageId, fiveMinutesAgo
     );
 
     // If there's a recent auto-save, update it instead of creating a new one
     if (recentAutoSaveRows.length > 0) {
-      const { rows: updatedVersionRows } = await pool.query(
+      const updatedVersionRows = await prisma.$queryRawUnsafe<any[]>(
         `UPDATE content_versions SET 
           content = $1, 
           size_bytes = $2, 
           updated_at = NOW() 
          WHERE id = $3 
          RETURNING *`,
-        [JSON.stringify(content), JSON.stringify(content).length, recentAutoSaveRows[0].id]
+        JSON.stringify(content), JSON.stringify(content).length, recentAutoSaveRows[0].id
       );
 
       return res.json({ version: updatedVersionRows[0], message: 'Auto-save updated' });
     }
 
     // Create new auto-save version
-    const { rows: lastVersionRows } = await pool.query(
+    const lastVersionRows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT version_number FROM content_versions WHERE page_id = $1 ORDER BY version_number DESC LIMIT 1',
-      [pageId]
+      pageId
     );
 
     const nextVersionNumber = (lastVersionRows[0]?.version_number || 0) + 1;
 
-    const { rows: autoSaveRows } = await pool.query(
+    const autoSaveRows = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO content_versions (
         page_id, version_number, title, content, change_description, is_auto_save, created_by, size_bytes
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [
-        pageId,
-        nextVersionNumber,
-        'Auto Save',
-        JSON.stringify(content),
-        'Auto-saved changes',
-        true,
-        (req as any).user?.id,
-        JSON.stringify(content).length
-      ]
+      pageId,
+      nextVersionNumber,
+      'Auto Save',
+      JSON.stringify(content),
+      'Auto-saved changes',
+      true,
+      (req as any).user?.id,
+      JSON.stringify(content).length
     );
 
     res.json({ version: autoSaveRows[0], message: 'Auto-save created' });

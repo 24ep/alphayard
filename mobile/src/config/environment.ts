@@ -11,6 +11,8 @@ interface EnvironmentConfig {
   // Application Configuration
   appName: string;
   appVersion: string;
+  appId: string; // Unique identifier for multi-tenant backend
+  appSlug: string; // Human-readable app identifier
 
   // Social Authentication
   googleClientId?: string;
@@ -46,12 +48,17 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'your_supabase_anon_key_here',
 
     // API Configuration
-    // Use LAN IP localhost as robust fallback for emulator connectivity
+    // Dev: ensure backend is running. For web use localhost; for device/emulator use EXPO_PUBLIC_API_URL=http://<your-pc-ip>:4000/api/v1
     apiUrl: process.env.EXPO_PUBLIC_API_URL || (isDevelopment ? 'http://localhost:4000/api/v1' : 'https://your-api-domain.com'),
 
     // Application Configuration
     appName: process.env.EXPO_PUBLIC_APP_NAME || 'Bondarys',
     appVersion: process.env.EXPO_PUBLIC_APP_VERSION || '1.0.0',
+    // Multi-tenant application identifier - used in X-App-ID header
+    // Set EXPO_PUBLIC_APP_ID to the application UUID from backend
+    // Set EXPO_PUBLIC_APP_SLUG if using slug-based identification
+    appId: process.env.EXPO_PUBLIC_APP_ID || '',
+    appSlug: process.env.EXPO_PUBLIC_APP_SLUG || 'bondarys',
 
     // Social Authentication
     googleClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,

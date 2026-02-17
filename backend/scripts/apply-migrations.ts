@@ -1,8 +1,9 @@
-// Migration runner using pg pool
-import { pool } from '../src/config/database';
+// Migration runner using Prisma
+import { prisma } from '../src/lib/prisma';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import { Prisma } from '../../prisma/generated/prisma/client';
 
 dotenv.config();
 
@@ -18,19 +19,20 @@ async function applyMigrations() {
 
     console.log(`Found ${files.length} migrations.`);
 
-    const client = await pool.connect();
     try {
         // Create migrations table if not exists
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS migration_history (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
                 applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-        `);
+        `;
 
         for (const file of files) {
-            const { rows } = await client.query('SELECT name FROM migration_history WHERE name = $1', [file]);
+            const rows = await prisma.$queryRaw<Array<{ name: string }>>`
+                SELECT name FROM migration_history WHERE name = ${file}
+            `;
             
             if (rows.length > 0) {
                 console.log(`Skipping ${file} (already applied)`);
@@ -39,14 +41,13 @@ async function applyMigrations() {
 
             const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
             console.log(`Starting transaction for ${file}...`);
-            await client.query('BEGIN');
             try {
-                await client.query(sql);
-                await client.query('INSERT INTO migration_history (name) VALUES ($1)', [file]);
-                await client.query('COMMIT');
+                await prisma.$transaction(async (tx) => {
+                    await tx.$executeRaw(Prisma.sql([sql]));
+                    await tx.$executeRaw`INSERT INTO migration_history (name) VALUES (${file})`;
+                });
                 console.log(`✅ ${file} applied successfully.`);
             } catch (err: any) {
-                await client.query('ROLLBACK');
                 console.error(`❌ Failed to apply ${file}: ${err.message}`);
                 if (err.detail) console.error(`   Detail: ${err.detail}`);
                 if (err.hint) console.error(`   Hint: ${err.hint}`);
@@ -62,8 +63,7 @@ async function applyMigrations() {
         }
         console.log('All migrations processed.');
     } finally {
-        client.release();
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

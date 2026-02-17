@@ -2,7 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
+const prisma = new PrismaClient();
 
 // Load root .env (if present)
 try {
@@ -19,17 +20,16 @@ function readSqlFile(filePath) {
   return sql;
 }
 
-async function applySql(client, filePath) {
+async function applySql(filePath) {
   const sql = readSqlFile(filePath);
   process.stdout.write(`\n📄 Running: ${path.basename(filePath)}\n`);
   process.stdout.write(`   📊 File size: ${sql.length} characters\n`);
-  await client.query(sql);
+  await prisma.$executeRawUnsafe(sql);
   process.stdout.write('   ✅ Migration applied\n');
 }
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL is not set.');
     console.error('Please set DATABASE_URL in your .env file');
     console.error('Example: DATABASE_URL=postgresql://user:password@localhost:5432/database');
@@ -39,10 +39,7 @@ async function main() {
   console.log('🚀 Page Builder Migration Script');
   console.log('================================\n');
 
-  const client = new Client({ connectionString });
-  
   try {
-    await client.connect();
     console.log('✅ Connected to database\n');
 
     const migrationFile = path.join(__dirname, '..', 'src', 'migrations', '013_page_builder.sql');
@@ -55,7 +52,7 @@ async function main() {
     console.log('📋 Running Page Builder Migration:');
     console.log(`   File: 013_page_builder.sql`);
     
-    await applySql(client, migrationFile);
+    await applySql(migrationFile);
     
     console.log('\n✅ Page Builder migration completed successfully!');
     console.log('\n📊 Created tables:');
@@ -85,7 +82,7 @@ async function main() {
     console.error(err.stack);
     process.exit(1);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

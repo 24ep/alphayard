@@ -1,4 +1,4 @@
-import { query } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export interface ISystemConfig {
     key: string;
@@ -11,36 +11,57 @@ export interface ISystemConfig {
 export class SystemConfigModel {
     static async get(key: string): Promise<any> {
         try {
-            const res = await query('SELECT value FROM public.system_configs WHERE key = $1', [key]);
-            if (res.rows.length === 0) return null;
-            return res.rows[0].value;
+            const config = await prisma.systemConfig.findUnique({
+                where: { key },
+                select: { value: true }
+            });
+            return config?.value ?? null;
         } catch (error: any) {
             // Gracefully handle missing table in dev environment
-            if (error.code === '42P01') {
-                console.warn(`[SystemConfig] Table public.system_configs missing. returning null for ${key}`);
+            if (error.code === 'P2021' || error.code === 'P2025') {
+                console.warn(`[SystemConfig] Table missing or not found. Returning null for ${key}`);
                 return null;
             }
             throw error;
         }
     }
 
-    static async set(key: string, value: any, description?: string, userId?: string): Promise<void> {
-        await query(`
-      INSERT INTO public.system_configs (key, value, description, updated_by, updated_at)
-      VALUES ($1, $2, $3, $4, NOW())
-      ON CONFLICT (key) DO UPDATE
-      SET value = $2, description = COALESCE($3, public.system_configs.description),
-          updated_by = $4, updated_at = NOW()
-    `, [key, value /* pg driver auto-stringifies json? check pool config */, description, userId]);
-        // NOTE: pg node driver handles objects to JSONB automatically if input is object.
+    static async set(key: string, value: any, description?: string, _userId?: string): Promise<void> {
+        await prisma.systemConfig.upsert({
+            where: { key },
+            update: {
+                value,
+                description: description || undefined,
+                updatedAt: new Date()
+            },
+            create: {
+                key,
+                value,
+                description
+            }
+        });
     }
 
     static async getAll(): Promise<Record<string, any>> {
-        const res = await query('SELECT key, value FROM public.system_configs');
-        const config: Record<string, any> = {};
-        res.rows.forEach(row => {
-            config[row.key] = row.value;
+        const configs = await prisma.systemConfig.findMany({
+            select: { key: true, value: true }
         });
-        return config;
+        
+        const result: Record<string, any> = {};
+        configs.forEach(config => {
+            result[config.key] = config.value;
+        });
+        return result;
+    }
+
+    static async delete(key: string): Promise<boolean> {
+        try {
+            await prisma.systemConfig.delete({
+                where: { key }
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 }

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import storageService from '../../services/storageService';
 import multer from 'multer';
 import path from 'path';
@@ -67,11 +67,10 @@ export class AssetController {
 
       // Optional: Persist asset metadata to database if an assets table exists
       try {
-        await pool.query(
-          `INSERT INTO assets (id, name, file_name, file_path, file_size, mime_type, url, folder, uploaded_by)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-          [asset.id, asset.name, asset.file_name, asset.file_path, asset.file_size, asset.mime_type, asset.url, asset.folder, asset.uploaded_by]
-        );
+        await prisma.$executeRaw`
+          INSERT INTO assets (id, name, file_name, file_path, file_size, mime_type, url, folder, uploaded_by)
+          VALUES (${asset.id}::uuid, ${asset.name}, ${asset.file_name}, ${asset.file_path}, ${asset.file_size}, ${asset.mime_type}, ${asset.url}, ${asset.folder}, ${asset.uploaded_by}::uuid)
+        `;
       } catch (dbErr) {
         console.warn('⚠️ Asset uploaded but metadata not persisted (table might not exist):', dbErr);
       }
@@ -133,11 +132,10 @@ export class AssetController {
 
           // Try persist
           try {
-            await pool.query(
-              `INSERT INTO assets (id, name, file_name, file_path, file_size, mime_type, url, folder, uploaded_by)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-              [asset.id, asset.name, asset.file_name, asset.file_path, asset.file_size, asset.mime_type, asset.url, asset.folder, asset.uploaded_by]
-            );
+            await prisma.$executeRaw`
+              INSERT INTO assets (id, name, file_name, file_path, file_size, mime_type, url, folder, uploaded_by)
+              VALUES (${asset.id}::uuid, ${asset.name}, ${asset.file_name}, ${asset.file_path}, ${asset.file_size}, ${asset.mime_type}, ${asset.url}, ${asset.folder}, ${asset.uploaded_by}::uuid)
+            `;
           } catch (dbErr) {}
 
           uploadedAssets.push(asset);
@@ -207,7 +205,9 @@ export class AssetController {
       // For assets, we might just want to delete from storage if there's no DB tracking.
       // But if there IS DB tracking, we should use it.
       
-      const { rows } = await pool.query('SELECT id FROM assets WHERE file_path = $1', [assetPath]);
+      const rows = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM assets WHERE file_path = ${assetPath}
+      `;
       
       if (rows.length > 0) {
         await storageService.deleteFile(rows[0].id, userId);
@@ -231,10 +231,13 @@ export class AssetController {
     try {
       const { folder = 'page-builder', limit = 100, offset = 0 } = req.query;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM assets WHERE folder = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
-        [folder, parseInt(String(limit)), parseInt(String(offset))]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM assets 
+        WHERE folder = ${folder} 
+        ORDER BY created_at DESC 
+        LIMIT ${parseInt(String(limit))} 
+        OFFSET ${parseInt(String(offset))}
+      `;
 
       res.json({ assets: rows });
     } catch (error: any) {
@@ -251,7 +254,9 @@ export class AssetController {
     try {
       const { path: assetPath } = req.params;
 
-      const { rows } = await pool.query('SELECT * FROM assets WHERE file_path = $1', [assetPath]);
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM assets WHERE file_path = ${assetPath}
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Asset not found' });

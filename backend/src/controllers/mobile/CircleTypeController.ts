@@ -28,14 +28,14 @@ export class CircleTypeController {
 
   static async create(req: Request, res: Response) {
     try {
-      const { name, code } = req.body;
-      if (!name || !code) {
-        return res.status(400).json({ success: false, message: 'Name and code are required' });
+      const { name } = req.body;
+      if (!name) {
+        return res.status(400).json({ success: false, message: 'Name is required' });
       }
 
-      const existing = await CircleTypeModel.findByCode(code);
+      const existing = await CircleTypeModel.findByName(name);
       if (existing) {
-        return res.status(409).json({ success: false, message: 'Circle type code already exists' });
+        return res.status(409).json({ success: false, message: 'Circle type name already exists' });
       }
 
       const type = await CircleTypeModel.create(req.body);

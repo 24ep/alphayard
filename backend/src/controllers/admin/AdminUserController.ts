@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import pool from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import { AdminRequest } from '../../middleware/adminAuth';
 import { config } from '../../config/env';
 import { logger } from '../../middleware/logger';
@@ -21,35 +21,24 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'Email and password are required' });
             }
 
-            // Try to find admin user directly in admin_users table first (migration 011 style)
-            let adminUser: any;
-            let queryResult = await pool.query(`
-                SELECT au.*, ar.name as role_name, ar.permissions
-                FROM admin_users au
-                LEFT JOIN admin_roles ar ON au.role_id = ar.id
-                WHERE au.email = $1 AND au.is_active = true
-            `, [email.toLowerCase()]);
-
-            if (queryResult.rows.length > 0) {
-                adminUser = queryResult.rows[0];
-                logger.info(`[AdminLogin] Found admin user directly in admin_users: ${adminUser.email}`);
-            } else {
-                // Fall back to users table JOIN (legacy approach)
-                queryResult = await pool.query(`
-                    SELECT au.*, u.email, u.password_hash, 
-                           u.first_name as "firstName", u.last_name as "lastName",
-                           ar.name as role_name, ar.permissions
-                    FROM admin_users au
-                    JOIN users u ON au.user_id = u.id
-                    LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
-                    WHERE u.email = $1 AND au.is_active = true
-                `, [email.toLowerCase()]);
-                
-                if (queryResult.rows.length > 0) {
-                    adminUser = queryResult.rows[0];
-                    logger.info(`[AdminLogin] Found admin user via users table JOIN: ${adminUser.email}`);
+            // Find admin user with role information
+            const adminUser = await prisma.adminUser.findUnique({
+                where: {
+                    email: email.toLowerCase(),
+                    isActive: true
+                },
+                include: {
+                    role: {
+                        include: {
+                            rolePermissions: {
+                                include: {
+                                    permission: true
+                                }
+                            }
+                        }
+                    }
                 }
-            }
+            });
 
             if (!adminUser) {
                 logger.warn(`[AdminLogin] No active admin user found for: ${email}`);
@@ -59,7 +48,7 @@ export class AdminUserController {
             logger.info(`[AdminLogin] Found user: ${adminUser.email}, hashing comparison...`);
 
             // Verify password
-            const isValidPassword = await bcrypt.compare(password, adminUser.password_hash);
+            const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash);
             if (!isValidPassword) {
                 logger.warn(`[AdminLogin] Password mismatch for: ${email}`);
                 return res.status(401).json({ error: 'Invalid email or password' });
@@ -68,27 +57,27 @@ export class AdminUserController {
             logger.info(`[AdminLogin] Success for: ${email}`);
 
             // Update last login
-            await pool.query(`UPDATE admin_users SET last_login = NOW() WHERE id = $1`, [adminUser.id]);
+            await prisma.adminUser.update({
+                where: { id: adminUser.id },
+                data: { lastLoginAt: new Date() }
+            });
 
-            // Parse permissions from JSONB
+            // Extract permissions from role
             let permissions: string[] = [];
-            try {
-                permissions = typeof adminUser.permissions === 'string'
-                    ? JSON.parse(adminUser.permissions)
-                    : (adminUser.permissions || []);
-            } catch {
-                permissions = [];
+            if (adminUser.role?.rolePermissions) {
+                permissions = adminUser.role.rolePermissions.map(rp => 
+                    `${rp.permission.module}:${rp.permission.action}`
+                );
             }
 
             // Generate JWT token
             const token = jwt.sign(
                 {
-                    id: adminUser.user_id || adminUser.id, // Use user_id if exists, otherwise admin_users.id
-                    adminId: adminUser.id,   // Keep admin_users.id as administrative identifier
+                    id: adminUser.id,
+                    adminId: adminUser.id,
                     email: adminUser.email,
-                    firstName: adminUser.first_name || adminUser.firstName,
-                    lastName: adminUser.last_name || adminUser.lastName,
-                    role: adminUser.role_name,
+                    name: adminUser.name,
+                    role: adminUser.role?.name || null,
                     permissions,
                     type: 'admin'
                 },
@@ -102,9 +91,8 @@ export class AdminUserController {
                 user: {
                     id: adminUser.id,
                     email: adminUser.email,
-                    firstName: adminUser.first_name || adminUser.firstName,
-                    lastName: adminUser.last_name || adminUser.lastName,
-                    role: adminUser.role_name,
+                    name: adminUser.name,
+                    role: adminUser.role?.name || null,
                     permissions
                 }
             });
@@ -123,43 +111,42 @@ export class AdminUserController {
                 return res.status(401).json({ error: 'Not authenticated' });
             }
 
-            const query = `
-        SELECT au.id, u.email, 
-               u.first_name as "firstName", 
-               u.last_name as "lastName",
-               au.is_active as "isActive", au.last_login as "lastLogin",
-               ar.name as role_name, ar.permissions
-        FROM admin_users au
-        JOIN users u ON au.user_id = u.id
-        LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
-        WHERE au.user_id = $1
-      `;
-            const { rows } = await pool.query(query, [req.admin?.id]);
-            const adminUser = rows[0];
+            const adminUser = await prisma.adminUser.findUnique({
+                where: { id: req.admin.id },
+                include: {
+                    role: {
+                        include: {
+                            rolePermissions: {
+                                include: {
+                                    permission: true
+                                }
+                            }
+                        }
+                    }
+                }
+            });
 
             if (!adminUser) {
                 return res.status(404).json({ error: 'Admin user not found' });
             }
 
+            // Extract permissions from role
             let permissions: string[] = [];
-            try {
-                permissions = typeof adminUser.permissions === 'string'
-                    ? JSON.parse(adminUser.permissions)
-                    : (adminUser.permissions || []);
-            } catch {
-                permissions = [];
+            if (adminUser.role?.rolePermissions) {
+                permissions = adminUser.role.rolePermissions.map(rp => 
+                    `${rp.permission.module}:${rp.permission.action}`
+                );
             }
 
             res.json({
                 user: {
                     id: adminUser.id,
                     email: adminUser.email,
-                    firstName: adminUser.firstName,
-                    lastName: adminUser.lastName,
-                    role: adminUser.role_name,
+                    name: adminUser.name,
+                    role: adminUser.role?.name || null,
                     permissions,
                     isActive: adminUser.isActive,
-                    lastLogin: adminUser.lastLogin
+                    lastLogin: adminUser.lastLoginAt
                 }
             });
         } catch (error: any) {
@@ -168,9 +155,6 @@ export class AdminUserController {
         }
     }
 
-    /**
-     * Change admin password
-     */
     /**
      * Change admin password
      */
@@ -190,20 +174,18 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'New password must be at least 8 characters' });
             }
 
-            // Get current password hash and user_id from users table
-            const { rows } = await pool.query(`
-                SELECT u.password_hash, u.id as user_id 
-                FROM admin_users au 
-                JOIN users u ON au.user_id = u.id 
-                WHERE au.user_id = $1
-            `, [req.admin?.id]);
+            // Get current admin user
+            const adminUser = await prisma.adminUser.findUnique({
+                where: { id: req.admin.id },
+                select: { passwordHash: true }
+            });
             
-            if (rows.length === 0) {
+            if (!adminUser) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
             // Verify current password
-            const isValid = await bcrypt.compare(currentPassword, rows[0].password_hash);
+            const isValid = await bcrypt.compare(currentPassword, adminUser.passwordHash);
             if (!isValid) {
                 return res.status(401).json({ error: 'Current password is incorrect' });
             }
@@ -211,8 +193,11 @@ export class AdminUserController {
             // Hash new password
             const newHash = await bcrypt.hash(newPassword, 10);
             
-            // Update password in users table
-            await pool.query(`UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2`, [newHash, rows[0].user_id]);
+            // Update password
+            await prisma.adminUser.update({
+                where: { id: req.admin.id },
+                data: { passwordHash: newHash }
+            });
 
             res.json({ success: true, message: 'Password changed successfully' });
         } catch (error: any) {
@@ -224,34 +209,43 @@ export class AdminUserController {
     /**
      * List all admin users (requires users:read permission)
      */
-    /**
-     * List all admin users (requires users:read permission)
-     */
     async listUsers(req: AdminRequest, res: Response) {
         try {
-            const query = `
-        SELECT au.id, u.email, 
-               u.first_name as "firstName", 
-               u.last_name as "lastName",
-               au.is_active as "isActive", au.last_login as "lastLogin", au.created_at as "createdAt",
-               ar.name as "roleName"
-        FROM admin_users au
-        JOIN users u ON au.user_id = u.id
-        LEFT JOIN admin_roles ar ON au.admin_role_id = ar.id
-        ORDER BY au.created_at DESC
-      `;
-            const { rows } = await pool.query(query);
+            const adminUsers = await prisma.adminUser.findMany({
+                include: {
+                    role: {
+                        select: {
+                            id: true,
+                            name: true,
+                            displayName: true
+                        }
+                    }
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            });
 
-            res.json({ users: rows });
+            const users = adminUsers.map(au => ({
+                id: au.id,
+                email: au.email,
+                name: au.name,
+                firstName: au.name.split(' ')[0] || au.name, // Extract first name from name field
+                lastName: au.name.split(' ').slice(1).join(' ') || '', // Extract last name from name field
+                isActive: au.isActive,
+                lastLogin: au.lastLoginAt,
+                createdAt: au.createdAt,
+                roleName: au.role?.name || null,
+                roleId: au.roleId
+            }));
+
+            res.json({ users });
         } catch (error: any) {
             console.error('List users error:', error);
             res.status(500).json({ error: 'Failed to list users' });
         }
     }
 
-    /**
-     * Create new admin user (requires users:write permission)
-     */
     /**
      * Create new admin user (requires users:write permission)
      */
@@ -263,45 +257,39 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'Email and password are required' });
             }
 
-            // Check if email already exists in users table
-            const existing = await pool.query(`SELECT id FROM users WHERE email = $1`, [email.toLowerCase()]);
-            let userId = existing.rows.length > 0 ? existing.rows[0].id : null;
+            // Check if email already exists
+            const existing = await prisma.adminUser.findUnique({
+                where: { email: email.toLowerCase() }
+            });
 
-            // If user doesn't exist, create them
-            if (!userId) {
-                const passwordHash = await bcrypt.hash(password, 10);
-                const metadata = { first_name: firstName, last_name: lastName, role: 'admin' };
-                
-                const newUser = await pool.query(`
-                    INSERT INTO users (email, password_hash, first_name, last_name, is_active)
-                    VALUES ($1, $2, $3, $4, true)
-                    RETURNING id
-                `, [email.toLowerCase(), passwordHash, firstName, lastName]);
-                userId = newUser.rows[0].id;
+            if (existing) {
+                return res.status(400).json({ error: 'Email already exists' });
             }
 
-            // Check if already an admin
-            const existingAdmin = await pool.query(`SELECT id FROM admin_users WHERE user_id = $1`, [userId]);
-            if (existingAdmin.rows.length > 0) {
-                return res.status(400).json({ error: 'User is already an admin' });
-            }
+            // Hash password
+            const passwordHash = await bcrypt.hash(password, 10);
+            
+            const name = `${firstName || ''} ${lastName || ''}`.trim() || email.split('@')[0];
 
-            // Create admin user entry
-            const query = `
-        INSERT INTO admin_users (user_id, admin_role_id, is_active)
-        VALUES ($1, $2, true)
-        RETURNING id, created_at
-      `;
-            const { rows } = await pool.query(query, [userId, roleId]);
+            // Create admin user
+            const newAdminUser = await prisma.adminUser.create({
+                data: {
+                    email: email.toLowerCase(),
+                    passwordHash,
+                    name,
+                    roleId: roleId || null,
+                    isActive: true
+                }
+            });
 
             res.status(201).json({ 
                 success: true, 
                 user: {
-                    id: rows[0].id,
-                    email: email.toLowerCase(),
-                    firstName,
-                    lastName,
-                    createdAt: rows[0].created_at
+                    id: newAdminUser.id,
+                    email: newAdminUser.email,
+                    firstName: firstName || name.split(' ')[0],
+                    lastName: lastName || name.split(' ').slice(1).join(' '),
+                    createdAt: newAdminUser.createdAt
                 } 
             });
         } catch (error: any) {
@@ -318,56 +306,39 @@ export class AdminUserController {
             const { id } = req.params;
             const { firstName, lastName, roleId, isActive } = req.body;
 
-            // Get user_id from admin_users
-            const adminRes = await pool.query(`SELECT user_id FROM admin_users WHERE id = $1`, [id]);
-            if (adminRes.rows.length === 0) {
+            // Get existing admin user
+            const existingAdmin = await prisma.adminUser.findUnique({
+                where: { id }
+            });
+
+            if (!existingAdmin) {
                 return res.status(404).json({ error: 'User not found' });
             }
-            const userId = adminRes.rows[0].user_id;
 
-            // Update users table for profile info
+            // Prepare update data
+            const updateData: any = {};
+
             if (firstName !== undefined || lastName !== undefined) {
-                 const updates: string[] = [];
-                 const params: any[] = [];
-                 let pIdx = 1;
-
-                 if (firstName !== undefined) {
-                     updates.push(`first_name = $${pIdx++}`);
-                     params.push(firstName);
-                 }
-                 if (lastName !== undefined) {
-                     updates.push(`last_name = $${pIdx++}`);
-                     params.push(lastName);
-                 }
-
-                 params.push(userId);
-                 await pool.query(`UPDATE users SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${pIdx}`, params);
+                const currentName = existingAdmin.name.split(' ');
+                const newFirstName = firstName !== undefined ? firstName : (currentName[0] || '');
+                const newLastName = lastName !== undefined ? lastName : (currentName.slice(1).join(' ') || '');
+                updateData.name = `${newFirstName} ${newLastName}`.trim();
             }
-
-            // Update admin_users for role and status
-            const updates: string[] = [];
-            const values: any[] = [];
-            let paramIndex = 1;
 
             if (roleId !== undefined) {
-                updates.push(`admin_role_id = $${paramIndex++}`);
-                values.push(roleId);
+                updateData.roleId = roleId;
             }
+
             if (isActive !== undefined) {
-                updates.push(`is_active = $${paramIndex++}`);
-                values.push(isActive);
+                updateData.isActive = isActive;
             }
 
-            if (updates.length > 0) {
-                updates.push(`updated_at = NOW()`);
-                values.push(id); // id is the last param for WHERE clause
-                const query = `UPDATE admin_users SET ${updates.join(', ')} WHERE id = $${paramIndex}`;
-                await pool.query(query, values);
-            }
+            // Update admin user
+            await prisma.adminUser.update({
+                where: { id },
+                data: updateData
+            });
 
-            // Return updated user (fetch fresh)
-            // ... reuse logic from list/get or just return success
-            // For now return success as constructing the full object requires joins
             res.json({ success: true, message: "User updated successfully" });
 
         } catch (error: any) {
@@ -388,7 +359,10 @@ export class AdminUserController {
                 return res.status(400).json({ error: 'Cannot delete your own account' });
             }
 
-            await pool.query(`UPDATE admin_users SET is_active = false, updated_at = NOW() WHERE id = $1`, [id]);
+            await prisma.adminUser.update({
+                where: { id },
+                data: { isActive: false }
+            });
 
             res.json({ success: true, message: 'User deactivated successfully' });
         } catch (error: any) {
@@ -402,13 +376,18 @@ export class AdminUserController {
      */
     async listRoles(req: AdminRequest, res: Response) {
         try {
-            const { rows } = await pool.query(`SELECT * FROM admin_roles ORDER BY created_at`);
-            res.json({ roles: rows });
+            const roles = await prisma.adminRole.findMany({
+                orderBy: {
+                    createdAt: 'asc'
+                }
+            });
+            res.json({ roles });
         } catch (error: any) {
             console.error('List roles error:', error);
             res.status(500).json({ error: 'Failed to list roles' });
         }
     }
+
     private getJwtSecret() {
         return config.JWT_SECRET;
     }

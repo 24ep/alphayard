@@ -1,4 +1,5 @@
-const { Pool } = require('pg');
+const { PrismaClient, Prisma } = require('../prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const bcrypt = require('bcrypt');
 const dotenv = require('dotenv');
 const path = require('path');
@@ -7,24 +8,9 @@ const path = require('path');
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const poolConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'bondarys',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-};
-
-if (process.env.DATABASE_URL) {
-    poolConfig.connectionString = process.env.DATABASE_URL;
-}
-
-const pool = new Pool(poolConfig);
-
 async function seedAdminUsers() {
-    const client = await pool.connect();
     try {
-        await client.query('BEGIN');
+        await prisma.$executeRawUnsafe('BEGIN');
 
         console.log('🚀 Seeding Admin Users and Roles...');
 
@@ -71,14 +57,14 @@ async function seedAdminUsers() {
         ];
 
         for (const role of roles) {
-            await client.query(`
+            await prisma.$executeRaw(Prisma.sql`
                 INSERT INTO admin_roles (name, description, permissions)
-                VALUES ($1, $2, $3::jsonb)
+                VALUES (${role.name}, ${role.description}, ${role.permissions}::jsonb)
                 ON CONFLICT (name) DO UPDATE SET
                     description = EXCLUDED.description,
                     permissions = EXCLUDED.permissions,
                     updated_at = NOW()
-            `, [role.name, role.description, role.permissions]);
+            `);
         }
         console.log('✅ Admin roles created/updated');
 
@@ -90,38 +76,38 @@ async function seedAdminUsers() {
         const passwordHash = await bcrypt.hash(superAdminPassword, 10);
 
         // Get super_admin role id
-        const roleRes = await client.query(`SELECT id FROM admin_roles WHERE name = 'super_admin'`);
-        const superAdminRoleId = roleRes.rows[0]?.id;
+        const roleRes = await prisma.$queryRawUnsafe(`SELECT id FROM admin_roles WHERE name = 'super_admin'`);
+        const superAdminRoleId = roleRes[0]?.id;
 
         if (superAdminRoleId) {
-            await client.query(`
+            await prisma.$executeRaw(Prisma.sql`
                 INSERT INTO admin_users (email, password_hash, first_name, last_name, role_id, is_active)
-                VALUES ($1, $2, $3, $4, $5, true)
+                VALUES (${superAdminEmail}, ${passwordHash}, ${'Super'}, ${'Admin'}, ${superAdminRoleId}::uuid, ${true})
                 ON CONFLICT (email) DO UPDATE SET
                     password_hash = EXCLUDED.password_hash,
                     role_id = EXCLUDED.role_id,
                     updated_at = NOW()
-            `, [superAdminEmail, passwordHash, 'Super', 'Admin', superAdminRoleId]);
+            `);
             
             console.log(`✅ Super admin created: ${superAdminEmail} / ${superAdminPassword}`);
         }
 
         // 3. Create demo editor user
-        const editorRoleRes = await client.query(`SELECT id FROM admin_roles WHERE name = 'editor'`);
-        const editorRoleId = editorRoleRes.rows[0]?.id;
+        const editorRoleRes = await prisma.$queryRawUnsafe(`SELECT id FROM admin_roles WHERE name = 'editor'`);
+        const editorRoleId = editorRoleRes[0]?.id;
 
         if (editorRoleId) {
             const editorHash = await bcrypt.hash('editor123', 10);
-            await client.query(`
+            await prisma.$executeRaw(Prisma.sql`
                 INSERT INTO admin_users (email, password_hash, first_name, last_name, role_id, is_active)
-                VALUES ($1, $2, $3, $4, $5, true)
+                VALUES (${'editor@bondary.com'}, ${editorHash}, ${'Content'}, ${'Editor'}, ${editorRoleId}::uuid, ${true})
                 ON CONFLICT (email) DO NOTHING
-            `, ['editor@bondary.com', editorHash, 'Content', 'Editor', editorRoleId]);
+            `);
             
             console.log('✅ Demo editor created: editor@bondary.com / editor123');
         }
 
-        await client.query('COMMIT');
+        await prisma.$executeRawUnsafe('COMMIT');
         console.log('🎉 Admin users seeding completed successfully!');
         
         console.log('\n📝 Login Credentials:');
@@ -129,11 +115,10 @@ async function seedAdminUsers() {
         console.log('   Editor:      editor@bondary.com / editor123');
 
     } catch (err) {
-        await client.query('ROLLBACK');
+        await prisma.$executeRawUnsafe('ROLLBACK');
         console.error('❌ Seeding failed:', err);
     } finally {
-        client.release();
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

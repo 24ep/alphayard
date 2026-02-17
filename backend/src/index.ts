@@ -25,7 +25,7 @@ import settingsRoutes from './routes/mobile/settings';
 
 // Import services
 import { initializeSocket } from './socket/socketService';
-import { pool } from './config/database';
+import { prisma } from './lib/prisma';
 
 // Load environment variables
 dotenv.config();
@@ -45,8 +45,8 @@ app.set('io', io);
 initializeSocket(io);
 
 // Verify Database Connection
-pool.query('SELECT 1').then(() => {
-  console.log('✅ Database connected (pool)');
+prisma.$queryRaw`SELECT 1`.then(() => {
+  console.log('✅ Database connected (Prisma)');
 }).catch(err => {
   console.error('❌ Database connection failed:', err);
 });
@@ -69,11 +69,22 @@ app.use(rateLimiter);
 import circleTypeRoutes from './routes/mobile/circleTypeRoutes';
 import mobileRoutes from './routes/mobile/mobileRoutes';
 import storageRoutes from './routes/mobile/storage';
+import userRoutes from './routes/mobile/users';
+import circleRoutes from './routes/mobile/circles';
+import galleryRoutes from './routes/mobile/gallery';
+import fileManagementRoutes from './routes/mobile/fileManagement';
 
-app.use('/api/auth', authRoutes);
+// Chat Routes
+import noteRoutes from './routes/mobile/notes';
+import notificationRoutes from './routes/mobile/notifications';
+import chatRoutes from './routes/mobile/chat';
+import chatAttachmentRoutes from './routes/mobile/chatAttachments';
+import calendarRoutes from './routes/mobile/calendar';
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/social', socialRoutes);
-app.use('/api/v1/social', socialRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/circles', circleRoutes);
+app.use('/api/v1/gallery', galleryRoutes);
+app.use('/api/v1/files', fileManagementRoutes);
 app.use('/api/v1/user/locations', userLocationsRoutes);
 app.use('/api/v1/misc', miscRoutes);
 app.use('/api/popups', popupRoutes);
@@ -81,10 +92,9 @@ app.use('/api/v1/circle-types', circleTypeRoutes);
 app.use('/api/v1/storage', storageRoutes);
 
 // Chat Routes
-import chatRoutes from './routes/mobile/chat';
-import chatAttachmentRoutes from './routes/mobile/chatAttachments';
 app.use('/api/v1/chat', chatRoutes); // /api/v1/chat/families/:id/rooms
 app.use('/api/v1', chatAttachmentRoutes); // /api/v1/messages/... and /api/v1/attachments/...
+app.use('/api/v1/calendar', calendarRoutes);
 
 app.use('/api/v1/admin/auth', adminAuthRoutes);
 app.use('/api/v1/admin', adminRoutes);

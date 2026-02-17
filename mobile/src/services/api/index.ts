@@ -7,6 +7,7 @@ export type { LocationStats } from './location'; // Fixed re-export with type ke
 export * from './safety';
 export * from './circle';
 export * from './storage';
+export * from './fileManagement';
 export * from './notes';
 export * from './todos';
 
@@ -19,3 +20,5 @@ export * from './recentlyUsed';
 // export * from './locationData';
 export * from './widgets';
 export * from './circleTypes';
+export { calendarApi } from '../calendar/CalendarService';
+export { galleryApi } from '../gallery/GalleryService';

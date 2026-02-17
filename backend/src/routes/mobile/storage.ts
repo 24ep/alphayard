@@ -4,7 +4,7 @@ import https from 'https';
 import { authenticateToken, requireCircleMember } from '../../middleware/auth';
 import storageService from '../../services/storageService';
 import StorageController from '../../controllers/mobile/StorageController';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 
 const router = express.Router();
 
@@ -31,33 +31,44 @@ router.get('/proxy/:fileId', async (req, res) => {
     try {
         const { fileId } = req.params;
 
-        // Look up the file metadata from database
-        const { rows } = await pool.query(
-            'SELECT mime_type, file_name, uploaded_by FROM files WHERE id = $1',
-            [fileId]
-        );
+        // Look up the file metadata from unified_entities table
+        const rows = await prisma.$queryRaw<any[]>`
+            SELECT id, type, data, status 
+             FROM public.unified_entities 
+             WHERE id = ${fileId}::uuid AND type = 'file' AND status = 'active'
+        `;
 
         if (rows.length === 0) {
+            console.error('[Storage Proxy] File not found:', fileId);
             return res.status(404).json({ error: 'File not found' });
         }
 
-        const file = rows[0];
+        const entity = rows[0];
+        const fileData = entity.data || {};
         
-        // Reconstruct key: uploads/userId/fileName
-        // Note: This assumes standard storageService path structure. 
-        // ideally storageService should expose a method to get key from fileId, but this works for now.
-        const uploadPath = process.env.UPLOAD_PATH || 'uploads';
-        const key = `${uploadPath}/${file.uploaded_by}/${file.file_name}`;
-
-        // Fetch the image from MinIO/S3 using storageService
-        const imageData = await storageService.downloadFile(key);
-
-        if (!imageData) {
-             return res.status(404).json({ error: 'File content not found' });
+        // Extract file metadata from JSONB data column
+        const mimeType = fileData.mime_type || fileData.mimeType || 'application/octet-stream';
+        const path = fileData.path || fileData.filePath;
+        
+        if (!path) {
+            console.error('[Storage Proxy] No path found in file data:', fileId, fileData);
+            return res.status(404).json({ error: 'File path not found' });
         }
 
+        console.log('[Storage Proxy] Fetching file:', { fileId, path, mimeType, bucket: process.env.AWS_S3_BUCKET || 'bondarys-files' });
+
+        // Fetch the image from MinIO/S3 using storageService
+        const imageData = await storageService.downloadFile(path);
+
+        if (!imageData) {
+            console.error('[Storage Proxy] File content not found in storage:', { fileId, path, bucket: process.env.AWS_S3_BUCKET || 'bondarys-files' });
+            return res.status(404).json({ error: 'File content not found', details: `Path: ${path}` });
+        }
+
+        console.log('[Storage Proxy] File downloaded successfully:', { fileId, size: imageData.length });
+
         // Set appropriate headers for cross-origin image loading
-        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('Content-Type', mimeType);
         res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -65,8 +76,8 @@ router.get('/proxy/:fileId', async (req, res) => {
         // Send the image data
         res.send(imageData);
     } catch (error: any) {
-        console.error('Image proxy error:', error.message);
-        res.status(500).json({ error: 'Failed to fetch image' });
+        console.error('[Storage Proxy] Error:', error.message, error.stack);
+        res.status(500).json({ error: 'Failed to fetch image', details: error.message });
     }
 });
 

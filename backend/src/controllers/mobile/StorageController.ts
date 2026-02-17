@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import storageService from '../../services/storageService';
 import entityService from '../../services/EntityService';
 
@@ -90,12 +90,42 @@ export class StorageController {
     try {
       if (!req.file) {
         return res.status(400).json({
+          success: false,
           error: 'No file provided'
         });
       }
 
-      const userId = req.user.id;
-      const circleId = req.user.circleId;
+      // Handle both regular users and admin users
+      // Note: authenticateToken middleware sets req.user for both regular and admin users
+      // For admin users, req.user.id might be admin_users.id, which storageService will resolve
+      let userId: string;
+      if (req.admin && req.admin.id) {
+        // Admin user authenticated via authenticateAdmin middleware - use admin.id (users.id)
+        userId = req.admin.id;
+      } else if (req.user && req.user.id) {
+        // Regular user or admin user authenticated via authenticateToken middleware
+        // storageService will resolve admin_users.id to users.id if needed
+        userId = req.user.id;
+      } else {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
+
+      // Admin users might not have circleId, use null or undefined
+      const circleId = req.user?.circleId || req.user?.applicationId || req.admin?.currentApp?.id || null;
+
+      console.log('[StorageController] Upload file:', {
+        userId,
+        circleId,
+        isAdmin: !!req.admin,
+        reqUser: req.user ? { id: req.user.id, type: req.user.type, role: req.user.role } : null,
+        reqAdmin: req.admin ? { id: req.admin.id, adminId: req.admin.adminId } : null,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype
+      });
 
       const uploadedFile = await storageService.uploadFile(
         req.file,
@@ -108,7 +138,12 @@ export class StorageController {
         file: uploadedFile
       });
     } catch (error: any) {
-      res.status(500).json({ success: false, error: error.message });
+      console.error('[StorageController] Upload error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   }
 

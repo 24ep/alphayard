@@ -71,18 +71,31 @@ class ApiClient {
   private setupInterceptors() {
     // Request interceptor
     this.instance.interceptors.request.use(
-      async (config) => {
-        console.log(`[API] Requesting ${config.method?.toUpperCase()} ${config.url}`);
+      async (reqConfig) => {
+        console.log(`[API] Requesting ${reqConfig.method?.toUpperCase()} ${reqConfig.url}`);
         try {
+          reqConfig.headers = reqConfig.headers || {};
+          
+          // Add authentication token
           const token = await this.getAccessToken();
           if (token) {
-            config.headers = config.headers || {};
-            config.headers.Authorization = `Bearer ${token}`;
+            reqConfig.headers.Authorization = `Bearer ${token}`;
+          }
+          
+          // Add multi-tenant application identifier
+          // Priority: config.appId (UUID) > config.appSlug > default 'bondarys'
+          if (config.appId) {
+            reqConfig.headers['X-App-ID'] = config.appId;
+          } else if (config.appSlug) {
+            reqConfig.headers['X-App-Slug'] = config.appSlug;
+          } else {
+            // Fallback to default app slug
+            reqConfig.headers['X-App-Slug'] = 'bondarys';
           }
         } catch (error) {
           console.error('Error in request interceptor:', error);
         }
-        return config;
+        return reqConfig;
       },
       (error) => {
         console.error('Request interceptor error:', error);
@@ -315,21 +328,34 @@ class ApiClient {
             message: data?.message || 'An unknown error occurred',
           };
       }
-    } else if (error.request || error.code === 'ECONNABORTED' || error.message?.includes('timeout') || error.message?.includes('Network Error')) {
-      // Network error
+    }
+    const msg = (error.message || '').toLowerCase();
+    const isNetworkError =
+      error.request ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ERR_NETWORK' ||
+      msg.includes('timeout') ||
+      msg.includes('network error') ||
+      msg.includes('err_connection_refused') ||
+      msg.includes('connection refused') ||
+      msg.includes('failed to fetch') ||
+      msg.includes('load failed');
+    if (isNetworkError) {
+      // Network error - backend server is not running or unreachable
       return {
         code: 'NETWORK_ERROR',
-        message: error.message?.includes('timeout') || error.code === 'ECONNABORTED' 
-          ? 'Connection timed out. Please check your internet or firewall settings.' 
-          : 'Network connection failed. Please check your internet.'
-      };
-    } else {
-      // Other error
-      return {
-        code: error.code || 'UNKNOWN_ERROR',
-        message: error.message || 'An unknown error occurred',
+        message: msg.includes('timeout') || error.code === 'ECONNABORTED'
+          ? 'Connection timed out. Please check your internet or firewall settings.'
+          : 'Network connection failed. Please check your internet.',
+        isExpected: true, // Mark as expected to suppress alerts
       };
     }
+    // Other error
+    return {
+      code: error.code || 'UNKNOWN_ERROR',
+      message: error.message || 'An unknown error occurred',
+    };
   }
 
   private showErrorAlert(error: ApiError) {

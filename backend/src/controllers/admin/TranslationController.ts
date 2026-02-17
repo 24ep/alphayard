@@ -1,24 +1,19 @@
 import { Request, Response } from 'express';
-import { Pool } from 'pg';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 
 export class TranslationController {
-    private pool: Pool;
-
-    constructor() {
-        this.pool = pool;
-    }
-
     // GET /api/v1/translations
     // Fetch all translations as a key-value map for each language
     public getAllTranslations = async (req: Request, res: Response) => {
         try {
-            const result = await this.pool.query('SELECT key, en, th FROM translations');
+            const result = await prisma.$queryRaw<Array<{ key: string; en: string | null; th: string | null }>>`
+                SELECT key, en, th FROM translations
+            `;
 
             const en: Record<string, string> = {};
             const th: Record<string, string> = {};
 
-            result.rows.forEach(row => {
+            result.forEach(row => {
                 if (row.en) en[row.key] = row.en;
                 if (row.th) th[row.key] = row.th;
             });
@@ -43,19 +38,23 @@ export class TranslationController {
         }
 
         try {
-            const query = `
-        INSERT INTO translations (key, en, th)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (key)
-        DO UPDATE SET en = EXCLUDED.en, th = EXCLUDED.th, updated_at = NOW()
-        RETURNING *;
-      `;
-
-            const result = await this.pool.query(query, [key, en, th]);
+            const result = await prisma.$queryRaw<Array<{
+                key: string;
+                en: string | null;
+                th: string | null;
+                created_at: Date;
+                updated_at: Date;
+            }>>`
+                INSERT INTO translations (key, en, th)
+                VALUES (${key}, ${en}, ${th})
+                ON CONFLICT (key)
+                DO UPDATE SET en = EXCLUDED.en, th = EXCLUDED.th, updated_at = NOW()
+                RETURNING *
+            `;
 
             res.json({
                 success: true,
-                data: result.rows[0]
+                data: result[0]
             });
         } catch (error) {
             console.error('Error upserting translation:', error);
@@ -69,7 +68,9 @@ export class TranslationController {
         const { key } = req.params;
 
         try {
-            await this.pool.query('DELETE FROM translations WHERE key = $1', [key]);
+            await prisma.$executeRaw`
+                DELETE FROM translations WHERE key = ${key}
+            `;
             res.json({ success: true, message: 'Translation deleted' });
         } catch (error) {
             console.error('Error deleting translation:', error);

@@ -15,29 +15,43 @@ import { NativeBaseProvider, extendTheme } from 'native-base';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useFonts } from 'expo-font';
 import {
-  Inter_300Light,
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
+  DMSans_300Light,
+  DMSans_400Regular,
+  DMSans_500Medium,
+  DMSans_600SemiBold,
+  DMSans_700Bold,
+} from '@expo-google-fonts/dm-sans';
+import {
+  IBMPlexSansThai_300Light,
+  IBMPlexSansThai_400Regular,
+  IBMPlexSansThai_500Medium,
+  IBMPlexSansThai_600SemiBold,
+  IBMPlexSansThai_700Bold,
+} from '@expo-google-fonts/ibm-plex-sans-thai';
 import { theme } from './src/styles/theme';
 import appConfigService from './src/services/appConfigService';
 import analyticsService from './src/services/analytics/AnalyticsService';
 
 const nativeBaseTheme = extendTheme({
   fontConfig: {
-    Inter: {
-      300: { normal: 'Inter_300Light' },
-      400: { normal: 'Inter_400Regular' },
-      500: { normal: 'Inter_500Medium' },
-      600: { normal: 'Inter_600SemiBold' },
-      700: { normal: 'Inter_700Bold' },
+    DMSans: {
+      300: { normal: 'DMSans_300Light' },
+      400: { normal: 'DMSans_400Regular' },
+      500: { normal: 'DMSans_500Medium' },
+      600: { normal: 'DMSans_600SemiBold' },
+      700: { normal: 'DMSans_700Bold' },
+    },
+    IBMPlexSansThai: {
+      300: { normal: 'IBMPlexSansThai_300Light' },
+      400: { normal: 'IBMPlexSansThai_400Regular' },
+      500: { normal: 'IBMPlexSansThai_500Medium' },
+      600: { normal: 'IBMPlexSansThai_600SemiBold' },
+      700: { normal: 'IBMPlexSansThai_700Bold' },
     },
   },
   fonts: {
-    heading: 'Inter',
-    body: 'Inter',
+    heading: 'DMSans',
+    body: 'DMSans',
     mono: 'Courier',
   },
   colors: theme.colors,
@@ -45,11 +59,16 @@ const nativeBaseTheme = extendTheme({
 
 const App = () => {
   const [fontsLoaded] = useFonts({
-    Inter_300Light,
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    DMSans_300Light,
+    DMSans_400Regular,
+    DMSans_500Medium,
+    DMSans_600SemiBold,
+    DMSans_700Bold,
+    IBMPlexSansThai_300Light,
+    IBMPlexSansThai_400Regular,
+    IBMPlexSansThai_500Medium,
+    IBMPlexSansThai_600SemiBold,
+    IBMPlexSansThai_700Bold,
   });
 
   useEffect(() => {

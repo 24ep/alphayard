@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -16,8 +16,8 @@ async function seedGroupedScreens() {
     try {
         console.log('🚀 Extracting and Grouping Screens...');
         
-        const { rows: apps } = await pool.query(
-            "SELECT id, name, branding FROM applications WHERE is_active = true"
+        const apps = await prisma.$queryRawUnsafe<any[]>(
+            "SELECT id, name, branding FROM core.applications WHERE is_active = true"
         );
 
         for (const app of apps) {
@@ -48,9 +48,9 @@ async function seedGroupedScreens() {
                 branding.screenGroups.push({ id: 'other', name: 'Uncategorized', icon: 'folder' });
             }
 
-            await pool.query(
-                "UPDATE applications SET branding = $1, updated_at = NOW() WHERE id = $2",
-                [JSON.stringify(branding), app.id]
+            await prisma.$executeRawUnsafe(
+                "UPDATE core.applications SET branding = $1, updated_at = NOW() WHERE id = $2",
+                JSON.stringify(branding), app.id
             );
             console.log(`✅ Grouped screens for ${app.name}`);
         }

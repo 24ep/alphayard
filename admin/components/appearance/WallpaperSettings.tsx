@@ -10,6 +10,26 @@ import { PhotoIcon, CodeBracketIcon, PaintBrushIcon, ArrowUpTrayIcon, TrashIcon 
 import { MobileGuide, MobileGuideContent } from '../ui/MobileGuide'
 import { ColorPickerPopover } from '../ui/ColorPickerPopover'
 import { toast } from '../../src/hooks/use-toast'
+import { API_BASE_URL } from '../../services/apiConfig'
+
+// Normalize image URL to ensure it's a full URL
+const normalizeImageUrl = (url: string | undefined): string => {
+  if (!url) return ''
+  // If already a full URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+  // If it's a UUID (file ID), construct proxy URL
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)) {
+    return `${API_BASE_URL}/storage/proxy/${url}`
+  }
+  // If it starts with /, assume it's relative to API base
+  if (url.startsWith('/')) {
+    return `${API_BASE_URL}${url}`
+  }
+  // Otherwise, assume it's a file ID and construct proxy URL
+  return `${API_BASE_URL}/storage/proxy/${url}`
+}
 
 interface WallpaperSettingsProps {
     branding: BrandingConfig
@@ -49,7 +69,7 @@ export function WallpaperSettings({
     const currentBgValue = activeScreen ? (typeof activeScreen.background === 'string' ? { mode: 'solid', solid: activeScreen.background } as any : activeScreen.background || { mode: 'solid', solid: '#ffffff' }) : { mode: 'solid', solid: '#ffffff' }
     
     const cssBackground: string = activeScreen ? (typeof activeScreen.background === 'string' ? activeScreen.background : 
-        (activeScreen.background?.mode === 'image' ? (activeScreen.background.image || '') : 
+        (activeScreen.background?.mode === 'image' ? normalizeImageUrl(activeScreen.background.image) : 
          activeScreen.background?.mode === 'gradient' && activeScreen.background.gradient ? `linear-gradient(${activeScreen.background.gradient.angle}deg, ${activeScreen.background.gradient.stops.map(s => `${s.color} ${s.position}%`).join(', ')})` :
          activeScreen.background?.solid || '#ffffff')) : '#ffffff'
 
@@ -96,7 +116,7 @@ export function WallpaperSettings({
                                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-4 bg-gray-900 rounded-b-lg z-10"></div>
                                 
                                 <div 
-                                    className={clsx("w-full h-full", 
+                                    className={clsx("w-full h-full relative", 
                                         activeScreen.resizeMode === 'contain' ? 'bg-center bg-no-repeat bg-contain' :
                                         activeScreen.resizeMode === 'stretch' ? 'bg-center bg-no-repeat bg-[length:100%_100%]' :
                                         activeScreen.resizeMode === 'center' ? 'bg-center bg-no-repeat' :
@@ -108,6 +128,12 @@ export function WallpaperSettings({
                                             : { background: cssBackground }
                                     }
                                 >
+                                    {/* Debug: Log the background URL */}
+                                    {activeScreen.background?.mode === 'image' && activeScreen.background.image && (
+                                        <div className="absolute top-0 left-0 text-[8px] text-gray-400 bg-white/80 p-1 rounded z-20 opacity-0 hover:opacity-100 transition-opacity">
+                                            {normalizeImageUrl(activeScreen.background.image)}
+                                        </div>
+                                    )}
                                     {!activeScreen.background && (
                                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 gap-2">
                                             <PhotoIcon className="w-8 h-8 opacity-20" />

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 
 export class ComponentController {
   /**
@@ -31,7 +31,7 @@ export class ComponentController {
       // Order by category and name
       sql += ' ORDER BY category ASC, name ASC';
 
-      const { rows } = await pool.query(sql, params);
+      const rows = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
 
       res.json({ components: rows });
     } catch (error: any) {
@@ -47,10 +47,9 @@ export class ComponentController {
     try {
       const { id } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM component_definitions WHERE id = $1',
-        [id]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_definitions WHERE id = ${id}::uuid
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
@@ -70,10 +69,9 @@ export class ComponentController {
     try {
       const { name } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM component_definitions WHERE name = $1',
-        [name]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_definitions WHERE name = ${name}
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
@@ -108,23 +106,27 @@ export class ComponentController {
       }
 
       // Check if component name already exists
-      const { rows: existing } = await pool.query(
-        'SELECT id FROM component_definitions WHERE name = $1',
-        [name]
-      );
+      const existing = await prisma.$queryRaw<any[]>`
+        SELECT id FROM component_definitions WHERE name = ${name}
+      `;
 
       if (existing.length > 0) {
         return res.status(400).json({ error: 'Component with this name already exists' });
       }
 
-      const { rows } = await pool.query(
+      const rows = await prisma.$queryRawUnsafe<any[]>(
         `INSERT INTO component_definitions (
           name, category, icon, description, schema, default_props, is_system, is_active, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-        [
-          name, category, icon || null, description || null, schema, 
-          defaultProps || {}, isSystem || false, true, userId
-        ]
+        ) VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7, $8, $9::uuid) RETURNING *`,
+        name,
+        category,
+        icon || null,
+        description || null,
+        JSON.stringify(schema),
+        JSON.stringify(defaultProps || {}),
+        isSystem || false,
+        true,
+        userId
       );
 
       res.status(201).json({ component: rows[0] });
@@ -148,10 +150,9 @@ export class ComponentController {
       }
 
       // Check if component exists and is not a system component
-      const { rows: existingRows } = await pool.query(
-        'SELECT is_system FROM component_definitions WHERE id = $1',
-        [id]
-      );
+      const existingRows = await prisma.$queryRaw<any[]>`
+        SELECT is_system FROM component_definitions WHERE id = ${id}::uuid
+      `;
 
       if (existingRows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
@@ -187,12 +188,12 @@ export class ComponentController {
         if (!schema.properties || typeof schema.properties !== 'object') {
           return res.status(400).json({ error: 'Schema must contain a properties object' });
         }
-        updates.push(`schema = $${paramIndex++}`);
-        params.push(schema);
+        updates.push(`schema = $${paramIndex++}::jsonb`);
+        params.push(JSON.stringify(schema));
       }
       if (defaultProps !== undefined) {
-        updates.push(`default_props = $${paramIndex++}`);
-        params.push(defaultProps);
+        updates.push(`default_props = $${paramIndex++}::jsonb`);
+        params.push(JSON.stringify(defaultProps));
       }
       if (isActive !== undefined) {
         updates.push(`is_active = $${paramIndex++}`);
@@ -200,9 +201,9 @@ export class ComponentController {
       }
 
       params.push(id);
-      const { rows } = await pool.query(
-        `UPDATE component_definitions SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-        params
+      const rows = await prisma.$queryRawUnsafe<any[]>(
+        `UPDATE component_definitions SET ${updates.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`,
+        ...params
       );
 
       res.json({ component: rows[0] });
@@ -220,10 +221,9 @@ export class ComponentController {
       const { id } = req.params;
 
       // Check if component exists and is not a system component
-      const { rows: existingRows } = await pool.query(
-        'SELECT is_system, name FROM component_definitions WHERE id = $1',
-        [id]
-      );
+      const existingRows = await prisma.$queryRaw<any[]>`
+        SELECT is_system, name FROM component_definitions WHERE id = ${id}::uuid
+      `;
 
       if (existingRows.length === 0) {
         return res.status(404).json({ error: 'Component not found' });
@@ -235,10 +235,9 @@ export class ComponentController {
       }
 
       // Check if component is being used in any pages
-      const { rows: usages } = await pool.query(
-        'SELECT id FROM page_components WHERE component_type = $1 LIMIT 1',
-        [existing.name]
-      );
+      const usages = await prisma.$queryRaw<any[]>`
+        SELECT id FROM page_components WHERE component_type = ${existing.name} LIMIT 1
+      `;
 
       if (usages.length > 0) {
         return res.status(400).json({ 
@@ -247,7 +246,7 @@ export class ComponentController {
         });
       }
 
-      await pool.query('DELETE FROM component_definitions WHERE id = $1', [id]);
+      await prisma.$executeRawUnsafe('DELETE FROM component_definitions WHERE id = $1::uuid', id);
 
       res.json({ message: 'Component deleted successfully' });
     } catch (error: any) {
@@ -261,9 +260,9 @@ export class ComponentController {
    */
   async getCategories(req: any, res: Response) {
     try {
-      const { rows } = await pool.query(
-        'SELECT DISTINCT category FROM component_definitions WHERE is_active = true ORDER BY category ASC'
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT DISTINCT category FROM component_definitions WHERE is_active = true ORDER BY category ASC
+      `;
 
       const categories = rows.map(item => item.category);
 

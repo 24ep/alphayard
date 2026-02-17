@@ -123,32 +123,49 @@ class SocialService {
   private mapBackendPostToFrontend(post: any): SocialPost {
     // Handle Unified Entity structure
     const unwrapped = unwrapEntity(post);
-    
+    const mediaUrls = Array.isArray(unwrapped.media_urls)
+      ? unwrapped.media_urls
+      : Array.isArray(unwrapped.mediaUrls)
+        ? unwrapped.mediaUrls
+        : [];
+    const likesCount = unwrapped.likesCount ?? unwrapped.like_count ?? unwrapped.likes_count ?? 0;
+    const commentsCount = unwrapped.commentsCount ?? unwrapped.comments_count ?? 0;
+    const sharesCount = unwrapped.sharesCount ?? unwrapped.shares_count ?? 0;
+    const firstName = unwrapped.firstName ?? unwrapped.author?.first_name ?? 'User';
+    const lastName = unwrapped.lastName ?? unwrapped.author?.last_name ?? '';
+    const authorName = unwrapped.author_name ?? ([firstName, lastName].filter(Boolean).join(' ') || 'User');
+
     const mappedPost: any = {
       id: unwrapped.id,
       circleId: unwrapped.applicationId,
       authorId: unwrapped.ownerId,
-      content: unwrapped.content,
+      content: unwrapped.content ?? '',
       type: unwrapped.type || 'text',
-      mediaUrls: unwrapped.mediaUrls || unwrapped.media_urls || [],
-      likesCount: unwrapped.likesCount || unwrapped.likes_count || 0,
-      commentsCount: unwrapped.commentsCount || unwrapped.comments_count || 0,
-      createdAt: unwrapped.createdAt,
+      mediaUrls,
+      likesCount,
+      commentsCount,
+      likes: likesCount,
+      comments: commentsCount,
+      shares: sharesCount,
+      createdAt: unwrapped.createdAt ?? unwrapped.created_at,
+      created_at: unwrapped.created_at ?? unwrapped.createdAt,
       updatedAt: unwrapped.updatedAt,
       isLiked: !!(unwrapped.isLiked || unwrapped.is_liked),
-      // Map author if present in attributes or joined
-      author: unwrapped.author || {
-        id: unwrapped.ownerId,
-        firstName: unwrapped.firstName || (unwrapped.author?.first_name) || 'User',
-        lastName: unwrapped.lastName || (unwrapped.author?.last_name) || ''
-      }
+      author: unwrapped.author
+        ? { ...unwrapped.author, name: unwrapped.author.name ?? authorName }
+        : {
+            id: unwrapped.ownerId,
+            firstName,
+            lastName,
+            name: authorName
+          }
     };
 
     // Ensure media object exists if mediaUrls is present
-    if (!mappedPost.media && mappedPost.mediaUrls && mappedPost.mediaUrls.length > 0) {
+    if (!mappedPost.media && mediaUrls.length > 0) {
       mappedPost.media = {
         type: mappedPost.type === 'video' ? 'video' : 'image',
-        url: mappedPost.mediaUrls[0]
+        url: mediaUrls[0]
       };
     }
 
@@ -210,12 +227,34 @@ class SocialService {
     }
   }
 
+  private mapBackendCommentToFrontend(comment: any): any {
+    const unwrapped = unwrapEntity(comment);
+    const firstName = unwrapped.firstName ?? unwrapped.author?.first_name ?? 'User';
+    const lastName = unwrapped.lastName ?? unwrapped.author?.last_name ?? '';
+    return {
+      id: unwrapped.id,
+      content: unwrapped.content ?? '',
+      author: {
+        first_name: firstName,
+        last_name: lastName,
+        avatar_url: unwrapped.author?.avatar_url ?? unwrapped.avatar_url
+      },
+      created_at: unwrapped.created_at ?? unwrapped.createdAt,
+      parent_id: unwrapped.parent_id ?? unwrapped.parentId,
+      likes_count: unwrapped.likes_count ?? unwrapped.likesCount ?? 0,
+      is_liked: !!(unwrapped.is_liked ?? unwrapped.isLiked),
+      media: unwrapped.media
+    };
+  }
+
   // interactWithPost deprecated/removed in favor of specific methods
 
   async getPostComments(postId: string): Promise<any[]> {
     try {
       const response = await socialApi.getPostComments(postId);
-      return response.comments || [];
+      const raw = response.comments || response.data || [];
+      const list = Array.isArray(raw) ? raw : [];
+      return list.map((c: any) => this.mapBackendCommentToFrontend(c));
     } catch (error) {
       console.error('Error fetching post comments:', error);
       return [];

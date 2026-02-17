@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export enum MetricType {
   USER = 'user',
@@ -34,16 +34,18 @@ class AnalyticsService {
   }
 
   private async getTotalUsers(): Promise<number> {
-    const { rows } = await pool.query('SELECT COUNT(*) FROM users WHERE is_active = true');
-    return parseInt(rows[0].count);
+    const result = await prisma.$queryRawUnsafe<Array<{ count: string }>>(
+      'SELECT COUNT(*)::text as count FROM core.users WHERE is_active = true'
+    );
+    return parseInt(result[0].count);
   }
 
   private async getActiveUsers(start: Date, end: Date): Promise<number> {
-    const { rows } = await pool.query(
-      'SELECT COUNT(DISTINCT user_id) FROM user_locations WHERE created_at BETWEEN $1 AND $2',
-      [start, end]
+    const result = await prisma.$queryRawUnsafe<Array<{ count: string }>>(
+      'SELECT COUNT(DISTINCT user_id) FROM bondarys.user_locations WHERE created_at BETWEEN $1 AND $2',
+      start, end
     );
-    return parseInt(rows[0].count);
+    return parseInt(result[0].count);
   }
 
   async getcircleAnalytics(startDate: Date | null = null, endDate: Date | null = null) {

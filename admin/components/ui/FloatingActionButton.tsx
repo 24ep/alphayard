@@ -35,7 +35,7 @@ export const FloatingActionButton = ({
   };
 
   const variantClasses = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/25",
+    primary: "bg-black hover:bg-gray-800 text-white shadow-black/25",
     secondary: "bg-slate-800 hover:bg-slate-900 text-white shadow-slate-500/25",
     accent: "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-500/25",
     danger: "bg-red-600 hover:bg-red-700 text-white shadow-red-500/25",

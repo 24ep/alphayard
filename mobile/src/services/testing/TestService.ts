@@ -617,4 +617,4 @@ export class TestService {
 }
 
 export const testService = TestService.getInstance();
-export default testService; 
+export default testService;

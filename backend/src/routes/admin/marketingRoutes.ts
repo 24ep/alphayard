@@ -1,11 +1,16 @@
 import { Router, Request, Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import { authenticateAdmin } from '../../middleware/adminAuth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = Router();
 
+// Apply admin auth to all routes
+router.use(authenticateAdmin as any);
+
 // Helper to get content type ID
 async function getContentTypeId(name: string): Promise<string | null> {
-  const { rows } = await pool.query('SELECT id FROM content_types WHERE name = $1', [name]);
+  const rows = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM content_types WHERE name = $1', name);
   return rows[0]?.id || null;
 }
 
@@ -13,12 +18,12 @@ async function getContentTypeId(name: string): Promise<string | null> {
  * GET /slides
  * Get all marketing slides
  */
-router.get('/slides', async (_req: Request, res: Response) => {
+router.get('/slides', requirePermission('marketing', 'view'), async (_req: Request, res: Response) => {
   try {
     const typeId = await getContentTypeId('marketing_slide');
     if (!typeId) return res.json({ slides: getFallbackSlides() });
 
-    const { rows: data } = await pool.query(`
+    const data = await prisma.$queryRawUnsafe<any[]>(`
       SELECT 
         id, title, slug, content, status, priority, is_featured, created_at, updated_at
       FROM marketing_content
@@ -50,18 +55,18 @@ router.get('/slides', async (_req: Request, res: Response) => {
  * POST /slides
  * Create a new marketing slide
  */
-router.post('/slides', async (req: Request, res: Response) => {
+router.post('/slides', requirePermission('marketing', 'create'), async (req: Request, res: Response) => {
   try {
     const { title, slug, slideData, status = 'published', priority = 0 } = req.body;
     const typeId = await getContentTypeId('marketing_slide');
 
     if (!typeId) return res.status(500).json({ error: 'Marketing slide content type not found' });
 
-    const { rows } = await pool.query(`
+    const rows = await prisma.$queryRawUnsafe<any[]>(`
       INSERT INTO marketing_content (title, slug, content, content_type_id, status, priority)
       VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
-    `, [title, slug, JSON.stringify(slideData), typeId, status, priority]);
+    `, title, slug, JSON.stringify(slideData), typeId, status, priority);
 
     res.status(201).json({ slide: rows[0] });
   } catch (error) {
@@ -79,7 +84,7 @@ router.put('/slides/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, slug, slideData, status, priority } = req.body;
 
-    const { rows } = await pool.query(`
+    const rows = await prisma.$queryRawUnsafe<any[]>(`
       UPDATE marketing_content
       SET title = COALESCE($1, title),
           slug = COALESCE($2, slug),
@@ -89,7 +94,7 @@ router.put('/slides/:id', async (req: Request, res: Response) => {
           updated_at = NOW()
       WHERE id = $6
       RETURNING *
-    `, [title, slug, slideData ? JSON.stringify(slideData) : null, status, priority, id]);
+    `, title, slug, slideData ? JSON.stringify(slideData) : null, status, priority, id);
 
     if (rows.length === 0) return res.status(404).json({ error: 'Slide not found' });
 
@@ -104,10 +109,10 @@ router.put('/slides/:id', async (req: Request, res: Response) => {
  * DELETE /slides/:id
  * Delete a marketing slide
  */
-router.delete('/slides/:id', async (req: Request, res: Response) => {
+router.delete('/slides/:id', requirePermission('marketing', 'delete'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { rowCount } = await pool.query('DELETE FROM marketing_content WHERE id = $1', [id]);
+    const rowCount = await prisma.$executeRawUnsafe('DELETE FROM marketing_content WHERE id = $1', id);
     
     if (rowCount === 0) return res.status(404).json({ error: 'Slide not found' });
     
@@ -122,7 +127,7 @@ router.delete('/slides/:id', async (req: Request, res: Response) => {
  * GET /content
  * Get all marketing content
  */
-router.get('/content', async (req: Request, res: Response) => {
+router.get('/content', requirePermission('marketing', 'view'), async (req: Request, res: Response) => {
   try {
     const { type, featured } = req.query;
 
@@ -141,7 +146,7 @@ router.get('/content', async (req: Request, res: Response) => {
 
     sql += ' ORDER BY priority DESC';
 
-    const { rows: data } = await pool.query(sql, params);
+    const data = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
     res.json({ content: data || [] });
   } catch (error) {
     console.error('Error in marketing content endpoint:', error);

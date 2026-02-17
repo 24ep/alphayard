@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, Fragment } from 'react'
+import React, { useState, useEffect, Fragment, useMemo } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { Menu, Transition } from '@headlessui/react'
 import { useTheme } from 'next-themes'
@@ -20,31 +20,42 @@ import {
 import { authService } from '../../services/authService'
 import { AppSwitcher } from '../../components/layout/AppSwitcher'
 import { Tooltip } from '../../components/ui/Tooltip'
+import { PermissionProvider, usePermissions } from '../../contexts/PermissionContext'
+import { AccountSettingsModal } from '../../components/settings/AccountSettingsModal'
 
 interface AdminLayoutProps {
     children: React.ReactNode
 }
 
-// Global Hub Navigation
-const navigationHubs = [
-    {
-        id: 'you',
-        label: 'You',
-        icon: 'user',
-        href: '/dashboard',
-        items: [
-            { id: 'profile', label: 'My Profile', href: '/profile', icon: 'user' },
-            { id: 'activity', label: 'Activity', href: '/activity', icon: 'activity' },
-            { id: 'preferences', label: 'Preferences', href: '/preferences', icon: 'settings' }
-        ]
-    },
+// Navigation item with permissions
+interface NavItem {
+    id: string
+    label: string
+    href: string
+    icon: string
+    group?: string
+    permissions?: [string, string][] // [module, action] pairs - user needs ANY of these
+}
+
+interface NavHub {
+    id: string
+    label: string
+    icon: string
+    href: string
+    items: NavItem[]
+    permissions?: [string, string][] // Hub-level permission requirement
+}
+
+// Global Hub Navigation with permission requirements
+const navigationHubs: NavHub[] = [
     {
         id: 'overview',
         label: 'App Overview',
         icon: 'chart-bar',
         href: '/dashboard',
+        permissions: [['dashboard', 'view']],
         items: [
-            { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'chart-bar' }
+            { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'chart-bar', permissions: [['dashboard', 'view']] }
         ]
     },
     {
@@ -53,17 +64,17 @@ const navigationHubs = [
         icon: 'layout',
         href: '/appearance',
         items: [
-            { id: 'config', label: 'App Config', href: '/appearance', icon: 'paint' },
-            { id: 'screens', label: 'Global Screens', href: '/navigation?tab=screens', icon: 'screens' },
-            { id: 'navigation', label: 'App Menu', href: '/navigation?tab=navigation', icon: 'layout' },
-            { id: 'flows', label: 'User Flows', href: '/flows', icon: 'circle' },
-            { id: 'pages', label: 'Page Builder', href: '/pages', icon: 'layout' },
-            { id: 'collections', label: 'Collections', href: '/collections', icon: 'collection' },
-            { id: 'localization', label: 'Localization', href: '/localization', icon: 'globe' },
-            { id: 'engagement', label: 'Push Engagement', href: '/engagement', icon: 'chat' },
-            { id: 'styles', label: 'Component Styles', href: '/styles', icon: 'swatch' },
-            { id: 'marketing', label: 'Marketing Page', href: '/marketing', icon: 'megaphone' },
-            { id: 'billing', label: 'Billing & Plans', href: '/billing', icon: 'payment' }
+            { id: 'config', label: 'App Config', href: '/appearance', icon: 'paint', group: 'Configuration', permissions: [['settings', 'view']] },
+            { id: 'screens', label: 'Global Screens', href: '/navigation?tab=screens', icon: 'screens', group: 'Structure', permissions: [['pages', 'view']] },
+            { id: 'navigation', label: 'App Menu', href: '/navigation?tab=navigation', icon: 'layout', group: 'Structure', permissions: [['pages', 'view']] },
+            { id: 'flows', label: 'User Flows', href: '/flows', icon: 'circle', group: 'Structure', permissions: [['pages', 'view']] },
+            { id: 'pages', label: 'Page Builder', href: '/pages', icon: 'layout', group: 'Structure', permissions: [['pages', 'view']] },
+            { id: 'collections', label: 'Collections', href: '/collections', icon: 'collection', group: 'Content', permissions: [['collections', 'view'], ['content', 'view']] },
+            { id: 'localization', label: 'Localization', href: '/localization', icon: 'globe', group: 'Content', permissions: [['localization', 'view']] },
+            { id: 'engagement', label: 'Push Engagement', href: '/engagement', icon: 'chat', group: 'Content', permissions: [['notifications', 'send']] },
+            { id: 'styles', label: 'Component Styles', href: '/styles', icon: 'swatch', group: 'Design', permissions: [['components', 'view']] },
+            { id: 'marketing', label: 'Marketing Page', href: '/marketing', icon: 'megaphone', group: 'Design', permissions: [['marketing', 'view']] },
+            { id: 'billing', label: 'Billing & Plans', href: '/billing', icon: 'payment', group: 'Business', permissions: [['subscriptions', 'view']] }
         ]
     },
     {
@@ -71,9 +82,14 @@ const navigationHubs = [
         label: 'Identity',
         icon: 'users',
         href: '/identity',
+        permissions: [['users', 'view']],
         items: [
-            { id: 'users', label: 'All Users', href: '/identity/users', icon: 'users' },
-            { id: 'auth', label: 'Authentication', href: '/identity/authentication', icon: 'lock' }
+            { id: 'users', label: 'All Users', href: '/identity/users', icon: 'users', permissions: [['users', 'view']] },
+            { id: 'auth', label: 'Authentication', href: '/identity/authentication', icon: 'lock', permissions: [['settings', 'view']] },
+            { id: 'providers', label: 'SSO Providers', href: '/identity/providers', icon: 'key', permissions: [['settings', 'manage']] },
+            { id: 'oauth-clients', label: 'OAuth Clients', href: '/identity/oauth-clients', icon: 'key', permissions: [['settings', 'manage']] },
+            { id: 'login-config', label: 'Login Configuration', href: '/identity/login-config', icon: 'cog', permissions: [['settings', 'write']] },
+            { id: 'communication', label: 'Communication', href: '/identity/communication', icon: 'chat', permissions: [['settings', 'edit']] }
         ]
     },
     {
@@ -82,9 +98,21 @@ const navigationHubs = [
         icon: 'cog',
         href: '/settings',
         items: [
-            { id: 'admin-users', label: 'Admin Users', href: '/settings/admin-users', icon: 'shield' },
-            { id: 'applications', label: 'Applications', href: '/settings/applications', icon: 'collection' },
-            { id: 'settings', label: 'System Settings', href: '/settings', icon: 'cog' }
+            { id: 'admin-users', label: 'Admin Users', href: '/settings/admin-users', icon: 'shield', permissions: [['admin-users', 'view']] },
+            { id: 'roles', label: 'Roles & Permissions', href: '/settings/roles', icon: 'key', permissions: [['roles', 'view']] },
+            { id: 'applications', label: 'Applications', href: '/settings/applications', icon: 'collection', permissions: [['applications', 'view']] },
+            { id: 'email-templates', label: 'Email Templates', href: '/settings/email-templates', icon: 'mail', permissions: [['settings', 'edit']] },
+            { id: 'settings', label: 'System Settings', href: '/settings', icon: 'cog', permissions: [['settings', 'view']] }
+        ]
+    },
+    {
+        id: 'database',
+        label: 'Database',
+        icon: 'database',
+        href: '/database',
+        permissions: [['database', 'view']],
+        items: [
+            { id: 'database', label: 'Database Explorer', href: '/database', icon: 'database', permissions: [['database', 'view']] }
         ]
     }
 ]
@@ -111,19 +139,53 @@ const Icon = ({ name, className = 'w-5 h-5' }: { name: string; className?: strin
         'user': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
         'activity': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>,
         'settings': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>,
-        'payment': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+        'payment': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>,
+        'lock': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>,
+        'key': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>,
+        'swatch': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>,
+        'database': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" /></svg>,
+        'server': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>,
+        'mail': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
     }
     return icons[name] || <span className={className}>•</span>
 }
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+// Inner layout component that uses permissions
+function AdminLayoutInner({ children }: AdminLayoutProps) {
     const router = useRouter()
     const pathname = usePathname() || ''
+    const currentSearch = '' // Simplified for minimal design
     const { theme, setTheme } = useTheme()
     const [user, setUser] = useState<any>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [isExpanded, setIsExpanded] = useState(false)
+    const [showAccountSettings, setShowAccountSettings] = useState(false)
+    
+    // Get permission context
+    const { hasAnyPermission, isSuperAdmin, isLoading: permissionsLoading } = usePermissions()
+
+    // Filter navigation based on permissions
+    const filteredNavigationHubs = useMemo(() => {
+        return navigationHubs
+            .map(hub => {
+                // Filter items within the hub
+                const filteredItems = hub.items.filter(item => {
+                    if (isSuperAdmin) return true
+                    if (!item.permissions || item.permissions.length === 0) return true
+                    return hasAnyPermission(item.permissions)
+                })
+                
+                return { ...hub, items: filteredItems }
+            })
+            .filter(hub => {
+                // Hide hub if it has no accessible items
+                if (hub.items.length === 0) return false
+                // Check hub-level permissions
+                if (isSuperAdmin) return true
+                if (!hub.permissions || hub.permissions.length === 0) return true
+                return hasAnyPermission(hub.permissions)
+            })
+    }, [hasAnyPermission, isSuperAdmin])
 
     // Check auth on mount
     useEffect(() => {
@@ -143,14 +205,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     const handleHubClick = (href: string) => {
         router.push(href)
-        setIsExpanded(false) // Collapse on selection
     }
 
     // Determine active hub based on pathname
-    const activeHub = navigationHubs.find(hub => {
-        if (hub.id === 'you') {
-            return pathname === '/dashboard' || pathname === '/profile' || pathname === '/activity' || pathname === '/preferences'
-        }
+    const activeHub = filteredNavigationHubs.find(hub => {
         if (hub.id === 'content') {
             return pathname.startsWith('/collections') || 
                    pathname.startsWith('/appearance') || 
@@ -166,15 +224,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         if (hub.id === 'identity') {
             return pathname.startsWith('/identity')
         }
+        if (hub.id === 'database') {
+            return pathname.startsWith('/database')
+        }
         return pathname.startsWith(hub.href)
-    }) || navigationHubs[0]
+    }) || filteredNavigationHubs[0]
 
     const getModuleTitle = () => {
+        if (!activeHub) return 'Dashboard'
         const item = activeHub.items.find(i => pathname.startsWith(i.href))
         return item?.label || activeHub.label
     }
 
-    if (isLoading) {
+    if (isLoading || permissionsLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -182,99 +244,92 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         )
     }
 
-    return (
-        <div className="min-h-screen bg-background flex flex-col overflow-hidden">
-            <div className={`relative z-50 transition-all duration-500 ${activeHub.id === 'you' ? 'h-28' : 'h-16'}`}>
-                {/* 1. SELECTION TABS (Sub-menu) - Slides up from behind the header to sit ABOVE it */}
-                <Transition
-                    show={activeHub.id === 'you'}
-                    as={Fragment}
-                    enter="transition ease-out duration-500 transform"
-                    enterFrom="translate-y-16 opacity-0"
-                    enterTo="translate-y-0 opacity-100"
-                    leave="transition ease-in duration-300 transform"
-                    leaveFrom="translate-y-0 opacity-100"
-                    leaveTo="translate-y-16 opacity-0"
-                >
-                    <div className="absolute top-0 left-0 right-0 h-12 bg-white dark:bg-zinc-900 border-b border-gray-100 dark:border-zinc-800 flex items-center px-6 gap-6 z-40 overflow-x-auto no-scrollbar">
-                        {activeHub.items.map((item) => {
-                            const isActive = pathname === item.href
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => router.push(item.href)}
-                                    className={`flex items-center gap-2 h-full px-1 border-b-2 transition-all relative ${
-                                        isActive 
-                                            ? 'border-blue-600 text-blue-600' 
-                                            : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'
-                                    }`}
-                                >
-                                    <Icon name={item.icon || 'circle'} className="w-4 h-4" />
-                                    <span className="text-xs font-bold uppercase tracking-widest whitespace-nowrap">{item.label}</span>
-                                    {isActive && <div className="absolute inset-x-0 -bottom-[1px] h-0.5 bg-blue-600 rounded-full" />}
-                                </button>
-                            )
-                        })}
-                    </div>
-                </Transition>
+    // Handle case where no navigation hubs are available (no permissions)
+    if (!activeHub) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
+                <div className="text-center">
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Access Restricted</h2>
+                    <p className="text-gray-500 dark:text-gray-400 mb-6">You don't have permission to access any modules.</p>
+                    <button
+                        onClick={handleLogout}
+                        className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"
+                        aria-label="Sign Out"
+                        title="Sign Out"
+                    >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Sign Out
+                    </button>
+                </div>
+            </div>
+        )
+    }
 
-                {/* Top Header Bar (Full Width) - Slid down when sub-menu active */}
-                <header className={`h-16 bg-white dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 lg:px-6 absolute left-0 right-0 z-50 shrink-0 transition-all duration-500 ${activeHub.id === 'you' ? 'top-12' : 'top-0'}`}>
-                <div className="flex items-center space-x-4">
+    return (
+        <Fragment>
+            <div className="h-screen bg-gray-50 dark:bg-zinc-950 flex flex-col overflow-hidden">
+            {/* Top Header Bar (Full Width) */}
+            <header className="h-16 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between px-4 lg:px-8 relative z-50 shrink-0 shadow-sm shadow-gray-200/20 dark:shadow-zinc-900/20">
+                <div className="flex items-center space-x-6">
                     {/* Brand Logo - Moved to Header */}
-                    <div className="flex items-center">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex-shrink-0 flex items-center justify-center font-bold text-white text-sm shadow-md mr-3">
+                    <div className="flex items-center group">
+                        <div className="w-9 h-9 bg-gradient-to-br from-blue-600 via-blue-600 to-blue-700 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-blue-600/25 mr-4 group-hover:shadow-blue-600/40 transition-all duration-300">
                             A
                         </div>
                         <div className="hidden md:block overflow-hidden whitespace-nowrap">
-                            <h1 className="font-bold text-gray-900 dark:text-white tracking-tight text-lg leading-none">Appkit</h1>
-                            <p className="text-[9px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-widest leading-normal">Platform</p>
+                            <h1 className="font-bold text-gray-900 dark:text-white tracking-tight text-xl leading-none mb-0.5">Appkit</h1>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-widest leading-none">Platform</p>
                         </div>
                     </div>
 
                     {/* Mobile Menu Button */}
                     <button 
-                        className="lg:hidden p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg ml-2"
+                        className="lg:hidden p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-all duration-200 hover:scale-105"
                         onClick={() => setMobileMenuOpen(true)}
+                        aria-label="Open mobile menu"
                     >
-                        <MenuIcon className="w-6 h-6" />
+                        <MenuIcon className="w-5 h-5" />
                     </button>
                     
                     {/* Vertical Divider */}
-                    <div className="hidden lg:block h-6 w-px bg-gray-200 dark:bg-zinc-800 mx-4" />
+                    <div className="hidden lg:block h-8 w-px bg-gradient-to-b from-transparent via-gray-200 to-transparent dark:via-zinc-800 mx-6" />
 
                     {/* Page Title */}
-                    <h2 className="hidden sm:block text-sm font-semibold text-gray-700 dark:text-gray-200">{getModuleTitle()}</h2>
+                    <div className="hidden sm:block">
+                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{getModuleTitle()}</h2>
+                    </div>
                 </div>
 
-                <div className="flex items-center space-x-3 md:space-x-6">
+                <div className="flex items-center space-x-4 md:space-x-6">
                     {/* Search field */}
-                    <div className="hidden md:flex items-center relative">
-                        <Search className="w-4 h-4 absolute left-3 text-gray-400" />
+                    <div className="hidden md:flex items-center relative group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-200">
+                            <Search className="w-4 h-4" />
+                        </div>
                         <input 
                             type="text" 
                             placeholder="Search..."
-                            className="pl-10 pr-4 py-1.5 bg-gray-100 dark:bg-zinc-800 border-transparent focus:bg-white dark:focus:bg-zinc-700 focus:ring-2 focus:ring-blue-500 rounded-lg text-sm w-48 lg:w-64 transition-all"
+                            className="pl-10 pr-4 py-2 bg-gray-100/50 dark:bg-zinc-800/50 border border-gray-200/50 dark:border-zinc-700/50 focus:bg-white dark:focus:bg-zinc-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-xl text-sm w-48 lg:w-64 transition-all duration-200 placeholder-gray-400"
                         />
                     </div>
 
                     {/* Notifications */}
-                    <button className="relative p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
-                        <Bell className="w-5 h-5" />
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900" />
+                    <button className="relative p-2.5 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-all duration-200 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl group" aria-label="Notifications" title="Notifications">
+                        <Bell className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+                        <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-zinc-900 animate-pulse" />
                     </button>
 
                     {/* User Profile Popover */}
                     <Menu as="div" className="relative">
-                        <Menu.Button className="flex items-center space-x-3 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-inner">
+                        <Menu.Button className="flex items-center space-x-3 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all duration-200 group">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-600/25 group-hover:shadow-blue-600/40 transition-all duration-300">
                                 {user?.firstName?.[0] || 'A'}
                             </div>
-                            <div className="hidden sm:block text-left pr-2">
-                                <p className="text-xs font-semibold text-gray-900 dark:text-white leading-none capitalize">{user?.firstName}</p>
+                            <div className="hidden sm:block text-left pr-3">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-none capitalize">{user?.firstName}</p>
                                 <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase mt-0.5 tracking-wider">{user?.role || 'Admin'}</p>
                             </div>
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                            <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-200" />
                         </Menu.Button>
 
                         <Transition
@@ -286,16 +341,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                             leaveFrom="transform opacity-100 scale-100"
                             leaveTo="transform opacity-0 scale-95"
                         >
-                            <Menu.Items className="absolute right-0 mt-3 w-64 origin-top-right divide-y divide-gray-100 dark:divide-zinc-800 rounded-2xl bg-white dark:bg-zinc-900 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
-                                <div className="px-4 py-4">
-                                    <p className="text-xs font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-widest">Signed in as</p>
-                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate mt-0.5">{user?.email}</p>
+                            <Menu.Items className="absolute right-0 mt-4 w-72 origin-top-right divide-y divide-gray-100/50 dark:divide-zinc-800/50 rounded-2xl bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl shadow-2xl ring-1 ring-black/5 dark:ring-white/5 focus:outline-none z-50 border border-gray-200/50 dark:border-zinc-800/50">
+                                <div className="px-5 py-4">
+                                    <p className="text-xs font-medium text-gray-500 dark:text-zinc-500 uppercase tracking-widest mb-1">Signed in as</p>
+                                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate mt-1">{user?.email}</p>
                                 </div>
 
-                                <div className="p-2 space-y-1">
+                                <div className="p-3 space-y-1">
                                     <Menu.Item>
                                         {({ active }) => (
-                                            <button className={`${active ? 'bg-gray-50 dark:bg-zinc-800' : ''} flex w-full items-center px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-zinc-300 rounded-xl transition-colors`}>
+                                            <button className={`${active ? 'bg-gray-50/80 dark:bg-zinc-800/80' : ''} flex w-full items-center px-4 py-3 text-sm font-medium text-gray-700 dark:text-zinc-300 rounded-xl transition-all duration-200 hover:bg-gray-50/80 dark:hover:bg-zinc-800/80`}>
                                                 <User className="w-4 h-4 mr-3 text-gray-400" />
                                                 Your Profile
                                             </button>
@@ -303,7 +358,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     </Menu.Item>
                                     <Menu.Item>
                                         {({ active }) => (
-                                            <button className={`${active ? 'bg-gray-50 dark:bg-zinc-800' : ''} flex w-full items-center px-3 py-2.5 text-sm font-medium text-gray-700 dark:text-zinc-300 rounded-xl transition-colors`}>
+                                            <button 
+                                                onClick={() => setShowAccountSettings(true)}
+                                                className={`${active ? 'bg-gray-50/80 dark:bg-zinc-800/80' : ''} flex w-full items-center px-4 py-3 text-sm font-medium text-gray-700 dark:text-zinc-300 rounded-xl transition-all duration-200 hover:bg-gray-50/80 dark:hover:bg-zinc-800/80`}>
                                                 <Settings className="w-4 h-4 mr-3 text-gray-400" />
                                                 Account Settings
                                             </button>
@@ -311,9 +368,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     </Menu.Item>
                                 </div>
 
-                                <div className="p-3">
-                                    <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest px-2 mb-2">Appearance</p>
-                                    <div className="grid grid-cols-3 gap-1 bg-gray-50 dark:bg-zinc-950 p-1 rounded-xl">
+                                <div className="p-4">
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest px-3 mb-3">Appearance</p>
+                                    <div className="grid grid-cols-3 gap-1.5 bg-gray-50/50 dark:bg-zinc-950/50 p-1.5 rounded-xl border border-gray-200/50 dark:border-zinc-800/50">
                                         {[
                                             { id: 'light', icon: Sun, label: 'Light' },
                                             { id: 'dark', icon: Moon, label: 'Dark' },
@@ -323,10 +380,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                                 key={t.id}
                                                 onClick={() => setTheme(t.id)}
                                                 className={`
-                                                    flex flex-col items-center justify-center py-2 rounded-lg transition-all
+                                                    flex flex-col items-center justify-center py-2.5 rounded-lg transition-all duration-200
                                                     ${theme === t.id 
-                                                        ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5' 
-                                                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-300'
+                                                        ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-blue-500/20' 
+                                                        : 'text-gray-500 dark:text-gray-500 hover:text-gray-900 dark:hover:text-gray-300 hover:bg-white/50 dark:hover:bg-zinc-800/50'
                                                     }
                                                 `}
                                             >
@@ -337,13 +394,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                     </div>
                                 </div>
 
-                                <div className="p-2">
+                                <div className="p-3">
                                     <Menu.Item>
                                         {({ active }) => (
                                             <button 
                                                 onClick={handleLogout}
-                                                className={`${active ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-zinc-300'} flex w-full items-center px-3 py-2.5 text-sm font-semibold rounded-xl transition-colors`}
-                                            >
+                                                className={`${active ? 'bg-red-50/80 dark:bg-red-900/20 text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-zinc-300'} flex w-full items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 hover:bg-red-50/80 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400`}>
                                                 <LogOut className="w-4 h-4 mr-3 text-red-500" />
                                                 Sign Out
                                             </button>
@@ -354,105 +410,150 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         </Transition>
                     </Menu>
                 </div>
-                </header>
-            </div>
+            </header>
 
             {/* Layout Body (Sidebars + Main Content) */}
             <div className="flex flex-1 overflow-hidden">
                 {/* 1. Primary Sidebar */}
                 <aside 
-                    onMouseEnter={() => setIsExpanded(true)}
-                    onMouseLeave={() => setIsExpanded(false)}
-                    className={`hidden lg:flex flex-col bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 z-40 flex-shrink-0 transition-all duration-300 ease-in-out ${
-                        isExpanded ? 'w-56' : 'w-[60px]'
-                    }`}
+                    className="hidden lg:flex flex-col bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800 z-40 flex-shrink-0 w-16 rounded-r-xl"
                 >
                     {/* System Navigation Hubs */}
-                    <nav className={`flex-1 space-y-1 ${isExpanded ? 'px-3 pt-4' : 'px-0 pt-4 flex flex-col items-center'}`}>
-                        {navigationHubs.map((hub) => {
+                    <nav className="flex-1 space-y-1 py-2 flex flex-col items-center">
+                        {filteredNavigationHubs.map((hub) => {
                             const isHubActive = activeHub.id === hub.id
                             return (
-                                <Tooltip key={hub.id} content={isExpanded ? '' : hub.label} position="right" delay={100}>
+                                <Tooltip key={hub.id} content={hub.label} position="right">
                                     <button
                                         onClick={() => handleHubClick(hub.href)}
-                                        className={`group transition-all duration-200 rounded-xl ${
-                                            isExpanded 
-                                                ? 'w-full flex items-center px-2 py-2 gap-3' 
-                                                : 'w-10 h-10 flex items-center justify-center'
-                                        } ${
+                                        className={`group transition-all duration-200 w-10 h-10 flex items-center justify-center rounded-sm ${
                                             isHubActive
-                                                ? 'bg-gray-100 dark:bg-zinc-800 text-blue-600 dark:text-blue-400 border border-gray-200 dark:border-zinc-700 shadow-sm'
-                                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white'
+                                                ? 'bg-black text-white'
+                                                : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
                                         }`}
                                     >
-                                        <Icon name={hub.icon} className={`w-6 h-6 flex-shrink-0 ${isHubActive ? 'text-blue-600 dark:text-blue-400' : ''}`} />
-                                        {isExpanded && (
-                                            <span className="font-medium overflow-hidden whitespace-nowrap animate-in fade-in slide-in-from-left-2 duration-200">
-                                                {hub.label}
-                                            </span>
-                                        )}
+                                        <Icon name={hub.icon} className={`w-5 h-5 flex-shrink-0 transition-all duration-200 ${isHubActive ? 'text-white' : ''}`} />
                                     </button>
                                 </Tooltip>
                             )
                         })}
                     </nav>
 
-                    <div className="pb-8 flex flex-col items-center">
-                        <div className="h-px w-8 bg-gray-200 dark:bg-zinc-800 mb-6" />
+                    <div className="py-2 flex flex-col items-center space-y-1">
+                        <Tooltip content="Sandbox" position="right">
+                            <button 
+                                onClick={() => router.push('/sandbox')}
+                                className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-purple-400 hover:bg-gray-800 transition-all duration-200 rounded-xl"
+                                aria-label="Open Sandbox"
+                                title="Open Sandbox"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                </svg>
+                            </button>
+                        </Tooltip>
+                        <Tooltip content="Developer Hub" position="right">
+                            <button 
+                                onClick={() => router.push('/dev-hub')}
+                                className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-all duration-200 rounded-xl"
+                                aria-label="Developer Hub"
+                                title="Developer Hub"
+                            >
+                                <Icon name="server" className="w-4 h-4" />
+                            </button>
+                        </Tooltip>
                         <Tooltip content="Settings" position="right">
-                            <button className="w-12 h-12 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors">
-                                <Settings className="w-6 h-6" />
+                            <button 
+                                onClick={() => router.push('/settings')}
+                                className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-all duration-200 rounded-xl"
+                                aria-label="Settings"
+                                title="Settings"
+                            >
+                                <Settings className="w-4 h-4" />
                             </button>
                         </Tooltip>
                     </div>
                 </aside>
 
                 {/* 2. Secondary Sidebar */}
-                <aside className="hidden lg:flex flex-col w-60 bg-white dark:bg-zinc-950 border-r border-gray-200 dark:border-zinc-800 z-30 flex-shrink-0 animate-in slide-in-from-left duration-300">
-                    <div className="h-16 flex items-center px-4 border-b border-gray-200 dark:border-zinc-800 bg-gray-50/50 dark:bg-zinc-900/30">
+                <aside className="hidden lg:flex flex-col w-64 bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800 z-30 flex-shrink-0">
+                    <div className="h-12 flex items-center px-3 border-b border-gray-200 dark:border-gray-800">
                         {activeHub.id === 'content' ? (
                             <div className="w-full">
                                 <AppSwitcher />
                             </div>
                         ) : (
-                            <h2 className="px-2 font-semibold text-gray-900 dark:text-white truncate">{activeHub.label}</h2>
+                            <div>
+                                <h2 className="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">{activeHub.label}</h2>
+                            </div>
                         )}
                     </div>
 
-                    <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-                        {activeHub.items.map((item) => {
-                            const currentSearch = typeof window !== 'undefined' ? window.location.search : ''
-                            const fullPath = pathname + currentSearch
-                            
-                            let isActive = false
-                            if (item.href.includes('?')) {
-                                isActive = fullPath === item.href
-                                // Default tab highlight (screens) if on /navigation with no query
-                                if (!currentSearch && pathname === '/navigation' && item.id === 'screens') {
-                                    isActive = true
-                                }
+                    <nav className="flex-1 overflow-y-auto py-2">
+                        {(() => {
+                            // Group items by group name for all hubs that have groups
+                            if (activeHub.items.some(item => item.group)) {
+                                const groupedItems = activeHub.items.reduce((acc: Record<string, NavItem[]>, item: NavItem) => {
+                                    const group = item.group || 'General'
+                                    if (!acc[group]) acc[group] = []
+                                    acc[group].push(item)
+                                    return acc
+                                }, {} as Record<string, NavItem[]>)
+
+                                return Object.entries(groupedItems).map(([groupName, items]) => (
+                                    <div key={groupName} className="mb-2">
+                                        <h3 className="px-3 py-1 text-xs font-mono text-gray-500 dark:text-gray-400 uppercase">
+                                            {groupName}
+                                        </h3>
+                                        {items.map((item: NavItem) => {
+                                            const isActive = pathname === item.href
+                                            return (
+                                                <div key={item.id} className="mx-2">
+                                                    <button
+                                                        onClick={() => router.push(item.href)}
+                                                        className={`w-full flex items-center px-5 py-2 text-sm font-mono transition-all duration-200 rounded-sm ${
+                                                            isActive
+                                                                ? 'bg-black text-white'
+                                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                                                        }`}
+                                                    >
+                                                    <Icon 
+                                                        name={item.icon}
+                                                        className={`w-4 h-4 mr-3 transition-colors ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} 
+                                                    />
+                                                    {item.label}
+                                                    </button>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ))
                             } else {
-                                isActive = pathname.startsWith(item.href)
-                            }
-                            
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => router.push(item.href)}
-                                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-all ${
-                                        isActive
-                                            ? 'bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white border border-gray-200 dark:border-zinc-700'
-                                            : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-900 hover:text-gray-900 dark:hover:text-white border border-transparent'
-                                    }`}
-                                >
-                                    <Icon 
-                                        name={(item as any).icon} 
-                                        className={`w-4 h-4 mr-3 transition-colors ${isActive ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}`} 
-                                    />
-                                    {item.label}
-                                </button>
-                            )
-                        })}
+                                // Simple list for hubs without groups
+                                return activeHub.items.map((item) => {
+                                    const isActive = pathname === item.href
+                                    
+                                    return (
+                                        <div key={item.id} className="mx-2">
+                                            <button
+                                                onClick={() => router.push(item.href)}
+                                                className={`w-full flex items-center px-5 py-2 text-sm font-mono transition-all duration-200 rounded-sm ${
+                                                    isActive
+                                                        ? 'bg-black text-white'
+                                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-zinc-800'
+                                                }`}
+                                            >
+                                                <Icon 
+                                                    name={item.icon}
+                                                    className={`w-4 h-4 mr-3 transition-colors ${isActive ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} 
+                                                />
+                                                {item.label}
+                                            </button>
+                                        </div>
+                                    )
+                                })
+                            } 
+                        })()}
                     </nav>
                 </aside>
 
@@ -460,7 +561,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                 <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-gray-50 dark:bg-zinc-950">
                     {/* Render page content */}
                     <main className="flex-1 overflow-y-auto relative bg-gray-50 dark:bg-zinc-950 text-gray-900 dark:text-zinc-100">
-                        <div className="p-4 w-full mx-auto">
+                        <div className="p-6 w-full mx-auto">
                             {children}
                         </div>
                     </main>
@@ -469,35 +570,45 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     {mobileMenuOpen && (
                         <div className="lg:hidden fixed inset-0 z-50 flex">
                             <div 
-                                className="fixed inset-0 bg-black/80 transition-opacity" 
+                                className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" 
                                 onClick={() => setMobileMenuOpen(false)}
                             />
-                            <div className="relative flex flex-col w-72 bg-white dark:bg-zinc-900 h-full animate-in slide-in-from-left border-r border-gray-200 dark:border-zinc-800">
-                                <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+                            <div className="relative flex flex-col w-80 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl h-full animate-in slide-in-from-left border-r border-gray-200/50 dark:border-zinc-800/50">
+                                <div className="p-6 border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between">
                                     <AppSwitcher />
-                                    <button onClick={() => setMobileMenuOpen(false)} className="p-2 text-gray-500">
-                                        <X className="w-6 h-6" />
+                                    <button onClick={() => setMobileMenuOpen(false)} className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-all duration-200" aria-label="Close mobile menu" title="Close menu">
+                                        <X className="w-5 h-5" />
                                     </button>
                                 </div>
-                                <nav className="flex-1 overflow-y-auto p-4">
-                                    {navigationHubs.map(hub => (
-                                        <div key={hub.id} className="mb-6">
-                                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest px-4 mb-2">{hub.label}</div>
-                                            {hub.items.map(item => (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => { router.push(item.href); setMobileMenuOpen(false) }}
-                                                    className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg mb-1 transition-colors ${
-                                                        pathname.startsWith(item.href) ? 'bg-blue-600 text-white' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-zinc-800 hover:text-gray-900 dark:hover:text-white'
-                                                    }`}
-                                                >
-                                                    <Icon 
-                                                        name={(item as any).icon} 
-                                                        className={`w-5 h-5 mr-3 ${pathname.startsWith(item.href) ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`} 
-                                                    />
-                                                    {item.label}
-                                                </button>
-                                            ))}
+                                <nav className="flex-1 overflow-y-auto p-5">
+                                    {filteredNavigationHubs.map(hub => (
+                                        <div key={hub.id} className="mb-8">
+                                            <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest px-4 mb-4">{hub.label}</div>
+                                            {hub.items.map(item => {
+                                                // Check if this item has child routes
+                                                const hasChildRoutes = hub.items.some(
+                                                    other => other.id !== item.id && other.href.startsWith(item.href + '/')
+                                                )
+                                                const isActive = hasChildRoutes 
+                                                    ? pathname === item.href 
+                                                    : pathname.startsWith(item.href)
+                                                
+                                                return (
+                                                    <button
+                                                        key={item.id}
+                                                        onClick={() => { router.push(item.href); setMobileMenuOpen(false) }}
+                                                        className={`w-full flex items-center px-8 py-3 text-sm font-medium rounded-xl mb-2 transition-all duration-200 ${
+                                                            isActive ? 'bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-700/50 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-white border border-transparent'
+                                                        }`}
+                                                    >
+                                                        <Icon 
+                                                            name={(item as any).icon} 
+                                                            className={`w-5 h-5 mr-3 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} 
+                                                        />
+                                                        {item.label}
+                                                    </button>
+                                                )
+                                            })}
                                         </div>
                                     ))}
                                 </nav>
@@ -506,8 +617,22 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
+            
+            {/* Account Settings Modal */}
+            <AccountSettingsModal 
+                isOpen={showAccountSettings} 
+                onClose={() => setShowAccountSettings(false)} 
+            />
+        </Fragment>
     )
 }
 
-
+// Export wrapped component with PermissionProvider
+export default function AdminLayout({ children }: AdminLayoutProps) {
+    return (
+        <PermissionProvider>
+            <AdminLayoutInner>{children}</AdminLayoutInner>
+        </PermissionProvider>
+    )
+}

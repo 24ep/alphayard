@@ -1,10 +1,15 @@
 import express, { Request, Response } from 'express';
 import auditService, { AuditCategory, AuditAction } from '../../services/auditService';
+import { authenticateAdmin } from '../../middleware/adminAuth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = express.Router();
 
+// Apply admin auth to all routes
+router.use(authenticateAdmin as any);
+
 // GET /api/audit/logs
-router.get('/logs', async (req: Request, res: Response) => {
+router.get('/logs', requirePermission('audit', 'view'), async (req: Request, res: Response) => {
   try {
     const { userId, action, category, level, startDate, endDate, limit, offset } = req.query;
     const result = await auditService.getAuditLogs({
@@ -47,7 +52,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 });
 
 // GET /api/audit/export?format=csv|json
-router.get('/export', async (req: Request, res: Response) => {
+router.get('/export', requirePermission('audit', 'export'), async (req: Request, res: Response) => {
   try {
     const { startDate, endDate, format = 'csv' } = req.query;
     const result: any = await auditService.exportAuditLogs(

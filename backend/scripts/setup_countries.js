@@ -1,35 +1,20 @@
 #!/usr/bin/env node
 
-const { Pool } = require('pg');
+const { PrismaClient, Prisma } = require('../prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 async function main() {
-  const poolConfig = {
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-  };
-
-  console.log('[Setup] Connecting to PostgreSQL...', {
-      host: poolConfig.host,
-      port: poolConfig.port,
-      db: poolConfig.database,
-      user: poolConfig.user
-  });
-
-  const pool = new Pool(poolConfig);
+  console.log('[Setup] Connecting to PostgreSQL...');
 
   try {
-    const client = await pool.connect();
     console.log('✅ Connected to database');
 
     console.log('🌍 Setting up countries table...');
 
     // Create table
-    await client.query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS countries (
           id SERIAL PRIMARY KEY,
           code VARCHAR(2) NOT NULL UNIQUE,
@@ -39,7 +24,7 @@ async function main() {
           is_supported BOOLEAN DEFAULT TRUE,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-      );
+      )
     `);
     console.log('   ✅ Table created');
 
@@ -69,23 +54,21 @@ async function main() {
 
     console.log('   🌱 Seeding data...');
     for (const country of countries) {
-        await client.query(`
+        await prisma.$executeRaw(Prisma.sql`
             INSERT INTO countries (code, name, flag, phone_code)
-            VALUES ($1, $2, $3, $4)
+            VALUES (${country.code}, ${country.name}, ${country.flag}, ${country.phone_code})
             ON CONFLICT (code) DO UPDATE SET
               name = EXCLUDED.name,
               flag = EXCLUDED.flag,
-              phone_code = EXCLUDED.phone_code;
-        `, [country.code, country.name, country.flag, country.phone_code]);
+              phone_code = EXCLUDED.phone_code
+        `);
     }
     console.log(`   ✅ seeded ${countries.length} countries`);
-
-    client.release();
   } catch (err) {
     console.error('❌ Error:', err);
     process.exit(1);
   } finally {
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

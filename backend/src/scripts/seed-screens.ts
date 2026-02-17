@@ -1,15 +1,10 @@
 // @ts-nocheck
-import { Client } from 'pg';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load env vars from project root
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
-
-const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('neon.tech') ? { rejectUnauthorized: false } : undefined
-});
 
 const SUGGESTED_SCREENS = [
     // Auth Flow
@@ -73,12 +68,11 @@ const SUGGESTED_SCREENS = [
 
 async function seed() {
     try {
-        await client.connect();
         console.log('Connected to database');
 
         console.log('Fetching active applications...');
-        const { rows: apps } = await client.query(
-            "SELECT id, name, branding FROM applications WHERE is_active = true"
+        const apps = await prisma.$queryRawUnsafe<any[]>(
+            "SELECT id, name, branding FROM core.applications WHERE is_active = true"
         );
 
         console.log(`Found ${apps.length} active applications.`);
@@ -110,10 +104,9 @@ async function seed() {
             });
 
             if (addedCount > 0) {
-                await client.query(
-                    "UPDATE applications SET branding = $1, updated_at = NOW() WHERE id = $2",
-                    [JSON.stringify(branding), app.id]
-                );
+                await prisma.$executeRaw`
+                    UPDATE core.applications SET branding = ${JSON.stringify(branding)}::jsonb, updated_at = NOW() WHERE id = ${app.id}::uuid
+                `;
                 console.log(`   ✅ Added ${addedCount} screens.`);
             } else {
                 console.log(`   ✨ Inventory already up to date.`);
@@ -125,7 +118,7 @@ async function seed() {
     } catch (err) {
         console.error('Error seeding screens:', err);
     } finally {
-        await client.end();
+        await prisma.$disconnect();
     }
 }
 

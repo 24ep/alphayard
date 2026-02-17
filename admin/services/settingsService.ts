@@ -212,7 +212,16 @@ export const settingsService = {
     const STORAGE_KEY_BRANDING = 'bondarys.branding.settings.v1'
     try {
       const base = apiBase || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-      const res = await fetch(`${base}/api/settings/branding`, { credentials: 'include' })
+      
+      // Get authentication token
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+      
+      const res = await fetch(`${base}/api/admin/config/branding`, { 
+        credentials: 'include',
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` })
+        }
+      })
       if (!res.ok) throw new Error('API failed')
       const data = await res.json()
       // Cache to local
@@ -238,9 +247,16 @@ export const settingsService = {
 
     try {
        const base = apiBase || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
-      const res = await fetch(`${base}/api/settings/branding`, {
+       
+       // Get authentication token
+       const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
+       
+      const res = await fetch(`${base}/api/admin/config/branding`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` })
+        },
         credentials: 'include',
         body: JSON.stringify(branding)
       })

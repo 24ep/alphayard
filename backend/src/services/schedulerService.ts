@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 // import { notificationService } from './notificationService';
 // import { healthService } from './healthService';
 
@@ -224,18 +224,18 @@ class SchedulerService {
       console.log('🧹 Performing daily cleanup...');
 
       // Clean up old safety alerts
-      const { rowCount: deletedAlerts } = await pool.query(
-        "DELETE FROM safety_alerts WHERE created_at < NOW() - INTERVAL '90 days' AND (is_acknowledged = true OR type = 'check_in')"
+      const deletedAlerts = await prisma.$executeRawUnsafe(
+        "DELETE FROM bondarys.safety_alerts WHERE created_at < NOW() - INTERVAL '90 days' AND (is_acknowledged = true OR type = 'check_in')"
       );
 
       // Clean up old location history
-      const { rowCount: deletedLocations } = await pool.query(
-        "DELETE FROM location_history WHERE created_at < NOW() - INTERVAL '30 days'"
+      const deletedLocations = await prisma.$executeRawUnsafe(
+        "DELETE FROM bondarys.location_history WHERE created_at < NOW() - INTERVAL '30 days'"
       );
 
       // Clean up old messages
-      const { rowCount: deletedMessages } = await pool.query(
-        "DELETE FROM chat_messages WHERE created_at < NOW() - INTERVAL '90 days'"
+      const deletedMessages = await prisma.$executeRawUnsafe(
+        "DELETE FROM bondarys.chat_messages WHERE created_at < NOW() - INTERVAL '90 days'"
       );
 
       console.log('✅ Daily cleanup completed:', {
@@ -253,7 +253,7 @@ class SchedulerService {
   async performHealthCheck() {
     try {
       console.log('🏥 Performing health check...');
-      await pool.query('SELECT 1');
+      await prisma.$queryRaw`SELECT 1`;
       console.log('✅ Health check completed: healthy');
     } catch (error) {
       console.error('❌ Health check error:', error);
@@ -265,8 +265,8 @@ class SchedulerService {
     try {
       console.log('💳 Checking subscriptions...');
       
-      const { rows: expiring } = await pool.query(
-        "SELECT * FROM subscriptions WHERE status IN ('active', 'trialing') AND current_period_end < NOW() + INTERVAL '7 days'"
+      const expiring = await prisma.$queryRawUnsafe<Array<any>>(
+        "SELECT * FROM core.subscriptions WHERE status IN ('active', 'trialing') AND current_period_end < NOW() + INTERVAL '7 days'"
       );
 
       console.log(`✅ Subscription check completed: ${expiring.length} expiring soon`);

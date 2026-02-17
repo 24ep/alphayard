@@ -34,7 +34,7 @@ import {
   Image,
   ScrollView,
 } from 'native-base';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import { MapCN as MapView, Marker, Circle } from '../../components/common/MapCN';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';

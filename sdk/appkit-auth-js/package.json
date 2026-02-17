@@ -1,0 +1,1 @@
+{"name":"@appkit/identity-sdk","version":"1.0.0","description":"AppKit Identity Authentication SDK","main":"src/index.js","types":"src/index.d.ts","scripts":{"build":"echo No build step needed"},"keywords":["authentication","identity","appkit"],"author":"AppKit Team","license":"MIT","dependencies":{},"devDependencies":{}}

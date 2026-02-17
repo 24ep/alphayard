@@ -29,6 +29,19 @@ import StorageScreen from '../screens/storage/StorageScreen';
 import ChatListScreen from '../screens/chat/ChatListScreen';
 import IndividualChatScreen from '../screens/chat/IndividualChatScreen';
 import NewChatScreen from '../screens/chat/NewChatScreen';
+import VoiceCallScreen from '../screens/call/VoiceCallScreen';
+import VideoCallScreen from '../screens/call/VideoCallScreen';
+import IncomingCallScreen from '../screens/call/IncomingCallScreen';
+import CallApplicationScreen from '../screens/call/CallApplicationScreen';
+
+// Security screens
+import {
+  SecurityScreen,
+  ActiveSessionsScreen,
+  DevicesScreen,
+  LoginHistoryScreen,
+  MFASetupScreen,
+} from '../screens/security';
 
 const Tab = createBottomTabNavigator();
 
@@ -53,6 +66,12 @@ const PersonalStackNavigator: React.FC = () => {
       <PersonalStack.Screen name="Profile" component={ProfileScreen} />
       <PersonalStack.Screen name="Settings" component={SettingsScreen} />
       <PersonalStack.Screen name="CircleSettings" component={CircleSettingsScreen} />
+      {/* Security screens */}
+      <PersonalStack.Screen name="Security" component={SecurityScreen} />
+      <PersonalStack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
+      <PersonalStack.Screen name="Devices" component={DevicesScreen} />
+      <PersonalStack.Screen name="LoginHistory" component={LoginHistoryScreen} />
+      <PersonalStack.Screen name="MFASetup" component={MFASetupScreen} />
       {/* Finance could go here */}
     </PersonalStack.Navigator>
   );
@@ -79,6 +98,10 @@ const ChatStackNavigator: React.FC = () => {
       <ChatStack.Screen name="ChatListMain" component={ChatListScreen} />
       <ChatStack.Screen name="ChatRoom" component={IndividualChatScreen} />
       <ChatStack.Screen name="NewChat" component={NewChatScreen} />
+      <ChatStack.Screen name="VoiceCall" component={VoiceCallScreen} options={{ gestureEnabled: false }} />
+      <ChatStack.Screen name="VideoCall" component={VideoCallScreen} options={{ gestureEnabled: false }} />
+      <ChatStack.Screen name="IncomingCall" component={IncomingCallScreen} options={{ gestureEnabled: false }} />
+      <ChatStack.Screen name="CallApplication" component={CallApplicationScreen} />
     </ChatStack.Navigator>
   );
 };
@@ -113,6 +136,13 @@ const AppsStackNavigator: React.FC = () => {
       <AppsStack.Screen name="Profile" component={ProfileScreen} />
       <AppsStack.Screen name="Settings" component={SettingsScreen} />
       <AppsStack.Screen name="CircleSettings" component={CircleSettingsScreen} />
+
+      {/* Security screens (duplicated for access from Apps) */}
+      <AppsStack.Screen name="Security" component={SecurityScreen} />
+      <AppsStack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
+      <AppsStack.Screen name="Devices" component={DevicesScreen} />
+      <AppsStack.Screen name="LoginHistory" component={LoginHistoryScreen} />
+      <AppsStack.Screen name="MFASetup" component={MFASetupScreen} />
 
       {/* Other apps if they have screens */}
     </AppsStack.Navigator>

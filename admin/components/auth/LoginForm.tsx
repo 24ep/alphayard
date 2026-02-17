@@ -262,6 +262,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                       border-2 transition-all duration-300
                       text-white placeholder-white/30
                       focus:outline-none focus:ring-0
+                      [--webkit-backdrop-filter:blur(12px)] [backdrop-filter:blur(12px)] pl-[56px]
                       ${error
                         ? 'border-red-500/50 focus:border-red-400'
                         : focusedField === 'email'
@@ -269,13 +270,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                           : 'border-white/10 hover:border-white/20'
                       }
                     `}
-                    style={{
-                      WebkitBackdropFilter: 'blur(12px)',
-                      backdropFilter: 'blur(12px)',
-                      paddingLeft: '56px'
-                    }}
                     aria-label="Email address"
-                    aria-invalid={!!error}
+                    aria-invalid={error ? 'true' : 'false'}
                   />
                 </div>
               </div>
@@ -309,6 +305,7 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                       border-2 transition-all duration-300
                       text-white placeholder-white/30
                       focus:outline-none focus:ring-0
+                      [--webkit-backdrop-filter:blur(12px)] [backdrop-filter:blur(12px)] pl-[56px]
                       ${error
                         ? 'border-red-500/50 focus:border-red-400'
                         : focusedField === 'password'
@@ -316,13 +313,8 @@ export function LoginForm({ onLoginSuccess }: LoginFormProps) {
                           : 'border-white/10 hover:border-white/20'
                       }
                     `}
-                    style={{
-                      WebkitBackdropFilter: 'blur(12px)',
-                      backdropFilter: 'blur(12px)',
-                      paddingLeft: '56px'
-                    }}
                     aria-label="Password"
-                    aria-invalid={!!error}
+                    aria-invalid={error ? 'true' : 'false'}
                   />
                   {/* Password Toggle */}
                   <button

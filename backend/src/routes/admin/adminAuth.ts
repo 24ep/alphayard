@@ -1,14 +1,10 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { config } from '../../config/env';
+import { prisma } from '../../lib/prisma';
 
 const router = Router();
-
-// Simple admin credentials (in production, use proper authentication)
-const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'admin123' // Change this in production!
-};
 
 // Simple admin login endpoint
 router.post('/login', async (req, res) => {
@@ -20,72 +16,55 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Username/Email and password are required' });
     }
 
-    // Check against username 'admin' OR matching email
-    const isValidUser = userIdentifier === ADMIN_CREDENTIALS.username || userIdentifier === 'admin@bondarys.com';
-
-    if (isValidUser && password === ADMIN_CREDENTIALS.password) {
-      // Generate JWT token
-      const token = jwt.sign(
-        { 
-          id: 'admin',
-          username: 'admin',
-          type: 'admin'
-        },
-        config.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      return res.json({ 
-        success: true,
-        token,
-        user: {
-          id: 'admin',
-          username: 'admin',
-          type: 'admin'
-        }
-      });
-    }
-
-    // Fallback: Check database for real admin user
+    // Check database for admin user
     try {
-      const { UserModel } = require('../../models/UserModel');
-      const bcrypt = require('bcrypt'); // or bcryptjs depending on what's installed
-      
-      const user = await UserModel.findOne({ 
-        $or: [{ email: userIdentifier }, { username: userIdentifier }] 
+      const adminUser = await prisma.adminUser.findFirst({
+        where: {
+          email: userIdentifier,
+          isActive: true
+        },
+        include: {
+          role: true
+        }
       });
 
-      if (user && (user.role === 'admin' || user.role === 'super_admin')) {
-        // Check password (assuming comparePassword method or direct bcrypt)
-        // Adjust based on your User model implementation
-        let isMatch = false;
-        if (user.matchPassword) {
-           isMatch = await user.matchPassword(password);
-        } else if (user.password) {
-           // Fallback to manual compare if method missing
-           isMatch = await bcrypt.compare(password, user.password);
-        }
+      if (adminUser && adminUser.passwordHash) {
+        const isMatch = await bcrypt.compare(password, adminUser.passwordHash);
 
         if (isMatch) {
-             const token = jwt.sign(
-              { 
-                id: user._id, // Use real ID
-                username: user.username || user.firstName,
-                type: user.role
-              },
-              config.JWT_SECRET,
-              { expiresIn: '24h' }
-            );
+          const token = jwt.sign(
+            { 
+              id: adminUser.id,
+              adminId: adminUser.id,
+              email: adminUser.email,
+              name: adminUser.name,
+              roleId: adminUser.roleId,
+              role: adminUser.role?.name || 'admin',
+              permissions: [],
+              isSuperAdmin: adminUser.isSuperAdmin,
+              type: 'admin'
+            },
+            config.JWT_SECRET,
+            { expiresIn: '24h' }
+          );
 
-            return res.json({ 
-              success: true,
-              token,
-              user: {
-                id: user._id,
-                username: user.username || user.email,
-                type: user.role
-              }
-            });
+          // Update last login
+          await prisma.adminUser.update({
+            where: { id: adminUser.id },
+            data: { lastLoginAt: new Date() }
+          });
+
+          return res.json({ 
+            success: true,
+            token,
+            user: {
+              id: adminUser.id,
+              email: adminUser.email,
+              name: adminUser.name,
+              role: adminUser.role?.name || 'admin',
+              isSuperAdmin: adminUser.isSuperAdmin
+            }
+          });
         }
       }
     } catch (dbError) {
@@ -94,6 +73,7 @@ router.post('/login', async (req, res) => {
 
     res.status(401).json({ error: 'Invalid credentials' });
   } catch (error: any) {
+    console.error('Admin login error:', error);
     res.status(500).json({ error: error.message });
   }
 });

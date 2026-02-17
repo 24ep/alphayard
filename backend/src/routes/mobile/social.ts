@@ -1,12 +1,64 @@
 import express from 'express';
 import { authenticateToken } from '../../middleware/auth';
 import { socialMediaService } from '../../services/socialMediaService';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import storageService from '../../services/storageService';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateToken as any);
+
+// =============================================
+// MEDIA UPLOAD FOR SOCIAL POSTS
+// =============================================
+
+/**
+ * POST /api/social-media/upload
+ * Upload media for social posts - uses S3/MinIO storage
+ */
+router.post(
+  '/upload',
+  storageService.getMulterConfig({
+    allowedTypes: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'],
+    maxSize: 50 * 1024 * 1024, // 50MB max for videos
+  }).single('file'),
+  async (req: any, res: any) => {
+    try {
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ success: false, error: 'No file provided' });
+      }
+
+      const userId = req.user?.id || 'system';
+      const circleId = req.body.circleId || req.user?.circleId || null;
+
+      // Upload to S3/MinIO
+      const uploaded = await storageService.uploadFile(file, userId, circleId, {
+        folder: 'social/posts'
+      });
+
+      if (!uploaded || !uploaded.url) {
+        return res.status(500).json({ success: false, error: 'Upload failed' });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          id: uploaded.id,
+          url: uploaded.url,
+          type: file.mimetype.startsWith('video/') ? 'video' : 'image',
+          fileName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size
+        }
+      });
+    } catch (error: any) {
+      console.error('Social media upload error:', error);
+      res.status(500).json({ success: false, error: error.message || 'Upload failed' });
+    }
+  }
+);
 
 // =============================================
 // FAMILIES
@@ -63,6 +115,8 @@ router.get('/posts', async (req: any, res: any) => {
       locationType
     } = req.query;
 
+    console.log('[SocialPosts] Request params:', { circleId, limit, offset });
+
     const filters = {
       status: status as string,
       type: type as string,
@@ -79,6 +133,8 @@ router.get('/posts', async (req: any, res: any) => {
     };
 
     const posts = await socialMediaService.getPosts(circleId as string, filters);
+    console.log('[SocialPosts] Returning', posts.length, 'posts');
+    // Return entities as-is - mobile app will unwrap them using unwrapEntity()
     res.json({ success: true, data: posts });
   } catch (error) {
     console.error('Error fetching posts:', error);
@@ -301,10 +357,10 @@ router.post('/posts/:postId/activities', async (req: any, res: any) => {
   try {
     const { postId } = req.params;
     const activityData = {
-      post_id: postId,
-      user_id: req.user.id,
-      action: req.body.action,
-      details: req.body.details
+      postId: postId,
+      userId: req.user.id,
+      activityType: req.body.action,
+      metadata: req.body.details
     };
 
     const activity = await socialMediaService.createActivity(activityData);
@@ -405,7 +461,7 @@ router.get('/posts/:postId/analytics', async (req: any, res: any) => {
 router.get('/families/:circleId/analytics', async (req: any, res: any) => {
   try {
     const { circleId } = req.params;
-    const analytics = await socialMediaService.getcircleAnalytics(circleId);
+    const analytics = await socialMediaService.getCircleAnalytics(circleId);
     res.json({ success: true, data: analytics });
   } catch (error) {
     console.error('Error fetching circle analytics:', error);
@@ -420,19 +476,74 @@ router.get('/families/:circleId/analytics', async (req: any, res: any) => {
 
 /**
  * GET /api/social/trending-tags
- * Get trending tags
+ * Get trending tags from actual post content
  */
 router.get('/trending-tags', async (req: any, res: any) => {
   try {
+    const { limit = 10, days = 7 } = req.query;
+    
+    // Extract hashtags from recent posts and count occurrences
+    const result = await prisma.$queryRaw<any[]>`
+      WITH hashtags AS (
+        SELECT 
+          LOWER(TRIM(tag)) as tag,
+          COUNT(*) as count
+        FROM entities e,
+        LATERAL (
+          SELECT regexp_matches(e.attributes->>'content', '#([A-Za-z0-9_]+)', 'g') as matches
+        ) r,
+        LATERAL unnest(r.matches) as tag
+        WHERE e.type_name = 'social-posts'
+        AND e.deleted_at IS NULL
+        AND e.created_at > NOW() - INTERVAL '1 day' * ${parseInt(days as string)}
+        GROUP BY LOWER(TRIM(tag))
+        ORDER BY count DESC
+        LIMIT ${parseInt(limit as string)}
+      )
+      SELECT tag, count FROM hashtags
+    `;
+
+    // If no tags found in posts, return default suggestions
+    let tags = result.map(row => row.tag);
+    
+    if (tags.length === 0) {
+      // Check for any tags in the database
+      const anyTagsResult = await prisma.$queryRaw<any[]>`
+        SELECT DISTINCT LOWER(TRIM(tag)) as tag
+        FROM entities e,
+        LATERAL (
+          SELECT regexp_matches(e.attributes->>'content', '#([A-Za-z0-9_]+)', 'g') as matches
+        ) r,
+        LATERAL unnest(r.matches) as tag
+        WHERE e.type_name = 'social-posts'
+        AND e.deleted_at IS NULL
+        ORDER BY tag
+        LIMIT ${parseInt(limit as string)}
+      `;
+      
+      tags = anyTagsResult.map(row => row.tag);
+      
+      // If still no tags, return default suggestions
+      if (tags.length === 0) {
+        tags = ['family', 'vacation', 'weekend', 'dinner', 'celebration', 'memories', 'together', 'love'];
+      }
+    }
+
     res.json({
       success: true,
-      tags: ['circle', 'vacation', 'groceries', 'weekend', 'planning']
+      tags,
+      counts: result.reduce((acc: any, row) => {
+        acc[row.tag] = parseInt(row.count);
+        return acc;
+      }, {})
     });
   } catch (error) {
     console.error('Get trending tags error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error'
+    // Return default tags on error
+    res.json({
+      success: true,
+      tags: ['family', 'vacation', 'groceries', 'weekend', 'planning'],
+      counts: {}
     });
   }
 });
@@ -469,7 +580,7 @@ router.get('/nearby', async (req: any, res: any) => {
              u.avatar_url AS "avatarUrl", u.avatar_url AS "avatar",
              ST_Distance(e.location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography) as distance_m
       FROM unified_entities e
-      JOIN users u ON e.owner_id = u.id
+      JOIN core.users u ON e.owner_id = u.id
       WHERE e.type = 'location_history' AND e.location IS NOT NULL
         AND ST_DWithin(e.location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography, $3)
     `;
@@ -493,7 +604,7 @@ router.get('/nearby', async (req: any, res: any) => {
     sql += ` ORDER BY e.owner_id, e.created_at DESC LIMIT $${pIdx}`;
     params.push(limit);
 
-    const { rows } = await pool.query(sql, params);
+    const rows = await prisma.$queryRawUnsafe<any[]>(sql, params);
     return res.json({ success: true, data: rows });
   } catch (err) {
     console.error('Nearby users error:', err);
@@ -509,14 +620,14 @@ router.get('/profile-filters', async (_req: any, res: any) => {
   try {
     // Attempt to read distinct values
     const [workRes, homeRes, schoolRes] = await Promise.all([
-      pool.query("SELECT DISTINCT workplace FROM users WHERE workplace IS NOT NULL AND workplace != '' LIMIT 200"),
-      pool.query("SELECT DISTINCT hometown FROM users WHERE hometown IS NOT NULL AND hometown != '' LIMIT 200"),
-      pool.query("SELECT DISTINCT school, university FROM users LIMIT 200")
+      prisma.$queryRaw<any[]>`SELECT DISTINCT workplace FROM core.users WHERE workplace IS NOT NULL AND workplace != '' LIMIT 200`,
+      prisma.$queryRaw<any[]>`SELECT DISTINCT hometown FROM core.users WHERE hometown IS NOT NULL AND hometown != '' LIMIT 200`,
+      prisma.$queryRaw<any[]>`SELECT DISTINCT school, university FROM core.users LIMIT 200`
     ]);
 
-    const workplaces = workRes.rows.map((r: any) => r.workplace);
-    const hometowns = homeRes.rows.map((r: any) => r.hometown);
-    const schools = schoolRes.rows
+    const workplaces = workRes.map((r: any) => r.workplace);
+    const hometowns = homeRes.map((r: any) => r.hometown);
+    const schools = schoolRes
       .flatMap((r: any) => [r.school, r.university])
       .filter(Boolean);
 

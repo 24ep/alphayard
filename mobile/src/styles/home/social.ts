@@ -172,8 +172,8 @@ export const socialStyles = StyleSheet.create({
 
     // Specific Social Post List Styles (Legacy/Specific)
     socialPostListItem: {
-        paddingVertical: 16,
-        paddingHorizontal: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
     },
     socialPostHeader: {
         flexDirection: 'row',

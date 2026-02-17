@@ -1,18 +1,18 @@
-import { pool } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 
 async function testComponentStudio() {
     try {
         // Test 1: Get sidebar data
         console.log('Testing Component Studio Sidebar...');
-        const categoriesResult = await pool.query('SELECT * FROM component_categories ORDER BY position ASC LIMIT 3');
-        const stylesResult = await pool.query('SELECT * FROM component_styles WHERE is_active = true LIMIT 5');
+        const categoriesResult = await prisma.$queryRaw<Array<any>>`SELECT * FROM component_categories ORDER BY position ASC LIMIT 3`;
+        const stylesResult = await prisma.$queryRaw<Array<any>>`SELECT * FROM component_styles WHERE is_active = true LIMIT 5`;
         
-        console.log(`✓ Found ${categoriesResult.rows.length} categories (showing first 3)`);
-        console.log(`✓ Found ${stylesResult.rows.length} styles (showing first 5)`);
+        console.log(`✓ Found ${categoriesResult.length} categories (showing first 3)`);
+        console.log(`✓ Found ${stylesResult.length} styles (showing first 5)`);
         
         // Test 2: Verify data structure
-        if (categoriesResult.rows.length > 0) {
-            const category = categoriesResult.rows[0];
+        if (categoriesResult.length > 0) {
+            const category = categoriesResult[0];
             console.log('\nSample Category:', {
                 id: category.id,
                 name: category.name,
@@ -20,8 +20,8 @@ async function testComponentStudio() {
             });
         }
         
-        if (stylesResult.rows.length > 0) {
-            const style = stylesResult.rows[0];
+        if (stylesResult.length > 0) {
+            const style = stylesResult[0];
             console.log('\nSample Style:', {
                 id: style.id,
                 name: style.name,
@@ -35,7 +35,7 @@ async function testComponentStudio() {
     } catch (error) {
         console.error('❌ Error:', error);
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

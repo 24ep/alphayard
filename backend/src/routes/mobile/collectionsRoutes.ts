@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import entityService from '../../services/EntityService';
 import { authenticateToken } from '../../middleware/auth';
+import { getApplicationIdFromRequest } from '../../utils/appHelper';
+import { AppScopedRequest } from '../../middleware/appScoping';
 
 const router = Router();
 
@@ -39,13 +41,17 @@ router.get('/:typeName/schema', authenticateToken as any, async (req: Request, r
 /**
  * Get collection items
  */
-router.get('/:typeName', authenticateToken as any, async (req: Request, res: Response) => {
+router.get('/:typeName', authenticateToken as any, async (req: AppScopedRequest, res: Response) => {
     try {
         const { typeName } = req.params;
-        const { applicationId, page, limit, orderBy, orderDir, search } = req.query;
+        const { applicationId: queryAppId, page, limit, orderBy, orderDir, search } = req.query;
+
+        // Use application ID from: query param > request context (from middleware) > default
+        const effectiveApplicationId = (queryAppId as string) || 
+            await getApplicationIdFromRequest(req) || '';
 
         const result = await entityService.queryEntities(typeName, {
-            applicationId: applicationId as string,
+            applicationId: effectiveApplicationId,
             page: parseInt(page as string) || 1,
             limit: parseInt(limit as string) || 20,
             orderBy: orderBy as string,

@@ -5,7 +5,7 @@ import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '../ui/Ca
 import { Input } from '../ui/Input'
 import { AnalyticsConfig } from './types'
 import { MobileGuide } from '../ui/MobileGuide'
-import { PresentationChartLineIcon, BugAntIcon, ChartBarIcon, CpuChipIcon } from '@heroicons/react/24/outline'
+import { PresentationChartLineIcon, BugAntIcon, ChartBarIcon, CpuChipIcon, ChartPieIcon } from '@heroicons/react/24/outline'
 
 interface AnalyticsSettingsProps {
     analytics: AnalyticsConfig
@@ -74,6 +74,20 @@ export function AnalyticsSettings({ analytics, setBranding }: AnalyticsSettingsP
                             placeholder="Your analytics token"
                             className="text-sm"
                         />
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-gray-500 flex items-center gap-2">
+                            <ChartPieIcon className="w-3.5 h-3.5" />
+                            Google Analytics ID
+                        </label>
+                        <Input 
+                            value={analytics.googleAnalyticsId}
+                            onChange={(e) => updateSettings('googleAnalyticsId', e.target.value)}
+                            placeholder="G-XXXXXXXXXX"
+                            className="text-sm"
+                        />
+                        <p className="text-xs text-gray-400">Enter your GA4 Measurement ID for this mobile app</p>
                     </div>
 
                     <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/30 border border-amber-100 md:col-span-2">

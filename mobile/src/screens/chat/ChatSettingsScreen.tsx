@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
   Switch,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Box, HStack, VStack, Avatar, Divider, Icon, Badge } from 'native-base';
+import { Box, HStack, VStack, Avatar, Icon, Badge } from 'native-base';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { chatService } from '../../services/chat/ChatService';
+import { useNavigation } from '@react-navigation/native';
+import { chatApi } from '../../services/api';
 import { analyticsService } from '../../services/analytics/AnalyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 
@@ -60,8 +58,32 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
   const loadChatSettings = async () => {
     try {
       setLoading(true);
-      const chatSettings = await chatService.getChatSettings(chatId);
-      setSettings(chatSettings);
+      const chatRes = await chatApi.getChat(chatId);
+      if (chatRes.success) {
+        // Map API response to ChatSettings
+        const chat = chatRes.chat;
+        setSettings({
+            id: chat.id,
+            name: chat.name,
+            type: chat.type as any,
+            avatar: undefined, // Add if available
+            isMuted: false, // Default or fetch from specific endpoint if needed
+            isPinned: false, // Default or fetch
+            notifications: true,
+            autoDelete: false,
+            autoDeleteDays: 7,
+            theme: 'default',
+            members: chat.participants?.map(p => ({
+                id: p.userId,
+                name: p.user?.firstName || 'Unknown',
+                avatar: p.user?.avatarUrl,
+                role: p.role,
+                isOnline: false
+            })) || [],
+            createdAt: new Date(chat.createdAt).getTime(),
+            lastActivity: new Date(chat.updatedAt).getTime()
+        });
+      }
     } catch (error) {
       console.error('Failed to load chat settings:', error);
       Alert.alert('Error', 'Failed to load chat settings');
@@ -75,14 +97,17 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
 
     try {
       setUpdating(true);
-      const updatedSettings = await chatService.updateChatSettings(chatId, {
-        isMuted: !settings.isMuted,
-      });
-      setSettings(updatedSettings);
+      if (settings.isMuted) {
+          await chatApi.unmuteChat(chatId);
+      } else {
+          await chatApi.muteChat(chatId);
+      }
+      
+      setSettings(prev => prev ? ({ ...prev, isMuted: !prev.isMuted }) : null);
       
       analyticsService.trackEvent('chat_muted_toggled', {
         chatId,
-        isMuted: updatedSettings.isMuted,
+        isMuted: !settings.isMuted,
       });
     } catch (error) {
       console.error('Failed to toggle mute:', error);
@@ -97,14 +122,17 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
 
     try {
       setUpdating(true);
-      const updatedSettings = await chatService.updateChatSettings(chatId, {
-        isPinned: !settings.isPinned,
-      });
-      setSettings(updatedSettings);
+      if (settings.isPinned) {
+          await chatApi.unpinChat(chatId);
+      } else {
+          await chatApi.pinChat(chatId);
+      }
+
+      setSettings(prev => prev ? ({ ...prev, isPinned: !prev.isPinned }) : null);
       
       analyticsService.trackEvent('chat_pinned_toggled', {
         chatId,
-        isPinned: updatedSettings.isPinned,
+        isPinned: !settings.isPinned,
       });
     } catch (error) {
       console.error('Failed to toggle pin:', error);
@@ -115,47 +143,31 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
   };
 
   const handleToggleNotifications = async () => {
-    if (!settings) return;
-
-    try {
-      setUpdating(true);
-      const updatedSettings = await chatService.updateChatSettings(chatId, {
-        notifications: !settings.notifications,
-      });
-      setSettings(updatedSettings);
-      
-      analyticsService.trackEvent('chat_notifications_toggled', {
-        chatId,
-        notifications: updatedSettings.notifications,
-      });
-    } catch (error) {
-      console.error('Failed to toggle notifications:', error);
-      Alert.alert('Error', 'Failed to update settings');
-    } finally {
-      setUpdating(false);
-    }
+    // TODO: Implement notification toggle endpoint
+    Alert.alert('Info', 'Notification settings not yet supported by API');
   };
 
   const handleToggleAutoDelete = async () => {
-    if (!settings) return;
-
-    try {
-      setUpdating(true);
-      const updatedSettings = await chatService.updateChatSettings(chatId, {
-        autoDelete: !settings.autoDelete,
-      });
-      setSettings(updatedSettings);
-      
-      analyticsService.trackEvent('chat_auto_delete_toggled', {
-        chatId,
-        autoDelete: updatedSettings.autoDelete,
-      });
-    } catch (error) {
-      console.error('Failed to toggle auto delete:', error);
-      Alert.alert('Error', 'Failed to update settings');
-    } finally {
-      setUpdating(false);
-    }
+      if (!settings) return;
+  
+      try {
+        setUpdating(true);
+        // Toggle disappearing messages
+        const newState = !settings.autoDelete;
+        await chatApi.setDisappearSettings(chatId, newState, settings.autoDeleteDays * 86400); // days to seconds
+  
+        setSettings(prev => prev ? ({ ...prev, autoDelete: newState }) : null);
+        
+        analyticsService.trackEvent('chat_auto_delete_toggled', {
+          chatId,
+          autoDelete: newState,
+        });
+      } catch (error) {
+        console.error('Failed to toggle auto delete:', error);
+        Alert.alert('Error', 'Failed to update settings');
+      } finally {
+        setUpdating(false);
+      }
   };
 
   const handleClearChat = () => {
@@ -168,17 +180,8 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
           text: 'Clear',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await chatService.clearChat(chatId);
-              Alert.alert('Success', 'Chat cleared successfully');
-              
-              analyticsService.trackEvent('chat_cleared', {
-                chatId,
-              });
-            } catch (error) {
-              console.error('Failed to clear chat:', error);
-              Alert.alert('Error', 'Failed to clear chat');
-            }
+            // Feature not available in API yet
+            Alert.alert('Info', 'Clear chat is not currently supported.');
           },
         },
       ]
@@ -187,24 +190,24 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
 
   const handleDeleteChat = () => {
     Alert.alert(
-      'Delete Chat',
-      'Are you sure you want to delete this chat? This action cannot be undone.',
+      'Archive Chat',
+      'Are you sure you want to archive this chat?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Archive',
           style: 'destructive',
           onPress: async () => {
             try {
-              await chatService.deleteChat(chatId);
+              await chatApi.archiveChat(chatId);
               navigation.goBack();
               
-              analyticsService.trackEvent('chat_deleted', {
+              analyticsService.trackEvent('chat_archived', {
                 chatId,
               });
             } catch (error) {
-              console.error('Failed to delete chat:', error);
-              Alert.alert('Error', 'Failed to delete chat');
+              console.error('Failed to archive chat:', error);
+              Alert.alert('Error', 'Failed to archive chat');
             }
           },
         },
@@ -213,15 +216,18 @@ const ChatSettingsScreen: React.FC<ChatSettingsScreenProps> = ({ route }) => {
   };
 
   const handleEditChat = () => {
-    navigation.navigate('EditChat', { chatId });
+    // navigation.navigate('EditChat', { chatId });
+    Alert.alert('Info', 'Feature not implemented yet');
   };
 
   const handleViewMedia = () => {
-    navigation.navigate('ChatMedia', { chatId });
+    // navigation.navigate('ChatMedia', { chatId });
+    Alert.alert('Info', 'Feature not implemented yet');
   };
 
   const handleViewFiles = () => {
-    navigation.navigate('ChatFiles', { chatId });
+    // navigation.navigate('ChatFiles', { chatId });
+    Alert.alert('Info', 'Feature not implemented yet');
   };
 
   const formatDate = (timestamp: number) => {

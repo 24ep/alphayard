@@ -40,6 +40,14 @@ export interface User {
     }[];
 }
 
+export interface Application {
+    id: string;
+    name: string;
+    slug: string;
+    description?: string;
+    logoUrl?: string;
+}
+
 export interface GlobalUser extends User {}
 
 class UserService {
@@ -83,7 +91,7 @@ class UserService {
             lastName: u.lastName || '',
             phone: u.phone,
             avatarUrl: u.avatarUrl,
-            status: u.status || 'active',
+            status: u.status || (u.isActive ? 'active' : 'inactive'),
             role: u.metadata?.role || 'user',
             userType: u.metadata?.userType || 'circle',
             isVerified: u.metadata?.isVerified || false,
@@ -95,18 +103,27 @@ class UserService {
             tags: u.metadata?.tags || [],
             attributes: u.metadata?.attributes || {},
             circles: u.circles || [],
-            apps: u.metadata?.apps || []
+            apps: u.apps || u.metadata?.apps || []
         }
     }
 
-    async getUsers(params: any = {}): Promise<GlobalUser[]> {
+    async getUsers(params: any = {}): Promise<{ users: GlobalUser[], total: number, totalPages: number, currentPage: number }> {
         const query = new URLSearchParams()
         if (params.search) query.append('search', params.search)
         if (params.page) query.append('page', params.page)
         if (params.limit) query.append('limit', params.limit)
+        if (params.app) query.append('app', params.app)
+        if (params.status) query.append('status', params.status)
+        if (params.attribute) query.append('attribute', params.attribute)
+        if (params.role) query.append('role', params.role)
         
-        const response = await this.request<{ users: any[] }>(`/admin/users?${query.toString()}`)
-        return (response.users || []).map(u => this.mapBackendUser(u))
+        const response = await this.request<{ users: any[], total: number, totalPages: number, currentPage: number }>(`/admin/users?${query.toString()}`)
+        return {
+            users: (response.users || []).map(u => this.mapBackendUser(u)),
+            total: response.total || 0,
+            totalPages: response.totalPages || 0,
+            currentPage: response.currentPage || 1
+        }
     }
 
     async getUserById(id: string): Promise<GlobalUser | undefined> {
@@ -115,11 +132,11 @@ class UserService {
     }
 
     async createUser(userData: any): Promise<GlobalUser> {
-        const response = await this.request<any>('/admin/users', {
+        const response = await this.request<any>('/admin/identity/users', {
             method: 'POST',
             body: JSON.stringify(userData),
         })
-        return this.mapBackendUser(response)
+        return this.mapBackendUser(response.user || response)
     }
 
     async updateUser(id: string, updates: Partial<GlobalUser>): Promise<GlobalUser> {
@@ -145,6 +162,11 @@ class UserService {
     async getCircles(): Promise<Circle[]> {
         const response = await this.request<{ families: Circle[] }>('/admin/families')
         return response.families || []
+    }
+
+    async getApplications(): Promise<Application[]> {
+        const response = await this.request<{ applications: Application[] }>('/admin/applications')
+        return response.applications || []
     }
 }
 

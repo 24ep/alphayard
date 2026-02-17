@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 interface Migration {
   id: string;
@@ -38,7 +38,7 @@ class MigrationService {
         );
       `;
 
-      await pool.query(createTableSQL);
+      await prisma.$queryRawUnsafe(createTableSQL);
       console.log('✅ Migrations table verified');
     } catch (error) {
       console.error('❌ Failed to initialize migrations table:', error);
@@ -91,7 +91,7 @@ class MigrationService {
    * Get executed migrations from database
    */
   private async getExecutedMigrations(): Promise<Map<string, Migration>> {
-    const { rows } = await pool.query('SELECT * FROM migrations ORDER BY id');
+    const { rows } = await prisma.$queryRawUnsafe('SELECT * FROM migrations ORDER BY id');
 
     const executedMigrations = new Map<string, Migration>();
     rows.forEach(migration => {
@@ -105,23 +105,12 @@ class MigrationService {
    * Execute SQL command
    */
   private async executeSQL(sql: string): Promise<void> {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
+    await prisma.$transaction(async (tx) => {
       // Some SQL files might contain multiple statements. 
-      // pg pool.query() can handle multiple statements separated by semicolon in a single string,
+      // Prisma $executeRawUnsafe can handle multiple statements separated by semicolon in a single string,
       // but only if it's not a parameterized query. Raw migration SQL is fine.
-      await client.query(sql);
-      
-      await client.query('COMMIT');
-    } catch (error) {
-      await client.query('ROLLBACK');
-      console.error('SQL execution error:', error);
-      throw error;
-    } finally {
-      client.release();
-    }
+      await tx.$executeRawUnsafe(sql);
+    });
   }
 
   /**
@@ -153,21 +142,13 @@ class MigrationService {
           console.log(`🔄 Running migration: ${migrationId}`);
 
           // Execute migration and record it in a single transaction if possible
-          const client = await pool.connect();
-          try {
-            await client.query('BEGIN');
-            await client.query(up);
-            await client.query(
+          await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(up);
+            await tx.$queryRawUnsafe(
               'INSERT INTO migrations (id, name, checksum, executed_at) VALUES ($1, $2, $3, NOW())',
-              [migrationId, file, checksum]
+              migrationId, file, checksum
             );
-            await client.query('COMMIT');
-          } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-          } finally {
-            client.release();
-          }
+          });
 
           executedIds.push(migrationId);
           console.log(`✅ Migration completed: ${migrationId}`);
@@ -205,7 +186,7 @@ class MigrationService {
     try {
       await this.initializeMigrationsTable();
 
-      const { rows } = await pool.query(
+      const { rows } = await prisma.$queryRawUnsafe(
         'SELECT * FROM migrations ORDER BY executed_at DESC LIMIT $1',
         [steps]
       );
@@ -236,18 +217,10 @@ class MigrationService {
 
           console.log(`🔄 Rolling back migration: ${migration.id}`);
 
-          const client = await pool.connect();
-          try {
-            await client.query('BEGIN');
-            await client.query(down);
-            await client.query('DELETE FROM migrations WHERE id = $1', [migration.id]);
-            await client.query('COMMIT');
-          } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-          } finally {
-            client.release();
-          }
+          await prisma.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(down);
+            await tx.$queryRawUnsafe('DELETE FROM migrations WHERE id = $1', migration.id);
+          });
 
           rolledBackIds.push(migration.id);
           console.log(`✅ Migration rolled back: ${migration.id}`);
@@ -392,7 +365,7 @@ class MigrationService {
       console.log('⚠️  WARNING: This will drop all tables and data!');
       
       // Get all tables in public schema
-      const { rows } = await pool.query(`
+      const { rows } = await prisma.$queryRawUnsafe(`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = 'public' 
@@ -401,7 +374,7 @@ class MigrationService {
 
       // Drop all tables
       for (const row of rows) {
-        await pool.query(`DROP TABLE IF EXISTS "${row.table_name}" CASCADE;`);
+        await prisma.$queryRawUnsafe(`DROP TABLE IF EXISTS "${row.table_name}" CASCADE;`);
       }
 
       console.log('✅ Database reset completed');

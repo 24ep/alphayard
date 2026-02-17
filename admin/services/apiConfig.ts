@@ -1,7 +1,8 @@
 // Shared API base URL configuration for the admin console
-// Backend runs on port 3001, admin frontend on port 4000
+// In the browser, use relative URL so requests go through Next.js proxy (next.config.js rewrites /api/* -> localhost:4000/api/*)
+// On the server (SSR), call the backend directly
 const defaultBase = typeof window !== 'undefined'
-  ? `${window.location.protocol}//${window.location.hostname}:4000/api/v1`
-  : 'http://localhost:4000/api/v1';
+  ? '/api/v1'  // Browser: relative URL -> Next.js proxy -> backend:4000
+  : 'http://localhost:4000/api/v1';  // SSR: direct call
 
 export const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || defaultBase;

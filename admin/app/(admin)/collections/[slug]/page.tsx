@@ -24,12 +24,20 @@ export default function DynamicCollectionPage() {
 
     const fetchConfig = async () => {
         setLoadingConfig(true)
+        setError(null)
         try {
             const config = await adminService.getEntityType(slug)
+            if (!config) {
+                setError(`Collection "${slug}" configuration not found`)
+                setLoadingConfig(false)
+                return
+            }
             setConfig(config)
         } catch (err: any) {
             console.error(`Failed to fetch config for ${slug}:`, err)
-            setError(`Collection "${slug}" configuration not found`)
+            const errorMessage = err.message || err.error || `Collection "${slug}" configuration not found`
+            setError(errorMessage)
+            // Don't set config to null here, let the error state handle it
         } finally {
             setLoadingConfig(false)
         }
@@ -37,7 +45,17 @@ export default function DynamicCollectionPage() {
 
     const fetchData = async (currentConfig?: any) => {
         const activeConfig = currentConfig || config
-        if (!activeConfig) return
+        if (!activeConfig) {
+            setError('Collection configuration is missing')
+            setLoading(false)
+            return
+        }
+        
+        if (!activeConfig.apiEndpoint) {
+            setError('API endpoint is not configured for this collection')
+            setLoading(false)
+            return
+        }
         
         setLoading(true)
         setError(null)
@@ -57,10 +75,42 @@ export default function DynamicCollectionPage() {
                 if (key) items = data[key]
             }
 
-            setData(items)
+            // Flatten entity structure - unwrap attributes/data to top level for easier access
+            const flattenedItems = (items || []).map((item: any) => {
+                // If it's a unified entity, flatten attributes to top level
+                if (item.attributes || item.data) {
+                    const attrs = item.attributes || item.data || {}
+                    const createdAt = item.createdAt || item.created_at
+                    const updatedAt = item.updatedAt || item.updated_at
+                    
+                    return {
+                        id: item.id,
+                        ...attrs, // Spread all attributes to top level
+                        // Add entity metadata fields at top level for column accessors
+                        created_at: createdAt,
+                        createdAt: createdAt,
+                        updated_at: updatedAt,
+                        updatedAt: updatedAt,
+                        // Keep entity metadata accessible
+                        _entity: {
+                            type: item.type,
+                            status: item.status,
+                            createdAt,
+                            updatedAt,
+                            applicationId: item.applicationId || item.application_id,
+                            ownerId: item.ownerId || item.owner_id
+                        }
+                    }
+                }
+                return item
+            })
+
+            setData(flattenedItems)
         } catch (err: any) {
             console.error(`Failed to fetch ${slug}:`, err)
-            setError(err.message || 'Failed to load data')
+            const errorMessage = err.message || err.error || `Failed to load data for "${slug}"`
+            setError(errorMessage)
+            setData([])
         } finally {
             setLoading(false)
         }
@@ -97,19 +147,30 @@ export default function DynamicCollectionPage() {
     useEffect(() => {
         if (slug) {
             const loadPage = async () => {
-                const fetchedConfig = await adminService.getEntityType(slug)
-                setConfig(fetchedConfig)
-                setLoadingConfig(false)
-                if (fetchedConfig) {
-                    fetchData(fetchedConfig)
+                try {
+                    setLoadingConfig(true)
+                    setError(null)
+                    const fetchedConfig = await adminService.getEntityType(slug)
+                    if (!fetchedConfig) {
+                        setError(`Collection "${slug}" not found`)
+                        setLoadingConfig(false)
+                        setLoading(false)
+                        return
+                    }
+                    setConfig(fetchedConfig)
+                    setLoadingConfig(false)
+                    // Debug: Log the endpoint being used
+                    console.log(`[Collections] Loading collection "${slug}" with endpoint:`, fetchedConfig.apiEndpoint)
+                    await fetchData(fetchedConfig)
+                } catch (err: any) {
+                    console.error('Page load error:', err)
+                    const errorMessage = err.message || err.error || `Failed to load collection "${slug}"`
+                    setError(errorMessage)
+                    setLoadingConfig(false)
+                    setLoading(false)
                 }
             }
-            loadPage().catch(err => {
-                console.error('Page load error:', err)
-                setError(`Failed to load collection "${slug}"`)
-                setLoadingConfig(false)
-                setLoading(false)
-            })
+            loadPage()
         }
     }, [slug])
 
@@ -121,16 +182,60 @@ export default function DynamicCollectionPage() {
         )
     }
 
+    if (error && !config) {
+        return (
+            <div className="p-8 text-center">
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+                    <h1 className="text-xl font-bold text-red-900 mb-2">Error Loading Collection</h1>
+                    <p className="text-red-700 mb-4">{error}</p>
+                    <div className="flex gap-3 justify-center">
+                        <button 
+                            onClick={() => {
+                                setError(null)
+                                if (slug) {
+                                    const loadPage = async () => {
+                                        try {
+                                            setLoadingConfig(true)
+                                            const fetchedConfig = await adminService.getEntityType(slug)
+                                            if (fetchedConfig) {
+                                                setConfig(fetchedConfig)
+                                                await fetchData(fetchedConfig)
+                                            }
+                                        } catch (err: any) {
+                                            setError(err.message || err.error || `Failed to load collection "${slug}"`)
+                                        } finally {
+                                            setLoadingConfig(false)
+                                        }
+                                    }
+                                    loadPage()
+                                }
+                            }}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        >
+                            Retry
+                        </button>
+                        <button 
+                            onClick={() => router.push('/collections')}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                        >
+                            Back to Collections
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     if (!config) {
         return (
             <div className="p-8 text-center text-gray-500">
                 <h1 className="text-xl font-bold text-gray-900 mb-2">Collection Not Found</h1>
                 <p>The collection "{slug}" is not configured.</p>
                 <button 
-                    onClick={() => router.push('/dashboard')}
+                    onClick={() => router.push('/collections')}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                    Go to Dashboard
+                    Back to Collections
                 </button>
             </div>
         )

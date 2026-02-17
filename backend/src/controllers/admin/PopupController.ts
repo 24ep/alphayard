@@ -5,8 +5,7 @@ import { PopupModel } from '../../models/PopupModel';
 import { UserModel } from '../../models/UserModel';
 // import { logger } from '../../utils/logger';
  // TODO: Fix missing module: ../utils/logger
-// import { uploadToS3 } from '../../services/s3Service';
- // TODO: Fix missing module: ../services/s3Service
+import storageService from '../../services/storageService';
 
 export class PopupController {
   // Get active popups for user
@@ -223,11 +222,14 @@ export class PopupController {
     try {
       const popupData = req.body;
 
-      // Handle image upload if present
+      // Handle image upload if present - uses S3/MinIO storage
       if (req.file) {
-        // TODO: Implement S3 upload
-        const imageUrl = `uploads/popups/${req.file.filename || 'temp'}`;
-        popupData.imageUrl = imageUrl;
+        const userId = req.user?.id || 'system';
+        const uploaded = await storageService.uploadFile(req.file, userId, null, {
+          folder: 'popups'
+        });
+        popupData.imageUrl = uploaded.url;
+        popupData.imageEntityId = uploaded.id;
       }
 
       const popup = new PopupModel(popupData);
@@ -254,11 +256,14 @@ export class PopupController {
       const { id } = req.params;
       const updateData = req.body;
 
-      // Handle image upload if present
+      // Handle image upload if present - uses S3/MinIO storage
       if (req.file) {
-        // TODO: Implement S3 upload
-        const imageUrl = `uploads/popups/${req.file.filename || 'temp'}`;
-        updateData.imageUrl = imageUrl;
+        const userId = req.user?.id || 'system';
+        const uploaded = await storageService.uploadFile(req.file, userId, null, {
+          folder: 'popups'
+        });
+        updateData.imageUrl = uploaded.url;
+        updateData.imageEntityId = uploaded.id;
       }
 
       const popup = await PopupModel.findByIdAndUpdate(

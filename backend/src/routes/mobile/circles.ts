@@ -334,6 +334,18 @@ router.post('/invite', [
   }
 });
 
+// Get pending invitations for the authenticated user
+router.get('/invitations/pending', authenticateToken as any, async (req: any, res: Response) => {
+  try {
+    const email = req.user.email;
+    const invitations = await circleService.getPendingInvitationsForUser(email);
+    res.json({ invitations });
+  } catch (error) {
+    console.error('Get pending invitations error:', error);
+    res.status(500).json({ error: 'Failed to fetch pending invitations' });
+  }
+});
+
 // Get circle invitations
 router.get('/invitations', requireCircleMember as any, async (req: any, res: Response) => {
   try {

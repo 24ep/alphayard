@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../utils/ApiError';
+import { auditService, AuditCategory, AuditAction } from '../services/auditService';
 
-export const errorHandler = (
+export const errorHandler = async (
   err: Error | ApiError,
   req: Request,
   res: Response,
@@ -19,17 +20,43 @@ export const errorHandler = (
 
   const apiError = error as ApiError;
 
-  // Log error
-  console.error('Error:', {
+  // Enhanced error logging
+  const errorContext = {
     message: apiError.message,
     code: apiError.code,
-    stack: apiError.stack,
     statusCode: apiError.statusCode,
     url: req.url,
     method: req.method,
     ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    userId: (req as any).user?.id || 'anonymous',
     timestamp: new Date().toISOString()
-  });
+  };
+
+  // Log to console (in production, this should go to a logging service)
+  console.error('Error:', errorContext);
+
+  // Log security-relevant errors to audit system
+  if (apiError.statusCode >= 400 || apiError.code?.includes('SECURITY')) {
+    try {
+      await auditService.logAuditEvent({
+        userId: errorContext.userId,
+        action: AuditAction.SECURITY_ALERT,
+        category: AuditCategory.SECURITY,
+        description: `Security error: ${apiError.message}`,
+        details: {
+          error: apiError.code,
+          statusCode: apiError.statusCode,
+          url: req.url,
+          method: req.method,
+          userAgent: req.get('User-Agent'),
+        },
+        ipAddress: req.ip,
+      });
+    } catch (auditError) {
+      console.error('Failed to log security audit:', auditError);
+    }
+  }
 
   const response = {
     success: false,

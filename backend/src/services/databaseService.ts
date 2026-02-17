@@ -1,12 +1,11 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 class DatabaseService {
   async connect() {
     try {
-      // Test the pool connection
-      const client = await pool.connect();
+      // Test the Prisma connection
+      await prisma.$queryRaw`SELECT 1`;
       console.log('✅ PostgreSQL connected successfully');
-      client.release();
     } catch (error) {
       console.error('❌ PostgreSQL connection error:', error);
       throw error;
@@ -14,7 +13,7 @@ class DatabaseService {
   }
 
   async disconnect() {
-    await pool.end();
+    await prisma.$disconnect();
     console.log('PostgreSQL disconnected');
   }
 }

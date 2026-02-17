@@ -1,10 +1,93 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, Dimensions, ImageBackground, ActivityIndicator, Image } from 'react-native';
+import { View, Text, Animated, StyleSheet, Dimensions, ImageBackground, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { themeConfigService, ColorValue } from '../../services/themeConfigService';
 
 const { width } = Dimensions.get('window');
+
+const PulseSpinner: React.FC<{ color: string }> = ({ color }) => {
+    const scale = useRef(new Animated.Value(0.5)).current;
+    const opacity = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.parallel([
+                Animated.timing(scale, {
+                    toValue: 1.5,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(opacity, {
+                    toValue: 0,
+                    duration: 1000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+    }, []);
+
+    return (
+        <Animated.View
+            style={[
+                {
+                    width: 50,
+                    height: 50,
+                    borderRadius: 25,
+                    backgroundColor: color,
+                    opacity: opacity,
+                    transform: [{ scale: scale }],
+                }
+            ]}
+        />
+    );
+};
+
+const DotsSpinner: React.FC<{ color: string }> = ({ color }) => {
+    const anim1 = useRef(new Animated.Value(0)).current;
+    const anim2 = useRef(new Animated.Value(0)).current;
+    const anim3 = useRef(new Animated.Value(0)).current;
+
+    const animateDot = (anim: Animated.Value, delay: number) => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(anim, {
+                    toValue: -10,
+                    duration: 400,
+                    delay: delay,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(anim, {
+                    toValue: 0,
+                    duration: 400,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+    }
+
+    useEffect(() => {
+        animateDot(anim1, 0);
+        animateDot(anim2, 200);
+        animateDot(anim3, 400);
+    }, []);
+
+    const dotStyle = {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: color,
+        marginHorizontal: 4,
+    };
+
+    return (
+        <View style={{ flexDirection: 'row', alignItems: 'center', height: 20 }}>
+            <Animated.View style={[dotStyle, { transform: [{ translateY: anim1 }] }]} />
+            <Animated.View style={[dotStyle, { transform: [{ translateY: anim2 }] }]} />
+            <Animated.View style={[dotStyle, { transform: [{ translateY: anim3 }] }]} />
+        </View>
+    );
+};
 
 export const SplashBranding: React.FC = () => {
   const { branding } = useTheme();
@@ -22,6 +105,10 @@ export const SplashBranding: React.FC = () => {
   const animValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    console.log('[SplashBranding] Current Branding Config:', JSON.stringify(branding?.splash, null, 2));
+  }, [branding]);
+
+  useEffect(() => {
     if (config.logoAnimation === 'none') {
         animValue.setValue(0);
         return;
@@ -29,6 +116,8 @@ export const SplashBranding: React.FC = () => {
 
     const startAnimation = () => {
       if (config.logoAnimation === 'rotate') {
+        // Reset value to 0 to ensure smooth looping
+        animValue.setValue(0);
         Animated.loop(
           Animated.timing(animValue, {
             toValue: 1,
@@ -70,7 +159,7 @@ export const SplashBranding: React.FC = () => {
     };
 
     startAnimation();
-  }, [config.logoAnimation]);
+  }, [config.logoAnimation]); // Re-run if animation type changes
 
   const getLogoTransform = () => {
     switch (config.logoAnimation) {
@@ -103,6 +192,50 @@ export const SplashBranding: React.FC = () => {
     }
   };
 
+  const renderInner = () => {
+      // Resolve spinner color
+      const spinnerColor = typeof config.spinnerColor === 'string' 
+          ? config.spinnerColor 
+          : themeConfigService.colorToString(config.spinnerColor);
+
+      return (
+        <>
+            {config.showLogo && (
+                branding?.logoUrl ? (
+                <Animated.Image 
+                    source={{ uri: branding.logoUrl }} 
+                    style={[styles.logo, getLogoTransform()]} 
+                    resizeMode="contain"
+                />
+                ) : (
+                <Animated.View style={[styles.placeholderLogo, getLogoTransform()]}>
+                    <Text style={{ fontSize: 40 }}>🏷️</Text>
+                </Animated.View>
+                )
+            )}
+            
+            {config.showAppName && (
+                <Text style={[styles.appName, { color: spinnerColor }]}>
+                {branding?.appName || 'Bondarys'}
+                </Text>
+            )}
+
+            {config.spinnerType !== 'none' && (
+                <View style={styles.spinner}>
+                    {config.spinnerType === 'dots' && <DotsSpinner color={spinnerColor} />}
+                    {config.spinnerType === 'pulse' && <PulseSpinner color={spinnerColor} />}
+                    {config.spinnerType === 'circle' && (
+                        <ActivityIndicator 
+                            size="large" 
+                            color={spinnerColor} 
+                        />
+                    )}
+                </View>
+            )}
+        </>
+      );
+  };
+
   // Helper to determine background type
   const renderContent = () => {
     const bg = config.backgroundColor as ColorValue | string;
@@ -133,7 +266,7 @@ export const SplashBranding: React.FC = () => {
             <LinearGradient
                 colors={colors}
                 locations={locations}
-                start={colorBg.gradient?.angle ? undefined : { x: 0, y: 0 }} // Default to corner
+                start={colorBg.gradient?.angle ? undefined : { x: 0, y: 0 }} // Simple defaults
                 end={colorBg.gradient?.angle ? undefined : { x: 1, y: 1 }}
                 style={containerStyle}
             >
@@ -149,49 +282,6 @@ export const SplashBranding: React.FC = () => {
             </View>
         );
     }
-  };
-
-  const renderInner = () => {
-      // Need to stringify spinner color if it's an object, or pass to specialized component
-      // For now, assuming spinnerColor is solid or we take the first color
-      const spinnerColor = typeof config.spinnerColor === 'string' 
-          ? config.spinnerColor 
-          : themeConfigService.colorToString(config.spinnerColor);
-
-      return (
-        <>
-            {config.showLogo && (
-                branding?.logoUrl ? (
-                <Animated.Image 
-                    source={{ uri: branding.logoUrl }} 
-                    style={[styles.logo, getLogoTransform()]} 
-                    resizeMode="contain"
-                />
-                ) : (
-                <Animated.View style={[styles.placeholderLogo, getLogoTransform()]}>
-                    <Text style={{ fontSize: 40 }}>🏷️</Text>
-                </Animated.View>
-                )
-            )}
-            
-            {config.showAppName && (
-                <Text style={[styles.appName, { color: spinnerColor }]}>
-                {branding?.appName || 'Bondarys'}
-                </Text>
-            )}
-
-            {config.spinnerType !== 'none' && (
-                // Use ActivityIndicator for simple spinner. 
-                // Custom spinners (dots/pulse) would require custom implementation here.
-                <View style={styles.spinner}>
-                    <ActivityIndicator 
-                        size="large" 
-                        color={spinnerColor} 
-                    />
-                </View>
-            )}
-        </>
-      );
   };
 
   return renderContent();
@@ -220,7 +310,9 @@ const styles = StyleSheet.create({
   },
   spinner: {
     position: 'absolute',
-    bottom: 64
+    bottom: 64,
+    alignItems: 'center',
+    justifyContent: 'center'
   }
 });
 

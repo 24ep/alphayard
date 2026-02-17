@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -8,8 +8,8 @@ dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
 async function inspectScreens() {
     try {
-        const { rows } = await pool.query(
-            "SELECT name, branding FROM applications WHERE is_active = true LIMIT 1"
+        const rows = await prisma.$queryRawUnsafe<any[]>(
+            "SELECT name, branding FROM core.applications WHERE is_active = true LIMIT 1"
         );
         
         if (rows.length > 0) {

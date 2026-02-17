@@ -5,17 +5,11 @@
  * Usage: node src/scripts/seed-emotions.js
  */
 
-const { Pool } = require('pg');
+const { PrismaClient } = require('../prisma/generated/prisma');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME || 'bondarys',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-});
+const prisma = new PrismaClient();
 
 const emotionTypes = ['very_bad', 'bad', 'neutral', 'good', 'very_good'];
 
@@ -24,18 +18,21 @@ async function seedEmotions() {
 
     try {
         // Get a user to seed data for (use first user found)
-        const userResult = await pool.query('SELECT id FROM users LIMIT 1');
+        const userResult = await prisma.$queryRawUnsafe('SELECT id FROM users LIMIT 1');
 
-        if (userResult.rows.length === 0) {
+        if (userResult.length === 0) {
             console.error('No users found. Please create a user first.');
+            await prisma.$disconnect();
             process.exit(1);
         }
 
-        const userId = userResult.rows[0].id;
+        const userId = userResult[0].id;
         console.log(`Seeding emotions for user: ${userId}`);
 
         // Delete existing emotion records for this user
-        await pool.query('DELETE FROM emotion_records WHERE user_id = $1', [userId]);
+        // Escape userId to prevent SQL injection (UUID format)
+        const escapedUserId = typeof userId === 'string' ? userId.replace(/'/g, "''") : String(userId);
+        await prisma.$executeRawUnsafe(`DELETE FROM emotion_records WHERE user_id = '${escapedUserId}'::uuid`);
         console.log('Cleared existing emotion records');
 
         // Generate emotion records for the last 90 days
@@ -77,9 +74,12 @@ async function seedEmotions() {
 
         // Insert records one by one
         for (const record of records) {
-            await pool.query(
-                `INSERT INTO emotion_records (user_id, emotion_type, recorded_at) VALUES ($1, $2, $3)`,
-                [record.userId, record.emotionType, record.recordedAt]
+            // Escape values to prevent SQL injection
+            const escapedUserId = typeof record.userId === 'string' ? record.userId.replace(/'/g, "''") : String(record.userId);
+            const escapedEmotionType = record.emotionType.replace(/'/g, "''");
+            const escapedRecordedAt = record.recordedAt.replace(/'/g, "''");
+            await prisma.$executeRawUnsafe(
+                `INSERT INTO emotion_records (user_id, emotion_type, recorded_at) VALUES ('${escapedUserId}'::uuid, '${escapedEmotionType}', '${escapedRecordedAt}'::timestamp)`
             );
         }
 
@@ -96,7 +96,7 @@ async function seedEmotions() {
     } catch (error) {
         console.error('Error seeding emotions:', error);
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

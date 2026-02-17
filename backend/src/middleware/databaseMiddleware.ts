@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 // Simple logger for middleware
 const logger = {
@@ -10,7 +10,7 @@ const logger = {
 
 export const databaseHealthCheck = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await pool.query('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     const healthStatus = { healthy: true };
 
     (req as any).databaseHealth = healthStatus;

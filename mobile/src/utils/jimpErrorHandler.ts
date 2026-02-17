@@ -28,11 +28,16 @@
         (errorObj && typeof errorObj === 'object' && (
           errorObj.code === 'NOT_FOUND' ||
           errorObj.code === 'UNAUTHORIZED' ||
+          errorObj.code === 'NETWORK_ERROR' ||
           (errorObj.response && (errorObj.response.status === 404 || errorObj.response.status === 401))
         )) ||
         message.includes('Resource not found') ||
         message.includes('NOT_FOUND') ||
-        message.includes('UNAUTHORIZED')
+        message.includes('UNAUTHORIZED') ||
+        message.includes('ERR_CONNECTION_REFUSED') ||
+        message.includes('Connection refused') ||
+        message.includes('Network Error') ||
+        (args.some(arg => typeof arg === 'string' && arg.includes('ERR_CONNECTION_REFUSED')))
       ) {
         // Suppress expected API errors - they're handled gracefully in the app
         return;

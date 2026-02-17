@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface ModernSidebarProps {
   activeModule: string
@@ -33,6 +34,7 @@ function svg(name: string, cls = 'h-5 w-5') {
 }
 
 export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle, isMobile }: ModernSidebarProps) {
+  const router = useRouter()
   const navRef = useRef<HTMLElement>(null)
   const activeItemRef = useRef<HTMLButtonElement>(null)
   const [branding, setBranding] = useState<{ adminAppName?: string; logoUrl?: string } | null>(null)
@@ -106,7 +108,20 @@ export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle,
       activeItemRef.current.focus()
     }
   }, [isOpen, activeModule])
+
   const menuGroups = [
+    {
+      title: 'Developers',
+      items: [
+        {
+          id: 'dev-hub',
+          label: 'Dev Hub',
+          icon: 'server',
+          description: 'Developer documentation',
+          href: '/identity/dev-hub'
+        }
+      ]
+    },
     {
       title: 'Overview',
       items: [
@@ -300,7 +315,12 @@ export function ModernSidebar({ activeModule, setActiveModule, isOpen, onToggle,
                   key={item.id}
                   ref={activeModule === item.id ? activeItemRef : null}
                   onClick={() => {
-                    setActiveModule(item.id)
+                    const href = (item as any).href
+                    if (href) {
+                      router.push(href)
+                    } else {
+                      setActiveModule(item.id)
+                    }
                     if (isMobile) {
                       onToggle()
                     }

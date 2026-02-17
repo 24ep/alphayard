@@ -22,33 +22,28 @@ export interface BackgroundConfig {
 const fixImageUrl = (url?: string): string => {
   if (!url) return '';
 
-  // Case 1: Relative Path (Uploads)
-  // e.g., "/uploads/logo.png" -> "http://192.168.1.5:4000/uploads/logo.png"
+  let finalUrl = url;
+
+  // Case 1: Relative Path (starting with /)
   if (url.startsWith('/')) {
-    // config.apiUrl typically ends in /api/v1, we need the root
-    // Handle both cases: ending in /api/v1 or just /api
-    let baseUrl = config.apiUrl;
-    if (baseUrl.endsWith('/api/v1')) {
-        baseUrl = baseUrl.replace(/\/api\/v1\/?$/, '');
-    } else if (baseUrl.endsWith('/api')) {
-        baseUrl = baseUrl.replace(/\/api\/?$/, '');
-    }
-    
-    let finalUrl = `${baseUrl}${url}`;
-    
-    // Fix localhost for Android emulator
-    if (Platform.OS === 'android' && finalUrl.includes('localhost')) {
-      finalUrl = finalUrl.replace('localhost', '10.0.2.2');
-    }
-    return finalUrl;
+    // config.apiUrl is something like "http://192.168.1.5:4000/api/v1"
+    // If url is "/api/v1/storage/proxy/UUID", we want to avoid doubling /api/v1
+    const apiBase = config.apiUrl; // e.g. "http://localhost:4000/api/v1"
+    const domainOnly = apiBase.split('/api/v1')[0];
+    finalUrl = `${domainOnly}${url}`;
+  } 
+  // Case 2: Just a UUID string (not a URL, not starting with /)
+  else if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(url)) {
+    const apiBase = config.apiUrl;
+    finalUrl = `${apiBase}/storage/proxy/${url}`;
   }
 
-  // Case 2: Absolute URL with Localhost
-  if (Platform.OS === 'android' && url.includes('localhost')) {
-    return url.replace('localhost', '10.0.2.2');
+  // Case 3: Absolute URL with Localhost (fix for Android Emulator)
+  if (Platform.OS === 'android' && finalUrl.includes('localhost')) {
+    finalUrl = finalUrl.replace('localhost', '10.0.2.2');
   }
 
-  return url;
+  return finalUrl;
 };
 
 /**

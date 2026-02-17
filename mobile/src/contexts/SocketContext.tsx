@@ -67,8 +67,19 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       setupGlobalEventListeners();
 
       console.log('Socket connected successfully');
-    } catch (error) {
-      console.error('Failed to connect socket:', error);
+    } catch (error: any) {
+      const isConnectionRefused =
+        error?.message?.includes?.('ERR_CONNECTION_REFUSED') ||
+        error?.message?.includes?.('Connection refused') ||
+        error?.message?.includes?.('websocket error') ||
+        error?.message?.includes?.('TransportError');
+      if (isConnectionRefused) {
+        console.warn(
+          'Socket not available (is the backend running?). Set EXPO_PUBLIC_API_URL to your backend URL, e.g. http://localhost:4000/api/v1 for web or http://<your-pc-ip>:4000/api/v1 for device.'
+        );
+      } else {
+        console.error('Failed to connect socket:', error);
+      }
       setIsConnected(false);
       setSocketId(undefined);
     }

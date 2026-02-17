@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { adminUserController } from '../../controllers/admin/AdminUserController';
+import { adminSSOController } from '../../controllers/admin/AdminSSOController';
 import { authenticateAdmin, requirePermission } from '../../middleware/adminAuth';
 
 const router = Router();
@@ -8,6 +9,9 @@ const router = Router();
 
 // Login (public route)
 router.post('/login', adminUserController.login.bind(adminUserController));
+
+// SSO Login (public route)
+router.post('/sso/:provider', adminSSOController.ssoLogin.bind(adminSSOController));
 
 // Get current user (requires authentication)
 router.get('/me', authenticateAdmin as any, adminUserController.getCurrentUser.bind(adminUserController));

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { Client } = require('pg');
+const { prisma } = require('../lib/prisma');
 
 const DATABASE_URL = process.env.DATABASE_URL || process.argv.find(a => a.startsWith('postgres')) || '';
 if (!DATABASE_URL) {
@@ -95,20 +95,18 @@ WHERE t.id IS NULL;
 `;
 
 async function main() {
-  const client = new Client({ connectionString: DATABASE_URL });
-  await client.connect();
   try {
     // Split on semicolons while preserving statements
     const statements = SQL.split(/;\s*\n/).map(s => s.trim()).filter(Boolean);
     for (const stmt of statements) {
-      await client.query(stmt);
+      await prisma.$executeRawUnsafe(stmt);
     }
     console.log('✅ Localization seed completed');
   } catch (e) {
     console.error('❌ Seed failed:', e.message || e);
     process.exit(1);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

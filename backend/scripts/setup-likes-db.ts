@@ -1,5 +1,5 @@
 
-import { query } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -10,16 +10,16 @@ async function checkLikesTable() {
         console.log('🔗 Connecting to database...');
 
         // Check if table exists
-        const tables = await query(`
+        const tables = await prisma.$queryRawUnsafe(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' 
       AND table_name = 'social_post_likes';
-    `);
+    `) as Array<{ table_name: string }>;
 
-        if (tables.rows.length === 0) {
+        if (tables.length === 0) {
             console.log('⚠️ social_post_likes table missing. Creating...');
-            await query(`
+            await prisma.$executeRawUnsafe(`
         CREATE TABLE social_post_likes (
             id SERIAL PRIMARY KEY,
             post_id UUID REFERENCES social_posts(id) ON DELETE CASCADE,
@@ -38,10 +38,10 @@ async function checkLikesTable() {
         // I'll drop and recreate the trigger function for likes similar to comments
         console.log('🛠️ Configuring triggers for likes...');
 
-        await query(`DROP TRIGGER IF EXISTS update_social_post_likes_trigger ON social_post_likes;`);
-        await query(`DROP FUNCTION IF EXISTS update_social_post_likes_counter() CASCADE;`);
+        await prisma.$executeRawUnsafe(`DROP TRIGGER IF EXISTS update_social_post_likes_trigger ON social_post_likes;`);
+        await prisma.$executeRawUnsafe(`DROP FUNCTION IF EXISTS update_social_post_likes_counter() CASCADE;`);
 
-        await query(`
+        await prisma.$executeRawUnsafe(`
       CREATE OR REPLACE FUNCTION update_social_post_likes_counter()
       RETURNS TRIGGER AS $$
       BEGIN
@@ -63,7 +63,7 @@ async function checkLikesTable() {
       $$ LANGUAGE plpgsql;
     `);
 
-        await query(`
+        await prisma.$executeRawUnsafe(`
       CREATE TRIGGER update_social_post_likes_trigger
       AFTER INSERT OR DELETE ON social_post_likes
       FOR EACH ROW
@@ -75,6 +75,8 @@ async function checkLikesTable() {
     } catch (error) {
         console.error('❌ Error checking likes table:', error);
         process.exit(1);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 

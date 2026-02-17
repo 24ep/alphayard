@@ -321,7 +321,9 @@ class ThemeConfigService {
       const cleanBase = apiBase.endsWith('/') ? apiBase.slice(0, -1) : apiBase;
       const baseUrl = cleanBase.replace('/v1', ''); // Strip /v1 if present for public routes
       
-      const response = await fetch(`${baseUrl}/public/applications/bondary/config`, {
+      console.log(`[ThemeConfigService] Fetching from ${baseUrl}/public/applications/bondarys/config`);
+      
+      const response = await fetch(`${baseUrl}/public/applications/bondarys/config`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -336,7 +338,7 @@ class ThemeConfigService {
       console.log('[ThemeConfigService] Raw API Data:', JSON.stringify(data, null, 2));
 
       if (data && data.componentStyles) {
-        console.log('[ThemeConfigService] Branding config:', data.componentStyles.branding);
+        console.log('[ThemeConfigService] Branding config found:', data.componentStyles.branding ? 'Yes' : 'No');
         
         const branding = data.componentStyles.branding || DEFAULT_THEME.branding;
         
@@ -362,6 +364,11 @@ class ThemeConfigService {
             branding.loginBackgroundImage = this.fixUrl(branding.loginBackgroundImage);
             branding.pinBackgroundImage = this.fixUrl(branding.pinBackgroundImage);
             branding.onboardingBackgroundImage = this.fixUrl(branding.onboardingBackgroundImage);
+        
+            // NEW: Fix splash screen background image URL
+            if (branding.splash?.backgroundColor && typeof branding.splash.backgroundColor !== 'string' && branding.splash.backgroundColor.mode === 'image') {
+                branding.splash.backgroundColor.image = this.fixUrl(branding.splash.backgroundColor.image);
+            }
         }
 
         return {

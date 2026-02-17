@@ -50,8 +50,24 @@ export function FamiliesList({ onCircleClick }: FamiliesListProps) {
   const loadFamilies = async () => {
     try {
       setLoading(true)
-      const data = await adminService.getFamilies()
-      setFamilies(data)
+      // Use generic collection endpoint instead of deprecated getFamilies()
+      const response = await adminService.getCollectionItems('circles')
+      // Map entities to Circle format: entities have { id, attributes: { name, description, ... }, ... }
+      const circles: Circle[] = (response.entities || []).map((entity: any) => ({
+        id: entity.id,
+        name: entity.attributes?.name || entity.data?.name || '',
+        description: entity.attributes?.description || entity.data?.description,
+        type: entity.attributes?.type || entity.data?.type || 'Circle',
+        inviteCode: entity.attributes?.inviteCode || entity.data?.inviteCode,
+        createdAt: entity.createdAt || entity.created_at,
+        updatedAt: entity.updatedAt || entity.updated_at,
+        ownerId: entity.ownerId || entity.owner_id,
+        status: entity.status || 'active',
+        memberCount: entity.attributes?.member_count || entity.data?.member_count || 0,
+        is_active: entity.status === 'active',
+        owner: entity.attributes?.owner || entity.data?.owner
+      }))
+      setFamilies(circles)
     } catch (error) {
       console.error('Error loading families:', error)
     } finally {

@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import { authenticateAdmin } from '../../middleware/adminAuth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 // Demo fallback data for environments without DB configured
 const demoLanguages = [
@@ -30,21 +32,24 @@ const demoEnMap: Record<string, string> = {
 
 const router = Router();
 
+// Apply admin auth to all routes
+router.use(authenticateAdmin as any);
+
 // Helper to check if table exists
 async function tableExists(tableName: string): Promise<boolean> {
   try {
-    const { rows } = await pool.query(
+    const result = await prisma.$queryRawUnsafe<Array<{ exists: boolean }>>(
       `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = $1)`,
-      [tableName]
+      tableName
     );
-    return rows[0]?.exists === true;
+    return result[0]?.exists === true;
   } catch {
     return false;
   }
 }
 
 // GET /cms/localization/languages
-router.get('/languages', async (_req, res) => {
+router.get('/languages', requirePermission('localization', 'view'), async (_req, res) => {
   try {
     const exists = await tableExists('languages');
     if (!exists) {
@@ -54,9 +59,9 @@ router.get('/languages', async (_req, res) => {
       return res.json({ languages: sorted });
     }
 
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT id, code, name, native_name, direction, is_active, is_default, flag_emoji 
-       FROM languages ORDER BY is_default DESC, code ASC`
+       FROM core.languages ORDER BY is_default DESC, code ASC`
     );
 
     const result = rows.length > 0 ? rows : demoLanguages;
@@ -76,17 +81,17 @@ router.post('/languages', async (req, res) => {
 
     // Ensure only one default language
     if (is_default) {
-      await pool.query('UPDATE languages SET is_default = false WHERE code != $1', [code]);
+      await prisma.$executeRawUnsafe('UPDATE core.languages SET is_default = false WHERE code != $1', code);
     }
 
-    const { rows } = await pool.query(
-      `INSERT INTO languages (code, name, native_name, direction, is_active, is_default, flag_emoji)
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `INSERT INTO core.languages (code, name, native_name, direction, is_active, is_default, flag_emoji)
        VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (code) DO UPDATE SET 
          name = EXCLUDED.name, native_name = EXCLUDED.native_name, direction = EXCLUDED.direction,
          is_active = EXCLUDED.is_active, is_default = EXCLUDED.is_default, flag_emoji = EXCLUDED.flag_emoji
        RETURNING id, code, name, native_name, direction, is_active, is_default, flag_emoji`,
-      [code, name, native_name || name, direction, is_active, is_default, flag_emoji]
+      code, name, native_name || name, direction, is_active, is_default, flag_emoji
     );
 
     return res.status(201).json({ language: rows[0] });
@@ -96,13 +101,13 @@ router.post('/languages', async (req, res) => {
 });
 
 // PUT /cms/localization/languages/:id
-router.put('/languages/:id', async (req, res) => {
+router.put('/languages/:id', requirePermission('localization', 'edit'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, native_name, direction, is_active, is_default, flag_emoji } = req.body || {};
 
     if (is_default === true) {
-      await pool.query('UPDATE languages SET is_default = false WHERE id != $1', [id]);
+      await prisma.$executeRawUnsafe('UPDATE core.languages SET is_default = false WHERE id != $1', id);
     }
 
     const updates: string[] = [];
@@ -121,11 +126,11 @@ router.put('/languages/:id', async (req, res) => {
     }
 
     params.push(id);
-    const { rows } = await pool.query(
-      `UPDATE languages SET ${updates.join(', ')}, updated_at = NOW() 
+    const rows = await prisma.$queryRawUnsafe<any[]>(
+      `UPDATE core.languages SET ${updates.join(', ')}, updated_at = NOW() 
        WHERE id = $${paramIndex} 
        RETURNING id, code, name, native_name, direction, is_active, is_default, flag_emoji`,
-      params
+      ...params
     );
 
     if (rows.length === 0) {
@@ -142,7 +147,7 @@ router.put('/languages/:id', async (req, res) => {
 router.delete('/languages/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM languages WHERE id = $1', [id]);
+    await prisma.$executeRawUnsafe('DELETE FROM core.languages WHERE id = $1', id);
     return res.json({ success: true });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || 'Failed to delete language' });
@@ -150,7 +155,7 @@ router.delete('/languages/:id', async (req, res) => {
 });
 
 // GET /cms/localization/categories
-router.get('/categories', async (_req, res) => {
+router.get('/categories', requirePermission('localization', 'view'), async (_req, res) => {
   try {
     const exists = await tableExists('translation_keys');
     if (!exists) {
@@ -159,7 +164,7 @@ router.get('/categories', async (_req, res) => {
       return res.json(categories);
     }
 
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT DISTINCT category FROM translation_keys WHERE is_active = true'
     );
 
@@ -192,7 +197,7 @@ router.get('/keys', async (req, res) => {
     if (active_only === 'true') { sql += ' AND is_active = true'; }
     if (search) { sql += ` AND key ILIKE $${paramIndex++}`; params.push(`%${search}%`); }
 
-    const { rows } = await pool.query(sql, params);
+    const rows = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
     return res.json({ keys: rows });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || 'Failed to load translation keys' });
@@ -200,7 +205,7 @@ router.get('/keys', async (req, res) => {
 });
 
 // GET /cms/timezones
-router.get('/timezones', async (_req, res) => {
+router.get('/timezones', requirePermission('localization', 'view'), async (_req, res) => {
   const timezones = [
     { id: 'America/New_York', name: 'Eastern Time', offset: 'UTC-05:00', region: 'North America' },
     { id: 'America/Los_Angeles', name: 'Pacific Time', offset: 'UTC-08:00', region: 'North America' },
@@ -243,7 +248,7 @@ router.get('/translations', async (req, res) => {
              json_build_object('id', l.id, 'code', l.code) as languages
       FROM translations t
       JOIN translation_keys tk ON t.key_id = tk.id
-      JOIN languages l ON t.language_id = l.id
+      JOIN core.languages l ON t.language_id = l.id
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -256,7 +261,7 @@ router.get('/translations', async (req, res) => {
     sql += ` ORDER BY t.updated_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
     params.push(pageSize, offset);
 
-    const { rows } = await pool.query(sql, params);
+    const rows = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
     return res.json({ translations: rows });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || 'Failed to load translations' });
@@ -264,7 +269,7 @@ router.get('/translations', async (req, res) => {
 });
 
 // GET /cms/localization/translations/:langCode
-router.get('/translations/:langCode', async (req, res) => {
+router.get('/translations/:langCode', requirePermission('localization', 'view'), async (req, res) => {
   try {
     const { langCode } = req.params;
     const exists = await tableExists('translations');
@@ -273,16 +278,16 @@ router.get('/translations/:langCode', async (req, res) => {
       return res.json({ translations: langCode === 'en' ? demoEnMap : {} });
     }
 
-    const { rows: langRows } = await pool.query('SELECT id FROM languages WHERE code = $1', [langCode]);
+    const langRows = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM core.languages WHERE code = $1', langCode);
     if (langRows.length === 0) {
       return res.json({ translations: langCode === 'en' ? demoEnMap : {} });
     }
 
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT tk.key, t.value FROM translations t
        JOIN translation_keys tk ON t.key_id = tk.id
        WHERE t.language_id = $1 AND (t.is_approved IS NULL OR t.is_approved = true)`,
-      [langRows[0].id]
+      langRows[0].id
     );
 
     const map: Record<string, string> = {};
@@ -299,7 +304,7 @@ router.get('/translations/:langCode', async (req, res) => {
 });
 
 // POST /cms/localization/translations
-router.post('/translations', async (req, res) => {
+router.post('/translations', requirePermission('localization', 'create'), async (req, res) => {
   try {
     const { key, value, language, category, description, isActive, isApproved } = req.body || {};
     if (!key || !value || !language) {
@@ -307,27 +312,27 @@ router.post('/translations', async (req, res) => {
     }
 
     // Upsert key
-    const { rows: keyRows } = await pool.query(
+    const keyRows = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO translation_keys (key, category, description, is_active, context)
        VALUES ($1, $2, $3, $4, 'mobile_app')
        ON CONFLICT (key) DO UPDATE SET category = EXCLUDED.category, description = EXCLUDED.description
        RETURNING id`,
-      [key, category || 'general', description || null, isActive !== false]
+      key, category || 'general', description || null, isActive !== false
     );
 
     // Find language id
-    const { rows: langRows } = await pool.query('SELECT id FROM languages WHERE code = $1', [language]);
+    const langRows = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM core.languages WHERE code = $1', language);
     if (langRows.length === 0) {
       return res.status(400).json({ error: 'Invalid language' });
     }
 
     // Upsert translation
-    const { rows: txRows } = await pool.query(
+    const txRows = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO translations (key_id, language_id, value, is_approved)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (key_id, language_id) DO UPDATE SET value = EXCLUDED.value, is_approved = EXCLUDED.is_approved
        RETURNING id, value, is_approved, key_id, language_id`,
-      [keyRows[0].id, langRows[0].id, value, Boolean(isApproved)]
+      keyRows[0].id, langRows[0].id, value, Boolean(isApproved)
     );
 
     return res.status(201).json({ translation: txRows[0] });
@@ -354,9 +359,9 @@ router.put('/translations/:id', async (req, res) => {
     }
 
     params.push(id);
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `UPDATE translations SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${paramIndex} RETURNING *`,
-      params
+      ...params
     );
 
     if (rows.length === 0) {
@@ -370,10 +375,10 @@ router.put('/translations/:id', async (req, res) => {
 });
 
 // DELETE /cms/localization/translations/:id
-router.delete('/translations/:id', async (req, res) => {
+router.delete('/translations/:id', requirePermission('localization', 'delete'), async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM translations WHERE id = $1', [id]);
+    await prisma.$executeRawUnsafe('DELETE FROM translations WHERE id = $1', id);
     return res.json({ success: true });
   } catch (e: any) {
     return res.status(500).json({ error: e.message || 'Failed to delete translation' });

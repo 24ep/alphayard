@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 
 export class VersionController {
   /**
@@ -10,13 +10,12 @@ export class VersionController {
       const { pageId } = req.params;
       const { limit = 50, offset = 0 } = req.query;
 
-      const { rows } = await pool.query(
-        `SELECT * FROM page_versions 
-         WHERE page_id = $1 
-         ORDER BY version_number DESC 
-         LIMIT $2 OFFSET $3`,
-        [pageId, parseInt(String(limit)), parseInt(String(offset))]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM page_versions 
+        WHERE page_id = ${pageId}::uuid
+        ORDER BY version_number DESC 
+        LIMIT ${parseInt(String(limit))} OFFSET ${parseInt(String(offset))}
+      `;
 
       res.json({ versions: rows });
     } catch (error: any) {
@@ -32,10 +31,10 @@ export class VersionController {
     try {
       const { pageId, versionId } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
-        [pageId, versionId]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM page_versions 
+        WHERE page_id = ${pageId}::uuid AND id = ${versionId}::uuid
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
@@ -55,10 +54,10 @@ export class VersionController {
     try {
       const { pageId, versionNumber } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM page_versions WHERE page_id = $1 AND version_number = $2',
-        [pageId, parseInt(versionNumber)]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM page_versions 
+        WHERE page_id = ${pageId}::uuid AND version_number = ${parseInt(versionNumber)}
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
@@ -79,10 +78,10 @@ export class VersionController {
       const { pageId, versionId } = req.params;
 
       // Get version
-      const { rows: versionRows } = await pool.query(
-        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
-        [pageId, versionId]
-      );
+      const versionRows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM page_versions 
+        WHERE page_id = ${pageId}::uuid AND id = ${versionId}::uuid
+      `;
 
       if (versionRows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
@@ -91,10 +90,11 @@ export class VersionController {
       const version = versionRows[0];
 
       // Get page metadata
-      const { rows: pageRows } = await pool.query(
-        'SELECT id, title, slug, description, metadata, seo_config FROM pages WHERE id = $1',
-        [pageId]
-      );
+      const pageRows = await prisma.$queryRaw<any[]>`
+        SELECT id, title, slug, description, metadata, seo_config 
+        FROM pages 
+        WHERE id = ${pageId}::uuid
+      `;
 
       if (pageRows.length === 0) {
         return res.status(404).json({ error: 'Page not found' });
@@ -122,7 +122,6 @@ export class VersionController {
    * Restore a previous version (creates a new version based on the selected one)
    */
   async restoreVersion(req: any, res: Response) {
-    const client = await pool.connect();
     try {
       const { pageId, versionId } = req.params;
       const { changeDescription } = req.body;
@@ -132,83 +131,78 @@ export class VersionController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      await client.query('BEGIN');
+      const result = await prisma.$transaction(async (tx) => {
+        // Get the version to restore
+        const versionRows = await tx.$queryRaw<any[]>`
+          SELECT * FROM page_versions 
+          WHERE page_id = ${pageId}::uuid AND id = ${versionId}::uuid
+        `;
 
-      // Get the version to restore
-      const { rows: versionRows } = await client.query(
-        'SELECT * FROM page_versions WHERE page_id = $1 AND id = $2',
-        [pageId, versionId]
-      );
+        if (versionRows.length === 0) {
+          throw new Error('Version not found');
+        }
 
-      if (versionRows.length === 0) {
-        await client.query('ROLLBACK');
+        const version = versionRows[0];
+
+        // Delete current page components
+        await tx.$executeRaw`
+          DELETE FROM page_components WHERE page_id = ${pageId}::uuid
+        `;
+
+        // Insert components from the version
+        if (version.components && Array.isArray(version.components) && version.components.length > 0) {
+          for (const comp of version.components) {
+            await tx.$executeRaw`
+              INSERT INTO page_components (
+                page_id, component_type, position, props, styles, responsive_config
+              ) VALUES (
+                ${pageId}::uuid, 
+                ${comp.componentType || comp.component_type}, 
+                ${comp.position}, 
+                ${JSON.stringify(comp.props || {})}::jsonb, 
+                ${JSON.stringify(comp.styles || {})}::jsonb, 
+                ${JSON.stringify(comp.responsiveConfig || comp.responsive_config || {})}::jsonb
+              )
+            `;
+          }
+        }
+
+        // Update page to trigger version creation (assuming there's a trigger or we create version manually)
+        const updatedPageRows = await tx.$queryRaw<any[]>`
+          UPDATE pages SET 
+            updated_by = ${userId}::uuid, 
+            updated_at = NOW(),
+            metadata = ${JSON.stringify({
+              ...version.metadata,
+              restored_from_version: version.version_number,
+              restore_description: changeDescription || `Restored from version ${version.version_number}`
+            })}::jsonb
+          WHERE id = ${pageId}::uuid 
+          RETURNING *
+        `;
+
+        // Get the newly created version
+        const newVersionRows = await tx.$queryRaw<any[]>`
+          SELECT * FROM page_versions 
+          WHERE page_id = ${pageId}::uuid
+          ORDER BY version_number DESC 
+          LIMIT 1
+        `;
+
+        return {
+          page: updatedPageRows[0],
+          newVersion: newVersionRows[0],
+          message: `Successfully restored version ${version.version_number}`
+        };
+      });
+
+      res.json(result);
+    } catch (error: any) {
+      if (error.message === 'Version not found') {
         return res.status(404).json({ error: 'Version not found' });
       }
-
-      const version = versionRows[0];
-
-      // Delete current page components
-      await client.query('DELETE FROM page_components WHERE page_id = $1', [pageId]);
-
-      // Insert components from the version
-      if (version.components && Array.isArray(version.components) && version.components.length > 0) {
-        for (const comp of version.components) {
-          await client.query(
-            `INSERT INTO page_components (
-              page_id, component_type, position, props, styles, responsive_config
-            ) VALUES ($1, $2, $3, $4, $5, $6)`,
-            [
-              pageId, 
-              comp.componentType || comp.component_type, 
-              comp.position, 
-              comp.props || {}, 
-              comp.styles || {}, 
-              comp.responsiveConfig || comp.responsive_config || {}
-            ]
-          );
-        }
-      }
-
-      // Update page to trigger version creation (assuming there's a trigger or we create version manually)
-      const { rows: updatedPageRows } = await client.query(
-        `UPDATE pages SET 
-          updated_by = $1, 
-          updated_at = NOW(),
-          metadata = $2
-         WHERE id = $3 RETURNING *`,
-        [
-          userId, 
-          {
-            ...version.metadata,
-            restored_from_version: version.version_number,
-            restore_description: changeDescription || `Restored from version ${version.version_number}`
-          },
-          pageId
-        ]
-      );
-
-      // Get the newly created version
-      const { rows: newVersionRows } = await client.query(
-        `SELECT * FROM page_versions 
-         WHERE page_id = $1 
-         ORDER BY version_number DESC 
-         LIMIT 1`,
-        [pageId]
-      );
-
-      await client.query('COMMIT');
-
-      res.json({ 
-        page: updatedPageRows[0],
-        newVersion: newVersionRows[0],
-        message: `Successfully restored version ${version.version_number}`
-      });
-    } catch (error: any) {
-      await client.query('ROLLBACK');
       console.error('Error restoring version:', error);
       res.status(500).json({ error: 'Internal server error', message: error.message });
-    } finally {
-      client.release();
     }
   }
 
@@ -225,10 +219,11 @@ export class VersionController {
       }
 
       // Get both versions
-      const { rows: versions } = await pool.query(
-        'SELECT * FROM page_versions WHERE page_id = $1 AND id = ANY($2)',
-        [pageId, [version1, version2]]
-      );
+      const versions = await prisma.$queryRaw<any[]>`
+        SELECT * FROM page_versions 
+        WHERE page_id = ${pageId}::uuid 
+        AND id IN (${version1}::uuid, ${version2}::uuid)
+      `;
 
       if (versions.length !== 2) {
         return res.status(404).json({ error: 'One or both versions not found' });
@@ -399,16 +394,18 @@ export class VersionController {
       const { pageId, versionId } = req.params;
 
       // Get the latest version number
-      const { rows: latestVersionRows } = await pool.query(
-        'SELECT version_number FROM page_versions WHERE page_id = $1 ORDER BY version_number DESC LIMIT 1',
-        [pageId]
-      );
+      const latestVersionRows = await prisma.$queryRaw<any[]>`
+        SELECT version_number FROM page_versions 
+        WHERE page_id = ${pageId}::uuid 
+        ORDER BY version_number DESC 
+        LIMIT 1
+      `;
 
       // Get the version to delete
-      const { rows: versionToDeleteRows } = await pool.query(
-        'SELECT version_number FROM page_versions WHERE id = $1',
-        [versionId]
-      );
+      const versionToDeleteRows = await prisma.$queryRaw<any[]>`
+        SELECT version_number FROM page_versions 
+        WHERE id = ${versionId}::uuid
+      `;
 
       if (versionToDeleteRows.length === 0) {
         return res.status(404).json({ error: 'Version not found' });
@@ -422,7 +419,9 @@ export class VersionController {
         return res.status(400).json({ error: 'Cannot delete the current version' });
       }
 
-      await pool.query('DELETE FROM page_versions WHERE id = $1', [versionId]);
+      await prisma.$executeRaw`
+        DELETE FROM page_versions WHERE id = ${versionId}::uuid
+      `;
 
       res.json({ message: 'Version deleted successfully' });
     } catch (error: any) {

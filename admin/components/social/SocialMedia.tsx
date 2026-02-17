@@ -24,6 +24,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import { socialMediaService, Circle, SocialPost, SocialComment, SocialReport, SocialActivity } from '../../services/socialMediaService'
+import { adminService } from '../../services/adminService'
 import { Card, CardBody, CardHeader } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -67,7 +68,14 @@ export function SocialMedia() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const familiesData = await socialMediaService.getFamilies()
+      // Use generic collection endpoint instead of socialMediaService.getFamilies()
+      const response = await adminService.getCollectionItems('circles')
+      const familiesData: Circle[] = (response.entities || []).map((entity: any) => ({
+        id: entity.id,
+        name: entity.attributes?.name || entity.data?.name || '',
+        description: entity.attributes?.description || entity.data?.description,
+        member_count: entity.attributes?.member_count || entity.data?.member_count || 0
+      }))
       const allFamiliesOption: Circle = { 
         id: 'all', 
         name: 'All Families', 

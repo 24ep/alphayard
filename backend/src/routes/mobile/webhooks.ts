@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 import { validateApiKey } from '../../middleware/auth';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import emailService from '../../services/emailService';
 import smsService from '../../services/smsService';
 
@@ -213,26 +213,19 @@ router.post('/health', validateApiKey as any, async (req: Request, res: Response
 // Stripe webhook handlers
 async function handleStripeSubscriptionCreated(subscription: any) {
   try {
-    const { rows } = await pool.query(
-      'SELECT id FROM subscriptions WHERE stripe_subscription_id = $1',
-      [subscription.id]
-    );
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id FROM core.subscriptions WHERE stripe_subscription_id = ${subscription.id}
+    `;
 
     if (rows.length > 0) {
-      await pool.query(
-        `UPDATE subscriptions SET 
-           status = $1,
-           current_period_start = $2,
-           current_period_end = $3,
+      await prisma.$executeRaw`
+        UPDATE core.subscriptions SET 
+           status = ${subscription.status},
+           current_period_start = ${new Date(subscription.current_period_start * 1000)},
+           current_period_end = ${new Date(subscription.current_period_end * 1000)},
            updated_at = NOW()
-         WHERE stripe_subscription_id = $4`,
-        [
-          subscription.status,
-          new Date(subscription.current_period_start * 1000),
-          new Date(subscription.current_period_end * 1000),
-          subscription.id
-        ]
-      );
+         WHERE stripe_subscription_id = ${subscription.id}
+      `;
     }
   } catch (error) {
     console.error('Handle Stripe subscription created error:', error);
@@ -241,28 +234,20 @@ async function handleStripeSubscriptionCreated(subscription: any) {
 
 async function handleStripeSubscriptionUpdated(subscription: any) {
   try {
-    const { rows } = await pool.query(
-      'SELECT id FROM subscriptions WHERE stripe_subscription_id = $1',
-      [subscription.id]
-    );
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id FROM core.subscriptions WHERE stripe_subscription_id = ${subscription.id}
+    `;
 
     if (rows.length > 0) {
-      await pool.query(
-        `UPDATE subscriptions SET 
-           status = $1,
-           current_period_start = $2,
-           current_period_end = $3,
-           cancel_at_period_end = $4,
+      await prisma.$executeRaw`
+        UPDATE core.subscriptions SET 
+           status = ${subscription.status},
+           current_period_start = ${new Date(subscription.current_period_start * 1000)},
+           current_period_end = ${new Date(subscription.current_period_end * 1000)},
+           cancel_at_period_end = ${subscription.cancel_at_period_end},
            updated_at = NOW()
-         WHERE stripe_subscription_id = $5`,
-        [
-          subscription.status,
-          new Date(subscription.current_period_start * 1000),
-          new Date(subscription.current_period_end * 1000),
-          subscription.cancel_at_period_end,
-          subscription.id
-        ]
-      );
+         WHERE stripe_subscription_id = ${subscription.id}
+      `;
     }
   } catch (error) {
     console.error('Handle Stripe subscription updated error:', error);
@@ -271,14 +256,13 @@ async function handleStripeSubscriptionUpdated(subscription: any) {
 
 async function handleStripeSubscriptionDeleted(subscription: any) {
   try {
-    await pool.query(
-      `UPDATE subscriptions SET 
+    await prisma.$executeRaw`
+      UPDATE core.subscriptions SET 
          status = 'cancelled',
          cancelled_at = NOW(),
          updated_at = NOW()
-       WHERE stripe_subscription_id = $1`,
-      [subscription.id]
-    );
+       WHERE stripe_subscription_id = ${subscription.id}
+    `;
   } catch (error) {
     console.error('Handle Stripe subscription deleted error:', error);
   }
@@ -286,10 +270,9 @@ async function handleStripeSubscriptionDeleted(subscription: any) {
 
 async function handleStripePaymentSucceeded(invoice: any) {
   try {
-    const { rows } = await pool.query(
-      'SELECT s.*, u.email, u.first_name FROM subscriptions s JOIN users u ON s.user_id = u.id WHERE s.stripe_subscription_id = $1',
-      [invoice.subscription]
-    );
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT s.*, u.email, u.first_name FROM core.subscriptions s JOIN core.users u ON s.user_id = u.id WHERE s.stripe_subscription_id = ${invoice.subscription}
+    `;
 
     if (rows.length > 0) {
       const sub = rows[0];
@@ -315,10 +298,9 @@ async function handleStripePaymentSucceeded(invoice: any) {
 
 async function handleStripePaymentFailed(invoice: any) {
   try {
-    const { rows } = await pool.query(
-      'SELECT s.*, u.email, u.first_name FROM subscriptions s JOIN users u ON s.user_id = u.id WHERE s.stripe_subscription_id = $1',
-      [invoice.subscription]
-    );
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT s.*, u.email, u.first_name FROM core.subscriptions s JOIN core.users u ON s.user_id = u.id WHERE s.stripe_subscription_id = ${invoice.subscription}
+    `;
 
     if (rows.length > 0) {
       const sub = rows[0];

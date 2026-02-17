@@ -1,16 +1,14 @@
-const { Client } = require('pg');
+const { prisma } = require('../lib/prisma');
 require('dotenv').config({ path: '../../../.env' }); // Adjust path as needed
 
 async function check() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL ? process.env.DATABASE_URL.replace(/\/[^/]+$/, '/postgres') : 'postgresql://postgres:postgres@localhost:5432/postgres' });
   try {
-    await client.connect();
-    const res = await client.query('SELECT datname FROM pg_database');
-    console.log('Databases:', res.rows.map(r => r.datname));
+    const res = await prisma.$queryRawUnsafe('SELECT datname FROM pg_database');
+    console.log('Databases:', res.map(r => r.datname));
   } catch (e) {
     console.error('Error:', e.message);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

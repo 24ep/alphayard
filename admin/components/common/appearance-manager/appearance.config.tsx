@@ -78,6 +78,11 @@ export const CategoryIcons: Record<string, React.ReactNode> = {
   'charts-data': <PresentationChartLineIcon className="w-5 h-5" />,
   'app-widgets': <DevicePhoneMobileIcon className="w-5 h-5" />,
   'navigation-ui': <ListBulletIcon className="w-5 h-5" />,
+  'circle-ui': <UserGroupIcon className="w-5 h-5" />,
+  'profile-ui': <UserGroupIcon className="w-5 h-5" />,
+  'calendar-ui': <PresentationChartLineIcon className="w-5 h-5" />,
+  'map-ui': <DevicePhoneMobileIcon className="w-5 h-5" />,
+  'screen-backgrounds': <SparklesIcon className="w-5 h-5" />,
 }
 
 export const solidColor = (color: string): ColorValue => ({ mode: 'solid' as ColorMode, solid: color })
@@ -203,21 +208,21 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
         name: 'Bottom Sheet', 
         type: 'card',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 32, borderColor: solidColor('transparent'), shadowLevel: 'lg' } as any,
-        mobileConfig: { componentName: 'BottomSheet', filePath: 'admin/components/ui/BottomSheet.tsx', usageExample: '<BottomSheet ref={sheetRef} snapPoints={["50%"]}>\n  <View><Text>Sheet Content</Text></View>\n</BottomSheet>' }
+        mobileConfig: { componentName: 'CommentDrawer', filePath: 'mobile/src/components/home/CommentDrawer.tsx', usageExample: '<CommentDrawer visible={visible} onClose={() => setVisible(false)}>\n  <View><Text>Content</Text></View>\n</CommentDrawer>' }
       },
       { 
         id: 'drawer-overlay', 
         name: 'Side Drawer', 
         type: 'card',
         styles: { backgroundColor: solidColor('#FFFFFF') } as any,
-        mobileConfig: { componentName: 'Drawer', filePath: 'admin/components/ui/Drawer.tsx', usageExample: '<Drawer isOpen={isOpen} onClose={() => setIsOpen(false)}>\n  <MenuContent />\n</Drawer>' }
+        mobileConfig: { componentName: 'CircleOptionsDrawer', filePath: 'mobile/src/components/home/CircleOptionsDrawer.tsx', usageExample: '<CircleOptionsDrawer visible={isOpen} onClose={() => setIsOpen(false)} />' }
       },
       { 
         id: 'tab-navigation', 
         name: 'Mobile Tabbar', 
         type: 'tabbar',
         styles: { backgroundColor: solidColor('rgba(255,255,255,0.95)'), textColor: solidColor('#64748B') } as any,
-        mobileConfig: { componentName: 'Tabbar', filePath: 'admin/components/ui/Tabbar.tsx', usageExample: '<Tabbar \n  tabs={tabs} \n  activeId={activeTab} \n  onSelect={handleTabSelect} \n/>' }
+        mobileConfig: { componentName: 'TabNavigation', filePath: 'mobile/src/components/home/TabNavigation.tsx', usageExample: '<TabNavigation \n  tabs={tabs} \n  activeId={activeTab} \n  onSelect={handleTabSelect} \n/>' }
       },
       { 
         id: 'segmented-control', 
@@ -348,7 +353,7 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
         name: 'Accordion Menu', 
         type: 'accordion',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
-        mobileConfig: { componentName: 'Accordion', filePath: 'admin/components/ui/Accordion.tsx', usageExample: '<Accordion title="Advanced Options">\n  <SettingsList />\n</Accordion>' }
+        mobileConfig: { componentName: 'UnifiedSettingsPage', filePath: 'mobile/src/components/settings/UnifiedSettingsPage.tsx', usageExample: '<UnifiedSettingsPage />' }
       }
     ]
   },
@@ -363,7 +368,7 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
         name: 'Floating Button', 
         type: 'button',
         styles: { backgroundColor: solidColor('#6366F1'), textColor: solidColor('#FFFFFF'), borderRadius: 99 } as any,
-        mobileConfig: { componentName: 'FloatingCreatePostButton', filePath: 'components/home/FloatingCreatePostButton.tsx', usageExample: '<FloatingCreatePostButton visible={true} onPress={handlePress} />' },
+        mobileConfig: { componentName: 'FloatingCreatePostButton', filePath: 'mobile/src/components/home/FloatingCreatePostButton.tsx', usageExample: '<FloatingCreatePostButton visible={true} onPress={handlePress} />' },
         config: {
             buttonSize: 56,
             bottomOffset: 24,
@@ -373,24 +378,24 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
       },
       { 
         id: 'floating-menu', 
-        name: 'Radial Menu', 
+        name: 'Application Popup', 
         type: 'button',
         styles: { backgroundColor: solidColor('#1E293B'), textColor: solidColor('#FFFFFF') } as any,
-        mobileConfig: { componentName: 'FloatingMenu', filePath: 'admin/components/ui/FloatingMenu.tsx', usageExample: '<FloatingMenu \n  items={[ \n    { icon: "camera", onPress: openCamera }, \n    { icon: "photo", onPress: openGallery } \n  ]} \n/>' }
+        mobileConfig: { componentName: 'ApplicationsPopup', filePath: 'mobile/src/components/popup/ApplicationsPopup.tsx', usageExample: '<ApplicationsPopup visible={visible} onClose={() => setVisible(false)} />' }
       },
       { 
         id: 'action-sheet', 
-        name: 'Action Sheet', 
+        name: 'Applications Drawer', 
         type: 'card',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
-        mobileConfig: { componentName: 'ActionSheet', filePath: 'admin/components/ui/ActionSheet.tsx', usageExample: 'const options = ["Edit", "Delete", "Cancel"];\nActionSheet.show({ options }, index => {\n  // Handle selection\n});' }
+        mobileConfig: { componentName: 'ApplicationsDrawer', filePath: 'mobile/src/components/home/ApplicationsDrawer.tsx', usageExample: '<ApplicationsDrawer visible={visible} onClose={() => setVisible(false)} />' }
       },
       { 
         id: 'pull-refresh', 
-        name: 'Pull Refresh', 
+        name: 'Loading Screen', 
         type: 'generic',
         styles: { textColor: solidColor('#6366F1') } as any,
-        mobileConfig: { componentName: 'PullToRefresh', filePath: 'admin/components/ui/PullToRefresh.tsx', usageExample: '<ScrollView \n  refreshControl={\n    <PullToRefresh refreshing={loading} onRefresh={refetch} />\n  }\n>\n  {content}\n</ScrollView>' }
+        mobileConfig: { componentName: 'LoadingScreen', filePath: 'mobile/src/components/common/LoadingScreen.tsx', usageExample: '<LoadingScreen message="Loading..." />' }
       }
     ]
   },
@@ -402,52 +407,52 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'metric-card', 
-        name: 'Metric Card', 
+        name: 'Profile Stats', 
         type: 'card',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24, borderColor: solidColor('#F1F5F9'), shadowLevel: 'sm' } as any,
-        mobileConfig: { componentName: 'MetricCard', filePath: 'admin/components/ui/MetricCard.tsx', usageExample: '<MetricCard \n  title="Total Sales" \n  value="$1,234" \n  trend="+5%" \n  trendColor="green" \n/>' }
+        mobileConfig: { componentName: 'ProfileStats', filePath: 'mobile/src/components/profile/ProfileStats.tsx', usageExample: '<ProfileStats stats={userData} />' }
       },
       { 
         id: 'stat-roll', 
-        name: 'Statistic Roll', 
+        name: 'Health Summary', 
         type: 'generic',
         styles: { textColor: solidColor('#0F172A') } as any,
-        mobileConfig: { componentName: 'StatisticRoll', filePath: 'admin/components/ui/StatisticRoll.tsx', usageExample: '<StatisticRoll \n  label="Active Users" \n  value={5432} \n  duration={2000} \n/>' }
+        mobileConfig: { componentName: 'HealthSummary', filePath: 'mobile/src/components/home/HealthSummary.tsx', usageExample: '<HealthSummary data={healthData} />' }
       },
       { 
         id: 'sparkline-chart', 
-        name: 'Sparkline Chart', 
+        name: 'Finance Summary', 
         type: 'generic',
         styles: { backgroundColor: solidColor('transparent'), textColor: solidColor('#6366F1') } as any,
-        mobileConfig: { componentName: 'Sparkline', filePath: 'admin/components/ui/Sparkline.tsx', usageExample: '<Sparkline \n  data={[10, 20, 15, 40, 30, 60]} \n  width={100} \n  height={50} \n/>' }
+        mobileConfig: { componentName: 'FinanceSummary', filePath: 'mobile/src/components/home/FinanceSummary.tsx', usageExample: '<FinanceSummary data={financeData} />' }
       },
       { 
         id: 'avatar-group', 
-        name: 'Avatar Stack', 
+        name: 'Circle Members Widget', 
         type: 'badge',
         styles: { borderColor: solidColor('#FFFFFF') } as any,
-        mobileConfig: { componentName: 'AvatarGroup', filePath: 'admin/components/ui/AvatarGroup.tsx', usageExample: '<AvatarGroup \n  images={[img1, img2, img3]} \n  limit={3} \n  size={40} \n/>' }
+        mobileConfig: { componentName: 'CircleMembersWidget', filePath: 'mobile/src/components/widgets/CircleMembersWidget.tsx', usageExample: '<CircleMembersWidget members={members} />' }
       },
       { 
         id: 'timeline-main', 
-        name: 'Timeline List', 
+        name: 'Calendar Events', 
         type: 'generic',
         styles: { backgroundColor: solidColor('transparent'), borderColor: solidColor('#E2E8F0') } as any,
-        mobileConfig: { componentName: 'Timeline', filePath: 'admin/components/ui/Timeline.tsx', usageExample: '<Timeline \n  data={events} \n  renderItem={({ item }) => <EventCard event={item} />} \n/>' }
+        mobileConfig: { componentName: 'EventCard', filePath: 'mobile/src/components/calendar/EventCard.tsx', usageExample: '<EventCard event={event} onPress={handleEventPress} />' }
       },
       { 
         id: 'carousel-view', 
-        name: 'Carousel Gallery', 
+        name: 'Gallery App', 
         type: 'generic',
         styles: { backgroundColor: solidColor('transparent'), borderRadius: 24 } as any,
-        mobileConfig: { componentName: 'Carousel', filePath: 'admin/components/ui/Carousel.tsx', usageExample: '<Carousel \n  data={banners} \n  renderItem={renderBanner} \n  loop={true} \n/>' }
+        mobileConfig: { componentName: 'GalleryApp', filePath: 'mobile/src/components/apps/GalleryApp.tsx', usageExample: '<GalleryApp />' }
       },
       { 
         id: 'glass-card', 
-        name: 'Glass Card', 
+        name: 'Content Card', 
         type: 'card',
         styles: { backgroundColor: solidColor('rgba(255,255,255,0.8)'), borderRadius: 24, borderColor: solidColor('rgba(255,255,255,0.2)'), shadowLevel: 'md' } as any,
-        mobileConfig: { componentName: 'GlassCard', filePath: 'admin/components/ui/GlassCard.tsx', usageExample: '<GlassCard intensity={80}>\n  <Text>Frosted Glass Effect</Text>\n</GlassCard>' }
+        mobileConfig: { componentName: 'ContentCard', filePath: 'mobile/src/components/ContentCard.tsx', usageExample: '<ContentCard data={content} />' }
       }
     ]
   },
@@ -459,38 +464,38 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'status-indicator', 
-        name: 'Status Indicator', 
+        name: 'Branding Logo', 
         type: 'badge',
         styles: { backgroundColor: solidColor('#10B981') } as any,
-        mobileConfig: { componentName: 'StatusIndicator', filePath: 'admin/components/ui/StatusIndicator.tsx', usageExample: '<StatusIndicator status="online" label="Active" />' }
+        mobileConfig: { componentName: 'BrandLogo', filePath: 'mobile/src/components/common/BrandLogo.tsx', usageExample: '<BrandLogo size={48} />' }
       },
        { 
         id: 'notification-dot', 
-        name: 'Badge Indicator', 
+        name: 'Cool Icon', 
         type: 'badge',
         styles: { backgroundColor: solidColor('#EF4444'), textColor: solidColor('#FFFFFF') } as any,
-        mobileConfig: { componentName: 'NotificationBadge', filePath: 'admin/components/ui/NotificationBadge.tsx', usageExample: '<View>\n  <Icon name="bell" />\n  <NotificationBadge count={5} />\n</View>' }
+        mobileConfig: { componentName: 'CoolIcon', filePath: 'mobile/src/components/common/CoolIcon.tsx', usageExample: '<CoolIcon name="bell" size={24} color="#FF0000" />' }
       },
       { 
         id: 'progress-ring', 
-        name: 'Progress Ring', 
+        name: 'Emotion Check-in', 
         type: 'generic',
         styles: { textColor: solidColor('#6366F1'), backgroundColor: solidColor('#E2E8F0') } as any,
-        mobileConfig: { componentName: 'ProgressRing', filePath: 'admin/components/ui/ProgressRing.tsx', usageExample: '<ProgressRing \n  progress={0.75} \n  strokeWidth={4} \n  size={60} \n/>' }
+        mobileConfig: { componentName: 'EmotionCheckInModal', filePath: 'mobile/src/components/home/EmotionCheckInModal.tsx', usageExample: '<EmotionCheckInModal visible={visible} onClose={handleClose} />' }
       },
       { 
         id: 'skeleton-wrapper', 
         name: 'Skeleton Loader', 
         type: 'generic',
         styles: { backgroundColor: solidColor('#F1F5F9'), borderRadius: 16 } as any,
-        mobileConfig: { componentName: 'SkeletonWrapper', filePath: 'components/common/SkeletonWrapper.tsx', usageExample: '<SkeletonWrapper loading={isLoading}>\n  <UserProfile />\n</SkeletonWrapper>' }
+        mobileConfig: { componentName: 'SkeletonWrapper', filePath: 'mobile/src/components/common/SkeletonWrapper.tsx', usageExample: '<SkeletonWrapper loading={isLoading}>\n  <UserProfile />\n</SkeletonWrapper>' }
       },
       { 
         id: 'rating-stars', 
-        name: 'Rating Stars', 
+        name: 'Temperature Check', 
         type: 'generic',
         styles: { backgroundColor: solidColor('transparent'), textColor: solidColor('#FBBF24') } as any,
-        mobileConfig: { componentName: 'Rating', filePath: 'admin/components/ui/Rating.tsx', usageExample: '<Rating \n  startingValue={4.5} \n  imageSize={20} \n  onFinishRating={ratingCompleted} \n/>' }
+        mobileConfig: { componentName: 'TemperatureCheckModal', filePath: 'mobile/src/components/TemperatureCheckModal.tsx', usageExample: '<TemperatureCheckModal visible={visible} onClose={handleClose} />' }
       }
     ]
   },
@@ -502,7 +507,7 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'otp-input', 
-        name: 'OTP field', 
+        name: 'PIN Keypad', 
         type: 'input',
         styles: { 
           backgroundColor: solidColor('#F8FAFC'), 
@@ -513,42 +518,42 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
           validBorderColor: solidColor('#10B981'),
           invalidBorderColor: solidColor('#EF4444')
         } as any,
-        mobileConfig: { componentName: 'OTPInput', filePath: 'admin/components/ui/OTPInput.tsx', usageExample: '<OTPInput \n  code={code} \n  onCodeChanged={setCode} \n  pinCount={6} \n/>' }
+        mobileConfig: { componentName: 'PinKeypad', filePath: 'mobile/src/components/auth/PinKeypad.tsx', usageExample: '<PinKeypad \n  onCodeComplete={handlePin} \n  pinLength={6} \n/>' }
       },
       { 
         id: 'mobile-slider', 
-        name: 'Mobile Slider', 
+        name: 'Language Settings', 
         type: 'input',
         styles: { backgroundColor: solidColor('#6366F1'), borderRadius: 8 } as any,
-        mobileConfig: { componentName: 'Slider', filePath: 'admin/components/ui/Slider.tsx', usageExample: '<Slider \n  value={brightness} \n  minimumValue={0} \n  maximumValue={1} \n  onValueChange={setBrightness} \n/>' }
+        mobileConfig: { componentName: 'LanguageSettings', filePath: 'mobile/src/components/settings/LanguageSettings.tsx', usageExample: '<LanguageSettings />' }
       },
       { 
         id: 'stepper-control', 
-        name: 'Quantifier Stepper', 
+        name: 'Privacy Settings', 
         type: 'input',
         styles: { backgroundColor: solidColor('#F1F5F9'), borderRadius: 12 } as any,
-        mobileConfig: { componentName: 'Stepper', filePath: 'admin/components/ui/Stepper.tsx', usageExample: '<Stepper \n  value={quantity} \n  onIncrement={inc} \n  onDecrement={dec} \n/>' }
+        mobileConfig: { componentName: 'PrivacySettingsModal', filePath: 'mobile/src/components/profile/PrivacySettingsModal.tsx', usageExample: '<PrivacySettingsModal visible={visible} onClose={handleClose} />' }
       },
       { 
         id: 'toggle-switch', 
-        name: 'Modern Toggle', 
+        name: 'Notification Settings', 
         type: 'input',
         styles: { backgroundColor: solidColor('#E2E8F0') } as any,
-        mobileConfig: { componentName: 'ToggleSwitch', filePath: 'admin/components/ui/ToggleSwitch.tsx', usageExample: '<ToggleSwitch \n  isOn={isEnabled} \n  onToggle={toggleSwitch} \n/>' }
+        mobileConfig: { componentName: 'NotificationSettingsModal', filePath: 'mobile/src/components/profile/NotificationSettingsModal.tsx', usageExample: '<NotificationSettingsModal visible={visible} onClose={handleClose} />' }
       },
       { 
         id: 'chip-group', 
-        name: 'Chip Tags', 
+        name: 'Calendar Filters', 
         type: 'badge',
         styles: { backgroundColor: solidColor('#E2E8F0'), borderRadius: 99, textColor: solidColor('#475569') } as any,
-        mobileConfig: { componentName: 'ChipField', filePath: 'admin/components/ui/ChipField.tsx', usageExample: '<ChipField \n  tags={["React", "Native"]} \n  onTagPress={handleTagPress} \n/>' }
+        mobileConfig: { componentName: 'CalendarFilters', filePath: 'mobile/src/components/calendar/CalendarFilters.tsx', usageExample: '<CalendarFilters onFilterChange={handleFilterChange} />' }
       },
       { 
         id: 'search-overlay', 
-        name: 'Full Search', 
+        name: 'Search Drawer', 
         type: 'input',
         styles: { backgroundColor: solidColor('rgba(255,255,255,0.98)') } as any,
-        mobileConfig: { componentName: 'SearchDrawer', filePath: 'components/home/SearchDrawer.tsx', usageExample: '<SearchDrawer \n  visible={isSearching} \n  onClose={() => setIsSearching(false)} \n/>' }
+        mobileConfig: { componentName: 'SearchDrawer', filePath: 'mobile/src/components/home/SearchDrawer.tsx', usageExample: '<SearchDrawer \n  visible={isSearching} \n  onClose={() => setIsSearching(false)} \n/>' }
       },
       {
         id: 'datetime-picker',
@@ -561,7 +566,7 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
             textColor: solidColor('#1F2937'),
             shadowLevel: 'sm'
         } as any,
-        mobileConfig: { componentName: 'DateTimePickerDrawer', filePath: 'components/calendar/DateTimePickerDrawer.tsx', usageExample: '<DateTimePickerDrawer \n  visible={show} \n  onConfirm={handleDate} \n/>' },
+        mobileConfig: { componentName: 'DateTimePickerDrawer', filePath: 'mobile/src/components/calendar/DateTimePickerDrawer.tsx', usageExample: '<DateTimePickerDrawer \n  visible={show} \n  onConfirm={handleDate} \n/>' },
         config: {
             dateFormat: 'MMM DD, YYYY',
             timeFormat: 'h:mm A',
@@ -579,24 +584,24 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'swipeable-list', 
-        name: 'Swipeable Rows', 
+        name: 'Content List', 
         type: 'generic',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderColor: solidColor('#F1F5F9'), borderRadius: 12 } as any,
-        mobileConfig: { componentName: 'SwipeableList', filePath: 'admin/components/ui/SwipeableList.tsx', usageExample: '<SwipeableList \n  data={messages} \n  renderItem={renderMessage} \n  renderHiddenItem={renderActions} \n/>' }
+        mobileConfig: { componentName: 'ContentList', filePath: 'mobile/src/components/ContentList.tsx', usageExample: '<ContentList data={items} renderItem={renderItem} />' }
       },
       { 
         id: 'sortable-list', 
-        name: 'Sortable DND List', 
+        name: 'Widget Customization', 
         type: 'generic',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 12 } as any,
-        mobileConfig: { componentName: 'SortableList', filePath: 'admin/components/ui/SortableList.tsx', usageExample: '<SortableList \n  data={playlist} \n  onRowMoved={handleRowMove} \n  renderRow={renderSong} \n/>' }
+        mobileConfig: { componentName: 'WidgetCustomizationModal', filePath: 'mobile/src/components/home/WidgetCustomizationModal.tsx', usageExample: '<WidgetCustomizationModal visible={visible} onClose={handleClose} />' }
       },
       { 
         id: 'infinite-scroll', 
-        name: 'Infinite Scroll', 
+        name: 'Social Tab', 
         type: 'generic',
         styles: { textColor: solidColor('#94A3B8') } as any,
-        mobileConfig: { componentName: 'InfiniteScroll', filePath: 'admin/components/ui/InfiniteScroll.tsx', usageExample: '<InfiniteScroll \n  renderItem={renderItem} \n  data={data} \n  loadMore={fetchNextPage} \n/>' }
+        mobileConfig: { componentName: 'SocialTab', filePath: 'mobile/src/components/home/SocialTab.tsx', usageExample: '<SocialTab circleId={circleId} />' }
       }
     ]
   },
@@ -608,17 +613,31 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'message-bubble-sent', 
-        name: 'Sent Message', 
+        name: 'Chat Page', 
         type: 'card',
         styles: { backgroundColor: solidColor('#E8B4A1'), textColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
-        mobileConfig: { componentName: 'MessageBubble', filePath: 'components/chat/MessageBubble.tsx', usageExample: '<MessageBubble isOwnMessage={true} text="Hello!" />' }
+        mobileConfig: { componentName: 'ChatPage', filePath: 'mobile/src/components/chat/ChatPage.tsx', usageExample: '<ChatPage chatId={chatId} />' }
       },
       { 
         id: 'message-bubble-received', 
-        name: 'Received Message', 
+        name: 'Group Management', 
         type: 'card',
         styles: { backgroundColor: solidColor('#F3F4F6'), textColor: solidColor('#111827'), borderRadius: 16 } as any,
-        mobileConfig: { componentName: 'MessageBubble', filePath: 'components/chat/MessageBubble.tsx', usageExample: '<MessageBubble isOwnMessage={false} text="Hi there!" />' }
+        mobileConfig: { componentName: 'GroupManagement', filePath: 'mobile/src/components/chat/GroupManagement.tsx', usageExample: '<GroupManagement groupId={groupId} />' }
+      },
+      { 
+        id: 'ai-agent', 
+        name: 'AI Agent Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#6366F1'), textColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'AIAgentWidget', filePath: 'mobile/src/components/ai/AIAgentWidget.tsx', usageExample: '<AIAgentWidget />' }
+      },
+      { 
+        id: 'video-call', 
+        name: 'Video Call Screen', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#1F2937'), textColor: solidColor('#FFFFFF'), borderRadius: 8 } as any,
+        mobileConfig: { componentName: 'VideoCallScreen', filePath: 'mobile/src/components/video/VideoCallScreen.tsx', usageExample: '<VideoCallScreen callId={callId} />' }
       }
     ]
   },
@@ -630,10 +649,24 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'avatar-standard', 
-        name: 'User Avatar', 
+        name: 'Profile Header', 
         type: 'badge',
         styles: { borderRadius: 99, borderColor: solidColor('#FFFFFF') } as any,
-        mobileConfig: { componentName: 'Avatar', filePath: 'components/common/Avatar.tsx', usageExample: '<Avatar source={userImage} size={40} />' }
+        mobileConfig: { componentName: 'ProfileHeader', filePath: 'mobile/src/components/profile/ProfileHeader.tsx', usageExample: '<ProfileHeader user={userData} />' }
+      },
+      { 
+        id: 'storage-app', 
+        name: 'Storage App', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'StorageApp', filePath: 'mobile/src/components/apps/StorageApp.tsx', usageExample: '<StorageApp />' }
+      },
+      { 
+        id: 'gallery-card', 
+        name: 'Gallery Card Content', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 12 } as any,
+        mobileConfig: { componentName: 'GalleryCardContent', filePath: 'mobile/src/components/card/GalleryCardContent.tsx', usageExample: '<GalleryCardContent data={galleryData} />' }
       }
     ]
   },
@@ -648,13 +681,235 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
         name: 'SOS Panic Button', 
         type: 'button',
         styles: { backgroundColor: solidColor('#EF4444'), textColor: solidColor('#FFFFFF'), borderRadius: 99 } as any,
-        mobileConfig: { componentName: 'EmergencyAlertButton', filePath: 'components/emergency/EmergencyAlertButton.tsx', usageExample: '<EmergencyAlertButton />' },
+        mobileConfig: { componentName: 'EmergencyAlertButton', filePath: 'mobile/src/components/emergency/EmergencyAlertButton.tsx', usageExample: '<EmergencyAlertButton />' },
         config: {
             buttonSize: 80,
             verticalOffset: 20,
             horizontalOffset: 20,
             pulseColor: '#FF5A5A'
         }
+      },
+      { 
+        id: 'geofence-manager', 
+        name: 'Geofence Manager', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'GeofenceManager', filePath: 'mobile/src/components/safety/GeofenceManager.tsx', usageExample: '<GeofenceManager />' }
+      },
+      { 
+        id: 'emergency-contacts', 
+        name: 'Emergency Contacts Card', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FEE2E2'), borderRadius: 16, borderColor: solidColor('#FCA5A5') } as any,
+        mobileConfig: { componentName: 'EmergencyContactsCard', filePath: 'mobile/src/components/profile/EmergencyContactsCard.tsx', usageExample: '<EmergencyContactsCard contacts={emergencyContacts} />' }
+      }
+    ]
+  },
+  {
+    id: 'circle-ui',
+    name: 'Circle Components',
+    description: 'Circle management and display.',
+    icon: 'member-exp',
+    components: [
+      { 
+        id: 'circle-tab', 
+        name: 'Circle Tab', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'CircleTab', filePath: 'mobile/src/components/home/CircleTab.tsx', usageExample: '<CircleTab circleId={circleId} />' }
+      },
+      { 
+        id: 'circle-health-tab', 
+        name: 'Circle Health Tab', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'CircleHealthTab', filePath: 'mobile/src/components/home/CircleHealthTab.tsx', usageExample: '<CircleHealthTab circleId={circleId} />' }
+      },
+      { 
+        id: 'circle-member-drawer', 
+        name: 'Circle Member Drawer', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'CircleMemberDrawer', filePath: 'mobile/src/components/home/CircleMemberDrawer.tsx', usageExample: '<CircleMemberDrawer visible={visible} member={member} onClose={handleClose} />' }
+      },
+      { 
+        id: 'circle-location-map', 
+        name: 'Circle Location Map', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'CircleLocationMap', filePath: 'mobile/src/components/home/CircleLocationMap.tsx', usageExample: '<CircleLocationMap circleId={circleId} />' }
+      },
+      { 
+        id: 'circle-card', 
+        name: 'Circle Card', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16, shadowLevel: 'sm' } as any,
+        mobileConfig: { componentName: 'CircleCard', filePath: 'mobile/src/components/profile/CircleCard.tsx', usageExample: '<CircleCard circle={circleData} onPress={handlePress} />' }
+      },
+      { 
+        id: 'edit-circle-modal', 
+        name: 'Edit Circle Modal', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'EditCircleModal', filePath: 'mobile/src/components/circle/EditCircleModal.tsx', usageExample: '<EditCircleModal visible={visible} circle={circle} onClose={handleClose} />' }
+      }
+    ]
+  },
+  {
+    id: 'profile-ui',
+    name: 'Profile Components',
+    description: 'User profile and settings UI.',
+    icon: 'member-exp',
+    components: [
+      { 
+        id: 'profile-info-tab', 
+        name: 'Profile Info Tab', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ProfileInfoTab', filePath: 'mobile/src/components/profile/ProfileInfoTab.tsx', usageExample: '<ProfileInfoTab user={userData} />' }
+      },
+      { 
+        id: 'profile-social-tab', 
+        name: 'Profile Social Tab', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ProfileSocialTab', filePath: 'mobile/src/components/profile/ProfileSocialTab.tsx', usageExample: '<ProfileSocialTab user={userData} />' }
+      },
+      { 
+        id: 'profile-financial-tab', 
+        name: 'Profile Financial Tab', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ProfileFinancialTab', filePath: 'mobile/src/components/profile/ProfileFinancialTab.tsx', usageExample: '<ProfileFinancialTab user={userData} />' }
+      },
+      { 
+        id: 'profile-settings', 
+        name: 'Profile Settings', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ProfileSettings', filePath: 'mobile/src/components/profile/ProfileSettings.tsx', usageExample: '<ProfileSettings />' }
+      },
+      { 
+        id: 'profile-actions', 
+        name: 'Profile Actions', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ProfileActions', filePath: 'mobile/src/components/profile/ProfileActions.tsx', usageExample: '<ProfileActions user={userData} />' }
+      },
+      { 
+        id: 'circle-settings-modal', 
+        name: 'Circle Settings Modal', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'CircleSettingsModal', filePath: 'mobile/src/components/profile/CircleSettingsModal.tsx', usageExample: '<CircleSettingsModal visible={visible} onClose={handleClose} />' }
+      }
+    ]
+  },
+  {
+    id: 'calendar-ui',
+    name: 'Calendar Components',
+    description: 'Calendar and event management.',
+    icon: 'onboarding',
+    components: [
+      { 
+        id: 'modern-calendar', 
+        name: 'Modern Calendar', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ModernCalendar', filePath: 'mobile/src/components/calendar/ModernCalendar.tsx', usageExample: '<ModernCalendar onDateSelect={handleDateSelect} />' }
+      },
+      { 
+        id: 'event-modal', 
+        name: 'Event Modal', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'EventModal', filePath: 'mobile/src/components/calendar/EventModal.tsx', usageExample: '<EventModal visible={visible} event={event} onClose={handleClose} />' }
+      },
+      { 
+        id: 'add-event-modal', 
+        name: 'Add Event Modal', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'AddEventModal', filePath: 'mobile/src/components/calendar/AddEventModal.tsx', usageExample: '<AddEventModal visible={visible} onClose={handleClose} onSave={handleSave} />' }
+      },
+      { 
+        id: 'event-details-modal', 
+        name: 'Event Details Modal', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'EventDetailsModal', filePath: 'mobile/src/components/calendar/EventDetailsModal.tsx', usageExample: '<EventDetailsModal visible={visible} event={event} onClose={handleClose} />' }
+      },
+      { 
+        id: 'calendar-app', 
+        name: 'Calendar App', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'CalendarApp', filePath: 'mobile/src/components/apps/CalendarApp.tsx', usageExample: '<CalendarApp />' }
+      },
+      { 
+        id: 'calendar-theme', 
+        name: 'Calendar Theme', 
+        type: 'generic',
+        styles: { backgroundColor: solidColor('#FFFFFF'), textColor: solidColor('#FA7272') } as any,
+        mobileConfig: { componentName: 'CalendarTheme', filePath: 'mobile/src/components/calendar/CalendarTheme.tsx', usageExample: '// Configure calendar colors and styles' }
+      }
+    ]
+  },
+  {
+    id: 'map-ui',
+    name: 'Map Components',
+    description: 'Map display and location services.',
+    icon: 'mobile-screens',
+    components: [
+      { 
+        id: 'map-view', 
+        name: 'Map View', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#E5E7EB'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'map', filePath: 'mobile/src/components/ui/map.tsx', usageExample: '<MapView region={region} markers={markers} />' }
+      },
+      { 
+        id: 'free-map-view', 
+        name: 'Free Map View', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#E5E7EB'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'FreeMapView', filePath: 'mobile/src/components/maps/FreeMapView.tsx', usageExample: '<FreeMapView location={location} />' }
+      },
+      { 
+        id: 'location-map-home', 
+        name: 'Location Map Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'LocationMapWidget', filePath: 'mobile/src/components/home/LocationMapWidget.tsx', usageExample: '<LocationMapWidget />' }
+      }
+    ]
+  },
+  {
+    id: 'screen-backgrounds',
+    name: 'Screen Backgrounds',
+    description: 'Background and splash components.',
+    icon: 'mobile-splash',
+    components: [
+      { 
+        id: 'screen-background', 
+        name: 'Screen Background', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF') } as any,
+        mobileConfig: { componentName: 'ScreenBackground', filePath: 'mobile/src/components/ScreenBackground.tsx', usageExample: '<ScreenBackground>\n  <Content />\n</ScreenBackground>' }
+      },
+      { 
+        id: 'splash-branding', 
+        name: 'Splash Branding', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFB6C1') } as any,
+        mobileConfig: { componentName: 'SplashBranding', filePath: 'mobile/src/components/branding/SplashBranding.tsx', usageExample: '<SplashBranding />' }
+      },
+      { 
+        id: 'welcome-section', 
+        name: 'Welcome Section', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('transparent') } as any,
+        mobileConfig: { componentName: 'WelcomeSection', filePath: 'mobile/src/components/home/WelcomeSection.tsx', usageExample: '<WelcomeSection user={userData} />' }
       }
     ]
   },
@@ -666,10 +921,31 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'heatmap-personal', 
-        name: 'Personal Wellbeing Heatmap', 
+        name: 'Emotion Heatmap', 
         type: 'generic',
         styles: { backgroundColor: solidColor('transparent'), borderRadius: 12 } as any,
-        mobileConfig: { componentName: 'EmotionHeatMap', filePath: 'components/EmotionHeatMap.tsx', usageExample: '<EmotionHeatMap type="personal" data={records} />' }
+        mobileConfig: { componentName: 'EmotionHeatMap', filePath: 'mobile/src/components/EmotionHeatMap.tsx', usageExample: '<EmotionHeatMap type="personal" data={records} />' }
+      },
+      { 
+        id: 'circle-mood', 
+        name: 'Circle Mood Summary', 
+        type: 'generic',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'CircleMoodSummary', filePath: 'mobile/src/components/home/CircleMoodSummary.tsx', usageExample: '<CircleMoodSummary circleId={circleId} />' }
+      },
+      { 
+        id: 'circle-stats', 
+        name: 'Circle Stats Drawer', 
+        type: 'generic',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 24 } as any,
+        mobileConfig: { componentName: 'CircleStatsDrawer', filePath: 'mobile/src/components/home/CircleStatsDrawer.tsx', usageExample: '<CircleStatsDrawer visible={visible} onClose={handleClose} />' }
+      },
+      { 
+        id: 'financial-tab', 
+        name: 'Financial Tab', 
+        type: 'generic',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 12 } as any,
+        mobileConfig: { componentName: 'FinancialTab', filePath: 'mobile/src/components/home/FinancialTab.tsx', usageExample: '<FinancialTab userId={userId} />' }
       }
     ]
   },
@@ -680,11 +956,39 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     icon: 'app-widgets',
     components: [
       { 
-        id: 'weather-widget', 
-        name: 'Weather Widget', 
+        id: 'news-widget', 
+        name: 'News Widget', 
         type: 'card',
         styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
-        mobileConfig: { componentName: 'WeatherWidget', filePath: 'components/widgets/WeatherWidget.tsx', usageExample: '<WeatherWidget />' }
+        mobileConfig: { componentName: 'NewsWidget', filePath: 'mobile/src/components/widgets/NewsWidget.tsx', usageExample: '<NewsWidget />' }
+      },
+      { 
+        id: 'entertainment-widget', 
+        name: 'Entertainment Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'EntertainmentWidget', filePath: 'mobile/src/components/widgets/EntertainmentWidget.tsx', usageExample: '<EntertainmentWidget />' }
+      },
+      { 
+        id: 'expenses-widget', 
+        name: 'Expenses Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'ExpensesWidget', filePath: 'mobile/src/components/widgets/ExpensesWidget.tsx', usageExample: '<ExpensesWidget />' }
+      },
+      { 
+        id: 'location-widget', 
+        name: 'Location Map Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'LocationMapWidget', filePath: 'mobile/src/components/widgets/LocationMapWidget.tsx', usageExample: '<LocationMapWidget />' }
+      },
+      { 
+        id: 'appointments-widget', 
+        name: 'Appointments Widget', 
+        type: 'card',
+        styles: { backgroundColor: solidColor('#FFFFFF'), borderRadius: 16 } as any,
+        mobileConfig: { componentName: 'AppointmentsWidget', filePath: 'mobile/src/components/home/AppointmentsWidget.tsx', usageExample: '<AppointmentsWidget />' }
       }
     ]
   },
@@ -696,10 +1000,24 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [
       { 
         id: 'main-tab-bar', 
-        name: 'Main Bottom Tabs', 
+        name: 'Home Header', 
         type: 'tabbar',
         styles: { backgroundColor: solidColor('#FFFFFF'), textColor: solidColor('#FA7272') } as any,
-        mobileConfig: { componentName: 'MainTabNavigator', filePath: 'navigation/MainTabNavigator.tsx', usageExample: 'Configure active/inactive tints and background.' }
+        mobileConfig: { componentName: 'HomeHeader', filePath: 'mobile/src/components/home/HomeHeader.tsx', usageExample: '<HomeHeader title="Home" />' }
+      },
+      { 
+        id: 'circle-dropdown', 
+        name: 'Circle Dropdown', 
+        type: 'tabbar',
+        styles: { backgroundColor: solidColor('#FFFFFF'), textColor: solidColor('#1F2937') } as any,
+        mobileConfig: { componentName: 'CircleDropdown', filePath: 'mobile/src/components/home/CircleDropdown.tsx', usageExample: '<CircleDropdown circles={circles} onSelect={handleSelect} />' }
+      },
+      { 
+        id: 'underline-tabs', 
+        name: 'Underline Tab Navigation', 
+        type: 'tabbar',
+        styles: { backgroundColor: solidColor('transparent'), textColor: solidColor('#FA7272') } as any,
+        mobileConfig: { componentName: 'UnderlineTabNavigation', filePath: 'mobile/src/components/common/UnderlineTabNavigation.tsx', usageExample: '<UnderlineTabNavigation tabs={tabs} activeTab={activeTab} onTabPress={handleTabPress} />' }
       }
     ]
   },
@@ -718,6 +1036,45 @@ export const DEFAULT_CATEGORIES: CategoryConfig[] = [
     components: [] // Loaded dynamically from database (branding.icons.flags)
   }
 ]
+
+const COMPONENT_STUDIO_CATEGORIES = [
+    'buttons', 'cards', 'inputs', 'layout', 'feedback', 
+    'mobile-nav', 'navigation-ui', 'mobile-actions', 
+    'data-display', 'status-feedback', 'charts-data', 
+    'advanced-inputs', 'lists-grids', 'circle-ui', 
+    'profile-ui', 'calendar-ui', 'map-ui', 
+    'communication', 'media-assets', 'safety-ui', 
+    'app-widgets', 'screen-backgrounds'
+]
+
+const getComponentStudioItems = (categories: CategoryConfig[]) => {
+    // 1. Filter relevant categories
+    const studioCategories = categories.filter(c => COMPONENT_STUDIO_CATEGORIES.includes(c.id))
+    
+    // 2. Extract all components and group by componentName (to find unique implementations)
+    const uniqueComponentsMap = new Map<string, { id: string, name: string, icon: string }>()
+    
+    studioCategories.forEach(cat => {
+        cat.components.forEach(comp => {
+            if (comp.mobileConfig?.componentName) {
+                const cmpName = comp.mobileConfig.componentName
+                if (!uniqueComponentsMap.has(cmpName)) {
+                     // Use the component name as the ID for the sidebar item
+                     // Use the category icon as a fallback if no specific icon logic
+                     // Or check if we can map component type to an icon
+                    uniqueComponentsMap.set(cmpName, {
+                        id: cmpName, 
+                        name: cmpName, 
+                        icon: cat.icon || 'library' 
+                    })
+                }
+            }
+        })
+    })
+
+    // 3. Convert to array and sort alphabetically
+    return Array.from(uniqueComponentsMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+}
 
 export const getSidebarSections = (categories: CategoryConfig[]) => [
     {
@@ -774,28 +1131,6 @@ export const getSidebarSections = (categories: CategoryConfig[]) => [
     {
       id: 'pillar-component-studio',
       title: 'Component Studio',
-      items: [
-        // UI Component Categories (loaded from database)
-        { id: 'buttons', name: 'Buttons', icon: 'buttons' },
-        { id: 'cards', name: 'Cards', icon: 'cards' },
-        { id: 'inputs', name: 'Inputs', icon: 'inputs' },
-        { id: 'layout', name: 'Layout', icon: 'layout' },
-        { id: 'feedback', name: 'Feedback', icon: 'feedback' },
-        { id: 'mobile-nav', name: 'Navigation', icon: 'mobile-nav' },
-        { id: 'mobile-actions', name: 'Actions', icon: 'mobile-actions' },
-        { id: 'data-display', name: 'Data Display', icon: 'charts-data' },
-        { id: 'status-feedback', name: 'Status & Feedback', icon: 'feedback' },
-        { id: 'advanced-inputs', name: 'Advanced Inputs', icon: 'inputs' },
-        { id: 'lists-grids', name: 'Lists & Grids', icon: 'lists-grids' },
-        { id: 'communication', name: 'Communication', icon: 'communication' },
-        { id: 'media-assets', name: 'Media', icon: 'media-assets' },
-        { id: 'safety-ui', name: 'Safety & SOS', icon: 'safety-ui' },
-        { id: 'charts-data', name: 'Charts', icon: 'charts-data' },
-        { id: 'app-widgets', name: 'Widgets', icon: 'app-widgets' },
-        { id: 'navigation-ui', name: 'Navigation UI', icon: 'navigation-ui' },
-        // Icon Categories
-        { id: 'social-icons', name: 'Social Icons', icon: 'social' },
-        { id: 'flag-icons', name: 'Country Flags', icon: 'localization' },
-      ]
+      items: getComponentStudioItems(categories)
     }
   ]

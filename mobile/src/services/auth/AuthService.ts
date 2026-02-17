@@ -296,12 +296,8 @@ class AuthService {
       email: apiUser.email,
       firstName: apiUser.firstName,
       lastName: apiUser.lastName,
-      phoneNumber: apiUser.phone, // Backend 'phone' -> Mobile 'phoneNumber' ? or match?
-      // Interface shows 'phoneNumber' in original file. Backend sends 'phone' (from my reading of AuthController.ts lines 112, 199). 
-      // AuthController.ts: `phone: user.phone`
-      // Wait, AuthController login response `sanitizeUser` might map it.
-      // Looking at `sanitizeUser` (not fully visible but `register` response uses `userResponse` which comes from there).
-      // Assuming 'phone' from backend.
+      phoneNumber: apiUser.phone, // Backend 'phone' -> Mobile 'phoneNumber'
+      avatar: apiUser.avatar || apiUser.profilePicture, // Map avatar
       dateOfBirth: apiUser.dateOfBirth,
       gender: apiUser.gender,
       preferences: apiUser.preferences,

@@ -237,7 +237,7 @@ const AIAgentScreen: React.FC<AIAgentScreenProps> = ({ route }) => {
               borderWidth={2}
               borderColor="white"
               shadow={2}
-              source={{ uri: 'https://via.placeholder.com/40' }}
+              source={{ uri: 'https://placehold.co/40' }}
             >
               AI
             </Avatar>

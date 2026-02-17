@@ -1,5 +1,6 @@
 
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
+import { Prisma } from '../../prisma/generated/prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 
@@ -10,8 +11,8 @@ async function seedCircleData() {
     // 1. Seed Circle Types (renamed from House Types)
     
     // Migration: Ensure 'circle' and 'team' exist with correct codes
-    await pool.query("UPDATE circle_types SET code = 'circle', name = 'Circle', description = 'Private circle' WHERE code = 'circle'");
-    await pool.query("UPDATE circle_types SET code = 'team', name = 'Team', description = 'Work or project team' WHERE code = 'workplace'");
+    await prisma.$executeRaw(Prisma.sql`UPDATE bondarys.circle_types SET code = 'circle', name = 'Circle', description = 'Private circle' WHERE code = 'circle'`);
+    await prisma.$executeRaw(Prisma.sql`UPDATE bondarys.circle_types SET code = 'team', name = 'Team', description = 'Work or project team' WHERE code = 'workplace'`);
 
     const circleTypes = [
       { name: 'Home', code: 'home', sort_order: 1, icon: 'home-heart', description: 'Your main family or home circle' },
@@ -23,91 +24,86 @@ async function seedCircleData() {
     ];
 
     for (const type of circleTypes) {
-      const res = await pool.query('SELECT * FROM circle_types WHERE code = $1', [type.code]);
-      if (res.rows.length === 0) {
+      const res = await prisma.$queryRaw<Array<{ id: string; code: string; name: string }>>(Prisma.sql`SELECT * FROM bondarys.circle_types WHERE code = ${type.code}`);
+      if (res.length === 0) {
         console.log(`Creating circle type: ${type.name}`);
-        await pool.query(
-          `INSERT INTO circle_types (name, code, sort_order, icon, description) VALUES ($1, $2, $3, $4, $5)`,
-          [type.name, type.code, type.sort_order, type.icon, type.description]
-        );
+        await prisma.$executeRaw(Prisma.sql`
+          INSERT INTO bondarys.circle_types (name, code, sort_order, icon, description) VALUES (${type.name}, ${type.code}, ${type.sort_order}, ${type.icon}, ${type.description})
+        `);
       } else {
         console.log(`Circle type ${type.name} already exists. Updating...`);
-        await pool.query(
-          `UPDATE circle_types SET name = $1, sort_order = $2, icon = $3, description = $4 WHERE code = $5`,
-          [type.name, type.sort_order, type.icon, type.description, type.code]
-        );
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE bondarys.circle_types SET name = ${type.name}, sort_order = ${type.sort_order}, icon = ${type.icon}, description = ${type.description} WHERE code = ${type.code}
+        `);
       }
     }
 
     // 2. Ensure User Jaroonwit Exists
     const email = 'jaroonwit.pool@gmail.com';
-    let userId;
-    let userRes = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    let userId: string;
+    let userRes = await prisma.$queryRaw<Array<{ id: string; email: string }>>(Prisma.sql`SELECT * FROM core.users WHERE email = ${email}`);
 
-    if (userRes.rows.length === 0) {
+    if (userRes.length === 0) {
       console.log('Creating user Jaroonwit...');
       const hashedPassword = await bcrypt.hash('password123', 10);
-      userRes = await pool.query(`
-        INSERT INTO users (
+      const newUserId = uuidv4();
+      await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO core.users (
             id, email, password_hash, first_name, last_name, 
             user_type, is_active, is_email_verified, is_onboarding_complete
-        ) VALUES ($1, $2, $3, 'Jaroonwit', 'Pool', 'circle', true, true, true)
-        RETURNING id
-      `, [uuidv4(), email, hashedPassword]);
-      userId = userRes.rows[0].id;
+        ) VALUES (${newUserId}::uuid, ${email}, ${hashedPassword}, 'Jaroonwit', 'Pool', 'circle', true, true, true)
+      `);
+      userId = newUserId;
     } else {
       console.log('User Jaroonwit already exists.');
-      userId = userRes.rows[0].id;
+      userId = userRes[0].id;
     }
 
     // 3. Create 'Jaroonwit Circle'
     const circleName = 'Jaroonwit Circle';
-    let circleId;
-    let circleRes = await pool.query('SELECT * FROM circles WHERE name = $1', [circleName]);
+    let circleId: string;
+    let circleRes = await prisma.$queryRaw<Array<{ id: string; name: string }>>(Prisma.sql`SELECT * FROM bondarys.circles WHERE name = ${circleName}`);
 
-    if (circleRes.rows.length === 0) {
+    if (circleRes.length === 0) {
         console.log('Creating Jaroonwit Circle...');
         const inviteCode = Math.random().toString(36).substring(7).toUpperCase();
         
         try {
              const fId = uuidv4();
-             await pool.query(
-                `INSERT INTO circles (id, name, type, description, owner_id, invite_code) 
-                 VALUES ($1, $2, $3, 'Circle for Jaroonwit', $4, $5)`,
-                [fId, circleName, 'circle', userId, inviteCode]
-             );
+             await prisma.$executeRaw(Prisma.sql`
+                INSERT INTO bondarys.circles (id, name, type, description, owner_id, invite_code) 
+                 VALUES (${fId}::uuid, ${circleName}, 'circle', 'Circle for Jaroonwit', ${userId}::uuid, ${inviteCode})
+             `);
              circleId = fId;
         } catch (e: any) {
              console.log('Complex insert failed, trying simple insert...', e.message);
              const fId = uuidv4();
-             await pool.query(
-                `INSERT INTO circles (id, name, type) VALUES ($1, $2, $3)`,
-                [fId, circleName, 'circle']
-             );
+             await prisma.$executeRaw(Prisma.sql`
+                INSERT INTO bondarys.circles (id, name, type) VALUES (${fId}::uuid, ${circleName}, 'circle')
+             `);
              circleId = fId;
         }
     } else {
         console.log('Jaroonwit Circle already exists.');
-        circleId = circleRes.rows[0].id;
+        circleId = circleRes[0].id;
     }
 
     // 4. Link User to circle
-    await pool.query(
-        `INSERT INTO circle_members (circle_id, user_id, role, joined_at) 
-         VALUES ($1, $2, 'owner', NOW()) 
-         ON CONFLICT DO NOTHING`,
-        [circleId, userId]
-    );
+    await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO bondarys.circle_members (circle_id, user_id, role, joined_at) 
+         VALUES (${circleId}::uuid, ${userId}::uuid, 'owner', NOW()) 
+         ON CONFLICT DO NOTHING
+    `);
     console.log('Linked Jaroonwit to Circle.');
 
     console.log('✅ Seeding Complete.');
+    await prisma.$disconnect();
     process.exit(0);
 
   } catch (err) {
     console.error('❌ Seeding failed:', err);
+    await prisma.$disconnect();
     process.exit(1);
-  } finally {
-    await pool.end();
   }
 }
 

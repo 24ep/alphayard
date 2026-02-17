@@ -57,8 +57,8 @@ const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
 
-  // CORS
-  CORS_ORIGIN: z.string().default('*'),
+  // CORS - Secure defaults for production
+  CORS_ORIGIN: z.string().default(process.env.NODE_ENV === 'production' ? 'https://bondarys.com' : '*'),
 
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().transform(Number).default('900000'), // 15 minutes

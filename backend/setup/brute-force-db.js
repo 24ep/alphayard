@@ -1,4 +1,4 @@
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
 
 const passwords = [
     'postgres',
@@ -14,21 +14,25 @@ async function main() {
     console.log('🔍 Testing passwords on 127.0.0.1:54322...');
 
     for (const pass of passwords) {
-        const client = new Client({
-            user: 'postgres',
-            host: '127.0.0.1',
-            database: 'postgres',
-            password: pass,
-            port: 54322,
-        });
+        const connectionString = `postgresql://postgres:${pass}@127.0.0.1:54322/postgres`;
+        // Temporarily override DATABASE_URL for this connection attempt
+        const originalUrl = process.env.DATABASE_URL;
+        process.env.DATABASE_URL = connectionString;
+        const prisma = new PrismaClient();
 
         try {
-            await client.connect();
+            await prisma.$connect();
             console.log(`✅ SUCCESS! Password is: "${pass}"`);
-            await client.end();
+            await prisma.$disconnect();
+            // Restore original URL before exiting
+            if (originalUrl) process.env.DATABASE_URL = originalUrl;
             process.exit(0);
         } catch (err) {
             console.log(`❌ Failed: "${pass}" - ${err.message}`);
+            await prisma.$disconnect().catch(() => {});
+        } finally {
+            // Restore original URL
+            if (originalUrl) process.env.DATABASE_URL = originalUrl;
         }
     }
 

@@ -1,13 +1,14 @@
 import { Router } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import { mockContentService } from '../../services/mockContentService';
-import { authenticateToken } from '../../middleware/auth';
 import { authenticateAdmin } from '../../middleware/adminAuth';
+import { authenticateToken } from '../../middleware/auth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = Router();
 
 // Content Pages CRUD
-router.get('/pages', authenticateToken as any, async (req, res) => {
+router.get('/pages', authenticateAdmin as any, requirePermission('content', 'view'), async (req, res) => {
   try {
     const { type, status, page = 1, page_size = 20, search } = req.query;
 
@@ -45,7 +46,7 @@ router.get('/pages', authenticateToken as any, async (req, res) => {
     sql += ` LIMIT $${pIdx++} OFFSET $${pIdx++}`;
     params.push(limit, offset);
 
-    const { rows: pages } = await pool.query(sql, params);
+    const pages = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
     res.json({ pages: pages || [] });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -56,7 +57,7 @@ router.get('/pages/:id', authenticateToken as any, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { rows } = await pool.query(`
+    const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT cp.*, 
              ca.views, ca.clicks, ca.conversions
       FROM content_pages cp
@@ -74,7 +75,7 @@ router.get('/pages/:id', authenticateToken as any, async (req, res) => {
   }
 });
 
-router.post('/pages', authenticateAdmin, async (req, res) => {
+router.post('/pages', authenticateAdmin as any, requirePermission('content', 'create'), async (req, res) => {
   try {
     const {
       title,
@@ -90,7 +91,7 @@ router.post('/pages', authenticateAdmin, async (req, res) => {
     }
 
     try {
-      const { rows } = await pool.query(`
+      const rows = await prisma.$queryRawUnsafe<any[]>(`
         INSERT INTO content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         RETURNING *
@@ -149,9 +150,9 @@ router.put('/pages/:id', authenticateToken as any, async (req, res) => {
     if (components !== undefined) { sets.push(`components = $${pIdx++}`); params.push(JSON.stringify(components)); }
     if (mobile_display !== undefined) { sets.push(`mobile_display = $${pIdx++}`); params.push(JSON.stringify(mobile_display)); }
 
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       `UPDATE content_pages SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
-      params
+      ...params
     );
 
     if (rows.length === 0) {
@@ -164,10 +165,10 @@ router.put('/pages/:id', authenticateToken as any, async (req, res) => {
   }
 });
 
-router.delete('/pages/:id', authenticateToken as any, async (req, res) => {
+router.delete('/pages/:id', authenticateAdmin as any, requirePermission('content', 'delete'), async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query('DELETE FROM content_pages WHERE id = $1', [id]);
+    await prisma.$executeRawUnsafe('DELETE FROM content_pages WHERE id = $1', id);
 
     res.json({ message: 'Content page deleted successfully' });
   } catch (error: any) {
@@ -243,7 +244,7 @@ router.get('/admin/content', async (req, res) => {
       sql += ` LIMIT $${pIdx++} OFFSET $${pIdx++}`;
       params.push(Number(page_size), (Number(page) - 1) * Number(page_size));
 
-      const { rows: pages } = await pool.query(sql, params);
+      const pages = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
       res.json({ pages: pages || [] });
     } catch (dbError) {
       console.warn('Database connection failed, using mock data:', dbError);
@@ -314,7 +315,7 @@ router.get('/mobile/content', async (req, res) => {
 
     sql += ' ORDER BY created_at DESC';
 
-    const { rows: content } = await pool.query(sql, params);
+    const content = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
     res.json({ content: content || [] });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -322,13 +323,13 @@ router.get('/mobile/content', async (req, res) => {
 });
 
 // Content Analytics
-router.get('/pages/:id/analytics', authenticateToken as any, async (req, res) => {
+router.get('/pages/:id/analytics', authenticateAdmin as any, requirePermission('analytics', 'view'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    const { rows } = await pool.query(
+    const rows = await prisma.$queryRawUnsafe<any[]>(
       'SELECT * FROM content_analytics WHERE page_id = $1',
-      [id]
+      id
     );
 
     const analytics = rows[0];
@@ -352,7 +353,7 @@ router.post('/pages/:id/view', async (req, res) => {
     const { timestamp } = req.body;
 
     // Upsert analytics record using native SQL
-    await pool.query(`
+    await prisma.$executeRawUnsafe(`
       INSERT INTO content_analytics (page_id, views, last_viewed)
       VALUES ($1, 1, $2)
       ON CONFLICT (page_id) 
@@ -370,7 +371,7 @@ router.post('/pages/:id/view', async (req, res) => {
 // Content Templates
 router.get('/templates', authenticateToken as any, async (req, res) => {
   try {
-    const { rows: templates } = await pool.query(
+    const templates = await prisma.$queryRawUnsafe<any[]>(
       'SELECT * FROM content_templates WHERE is_active = true ORDER BY name'
     );
 
@@ -380,15 +381,15 @@ router.get('/templates', authenticateToken as any, async (req, res) => {
   }
 });
 
-router.post('/templates/:id/create', authenticateToken as any, async (req, res) => {
+router.post('/templates/:id/create', authenticateAdmin as any, requirePermission('templates', 'create'), async (req, res) => {
   try {
     const { id } = req.params;
     const { title, slug } = req.body;
 
     // Get template
-    const { rows: templates } = await pool.query(
+    const templates = await prisma.$queryRawUnsafe<any[]>(
       'SELECT * FROM content_templates WHERE id = $1',
-      [id]
+      id
     );
 
     const template = templates[0];
@@ -398,18 +399,16 @@ router.post('/templates/:id/create', authenticateToken as any, async (req, res) 
     }
 
     // Create page from template
-    const { rows: pages } = await pool.query(
+    const pages = await prisma.$queryRawUnsafe<any[]>(
       `INSERT INTO content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $6, NOW(), NOW())
        RETURNING *`,
-      [
-        title || template.name,
-        slug || `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
-        template.type,
-        JSON.stringify(template.components),
-        JSON.stringify(template.mobile_display || {}),
-        (req as any).user?.id
-      ]
+      title || template.name,
+      slug || `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
+      template.type,
+      JSON.stringify(template.components),
+      JSON.stringify(template.mobile_display || {}),
+      (req as any).user?.id
     );
 
     res.status(201).json({ page: pages[0] });
@@ -422,9 +421,9 @@ router.post('/templates/:id/create', authenticateToken as any, async (req, res) 
 router.get('/by-route/:route', async (req, res) => {
   const route = req.params.route;
   try {
-    const { rows: pages } = await pool.query(
+    const pages = await prisma.$queryRawUnsafe<any[]>(
       'SELECT * FROM content_pages WHERE route = $1 ORDER BY updated_at DESC LIMIT 1',
-      [route]
+      route
     );
 
     res.json({ page: pages?.[0] || null });

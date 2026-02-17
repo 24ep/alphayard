@@ -89,10 +89,96 @@ function useMap() {
   return context;
 }
 
-const defaultStyles = {
-  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+// Inline styles that work without external fetch - MapLibre requires version, sources, and layers.
+const LIGHT_MAP_STYLE: MapLibreGL.StyleSpecification = {
+  version: 8,
+  sources: {
+    "osm": {
+      type: "raster",
+      tiles: [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [
+    { id: "osm", type: "raster", source: "osm", minzoom: 0, maxzoom: 19 },
+  ],
 };
+
+const DARK_MAP_STYLE: MapLibreGL.StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    },
+  },
+  layers: [
+    { id: "carto-dark", type: "raster", source: "carto-dark", minzoom: 0, maxzoom: 19 },
+  ],
+};
+
+// Use inline styles by default to avoid CORS/fetch issues with external style.json
+const defaultStyles = {
+  dark: DARK_MAP_STYLE,
+  light: LIGHT_MAP_STYLE,
+};
+
+// Fallback for any custom styles that fail to load
+const FALLBACK_MAP_STYLE = LIGHT_MAP_STYLE;
+
+function isValidMapStyle(style: unknown): style is MapLibreGL.StyleSpecification {
+  return (
+    typeof style === "object" &&
+    style !== null &&
+    "version" in style &&
+    "sources" in style &&
+    "layers" in style &&
+    Array.isArray((style as MapLibreGL.StyleSpecification).layers)
+  );
+}
+
+async function resolveStyle(styleOption: string | MapLibreGL.StyleSpecification): Promise<MapLibreGL.StyleSpecification> {
+  // If already a valid style object, use it directly
+  if (typeof styleOption !== "string") {
+    return isValidMapStyle(styleOption) ? styleOption : FALLBACK_MAP_STYLE;
+  }
+  
+  // For URL strings, try to fetch with timeout
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const res = await fetch(styleOption, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      console.warn(`[Map] Style URL returned ${res.status}, using fallback`);
+      return FALLBACK_MAP_STYLE;
+    }
+    
+    const json = await res.json();
+    if (isValidMapStyle(json)) {
+      return json;
+    }
+    
+    console.warn('[Map] Style URL returned invalid style object, using fallback');
+    return FALLBACK_MAP_STYLE;
+  } catch (error) {
+    console.warn('[Map] Failed to fetch style URL, using fallback:', error);
+    return FALLBACK_MAP_STYLE;
+  }
+}
 
 type MapStyleOption = string | MapLibreGL.StyleSpecification;
 
@@ -163,42 +249,68 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
       resolvedTheme === "dark" ? mapStyles.dark : mapStyles.light;
     currentStyleRef.current = initialStyle;
 
-    const map = new MapLibreGL.Map({
-      container: containerRef.current,
-      style: initialStyle,
-      renderWorldCopies: false,
-      attributionControl: {
-        compact: true,
-      },
-      ...props,
-    });
+    // Resolve the initial style (handles both inline objects and URLs)
+    const initMap = async () => {
+      const resolvedStyle = await resolveStyle(initialStyle);
+      
+      if (!containerRef.current) return; // Check container still exists after async
 
-    const styleDataHandler = () => {
-      clearStyleTimeout();
-      // Delay to ensure style is fully processed before allowing layer operations
-      // This is a workaround to avoid race conditions with the style loading
-      // else we have to force update every layer on setStyle change
-      styleTimeoutRef.current = setTimeout(() => {
+      const map = new MapLibreGL.Map({
+        container: containerRef.current,
+        style: resolvedStyle,
+        renderWorldCopies: false,
+        attributionControl: {
+          compact: true,
+        },
+        ...props,
+      });
+
+      const styleDataHandler = () => {
+        clearStyleTimeout();
+        styleTimeoutRef.current = setTimeout(() => {
+          setIsStyleLoaded(true);
+          if (projection) {
+            map.setProjection(projection);
+          }
+        }, 100);
+      };
+
+      const loadHandler = () => {
+        setIsLoaded(true);
+        styleDataHandler();
+      };
+
+      const errorHandler = (e: any) => {
+        console.warn('[Map] Map error:', e.error?.message || e.message || 'Unknown error');
+        // Still mark as loaded so UI isn't stuck
+        setIsLoaded(true);
         setIsStyleLoaded(true);
-        if (projection) {
-          map.setProjection(projection);
-        }
-      }, 100);
-    };
-    const loadHandler = () => setIsLoaded(true);
+      };
 
-    map.on("load", loadHandler);
-    map.on("styledata", styleDataHandler);
-    setMapInstance(map);
+      map.on("load", loadHandler);
+      map.on("styledata", styleDataHandler);
+      map.on("error", errorHandler);
+      setMapInstance(map);
+
+      // Store cleanup function reference
+      (containerRef.current as any).__mapCleanup = () => {
+        clearStyleTimeout();
+        map.off("load", loadHandler);
+        map.off("styledata", styleDataHandler);
+        map.off("error", errorHandler);
+        map.remove();
+        setIsLoaded(false);
+        setIsStyleLoaded(false);
+        setMapInstance(null);
+      };
+    };
+
+    initMap();
 
     return () => {
-      clearStyleTimeout();
-      map.off("load", loadHandler);
-      map.off("styledata", styleDataHandler);
-      map.remove();
-      setIsLoaded(false);
-      setIsStyleLoaded(false);
-      setMapInstance(null);
+      if (containerRef.current && (containerRef.current as any).__mapCleanup) {
+        (containerRef.current as any).__mapCleanup();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -215,7 +327,11 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     currentStyleRef.current = newStyle;
     setIsStyleLoaded(false);
 
-    mapInstance.setStyle(newStyle, { diff: true });
+    resolveStyle(newStyle).then((style) => {
+      mapInstance.setStyle(style, { diff: true }).catch(() => {
+        setIsStyleLoaded(true); // keep current style on error
+      });
+    });
   }, [mapInstance, resolvedTheme, mapStyles, clearStyleTimeout]);
 
   const contextValue = useMemo(

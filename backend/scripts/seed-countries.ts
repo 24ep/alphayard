@@ -1,15 +1,11 @@
 
-import { Pool } from 'pg';
+import { prisma } from '../src/lib/prisma';
+import { Prisma } from '../../prisma/generated/prisma/client';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
-});
 
 const countries = [
     { code: 'AF', name: 'Afghanistan', flag: '🇦🇫', phone_code: '+93' },
@@ -256,48 +252,47 @@ const countries = [
 
 async function seedCountries() {
     console.log('Connecting to database...');
-    await pool.query('BEGIN');
 
     try {
-        console.log('Creating countries table...');
-        await pool.query(`
-      CREATE TABLE IF NOT EXISTS countries (
-        id SERIAL PRIMARY KEY,
-        code VARCHAR(2) NOT NULL UNIQUE,
-        name VARCHAR(100) NOT NULL,
-        flag VARCHAR(10),
-        phone_code VARCHAR(20),
-        is_supported BOOLEAN DEFAULT TRUE,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      );
-    `);
+        await prisma.$transaction(async (tx) => {
+            console.log('Creating countries table...');
+            await tx.$executeRaw(Prisma.sql`
+                CREATE TABLE IF NOT EXISTS countries (
+                    id SERIAL PRIMARY KEY,
+                    code VARCHAR(2) NOT NULL UNIQUE,
+                    name VARCHAR(100) NOT NULL,
+                    flag VARCHAR(10),
+                    phone_code VARCHAR(20),
+                    is_supported BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                );
+            `);
 
-        console.log('Clearing existing countries...');
-        await pool.query('TRUNCATE table countries RESTART IDENTITY');
+            console.log('Clearing existing countries...');
+            await tx.$executeRaw(Prisma.sql`TRUNCATE table countries RESTART IDENTITY`);
 
-        console.log(`Seeding ${countries.length} countries...`);
-        const values = countries.map((c, i) =>
-            `('${c.code}', '${c.name.replace(/'/g, "''")}', '${c.flag}', '${c.phone_code}')`
-        ).join(',');
+            console.log(`Seeding ${countries.length} countries...`);
+            const values = countries.map((c, i) =>
+                `('${c.code}', '${c.name.replace(/'/g, "''")}', '${c.flag}', '${c.phone_code}')`
+            ).join(',');
 
-        await pool.query(`
-      INSERT INTO countries (code, name, flag, phone_code)
-      VALUES ${values}
-      ON CONFLICT (code) DO UPDATE 
-      SET name = EXCLUDED.name, 
-          flag = EXCLUDED.flag, 
-          phone_code = EXCLUDED.phone_code,
-          updated_at = NOW();
-    `);
+            await tx.$executeRawUnsafe(`
+                INSERT INTO countries (code, name, flag, phone_code)
+                VALUES ${values}
+                ON CONFLICT (code) DO UPDATE 
+                SET name = EXCLUDED.name, 
+                    flag = EXCLUDED.flag, 
+                    phone_code = EXCLUDED.phone_code,
+                    updated_at = NOW();
+            `);
+        });
 
-        await pool.query('COMMIT');
         console.log('✅ Countries seeded successfully');
     } catch (error) {
-        await pool.query('ROLLBACK');
         console.error('❌ Error seeding countries:', error);
     } finally {
-        pool.end();
+        await prisma.$disconnect();
     }
 }
 

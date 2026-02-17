@@ -1,11 +1,12 @@
 
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 async function verifyColumns() {
-  const client = await pool.connect();
   try {
-    const res = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'");
-    const columns = res.rows.map(r => r.column_name);
+    const res = await prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns WHERE table_name = 'users'
+    `;
+    const columns = res.map(r => r.column_name);
     console.log('Columns:', columns.join(', '));
     
     const check = ['user_type', 'subscription_tier', 'circle_ids'];
@@ -16,10 +17,9 @@ async function verifyColumns() {
   } catch (error) {
     console.error('Error:', error);
   } finally {
-    client.release();
+    await prisma.$disconnect();
     process.exit(0);
   }
 }
 
 verifyColumns();
-

@@ -1,13 +1,13 @@
 import { Router, Response } from 'express';
 import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 
 const router = Router();
 
 // Ensure preferences table exists and has correct schema
 const ensurePreferencesTable = async () => {
     try {
-        await pool.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS admin_user_preferences (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id VARCHAR(255) NOT NULL,
@@ -22,7 +22,9 @@ const ensurePreferencesTable = async () => {
         `);
 
         // Migration: Ensure user_id is VARCHAR (handle legacy UUID columns)
-        await pool.query(`
+        // Temporarily disabled to prevent server hanging
+        /*
+        await prisma.$executeRawUnsafe(`
             DO $$ 
             BEGIN 
                 -- Check if user_id is UUID via information_schema or try casting
@@ -35,6 +37,7 @@ const ensurePreferencesTable = async () => {
                 END;
             END $$;
         `);
+        */
     } catch (err) {
         console.log('Preferences table setup error:', err);
     }
@@ -53,9 +56,9 @@ router.get('/:key', authenticateAdmin as any, async (req: AdminRequest, res: Res
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        const { rows } = await pool.query(
+        const rows = await prisma.$queryRawUnsafe<any[]>(
             `SELECT preference_value FROM admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
-            [userId, key]
+            userId, key
         );
 
         if (rows.length === 0) {
@@ -80,12 +83,12 @@ router.put('/:key', authenticateAdmin as any, async (req: AdminRequest, res: Res
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        await pool.query(
+        await prisma.$executeRawUnsafe(
             `INSERT INTO admin_user_preferences (user_id, preference_key, preference_value)
              VALUES ($1, $2, $3)
              ON CONFLICT (user_id, preference_key) 
              DO UPDATE SET preference_value = $3, updated_at = NOW()`,
-            [userId, key, JSON.stringify(value)]
+            userId, key, JSON.stringify(value)
         );
 
         res.json({ success: true, key, value });
@@ -105,9 +108,9 @@ router.delete('/:key', authenticateAdmin as any, async (req: AdminRequest, res: 
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        await pool.query(
+        await prisma.$executeRawUnsafe(
             `DELETE FROM admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
-            [userId, key]
+            userId, key
         );
 
         res.json({ success: true });
@@ -126,9 +129,9 @@ router.get('/', authenticateAdmin as any, async (req: AdminRequest, res: Respons
             return res.status(401).json({ error: 'Not authenticated' });
         }
 
-        const { rows } = await pool.query(
+        const rows = await prisma.$queryRawUnsafe<any[]>(
             `SELECT preference_key, preference_value FROM admin_user_preferences WHERE user_id = $1`,
-            [userId]
+            userId
         );
 
         const preferences: Record<string, any> = {};

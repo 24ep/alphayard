@@ -30,10 +30,13 @@ const LoadingScreen = () => (
   <SplashBranding />
 );
 
+import { useTheme } from '../contexts/ThemeContext';
+
 const RootNavigator: React.FC = () => {
   const { isAuthenticated, isLoading, setNavigationRef, user, isOnboardingComplete } = useAuth();
   const { hasPin, isPinLocked, isLoading: isPinLoading } = usePin();
   const { language, isLoading: isLanguageLoading } = useLanguage();
+  const { loading: isThemeLoading } = useTheme();
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
@@ -55,11 +58,12 @@ const RootNavigator: React.FC = () => {
       userId: user?.id,
       isLoading,
       isPinLoading,
+      isThemeLoading,
       isOnboardingComplete,
       showApp,
       showLanguageSelection
     });
-  }, [isAuthenticated, user, isLoading, isPinLoading, isOnboardingComplete, showApp, showLanguageSelection]);
+  }, [isAuthenticated, user, isLoading, isPinLoading, isThemeLoading, isOnboardingComplete, showApp, showLanguageSelection]);
 
   return (
     <NavigationContainer
@@ -76,7 +80,7 @@ const RootNavigator: React.FC = () => {
           animationEnabled: false,
         }}
       >
-        {isLoading || isPinLoading || isLanguageLoading ? (
+        {isLoading || isPinLoading || isLanguageLoading || isThemeLoading ? (
           // Show empty or loading screen while deciding
           <Stack.Screen
             name="Loading"

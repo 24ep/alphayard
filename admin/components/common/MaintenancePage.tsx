@@ -60,7 +60,7 @@ export function MaintenancePage({ onRetry }: MaintenancePageProps) {
         <div className="space-y-3">
           <button
             onClick={onRetry}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-macos-md hover:shadow-macos-lg"
+            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors shadow-macos-md hover:shadow-macos-lg"
           >
             <ArrowPathIcon className="w-5 h-5" />
             Retry Connection

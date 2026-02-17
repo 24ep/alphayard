@@ -1,5 +1,5 @@
 import cron, { ScheduledTask } from 'node-cron';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export class ScheduledPublishingService {
   private cronJob: ScheduledTask | null = null;
@@ -48,7 +48,7 @@ export class ScheduledPublishingService {
     try {
       // Auto-publish scheduled pages
       // Replicating logic of 'auto_publish_scheduled_pages' RPC
-      const publishResult = await pool.query(`
+      const publishResult = await prisma.$executeRawUnsafe(`
         UPDATE pages 
         SET status = 'published', 
             published_at = NOW(),
@@ -56,27 +56,25 @@ export class ScheduledPublishingService {
         WHERE status = 'scheduled' 
           AND scheduled_for <= NOW()
           AND (scheduled_for IS NOT NULL)
-        RETURNING id
       `);
       
-      publishedCount = publishResult.rowCount || 0;
+      publishedCount = publishResult || 0;
       if (publishedCount > 0) {
         console.log(`📅 Auto-published ${publishedCount} scheduled page(s)`);
       }
 
       // Auto-unpublish expired pages
       // Replicating logic of 'auto_unpublish_expired_pages' RPC
-      const unpublishResult = await pool.query(`
+      const unpublishResult = await prisma.$executeRawUnsafe(`
         UPDATE pages 
         SET status = 'draft',
             updated_at = NOW()
         WHERE status = 'published' 
           AND unpublish_at <= NOW()
           AND (unpublish_at IS NOT NULL)
-        RETURNING id
       `);
 
-      unpublishedCount = unpublishResult.rowCount || 0;
+      unpublishedCount = unpublishResult || 0;
       if (unpublishedCount > 0) {
         console.log(`⏰ Auto-unpublished ${unpublishedCount} expired page(s)`);
       }

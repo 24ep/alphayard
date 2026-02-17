@@ -1,11 +1,12 @@
 
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 async function verifySchema() {
-  const client = await pool.connect();
   try {
-    const res = await client.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'");
-    const columns = res.rows.map(r => r.column_name);
+    const res = await prisma.$queryRaw<Array<{ column_name: string }>>`
+      SELECT column_name FROM information_schema.columns WHERE table_name = 'users'
+    `;
+    const columns = res.map(r => r.column_name);
     console.log('Columns in users table:', columns.join(', '));
     
     const missing = ['date_of_birth', 'push_token', 'notification_settings', 'preferences', 'is_onboarding_complete'].filter(c => !columns.includes(c));
@@ -21,7 +22,7 @@ async function verifySchema() {
     console.error('Error verifying schema:', error);
     process.exit(1);
   } finally {
-    client.release();
+    await prisma.$disconnect();
     process.exit(0);
   }
 }

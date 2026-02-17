@@ -16,16 +16,14 @@ import {
 import { ScalePressable } from '../../components/common/ScalePressable';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { CalendarMonthSkeleton, EventListSkeleton } from '../../components/common/SkeletonLoader';
-import { calendarService } from '../../services/calendar/CalendarService';
+import { calendarApi } from '../../services/api';
 import { brandColors } from '../../theme/colors';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { AppStackParamList } from '../../navigation/AppNavigator';
-import MainScreenLayout from '../../components/layout/MainScreenLayout';
-import { CalendarGrid } from '../../components/calendar/CalendarGrid';
-import { EventList } from '../../components/calendar/EventList';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useMainContent } from '../../contexts/MainContentContext'; // NEW: For circle context
+import { useUserData } from '../../contexts/UserDataContext';
 import {
   SimpleEvent,
   addMonths,
@@ -34,25 +32,20 @@ import {
 
 const H_PADDING = 20;
 
-type CalendarScreenNavigationProp = StackNavigationProp<AppStackParamList>;
-
-interface CalendarScreenProps { embedded?: boolean }
-const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
-  console.log('[UI] CalendarScreen (main) using MainScreenLayout');
+export default function CalendarScreen() {
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
   }
-  const navigation = useNavigation<CalendarScreenNavigationProp>();
 
   const [events, setEvents] = useState<SimpleEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const cardOpacityAnim = useRef(new Animated.Value(0)).current;
 
   const { cardMarginTopAnim, animateToHome } = useNavigationAnimation();
+  const { families, selectedCircle } = useUserData();
 
   // Circle selection (match Gallery/Home header outside the card)
-  const [showCircleDropdown, setShowCircleDropdown] = useState(false);
-  const [selectedCircle, _setSelectedCircle] = useState('Smith Circle');
+  const circleId = (families as any[]).find((f: any) => f.name === selectedCircle)?.id ?? (families as any[])?.[0]?.id;
 
   // Calendar state
   const [currentMonthDate, setCurrentMonthDate] = useState<Date>(new Date());
@@ -112,12 +105,12 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
 
   useEffect(() => {
     loadEvents();
-  }, []);
+  }, [circleId]);
 
   const loadEvents = async () => {
     try {
       setLoading(true);
-      const apiEvents = await calendarService.getEvents();
+      const apiEvents = await calendarApi.getEvents(circleId ? { circleId } : undefined);
       // Map API events to local SimpleEvent format
       const mappedEvents: SimpleEvent[] = apiEvents.map(event => ({
         id: event.id,
@@ -166,7 +159,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
     try {
       if (selectedEvent) {
         // Edit existing
-        await calendarService.updateEvent({
+        await calendarApi.updateEvent({
           id: selectedEvent.id,
           title: eventForm.title,
           description: eventForm.description,
@@ -179,7 +172,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
         setShowEventDetailDrawer(false);
       } else {
         // Create new
-        await calendarService.createEvent({
+        await calendarApi.createEvent({
           title: eventForm.title,
           description: eventForm.description,
           startDate: eventForm.startDate,
@@ -201,7 +194,7 @@ const CalendarScreen: React.FC<CalendarScreenProps> = ({ embedded }) => {
   const deleteEvent = async () => {
     try {
       if (selectedEvent) {
-        await calendarService.deleteEvent(selectedEvent.id);
+        await calendarApi.deleteEvent(selectedEvent.id);
         setShowEventDetailDrawer(false);
         setSelectedEvent(null);
         await loadEvents();

@@ -1,14 +1,9 @@
-const { Client } = require('pg');
+const { prisma } = require('../lib/prisma');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 async function addSettingsColumn() {
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-  });
-
   try {
-    await client.connect();
     console.log('Connected to database');
 
     const sql = `
@@ -25,12 +20,12 @@ async function addSettingsColumn() {
       }'::jsonb;
     `;
 
-    await client.query(sql);
+    await prisma.$executeRawUnsafe(sql);
     console.log('Successfully added settings column to families table');
   } catch (err) {
     console.error('Error adding column:', err);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

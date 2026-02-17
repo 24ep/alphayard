@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import CoolIcon from './CoolIcon';
+import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface TabItem {
   id: string;
@@ -23,7 +24,7 @@ interface CircleSelectionTabsProps {
   inactiveShowShadow?: string | boolean;
   containerStyle?: object;
   fit?: boolean; // New prop to make tabs fit the screen width
-  variant?: 'box' | 'underline';
+  variant?: 'box' | 'underline' | 'badge' | 'segmented';
   menuBackgroundColor?: string;
   menuShowShadow?: string | boolean;
   itemSpacing?: number;
@@ -37,6 +38,8 @@ interface CircleSelectionTabsProps {
   pinnedFirstTab?: boolean;
   showPinnedSeparator?: boolean;
   pinnedSeparatorColor?: string;
+  showIcons?: boolean; // New prop to control icon visibility
+  iconPosition?: 'left' | 'top'; // Position of icon relative to label
 }
 
 export const CircleSelectionTabs: React.FC<CircleSelectionTabsProps> = ({
@@ -68,6 +71,8 @@ export const CircleSelectionTabs: React.FC<CircleSelectionTabsProps> = ({
   pinnedFirstTab = false,
   showPinnedSeparator = false,
   pinnedSeparatorColor = '#E5E7EB',
+  showIcons = false, // Default to false - icons only shown when explicitly enabled
+  iconPosition = 'top', // Default to top for backward compatibility
 }) => {
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [tabPositions, setTabPositions] = React.useState<{ [key: string]: number }>({});
@@ -136,6 +141,79 @@ export const CircleSelectionTabs: React.FC<CircleSelectionTabsProps> = ({
 
   const renderTabItem = (tab: TabItem) => {
     const isActive = activeTab === tab.id;
+    
+    // Badge variant styling
+    if (variant === 'badge') {
+      return (
+        <TouchableOpacity
+          key={tab.id}
+          style={[
+            styles.badgeWrapper,
+            fit && { flex: 1 },
+            {
+              backgroundColor: isActive ? '#1F2937' : '#F3F4F6',
+              borderColor: isActive ? '#1F2937' : '#E5E7EB',
+            }
+          ]}
+          onPress={() => onTabPress(tab.id)}
+          activeOpacity={0.8}
+        >
+          {showIcons && tab.icon && (
+            <IconMC 
+              name={tab.icon} 
+              size={16} 
+              color={isActive ? '#FFFFFF' : '#6B7280'} 
+              style={{ marginRight: 3 }}
+            />
+          )}
+          <Text style={[
+            styles.badgeText,
+            { color: isActive ? '#FFFFFF' : '#6B7280' }
+          ]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    // Segmented control variant styling (common iOS/Android style)
+    if (variant === 'segmented') {
+      return (
+        <TouchableOpacity
+          key={tab.id}
+          style={[
+            styles.segmentedWrapper,
+            fit && { flex: 1 },
+            isActive && {
+              backgroundColor: activeColor || '#FFFFFF',
+              ...getShadowStyle(activeShowShadow),
+            },
+          ]}
+          onPress={() => onTabPress(tab.id)}
+          activeOpacity={0.7}
+        >
+          {showIcons && tab.icon && (
+            <IconMC 
+              name={tab.icon} 
+              size={16} 
+              color={isActive ? activeTextColor : inactiveTextColor} 
+              style={{ marginRight: 4 }}
+            />
+          )}
+          <Text style={[
+            styles.segmentedText,
+            { 
+              color: isActive ? activeTextColor : inactiveTextColor,
+              fontWeight: isActive ? '600' : '400',
+            }
+          ]}>
+            {tab.label}
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    
+    // Default variant styling
     return (
       <TouchableOpacity
         key={tab.id}
@@ -151,36 +229,77 @@ export const CircleSelectionTabs: React.FC<CircleSelectionTabsProps> = ({
           }
         }}
       >
-        <View style={styles.tabContent}>
-          <View style={[
-            styles.iconBox,
-            { 
-                backgroundColor: variant === 'underline' ? 'transparent' : (isActive ? activeColor : inactiveColor),
-                borderRadius: itemBorderRadius,
-                borderWidth: isActive && variant !== 'underline' ? activeBorderWidth : inactiveBorderWidth,
-                borderColor: isActive && variant !== 'underline' ? activeBorderColor : inactiveBorderColor,
-                opacity: isActive ? activeOpacity : inactiveOpacity
-            },
-            // apply item shadows
-            isActive && variant !== 'underline' ? getShadowStyle(activeShowShadow) : getShadowStyle(inactiveShowShadow)
-          ]}>
-            <CoolIcon
-              name={tab.icon as any}
-              size={variant === 'underline' ? 24 : 22}
-              color={isActive ? activeIconColor : inactiveIconColor}
-            />
-          </View>
+        <View style={[
+          styles.tabContent,
+          iconPosition === 'left' && styles.tabContentHorizontal,
+          variant === 'underline' && { position: 'relative', paddingBottom: 12 }
+        ]}>
+          {/* Icon display - only show if showIcons prop is true */}
+          {showIcons && tab.icon && iconPosition === 'left' && (
+            variant === 'underline' ? (
+              <IconMC 
+                name={tab.icon} 
+                size={18} 
+                color={isActive ? activeIconColor : inactiveIconColor}
+                style={{ marginRight: 4, position: 'relative', zIndex: 2 }}
+              />
+            ) : (
+              <View style={[
+                styles.iconBoxHorizontal,
+                {
+                  backgroundColor: isActive ? activeColor : inactiveColor,
+                },
+                isActive && getShadowStyle(activeShowShadow),
+                !isActive && getShadowStyle(inactiveShowShadow),
+              ]}>
+                <IconMC 
+                  name={tab.icon} 
+                  size={18} 
+                  color={isActive ? activeIconColor : inactiveIconColor} 
+                />
+              </View>
+            )
+          )}
+          {showIcons && tab.icon && iconPosition === 'top' && (
+            <View style={[
+              styles.iconBox,
+              isActive && styles.iconBoxActive,
+              {
+                backgroundColor: isActive ? activeColor : inactiveColor,
+              },
+              isActive && getShadowStyle(activeShowShadow),
+              !isActive && getShadowStyle(inactiveShowShadow),
+            ]}>
+              <IconMC 
+                name={tab.icon} 
+                size={20} 
+                color={isActive ? activeIconColor : inactiveIconColor} 
+              />
+            </View>
+          )}
           <Text style={[
             styles.tabText,
             { 
                 color: isActive ? activeTextColor : inactiveTextColor,
-                marginTop: variant === 'underline' ? -4 : 0
+                fontWeight: isActive ? 'bold' : 'normal',
+                marginTop: variant === 'underline' ? -4 : (showIcons && tab.icon && iconPosition === 'top' ? 4 : 0),
+                  marginLeft: iconPosition === 'left' && showIcons && tab.icon ? 4 : 0,
+                position: 'relative',
+                zIndex: 2,
             }
           ]}>
             {tab.label}
           </Text>
           {variant === 'underline' && isActive && (
-              <View style={[styles.underline, { backgroundColor: activeTextColor }]} />
+              <View style={[
+                styles.underline, 
+                { 
+                  backgroundColor: activeTextColor,
+                  width: iconPosition === 'left' && showIcons && tab.icon ? '100%' : 30,
+                  left: iconPosition === 'left' && showIcons && tab.icon ? 0 : '50%',
+                  marginLeft: iconPosition === 'left' && showIcons && tab.icon ? 0 : -15,
+                }
+              ]} />
           )}
         </View>
       </TouchableOpacity>
@@ -189,6 +308,13 @@ export const CircleSelectionTabs: React.FC<CircleSelectionTabsProps> = ({
 
   const renderTabs = () => {
     if (fit) {
+        if (variant === 'segmented') {
+          return (
+            <View style={[styles.segmentedContainer, { backgroundColor: inactiveColor || '#F3F4F6' }]}>
+              {tabs.map(renderTabItem)}
+            </View>
+          );
+        }
         return (
             <View style={styles.fitContent}>
               {tabs.map(renderTabItem)}
@@ -257,6 +383,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 0,
     gap: 24,
+    justifyContent: 'flex-start',
   },
   fitContent: {
     flexDirection: 'row',
@@ -266,16 +393,29 @@ const styles = StyleSheet.create({
   tabWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 12, // Add padding for underline visibility
   },
   tabContent: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
   },
+  tabContentHorizontal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 0,
+  },
   iconBox: {
     width: 48,
     height: 48,
     borderRadius: 12, // Reduced radius to match appearance config
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBoxHorizontal: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -288,13 +428,43 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: 'normal', // Default weight, will be overridden by inline style for active tab
   },
   underline: {
     position: 'absolute',
-    bottom: -15,
+    bottom: -10,
     height: 3,
-    width: 24,
     borderRadius: 2,
+  },
+  badgeWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  segmentedWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  segmentedText: {
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  segmentedContainer: {
+    flexDirection: 'row',
+    borderRadius: 10,
+    padding: 4,
+    gap: 4,
   },
 });

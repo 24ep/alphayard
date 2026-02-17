@@ -1,17 +1,9 @@
 
-const { Pool } = require('pg');
+const { PrismaClient } = require('./prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 require('dotenv').config();
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-});
-
 async function addMissingColumns() {
-  const client = await pool.connect();
   try {
     console.log('Adding missing columns to users table...');
     
@@ -25,15 +17,14 @@ async function addMissingColumns() {
 
     for (const q of queries) {
       console.log(`Executing: ${q}`);
-      await client.query(q);
+      await prisma.$executeRawUnsafe(q);
     }
 
     console.log('✅ Missing columns added successfully.');
   } catch (err) {
     console.error('❌ Error adding columns:', err);
   } finally {
-    client.release();
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

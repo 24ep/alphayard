@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import emailService from './emailService';
 import smsService from './smsService';
 import pushService from './pushService';
@@ -146,14 +146,17 @@ class NotificationService {
 
       // Get circle members if not provided
       if (circleMembers.length === 0) {
-        // Query PG for circle members
-        const { rows } = await pool.query(`
-          SELECT u.* 
-          FROM users u 
-          JOIN circle_members cm ON u.id = cm.user_id 
-          WHERE cm.circle_id = ANY($1::uuid[]) AND u.id != $2
-        `, [user.circleIds || [], user.id]);
-        circleMembers = rows;
+        // Query Prisma for circle members
+        const circleMemberRecords = await prisma.circleMember.findMany({
+          where: {
+            circleId: { in: user.circleIds || [] },
+            userId: { not: user.id },
+          },
+          include: {
+            user: true,
+          },
+        });
+        circleMembers = circleMemberRecords.map(cm => cm.user);
       }
 
       // Send notifications to circle members
@@ -342,20 +345,28 @@ class NotificationService {
       const emergencyContacts = user.emergencyContacts || [];
       if (emergencyContacts.length > 0) {
         const phoneNumbers = emergencyContacts.map((c: any) => c.phoneNumber);
-        const { rows } = await pool.query('SELECT * FROM users WHERE phone = ANY($1)', [phoneNumbers]);
-        recipients.push(...rows);
+        const users = await prisma.user.findMany({
+          where: {
+            phoneNumber: { in: phoneNumbers },
+          },
+        });
+        recipients.push(...users);
       }
 
       // Add circle members
       const circleIds = user.circleIds || [];
       if (circleIds.length > 0) {
-        const { rows } = await pool.query(`
-          SELECT u.* 
-          FROM users u 
-          JOIN circle_members cm ON u.id = cm.user_id 
-          WHERE cm.circle_id = ANY($1::uuid[]) AND u.id != $2
-        `, [circleIds, user.id]);
-        recipients.push(...rows);
+        const circleMemberRecords = await prisma.circleMember.findMany({
+          where: {
+            circleId: { in: circleIds },
+            userId: { not: user.id },
+          },
+          include: {
+            user: true,
+          },
+        });
+        const circleMemberUsers = circleMemberRecords.map(cm => cm.user);
+        recipients.push(...circleMemberUsers);
       }
 
       return recipients;

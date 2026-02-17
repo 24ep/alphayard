@@ -1,40 +1,37 @@
 
-import { Client } from 'pg';
+import { PrismaClient } from '../../prisma/generated/prisma/client';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 async function checkTable() {
   try {
-    await client.connect();
     console.log('Connected to DB');
 
     // Check table existence
-    const res = await client.query(`
+    const res = await prisma.$queryRawUnsafe(`
       SELECT table_name 
       FROM information_schema.tables 
       WHERE table_schema = 'public' AND table_name = 'circle_invitations'
-    `);
+    `) as Array<{ table_name: string }>;
 
-    if (res.rows.length === 0) {
+    if (res.length === 0) {
       console.error('ERROR: Table circle_invitations DOES NOT EXIST');
       return;
     }
     console.log('Table circle_invitations exists.');
 
     // Check columns
-    const cols = await client.query(`
+    const cols = await prisma.$queryRawUnsafe(`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'circle_invitations'
-    `);
+    `) as Array<{ column_name: string; data_type: string }>;
     
-    console.log('Columns:', cols.rows.map(r => `${r.column_name} (${r.data_type})`).join(', '));
+    console.log('Columns:', cols.map(r => `${r.column_name} (${r.data_type})`).join(', '));
 
     // Try the problematic select query with a dummy email
     const testQuery = `
@@ -49,13 +46,13 @@ async function checkTable() {
     `;
     
     console.log('Testing query...');
-    await client.query(testQuery);
+    await prisma.$queryRawUnsafe(testQuery);
     console.log('Query executed successfully (no syntax error).');
 
   } catch (err) {
     console.error('DB Error:', err);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

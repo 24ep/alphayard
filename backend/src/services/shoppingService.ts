@@ -1,28 +1,37 @@
-import entityService from './EntityService';
+// Shopping Service - STUBBED (shoppingListItem table not in current schema)
+// TODO: Add shopping_list_items table to Prisma schema to enable this feature
 
 class ShoppingService {
-    async list(ownerId: string, circleId?: string) {
-        return entityService.queryEntities('shopping_item', {
-            ownerId,
-            applicationId: circleId
-        } as any);
+    /**
+     * List shopping items for a user, optionally filtered by circle
+     */
+    async list(_ownerId: string, _circleId?: string) {
+        // Table not available in schema
+        return {
+            entities: [],
+            total: 0,
+        };
     }
 
-    async create(data: any) {
-        const { userId, user_id, ...attributes } = data;
-        return entityService.createEntity({
-            typeName: 'shopping_item',
-            ownerId: userId || user_id,
-            attributes
-        });
+    /**
+     * Create a new shopping item
+     */
+    async create(_data: any) {
+        throw new Error('Shopping feature not available - table not configured');
     }
 
-    async update(id: string, attributes: any) {
-        return entityService.updateEntity(id, { attributes });
+    /**
+     * Update a shopping item
+     */
+    async update(_id: string, _attributes: any) {
+        throw new Error('Shopping feature not available - table not configured');
     }
 
-    async delete(id: string) {
-        return entityService.deleteEntity(id);
+    /**
+     * Delete a shopping item
+     */
+    async delete(_id: string) {
+        throw new Error('Shopping feature not available - table not configured');
     }
 }
 

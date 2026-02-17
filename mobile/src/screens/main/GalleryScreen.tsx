@@ -41,7 +41,8 @@ import { useNavigationAnimation } from '../../contexts/NavigationAnimationContex
 import { useFocusEffect } from '@react-navigation/native';
 import { CircleDropdown } from '../../components/home/CircleDropdown';
 import MainScreenLayout from '../../components/layout/MainScreenLayout';
-import { galleryService } from '../../services/gallery/GalleryService';
+import { galleryApi } from '../../services/api';
+import { useUserData } from '../../contexts/UserDataContext';
 import { GalleryGridSkeleton } from '../../components/common/SkeletonLoader';
 // import LinearGradient from 'react-native-linear-gradient';
 
@@ -97,7 +98,7 @@ const GalleryScreen: React.FC<GalleryScreenProps> = ({ embedded, darkMode = fals
   const [showImageOptions, setShowImageOptions] = useState(false);
   const [currentImage, setCurrentImage] = useState<MediaItem | null>(null);
   const [showCircleDropdown, setShowCircleDropdown] = useState(false);
-  const [selectedCircle, setSelectedCircle] = useState('Demo Family');
+  const { families, selectedCircle, setSelectedCircle } = useUserData();
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'size'>('date');
   const [showSortModal, setShowSortModal] = useState(false);
 
@@ -139,24 +140,31 @@ const GalleryScreen: React.FC<GalleryScreenProps> = ({ embedded, darkMode = fals
         // Try to load from API first, fallback to mock data
         try {
           // Use a real circle ID found in the database
-          const circleId = '8e24f6b2-3285-4dfc-8070-30c93f291808'; 
-          const [photos] = await Promise.all([
-            galleryService.getPhotos(circleId),
-            galleryService.getAlbums(circleId)
-          ]);
+          const circleId = families.find(f => f.name === selectedCircle)?.id; 
 
-          // Transform photos to MediaItem format
-          const transformedMedia: MediaItem[] = photos.map(photo => ({
-            id: photo.id,
-            type: 'photo' as MediaType,
-            uri: photo.uri,
-            date: photo.createdAt.toISOString().split('T')[0],
-            location: photo.location?.address || '',
-            people: [],
-            collectionIds: photo.albumId ? [photo.albumId] : [],
-          }));
+          if (circleId) {
+             const [photos] = await Promise.all([
+                galleryApi.getPhotos(circleId),
+                galleryApi.getAlbums(circleId)
+             ]);
 
-          setMediaItems(transformedMedia);
+              // Transform photos to MediaItem format
+              const transformedMedia: MediaItem[] = photos.map((photo: any) => ({
+                id: photo.id,
+                type: 'photo' as MediaType,
+                uri: photo.uri,
+                title: photo.title,
+                date: photo.createdAt, 
+                location: photo.location?.address || '',
+                people: [],
+                collectionIds: photo.albumId ? [photo.albumId] : [],
+              }));
+              
+              setMediaItems(transformedMedia);
+          } else {
+             setMediaItems([]);
+          }
+
         } catch (apiError) {
           console.warn('API not available for gallery:', apiError);
           setMediaItems([]);
@@ -170,7 +178,7 @@ const GalleryScreen: React.FC<GalleryScreenProps> = ({ embedded, darkMode = fals
     };
 
     loadData();
-  }, []);
+  }, [selectedCircle, families]);
 
   // Animate to gallery when screen is focused
   useFocusEffect(
@@ -572,7 +580,7 @@ const GalleryScreen: React.FC<GalleryScreenProps> = ({ embedded, darkMode = fals
       <CircleDropdown
         visible={showCircleDropdown}
         onClose={() => setShowCircleDropdown(false)}
-        selectedCircle={selectedCircle}
+        selectedCircle={selectedCircle || ''}
         onCircleSelect={handleCircleSelect}
         availableFamilies={availableFamilies}
       />

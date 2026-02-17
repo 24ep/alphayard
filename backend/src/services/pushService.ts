@@ -2,7 +2,7 @@
 import * as admin from 'firebase-admin';
 // @ts-ignore
 import * as webpush from 'web-push';
-import { UserModel } from '../models/UserModel';
+import { prisma } from '../lib/prisma';
 
 export interface PushNotification {
   title: string;
@@ -66,22 +66,53 @@ class PushService {
         throw new Error('Push service not initialized');
       }
 
-      const user = await UserModel.findById(userId);
+      // Verify user exists
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
       if (!user) {
         throw new Error('User not found');
       }
 
       const results: any[] = [];
 
-      // Send to mobile devices (FCM) - Mapping to deviceTokens based on UserModel
-      const deviceTokens = user.metadata?.deviceTokens || [];
+      // Get FCM tokens from UserPushToken table
+      const fcmTokens = await prisma.userPushToken.findMany({
+        where: {
+          userId,
+          platform: { in: ['fcm', 'android', 'ios'] },
+          isActive: true,
+        },
+        select: { token: true },
+      });
+
+      const deviceTokens = fcmTokens.map(t => t.token);
       if (deviceTokens.length > 0) {
         const fcmResult = await this.sendToFCM(deviceTokens, notification);
         results.push(...fcmResult);
       }
 
-      // Send to web browsers
-      const webPushSubscriptions = user.metadata?.webPushSubscriptions || [];
+      // Get web push subscriptions from UserPushToken table
+      const webPushTokens = await prisma.userPushToken.findMany({
+        where: {
+          userId,
+          platform: 'web',
+          isActive: true,
+        },
+        select: { token: true },
+      });
+
+      // Parse JSON subscriptions stored in token field
+      const webPushSubscriptions = webPushTokens
+        .map(t => {
+          try {
+            return JSON.parse(t.token);
+          } catch {
+            return null;
+          }
+        })
+        .filter((sub): sub is any => sub !== null);
+
       if (webPushSubscriptions.length > 0) {
         const webResult = await this.sendToWebPush(webPushSubscriptions, notification);
         results.push(...webResult);
@@ -286,10 +317,25 @@ class PushService {
   }
 
   // Add FCM token for user
-  async addFCMToken(userId: string, token: string) {
+  async addFCMToken(userId: string, token: string, platform: string = 'fcm', deviceId?: string) {
     try {
-      await UserModel.findByIdAndUpdate(userId, {
-        $push: { deviceTokens: token },
+      // Use upsert to avoid duplicates (token has unique constraint)
+      await prisma.userPushToken.upsert({
+        where: { token },
+        update: {
+          userId,
+          platform,
+          deviceId,
+          isActive: true,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId,
+          token,
+          platform,
+          deviceId,
+          isActive: true,
+        },
       });
 
       return true;
@@ -302,8 +348,13 @@ class PushService {
   // Remove FCM token for user
   async removeFCMToken(userId: string, token: string) {
     try {
-      await UserModel.findByIdAndUpdate(userId, {
-        $pull: { deviceTokens: token },
+      // Delete the token or mark as inactive
+      await prisma.userPushToken.deleteMany({
+        where: {
+          userId,
+          token,
+          platform: { in: ['fcm', 'android', 'ios'] },
+        },
       });
 
       return true;
@@ -316,9 +367,39 @@ class PushService {
   // Add web push subscription for user
   async addWebPushSubscription(userId: string, subscription: any) {
     try {
-      await UserModel.findByIdAndUpdate(userId, {
-        $push: { webPushSubscriptions: subscription },
+      // Store subscription as JSON string in token field, use endpoint as unique identifier
+      const subscriptionJson = JSON.stringify(subscription);
+      const endpoint = subscription.endpoint;
+
+      // Use upsert based on endpoint (stored in token JSON)
+      // First check if a token with this endpoint exists
+      const existing = await prisma.userPushToken.findFirst({
+        where: {
+          userId,
+          platform: 'web',
+          token: { contains: endpoint },
+        },
       });
+
+      if (existing) {
+        await prisma.userPushToken.update({
+          where: { id: existing.id },
+          data: {
+            token: subscriptionJson,
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.userPushToken.create({
+          data: {
+            userId,
+            token: subscriptionJson,
+            platform: 'web',
+            isActive: true,
+          },
+        });
+      }
 
       return true;
     } catch (error) {
@@ -330,8 +411,13 @@ class PushService {
   // Remove web push subscription for user
   async removeWebPushSubscription(userId: string, endpoint: string) {
     try {
-      await UserModel.findByIdAndUpdate(userId, {
-        $pull: { webPushSubscriptions: { endpoint } },
+      // Find and delete web push subscriptions by endpoint (stored in token JSON)
+      await prisma.userPushToken.deleteMany({
+        where: {
+          userId,
+          platform: 'web',
+          token: { contains: endpoint },
+        },
       });
 
       return true;
@@ -344,9 +430,23 @@ class PushService {
   // Clean up invalid tokens
   async cleanupInvalidTokens() {
     try {
-      // Logic for cleanup would need careful implementation with PG
-      console.log('Cleanup invalid tokens logic would go here');
-      return true;
+      // Mark tokens as inactive that haven't been updated recently
+      // This is a placeholder - actual cleanup logic would depend on business requirements
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 90); // 90 days ago
+
+      const result = await prisma.userPushToken.updateMany({
+        where: {
+          isActive: true,
+          updatedAt: { lt: cutoffDate },
+        },
+        data: {
+          isActive: false,
+        },
+      });
+
+      console.log(`Cleaned up ${result.count} inactive tokens`);
+      return { cleaned: result.count };
     } catch (error) {
       console.error('Cleanup invalid tokens error:', error);
       throw error;

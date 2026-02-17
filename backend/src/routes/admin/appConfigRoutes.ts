@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { appConfigController } from '../../controllers/admin/AppConfigController';
+import { authenticateAdmin } from '../../middleware/adminAuth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = Router();
 
@@ -36,23 +38,22 @@ router.get('/config/:configKey', appConfigController.getConfigValue.bind(appConf
 
 // ============================================================================
 // ADMIN ROUTES (Authentication required)
-// Note: Add authentication middleware here when ready
 // ============================================================================
 
 // Update screen configuration
-router.put('/screens/:screenKey', appConfigController.updateScreenConfig.bind(appConfigController));
+router.put('/screens/:screenKey', authenticateAdmin as any, requirePermission('settings', 'edit'), appConfigController.updateScreenConfig.bind(appConfigController));
 
 // Update theme configuration
-router.put('/themes/:themeKey', appConfigController.updateTheme.bind(appConfigController));
+router.put('/themes/:themeKey', authenticateAdmin as any, requirePermission('settings', 'edit'), appConfigController.updateTheme.bind(appConfigController));
 
 // Create or update asset
-router.post('/assets', appConfigController.upsertAsset.bind(appConfigController));
+router.post('/assets', authenticateAdmin as any, requirePermission('settings', 'edit'), appConfigController.upsertAsset.bind(appConfigController));
 
 // Update feature flag
-router.patch('/features/:featureKey', appConfigController.updateFeatureFlag.bind(appConfigController));
+router.patch('/features/:featureKey', authenticateAdmin as any, requirePermission('settings', 'edit'), appConfigController.updateFeatureFlag.bind(appConfigController));
 
 // Update configuration value
-router.put('/config/:configKey', appConfigController.updateConfigValue.bind(appConfigController));
+router.put('/config/:configKey', authenticateAdmin as any, requirePermission('settings', 'edit'), appConfigController.updateConfigValue.bind(appConfigController));
 
 export default router;
 

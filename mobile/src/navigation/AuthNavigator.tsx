@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import MarketingScreen from '../screens/auth/MarketingScreen';
 import GetStartScreen from '../screens/auth/GetStartScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import MarketMenuScreen from '../screens/auth/MarketMenuScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 
@@ -13,12 +14,73 @@ import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import SSOLoginScreen from '../screens/auth/SSOLoginScreen';
 import PinSetupScreen from '../screens/auth/PinSetupScreen';
 
+// Signup Flow Screens
+import Step1UsernameScreen from '../screens/auth/signup/Step1UsernameScreen';
+import Step2PasswordScreen from '../screens/auth/signup/Step2PasswordScreen';
+import Step3CircleScreen from '../screens/auth/signup/Step3CircleScreen';
+import Step3CreateCircleScreen from '../screens/auth/signup/Step3CreateCircleScreen';
+import Step3JoinCircleScreen from '../screens/auth/signup/Step3JoinCircleScreen';
+import Step4InviteCircleScreen from '../screens/auth/signup/Step4InviteCircleScreen';
+import Step4NameScreen from '../screens/auth/signup/Step4NameScreen';
+import Step5PersonalInfoScreen from '../screens/auth/signup/Step5PersonalInfoScreen';
+import Step6SurveyScreen from '../screens/auth/signup/Step6SurveyScreen';
+
 export type AuthStackParamList = {
   GetStart: undefined;
   Marketing: undefined;
   MarketMenu: undefined;
   Login: undefined;
+  Register: undefined;
   Signup: { email?: string; phone?: string };
+  Step1Username: { email?: string; phone?: string };
+  Step2Password: { email?: string; phone?: string };
+  Step3Circle: { email?: string; phone?: string; password: string };
+  Step3CreateCircle: { email?: string; phone?: string; password: string; circleOption: string };
+  Step3JoinCircle: { email?: string; phone?: string; password: string; circleOption: string };
+  Step4InviteCircle: { 
+    email?: string; 
+    phone?: string;
+    password: string; 
+    circleOption: string; 
+    circleCode?: string; 
+    circleName?: string;
+    circleDescription?: string;
+  };
+  Step4Name: { 
+    email?: string; 
+    phone?: string;
+    password: string; 
+    circleOption: string; 
+    circleCode?: string; 
+    circleName?: string;
+    circleDescription?: string;
+    inviteEmails?: string[];
+  };
+  Step5PersonalInfo: { 
+    email?: string; 
+    phone?: string;
+    password: string; 
+    circleOption: string; 
+    circleCode?: string; 
+    circleName?: string;
+    circleDescription?: string;
+    inviteEmails?: string[];
+    firstName: string;
+    lastName: string;
+  };
+  Step6Survey: { 
+    email?: string; 
+    phone?: string;
+    password: string; 
+    circleOption: string; 
+    circleCode?: string; 
+    circleName?: string;
+    circleDescription?: string;
+    inviteEmails?: string[];
+    firstName: string;
+    lastName: string;
+    personalInfo?: any;
+  };
   SSOLogin: { provider: string };
   TwoFactorMethod: { identifier: string; mode: 'login' | 'signup' };
   TwoFactorVerify: { identifier: string; mode: 'login' | 'signup'; channel: 'email' | 'sms' | 'authenticator' };
@@ -71,8 +133,20 @@ const AuthNavigator: React.FC = () => {
       <Stack.Screen name="Marketing" component={MarketingScreen} />
       <Stack.Screen name="MarketMenu" component={MarketMenuScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="SSOLogin" component={SSOLoginScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+
+      {/* Signup Steps */}
+      <Stack.Screen name="Step1Username" component={Step1UsernameScreen} />
+      <Stack.Screen name="Step2Password" component={Step2PasswordScreen} />
+      <Stack.Screen name="Step3Circle" component={Step3CircleScreen} />
+      <Stack.Screen name="Step3CreateCircle" component={Step3CreateCircleScreen} />
+      <Stack.Screen name="Step3JoinCircle" component={Step3JoinCircleScreen} />
+      <Stack.Screen name="Step4InviteCircle" component={Step4InviteCircleScreen} />
+      <Stack.Screen name="Step4Name" component={Step4NameScreen} />
+      <Stack.Screen name="Step5PersonalInfo" component={Step5PersonalInfoScreen} />
+      <Stack.Screen name="Step6Survey" component={Step6SurveyScreen} />
 
       <Stack.Screen name="TwoFactorMethod" component={TwoFactorMethodScreen} />
       <Stack.Screen name="TwoFactorVerify" component={TwoFactorVerifyScreen} />

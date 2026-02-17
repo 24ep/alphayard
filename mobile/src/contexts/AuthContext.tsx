@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CommonActions } from '@react-navigation/native';
 import { Platform } from 'react-native';
 import { apiClient } from '../services/api/apiClient';
 import { logger } from '../utils/logger';
@@ -79,6 +78,17 @@ interface User {
   updatedAt: Date;
 }
 
+// SSO Provider from backend
+interface SSOProvider {
+  id: string;
+  name: string;
+  displayName: string;
+  providerType: string;
+  iconUrl?: string;
+  buttonColor?: string;
+  displayOrder: number;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -86,7 +96,7 @@ interface AuthContextType {
   isOnboardingComplete: boolean;
   forceUpdate: number;
   login: (email: string, password: string) => Promise<void>;
-  loginWithSSO: (provider: 'google' | 'facebook' | 'apple') => Promise<void>;
+  loginWithSSO: (provider: 'google' | 'facebook' | 'apple' | string) => Promise<void>;
   signup: (userData: SignupData) => Promise<void>;
   logout: () => Promise<void>;
   refreshToken: () => Promise<void>;
@@ -104,6 +114,9 @@ interface AuthContextType {
   verifyEmail: (email: string, code: string) => Promise<void>;
   loginError: string | null;
   clearLoginError: () => void;
+  // SSO Providers
+  ssoProviders: SSOProvider[];
+  loadSSOProviders: () => Promise<void>;
 }
 
 interface SignupData {
@@ -146,6 +159,8 @@ export const useAuth = () => {
         checkUserExists: async () => false,
         requestOtp: async () => { },
         loginWithOtp: async () => { },
+        ssoProviders: [],
+        loadSSOProviders: async () => { },
       };
     }
     return context;
@@ -175,6 +190,8 @@ export const useAuth = () => {
       requestOtp: async () => { },
       loginWithOtp: async () => { },
       verifyEmail: async () => { },
+      ssoProviders: [],
+      loadSSOProviders: async () => { },
     };
   }
 };
@@ -215,6 +232,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
   const [forceUpdate, setForceUpdate] = useState(0);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [ssoProviders, setSsoProviders] = useState<SSOProvider[]>([]);
   const navigationRef = useRef<any>(null);
 
   const clearLoginError = () => setLoginError(null);
@@ -249,6 +267,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Load available SSO providers from backend
+  const loadSSOProviders = async () => {
+    try {
+      console.log('[AUTH] Loading SSO providers...');
+      const response = await api.get('/auth/sso/providers') as any;
+      if (response?.success && response?.providers) {
+        console.log('[AUTH] Loaded SSO providers:', response.providers.length);
+        setSsoProviders(response.providers);
+      }
+    } catch (error) {
+      console.warn('[AUTH] Failed to load SSO providers:', error);
+      // Don't throw - SSO providers are optional
+      setSsoProviders([]);
+    }
+  };
+
   // Check for existing session on app start
   // Only run once on mount, and don't run if user is already set
   const hasCheckedAuthRef = useRef(false);
@@ -256,6 +290,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!hasCheckedAuthRef.current && !user) {
       hasCheckedAuthRef.current = true;
       checkAuthState();
+      // Also load SSO providers on app start
+      loadSSOProviders();
     }
   }, []);
 
@@ -417,22 +453,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       logger.info('User logged in successfully:', userData?.email);
 
-      // Force navigation reset if navigation ref is available
-      setTimeout(() => {
-        if (navigationRef.current?.isReady()) {
-          console.log('[AUTH] Forcing navigation reset to App');
-          try {
-            navigationRef.current.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'App' }],
-              })
-            );
-          } catch (error) {
-            console.error('[AUTH] Error forcing navigation reset:', error);
-          }
-        }
-      }, 100);
+      // RootNavigator will automatically handle navigation based on state changes
+      // No manual navigation reset needed - it causes errors when route doesn't exist yet
     } catch (error: any) {
       console.log('🔧 Login error caught:', error);
       console.log('🔧 Error type:', typeof error);
@@ -471,7 +493,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email: 'dev@bondarys.com',
         firstName: 'Developer',
         lastName: 'User',
-        avatar: 'https://via.placeholder.com/150',
+        avatar: 'https://placehold.co/150',
         phone: '+1234567890',
         userType: 'Circle',
         subscriptionTier: 'premium',
@@ -522,13 +544,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const loginWithSSO = async (provider: 'google' | 'facebook' | 'apple') => {
+  const loginWithSSO = async (provider: 'google' | 'facebook' | 'apple' | 'microsoft' | 'twitter' | 'x' | 'line' | string) => {
     try {
       setIsLoading(true);
 
       let ssoData: any = {};
+      let normalizedProvider = provider.toLowerCase();
+      
+      // Normalize 'x' to 'twitter' for backend compatibility
+      if (normalizedProvider === 'x') {
+        normalizedProvider = 'twitter';
+      }
 
-      switch (provider) {
+      switch (normalizedProvider) {
         case 'google':
           if (!GoogleSignin) {
             throw new Error('Google Sign-In is not available in this environment');
@@ -547,11 +575,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           ssoData = await handleAppleSignIn();
           break;
+        case 'microsoft':
+          ssoData = await handleMicrosoftSignIn();
+          break;
+        case 'twitter':
+          ssoData = await handleTwitterSignIn();
+          break;
+        case 'line':
+          ssoData = await handleLineSignIn();
+          break;
+        default:
+          // For custom/unknown providers, attempt a generic OAuth flow
+          throw new Error(`SSO provider '${provider}' is not yet implemented on this platform`);
       }
 
       // Send SSO data to backend
       const response = await api.post('/auth/sso', {
-        provider,
+        provider: normalizedProvider,
         ...ssoData,
       });
 
@@ -576,6 +616,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Microsoft Sign-In handler
+  const handleMicrosoftSignIn = async () => {
+    // Microsoft authentication using MSAL or web-based OAuth
+    // For React Native, you would typically use @azure/msal-react-native
+    // For now, we'll use a web-based OAuth flow on mobile web or throw for native
+    if (Platform.OS === 'web') {
+      // Web-based Microsoft OAuth flow would be handled here
+      throw new Error('Microsoft Sign-In requires additional setup. Please configure MSAL.');
+    }
+    
+    // For native apps, MSAL SDK should be integrated
+    throw new Error('Microsoft Sign-In is not yet configured for this platform. Please install @azure/msal-react-native');
+  };
+
+  // Twitter/X Sign-In handler
+  const handleTwitterSignIn = async () => {
+    // Twitter OAuth 2.0 with PKCE
+    // For React Native, you would typically use react-native-twitter-signin or expo-auth-session
+    if (Platform.OS === 'web') {
+      throw new Error('Twitter/X Sign-In requires additional setup. Please configure Twitter OAuth.');
+    }
+    
+    throw new Error('Twitter/X Sign-In is not yet configured for this platform');
+  };
+
+  // LINE Sign-In handler
+  const handleLineSignIn = async () => {
+    // LINE Login SDK
+    // For React Native, you would typically use @xmartlabs/react-native-line
+    if (Platform.OS === 'web') {
+      throw new Error('LINE Sign-In requires additional setup. Please configure LINE Login.');
+    }
+    
+    throw new Error('LINE Sign-In is not yet configured for this platform. Please install @xmartlabs/react-native-line');
   };
 
   const handleGoogleSignIn = async () => {
@@ -1018,28 +1094,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await handleAuthResponse(response);
       logger.info('User logged in via OTP successfully');
 
-      // FORCE NAVIGATION RESET
-      // Sometimes RootNavigator's automatic state detection is delayed
-      // This ensures the UI moves forward immediately
-      console.log('[AUTH] Forcing navigation reset to App');
-      setTimeout(() => {
-        try {
-          const navigation = navigationRef.current;
-          if (navigation) {
-            console.log('[AUTH] Navigation ref found, resetting to App');
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: 'App' }],
-              })
-            );
-          } else {
-            console.log('[AUTH] Navigation ref NOT FOUND for reset');
-          }
-        } catch (err) {
-          console.error('[AUTH] Reset navigation failed:', err);
-        }
-      }, 500);
+      // RootNavigator will automatically handle navigation based on state changes
+      // No manual navigation reset needed - it causes errors when route doesn't exist yet
 
     } catch (error: any) {
       console.error('Login with OTP failed:', error);
@@ -1103,6 +1159,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     requestOtp,
     loginWithOtp,
     verifyEmail,
+    ssoProviders,
+    loadSSOProviders,
   };
 
   // Simple auth state logging

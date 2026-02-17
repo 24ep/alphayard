@@ -60,11 +60,11 @@ export const Stepper = ({
                   "relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 transition-all duration-300",
                   isCompleted
                     ? variant === "primary"
-                      ? "border-blue-600 bg-blue-600 text-white"
+                      ? "border-black bg-black text-white"
                       : "border-slate-900 bg-slate-900 text-white"
                     : isActive
                     ? variant === "primary"
-                      ? "border-blue-600 text-blue-600"
+                      ? "border-black text-black"
                       : "border-slate-900 text-slate-900"
                     : "border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800"
                 )}

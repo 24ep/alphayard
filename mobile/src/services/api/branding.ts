@@ -7,6 +7,7 @@ export interface MobileBranding {
   analytics?: {
     sentryDsn?: string
     mixpanelToken?: string
+    googleAnalyticsId?: string
     enableDebugLogs?: boolean
   }
   legal?: {
@@ -28,9 +29,23 @@ export interface AuthFlowConfig {
   passwordPolicy: 'standard' | 'strong' | 'custom'
 }
 
+export interface SurveySlide {
+  id: string
+  question: string
+  options: string[]
+  type: 'single_choice' | 'multiple_choice' | 'text'
+  icon?: string
+}
+
+export interface SurveyConfig {
+  enabled: boolean
+  trigger: 'on_startup' | 'after_onboarding' | 'after_first_action'
+  slides: SurveySlide[]
+}
+
 export interface FlowsConfig {
   onboarding?: any
-  survey?: any
+  survey?: SurveyConfig
   login?: AuthFlowConfig
   signup?: AuthFlowConfig
 }

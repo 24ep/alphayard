@@ -7,18 +7,46 @@ import { MobileGuide } from '../ui/MobileGuide'
 import { useApp } from '../../contexts/AppContext'
 import { generateMobileUsage } from '../../utils/collectionUtils'
 
-// Field types available for collection schema
+// Field types available for collection schema - aligned with SchemaFieldType
 const FIELD_TYPES = [
-    { value: 'text', label: 'Text', icon: '📝' },
-    { value: 'number', label: 'Number', icon: '🔢' },
-    { value: 'boolean', label: 'Boolean', icon: '✓' },
-    { value: 'date', label: 'Date', icon: '📅' },
-    { value: 'datetime', label: 'Date & Time', icon: '🕐' },
-    { value: 'select', label: 'Select', icon: '📋' },
-    { value: 'multiselect', label: 'Multi-Select', icon: '☑️' },
-    { value: 'reference', label: 'Reference', icon: '🔗' },
-    { value: 'image', label: 'Image', icon: '🖼️' },
-    { value: 'json', label: 'JSON', icon: '{ }' },
+    // Basic text types
+    { value: 'text', label: 'Text', icon: '📝', description: 'Short text input' },
+    { value: 'textarea', label: 'Text Area', icon: '📄', description: 'Multi-line text' },
+    { value: 'rich-text', label: 'Rich Text', icon: '📰', description: 'HTML rich text editor' },
+    { value: 'markdown', label: 'Markdown', icon: '📑', description: 'Markdown editor' },
+    
+    // Number types
+    { value: 'number', label: 'Number', icon: '🔢', description: 'Numeric input' },
+    { value: 'slider', label: 'Slider', icon: '📊', description: 'Range slider' },
+    { value: 'rating', label: 'Rating', icon: '⭐', description: 'Star rating' },
+    
+    // Boolean
+    { value: 'boolean', label: 'Boolean', icon: '✓', description: 'Toggle switch' },
+    
+    // Date/Time types
+    { value: 'date', label: 'Date', icon: '📅', description: 'Date picker' },
+    { value: 'datetime', label: 'Date & Time', icon: '🕐', description: 'Date and time picker' },
+    { value: 'time', label: 'Time', icon: '⏰', description: 'Time only picker' },
+    
+    // Selection types
+    { value: 'select', label: 'Select', icon: '📋', description: 'Single select dropdown' },
+    { value: 'multiselect', label: 'Multi-Select', icon: '☑️', description: 'Multiple selection' },
+    { value: 'tags', label: 'Tags', icon: '🏷️', description: 'Tag input' },
+    
+    // Contact types
+    { value: 'email', label: 'Email', icon: '📧', description: 'Email address' },
+    { value: 'phone', label: 'Phone', icon: '📱', description: 'Phone number' },
+    { value: 'url', label: 'URL', icon: '🔗', description: 'Web URL' },
+    
+    // Media types
+    { value: 'image', label: 'Image', icon: '🖼️', description: 'Image upload' },
+    { value: 'file', label: 'File', icon: '📎', description: 'File upload' },
+    
+    // Other types
+    { value: 'color', label: 'Color', icon: '🎨', description: 'Color picker' },
+    { value: 'password', label: 'Password', icon: '🔒', description: 'Password field' },
+    { value: 'reference', label: 'Reference', icon: '🔗', description: 'Link to another entity' },
+    { value: 'json', label: 'JSON', icon: '{ }', description: 'JSON data' },
 ] as const
 
 // Icon options for collections
@@ -47,6 +75,15 @@ export interface FieldDefinition {
     defaultValue?: any
     options?: { value: string; label: string }[]
     referenceType?: string
+    referenceDisplayField?: string
+    hidden?: boolean
+    readonly?: boolean
+    helpText?: string
+    rows?: number          // For textarea
+    accept?: string        // For file/image upload
+    min?: number           // For number, slider, rating
+    max?: number           // For number, slider, rating
+    step?: number          // For number, slider
     validation?: {
         min?: number
         max?: number

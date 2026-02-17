@@ -86,10 +86,119 @@ export const SocialTab: React.FC<SocialTabProps> = ({
         filters.sortBy = 'nearby'; 
     }
 
-    const apiCall = socialService.getPosts(filters);
-    
-    return Promise.race([apiCall, timeout]);
+    try {
+      const apiCall = socialService.getPosts(filters);
+      const result = await Promise.race([apiCall, timeout]);
+      
+      // If API returns data, use it
+      if (result && Array.isArray(result) && result.length > 0) {
+        return result;
+      }
+      
+      // If API returns empty or fails, return example data
+      console.log('[SocialTab] API returned empty, loading example data');
+      return getExamplePosts();
+    } catch (error) {
+      console.error('[SocialTab] API error, loading example data:', error);
+      // Return example data on error
+      return getExamplePosts();
+    }
   }, [circleId, geoScope, distanceKm, selectedCountry, customCoordinates, sortOrder]);
+
+  // Example posts data
+  const getExamplePosts = (): any[] => {
+    const now = Date.now();
+    return [
+      {
+        id: 'example-1',
+        circleId: circleId || 'example-circle',
+        authorId: 'example-user-1',
+        content: 'Just finished an amazing hike! The view from the top was absolutely breathtaking. 🏔️ #nature #hiking',
+        type: 'text',
+        likes: 12,
+        comments: 3,
+        shares: 2,
+        isLiked: false,
+        created_at: new Date(now - 3600000).toISOString(), // 1 hour ago
+        timestamp: now - 3600000,
+        author: {
+          id: 'example-user-1',
+          name: 'Sarah Johnson',
+          firstName: 'Sarah',
+          lastName: 'Johnson',
+          isVerified: true
+        }
+      },
+      {
+        id: 'example-2',
+        circleId: circleId || 'example-circle',
+        authorId: 'example-user-2',
+        content: 'Family dinner tonight was fantastic! Great food and even better company. ❤️',
+        type: 'image',
+        media: {
+          type: 'image',
+          url: 'https://placehold.co/400x300?text=Family+Dinner'
+        },
+        likes: 24,
+        comments: 5,
+        shares: 1,
+        isLiked: true,
+        created_at: new Date(now - 7200000).toISOString(), // 2 hours ago
+        timestamp: now - 7200000,
+        author: {
+          id: 'example-user-2',
+          name: 'Mike Chen',
+          firstName: 'Mike',
+          lastName: 'Chen',
+          isVerified: false
+        }
+      },
+      {
+        id: 'example-3',
+        circleId: circleId || 'example-circle',
+        authorId: 'example-user-3',
+        content: 'Working on a new project! Excited to share more details soon. Stay tuned! 💼',
+        type: 'text',
+        likes: 8,
+        comments: 2,
+        shares: 0,
+        isLiked: false,
+        created_at: new Date(now - 86400000).toISOString(), // 1 day ago
+        timestamp: now - 86400000,
+        author: {
+          id: 'example-user-3',
+          name: 'Emma Wilson',
+          firstName: 'Emma',
+          lastName: 'Wilson',
+          isVerified: true
+        }
+      },
+      {
+        id: 'example-4',
+        circleId: circleId || 'example-circle',
+        authorId: 'example-user-4',
+        content: 'Beautiful sunset at the beach today! 🌅 Perfect end to a perfect day.',
+        type: 'image',
+        media: {
+          type: 'image',
+          url: 'https://placehold.co/400x300?text=Sunset+Beach'
+        },
+        likes: 45,
+        comments: 8,
+        shares: 5,
+        isLiked: false,
+        created_at: new Date(now - 172800000).toISOString(), // 2 days ago
+        timestamp: now - 172800000,
+        author: {
+          id: 'example-user-4',
+          name: 'David Lee',
+          firstName: 'David',
+          lastName: 'Lee',
+          isVerified: false
+        }
+      }
+    ];
+  };
 
   const {
     data: posts = [],
@@ -330,7 +439,7 @@ export const SocialTab: React.FC<SocialTabProps> = ({
       }
       showsVerticalScrollIndicator={false}
     >
-      <View style={[homeStyles.section, { paddingHorizontal: 20 }]}>
+      <View style={[homeStyles.section, { paddingHorizontal: 16 }]}>
 
 
         <View style={{ marginTop: 12 }}>

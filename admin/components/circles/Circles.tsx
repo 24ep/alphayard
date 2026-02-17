@@ -34,8 +34,24 @@ export function Families() {
     try {
       setLoading(true)
       setError(null)
-      const data = await adminService.getFamilies()
-      setFamilies(data)
+      // Use generic collection endpoint instead of deprecated getFamilies()
+      const response = await adminService.getCollectionItems('circles')
+      // Map entities to Circle format
+      const circles: Circle[] = (response.entities || []).map((entity: any) => ({
+        id: entity.id,
+        name: entity.attributes?.name || entity.data?.name || '',
+        description: entity.attributes?.description || entity.data?.description,
+        type: entity.attributes?.type || entity.data?.type || 'Circle',
+        inviteCode: entity.attributes?.inviteCode || entity.data?.inviteCode,
+        createdAt: entity.createdAt || entity.created_at,
+        updatedAt: entity.updatedAt || entity.updated_at,
+        ownerId: entity.ownerId || entity.owner_id,
+        status: entity.status || 'active',
+        memberCount: entity.attributes?.member_count || entity.data?.member_count || 0,
+        is_active: entity.status === 'active',
+        owner: entity.attributes?.owner || entity.data?.owner
+      }))
+      setFamilies(circles)
     } catch (err) {
       console.error('Error loading families:', err)
       setError('Failed to load families. Please try again.')
@@ -63,9 +79,11 @@ export function Families() {
   const handleSave = async () => {
     try {
       if (editingCircle) {
-        await adminService.updateCircle(editingCircle.id, formData)
+        // Use generic collection endpoint instead of deprecated updateCircle()
+        await adminService.updateCollectionItem('circles', editingCircle.id, formData)
       } else {
-        await adminService.createCircle(formData)
+        // Use generic collection endpoint instead of deprecated createCircle()
+        await adminService.createCollectionItem('circles', formData)
       }
       setShowCreateForm(false)
       setEditingCircle(null)
@@ -79,7 +97,8 @@ export function Families() {
   const handleDelete = async (Circle: Circle) => {
     if (confirm(`Are you sure you want to delete "${Circle.name}"?`)) {
       try {
-        await adminService.deleteCircle(Circle.id)
+        // Use generic collection endpoint instead of deprecated deleteCircle()
+        await adminService.deleteCollectionItem('circles', Circle.id)
         await loadFamilies()
       } catch (err) {
         console.error('Error deleting Circle:', err)

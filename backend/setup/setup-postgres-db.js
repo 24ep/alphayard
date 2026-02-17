@@ -1,23 +1,20 @@
-const { Pool } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 async function main() {
-    const client = await pool.connect();
     try {
         console.log('🔌 Connected to database');
 
         // Enable UUID extension
-        await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
+        await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
 
         // Create Users Table
         console.log('🔨 Creating users table...');
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         email VARCHAR(255) UNIQUE NOT NULL,
@@ -42,25 +39,26 @@ async function main() {
 
         // Check for test user
         const email = 'dev@bondarys.com';
-        const res = await client.query('SELECT * FROM users WHERE email = $1', [email]);
+        const escapedEmail = email.replace(/'/g, "''");
+        const res = await prisma.$queryRawUnsafe(`SELECT * FROM users WHERE email = '${escapedEmail}'`);
 
-        if (res.rows.length > 0) {
+        if (res.length > 0) {
             console.log('✅ Test user already exists');
         } else {
             console.log('👤 Creating test user...');
             const passwordHash = await bcrypt.hash('password123', 10);
-            await client.query(`
+            const escapedPasswordHash = passwordHash.replace(/'/g, "''");
+            await prisma.$executeRawUnsafe(`
         INSERT INTO users (email, password, first_name, last_name, is_email_verified, user_type)
-        VALUES ($1, $2, $3, $4, $5, $6)
-      `, [email, passwordHash, 'Dev', 'User', true, 'hourse']);
+        VALUES ('${escapedEmail}', '${escapedPasswordHash}', 'Dev', 'User', true, 'hourse')
+      `);
             console.log('✅ Test user created: dev@bondarys.com / password123');
         }
 
     } catch (err) {
         console.error('❌ Error:', err);
     } finally {
-        client.release();
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

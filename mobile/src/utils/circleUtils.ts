@@ -16,7 +16,7 @@ export const transformCircleLocationsToStatusMembers = (circleLocations: CircleL
   return circleLocations.map(member => ({
     id: member.id,
     name: member.userName,
-    avatar: 'https://via.placeholder.com/48',
+    avatar: 'https://placehold.co/48',
     status: 'online' as const,
     lastActive: new Date(),
     heartRate: 72,

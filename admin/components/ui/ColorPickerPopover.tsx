@@ -3,7 +3,9 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { adminService } from '../../services/adminService'
+import { API_BASE_URL } from '../../services/apiConfig'
 import { clsx } from 'clsx'
+import { toast } from '../../src/hooks/use-toast'
 
 export type ColorMode = 'solid' | 'gradient' | 'image' | 'video'
 
@@ -460,44 +462,66 @@ export function ColorPickerPopover({ value, onChange, label, open, onOpenChange 
                   </div>
                   
                   <div className="space-y-2">
-                    {sortedStops.map((stop, index) => (
-                      <div key={stop.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                        <span className="text-xs text-gray-400 w-4">{index + 1}</span>
-                        <input
-                          type="color"
-                          value={stop.color}
-                          onChange={(e) => handleUpdateStop(stop.id, { color: e.target.value })}
-                          className="w-8 h-8 p-0.5 border border-gray-300 rounded cursor-pointer shrink-0"
-                        />
-                        <input
-                          type="text"
-                          value={stop.color}
-                          onChange={(e) => handleUpdateStop(stop.id, { color: e.target.value })}
-                          className="flex-1 h-8 px-2 text-xs border border-gray-300 rounded-lg"
-                        />
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={stop.position}
-                            onChange={(e) => handleUpdateStop(stop.id, { position: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })}
-                            className="w-12 h-8 px-2 text-xs text-center border border-gray-300 rounded-lg"
-                          />
-                          <span className="text-xs text-gray-500">%</span>
+                    {sortedStops.map((stop, index) => {
+                      const { hex, alpha } = parseColorToHexAndAlpha(stop.color)
+                      return (
+                        <div key={stop.id} className="flex flex-col gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-400 w-4">{index + 1}</span>
+                            <div className="flex-1 flex gap-2">
+                                <input
+                                  type="color"
+                                  value={hex}
+                                  onChange={(e) => handleUpdateStop(stop.id, { color: formatColor(e.target.value, alpha) })}
+                                  className="w-8 h-8 p-0.5 border border-gray-300 rounded cursor-pointer shrink-0"
+                                />
+                                <input
+                                  type="text"
+                                  value={stop.color}
+                                  onChange={(e) => handleUpdateStop(stop.id, { color: e.target.value })}
+                                  className="flex-1 h-8 px-2 text-xs border border-gray-300 rounded-lg font-mono"
+                                />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                value={stop.position}
+                                onChange={(e) => handleUpdateStop(stop.id, { position: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })}
+                                className="w-12 h-8 px-2 text-xs text-center border border-gray-300 rounded-lg"
+                              />
+                              <span className="text-xs text-gray-500">%</span>
+                            </div>
+                            {sortedStops.length > 2 && (
+                              <button
+                                onClick={() => handleRemoveStop(stop.id)}
+                                className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Opacity Slider */}
+                          <div className="flex items-center gap-2 pl-6">
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider w-8">Opacity</span>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={alpha}
+                              onChange={(e) => handleUpdateStop(stop.id, { color: formatColor(hex, parseFloat(e.target.value)) })}
+                              className="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                            />
+                            <span className="text-xs text-gray-400 w-8 text-right">{Math.round(alpha * 100)}%</span>
+                          </div>
                         </div>
-                        {sortedStops.length > 2 && (
-                          <button
-                            onClick={() => handleRemoveStop(stop.id)}
-                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>
@@ -517,9 +541,40 @@ export function ColorPickerPopover({ value, onChange, label, open, onOpenChange 
                       setUploading(true)
                       try {
                         const res = await adminService.uploadFile(file)
-                        handleImageChange(res.file.url)
-                      } catch (err) {
+                        console.log('Upload response:', res)
+                        // Handle response structure: { file: { id, url, mime_type, file_name } }
+                        const fileData = res?.file || res
+                        const imageUrl = fileData?.url
+                        
+                        if (imageUrl) {
+                          // The URL from the server should already be the full proxy URL
+                          // If it's not a full URL, construct it using the file ID
+                          let finalUrl = imageUrl
+                          if (!imageUrl.startsWith('http')) {
+                            // Fallback: construct proxy URL using file ID
+                            const fileId = fileData?.id || imageUrl
+                            finalUrl = `${API_BASE_URL}/storage/proxy/${fileId}`
+                          }
+                          console.log('Setting image URL:', finalUrl)
+                          console.log('File data:', { fileId: fileData?.id, url: fileData?.url, mimeType: fileData?.mime_type })
+                          
+                          handleImageChange(finalUrl)
+                        } else if (fileData?.id) {
+                          // Fallback: if no URL but we have an ID, construct the proxy URL
+                          const finalUrl = `${API_BASE_URL}/storage/proxy/${fileData.id}`
+                          console.log('Constructed image URL from ID:', finalUrl)
+                          handleImageChange(finalUrl)
+                        } else {
+                          console.error('No URL or ID in upload response:', res)
+                          toast({ title: "Upload failed", description: "No URL returned from server", variant: "destructive" })
+                        }
+                      } catch (err: any) {
                         console.error('Upload failed', err)
+                        toast({ 
+                          title: "Upload failed", 
+                          description: err.message || "Could not upload image. Please try again.", 
+                          variant: "destructive" 
+                        })
                       } finally {
                         setUploading(false)
                       }
@@ -527,14 +582,43 @@ export function ColorPickerPopover({ value, onChange, label, open, onOpenChange 
                   }}
                 />
                 <div 
-                  className={clsx("w-full h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center bg-gray-50 cursor-pointer hover:border-pink-400 transition-colors", uploading && "opacity-50 pointer-events-none")}
-                  style={value.image && !uploading ? { backgroundImage: `url(${value.image})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  className={clsx("w-full h-24 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center cursor-pointer hover:border-pink-400 transition-colors relative overflow-hidden", uploading && "opacity-50 pointer-events-none", !value.image && !uploading && "bg-gray-50")}
                   onClick={() => !uploading && fileInputRef.current?.click()}
                 >
                   {uploading ? (
-                      <div className="text-center text-xs text-pink-600 font-medium animate-pulse">Uploading...</div>
-                  ) : !value.image && (
-                    <div className="text-center">
+                      <div className="text-center text-xs text-pink-600 font-medium animate-pulse z-10 relative">Uploading...</div>
+                  ) : value.image ? (
+                    <img 
+                      src={value.image} 
+                      alt="Preview" 
+                      className="absolute inset-0 w-full h-full object-cover rounded-lg"
+                      onError={(e) => {
+                        console.error('Image failed to load:', value.image)
+                        console.error('Error details:', e)
+                        // Show placeholder on error
+                        e.currentTarget.style.display = 'none'
+                        const placeholder = e.currentTarget.parentElement?.querySelector('.upload-placeholder')
+                        if (placeholder) {
+                          (placeholder as HTMLElement).style.display = 'block'
+                        }
+                        // Show error message
+                        toast({ 
+                          title: "Image failed to load", 
+                          description: `Could not load image from: ${value.image}`, 
+                          variant: "destructive" 
+                        })
+                      }}
+                      onLoad={() => {
+                        console.log('Image loaded successfully:', value.image)
+                        // Hide placeholder when image loads successfully
+                        const placeholder = document.querySelector('.upload-placeholder')
+                        if (placeholder) {
+                          (placeholder as HTMLElement).style.display = 'none'
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="text-center upload-placeholder z-10 relative">
                       <svg className="w-8 h-8 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>

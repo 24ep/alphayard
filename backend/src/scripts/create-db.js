@@ -1,4 +1,4 @@
-const { Client } = require('pg');
+const { PrismaClient } = require('../../prisma/generated/prisma/client');
 require('dotenv').config({ path: '../../../.env' });
 
 async function createDb() {
@@ -7,11 +7,12 @@ async function createDb() {
     ? process.env.DATABASE_URL.replace(/\/[^/]+$/, '/postgres') 
     : 'postgresql://postgres:postgres@localhost:5432/postgres';
 
+  // For database creation, we need a direct connection to postgres database
+  // Prisma doesn't support CREATE DATABASE directly, so we'll use a temporary client
+  const { Client } = require('pg');
   const client = new Client({ connectionString });
 
   try {
-    await client.connect();
-    
     await client.connect();
     
     // Drop database if exists to ensure clean state

@@ -25,6 +25,10 @@ app.get('/health', (req, res) => {
 import adminUsersRoutes from './routes/admin/adminUsers';
 app.use('/api/admin/auth', adminUsersRoutes);
 
+// Applications routes
+import applicationRoutes from './routes/admin/applicationRoutes';
+app.use('/api/admin/applications', applicationRoutes);
+
 // Standard auth routes (for mobile app)
 import authRoutes from './routes/mobile/auth';
 import socialRoutes from './routes/mobile/social.mobile';
@@ -41,8 +45,8 @@ const PORT = parseInt(process.env.PORT || '3000');
 async function start() {
     try {
         // Database verification instead of Supabase
-        const { pool } = require('./config/database');
-        await pool.query('SELECT 1');
+        const { prisma } = require('./config/database');
+        await prisma.$queryRaw`SELECT 1`;
         console.log('✅ Database connection verified');
         
         server.listen(PORT, () => {

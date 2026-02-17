@@ -14,6 +14,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import * as Sentry from '@sentry/node';
@@ -47,10 +48,13 @@ import galleryRoutes from './routes/mobile/gallery';
 
 import miscRoutes from './routes/mobile/misc';
 
+// Admin Routes - Modular Structure
+// Common routes (shared across all apps) + Boundary-specific routes
 import auditRoutes from './routes/admin/audit';
-import adminRoutes from './routes/admin/admin';
+import commonAdminRoutes from './routes/admin/common';
+import boundaryAdminRoutes from './routes/admin/boundary';
 
-// Import CMS routes
+// Legacy admin routes for backward compatibility
 import cmsRoutes from './routes/admin/cmsRoutes';
 import marketingRoutes from './routes/admin/marketingRoutes';
 // import modalMarketingRoutes from './routes/modalMarketingRoutes';
@@ -288,6 +292,9 @@ function startServer() {
     limit: process.env.MAX_FILE_SIZE || '10mb'
   }));
 
+  // Cookie parser for SSO sessions
+  app.use(cookieParser(process.env.COOKIE_SECRET || process.env.JWT_SECRET));
+
   // Static uploads folder
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -329,8 +336,8 @@ function startServer() {
 
     // Check database connection
     try {
-      const { pool } = require('./config/database');
-      await pool.query('SELECT 1');
+      const { prisma } = require('./config/database');
+      await prisma.$queryRaw`SELECT 1`;
       healthCheck.services.database = 'connected';
     } catch (error) {
       healthCheck.services.database = 'disconnected';
@@ -391,12 +398,20 @@ function startServer() {
   // Legacy aliases (mapped to v1 router for backward compatibility)
   app.use('/api', v1Router);
 
-  // Explicit overrides or non-v1 routes if any
-  app.use('/api/admin/circle-types', circleTypeRoutes);
+  // Note: circle-types is NOT mounted under /admin because it's Boundary-app-specific, not shared admin
+  // It's available via /api/v1/circle-types (mobile route) for Boundary app only
 
   // Audit routes (non-versioned)
   app.use('/api/audit', auditRoutes);
-  app.use('/api/v1/admin', adminRoutes);
+  
+  // Modular Admin Routes
+  // - /api/admin/common/* - Shared across all apps (CMS, Pages, Components, etc.)
+  // - /api/admin/boundary/* - Boundary-specific (Users, Circles, Social, Chat)
+  app.use('/api/admin/common', commonAdminRoutes);
+  app.use('/api/admin/boundary', boundaryAdminRoutes);
+  
+  // Note: Legacy adminRoutes are already included in v1Router, so we don't need to mount them again here
+  // app.use('/api/v1/admin', adminRoutes); // Removed - causes route conflicts
 
   // CMS API routes
   app.use('/cms', cmsRoutes);
@@ -466,10 +481,10 @@ function startServer() {
   // Initialize services and start server
   async function initializeServices() {
     try {
-      // Initialize Database Connection (Pool is already created in database.ts)
-    const { pool } = require('./config/database');
+      // Initialize Database Connection (Prisma is already created in database.ts)
+    const { prisma } = require('./config/database');
     console.log('[Server] Verifying database connection...');
-    const dbPromise = pool.query('SELECT 1');
+    const dbPromise = prisma.$queryRaw`SELECT 1`;
     const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Database verification timeout')), 5000));
     await Promise.race([dbPromise, timeoutPromise]);
     console.log('✅ Database connection verified');
@@ -480,8 +495,8 @@ function startServer() {
     console.log('✅ Socket.IO initialized');
 
       // Start server
-      // Forced to 4001 to avoid conflict with Mobile (4000) and Admin (3001)
-      const PORT = 4001;
+      // Use PORT from environment variable, default to 4000 for mobile API
+      const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 4000;
       const HOST = (process.env.HOST && process.env.HOST !== '0.0.0.0') ? process.env.HOST : '::';
 
       console.log(`[Server] Starting on port ${PORT}...`);

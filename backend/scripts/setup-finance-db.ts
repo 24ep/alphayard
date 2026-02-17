@@ -1,15 +1,14 @@
 
-import { pool } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 
 async function setupFinanceDb() {
     try {
         console.log('Connecting to DB...');
-        const client = await pool.connect();
 
         console.log('Creating Finance Tables...');
 
         // Financial Accounts
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS financial_accounts (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -23,11 +22,11 @@ async function setupFinanceDb() {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-        `);
+        `;
         console.log('- financial_accounts created');
 
         // Financial Categories
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS financial_categories (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 name VARCHAR(255) NOT NULL,
@@ -38,11 +37,11 @@ async function setupFinanceDb() {
                 is_system_default BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-        `);
+        `;
         console.log('- financial_categories created');
 
         // Financial Transactions
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS financial_transactions (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -57,11 +56,11 @@ async function setupFinanceDb() {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-        `);
+        `;
         console.log('- financial_transactions created');
 
         // Financial Goals
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS financial_goals (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
@@ -73,14 +72,16 @@ async function setupFinanceDb() {
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
-        `);
+        `;
         console.log('- financial_goals created');
 
         // Seed some categories if empty
-        const countRes = await client.query('SELECT count(*) FROM financial_categories');
-        if (parseInt(countRes.rows[0].count) === 0) {
+        const countRes = await prisma.$queryRaw<Array<{ count: string }>>`
+            SELECT count(*) FROM financial_categories
+        `;
+        if (parseInt(countRes[0].count) === 0) {
             console.log('Seeding default categories...');
-            await client.query(`
+            await prisma.$executeRaw`
                 INSERT INTO financial_categories (name, type, is_system_default, icon, color) VALUES
                 ('Salary', 'income', true, 'wallet', '#4CAF50'),
                 ('Food', 'expense', true, 'utensils', '#F44336'),
@@ -88,15 +89,14 @@ async function setupFinanceDb() {
                 ('Shopping', 'expense', true, 'shopping-bag', '#E91E63'),
                 ('Housing', 'expense', true, 'home', '#9C27B0'),
                 ('Entertainment', 'expense', true, 'film', '#673AB7')
-            `);
+            `;
         }
 
-        client.release();
         console.log('Finance DB setup complete.');
     } catch (error) {
         console.error('Setup failed:', error);
     } finally {
-        pool.end();
+        await prisma.$disconnect();
     }
 }
 

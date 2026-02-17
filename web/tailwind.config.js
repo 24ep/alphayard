@@ -43,18 +43,11 @@ module.exports = {
           700: '#0050b8',
         },
       },
-      fontCircle: {
+      fontFamily: {
         sans: [
-          '-apple-system',
-          'BlinkMacSystemFont',
-          '"SF Pro Display"',
-          '"SF Pro Text"',
-          'system-ui',
-          'Segoe UI',
-          'Roboto',
-          'Helvetica Neue',
-          'Arial',
-          'sans-serif',
+          '"DM Sans"',
+          '"IBM Plex Sans Thai"',
+          'sans-serif'
         ],
         mono: [
           '"SF Mono"',

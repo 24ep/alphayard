@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Animated, TouchableOpacity, Image } from 'react-native';
 import { Avatar } from 'native-base';
+import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import CoolIcon from '../common/CoolIcon';
 import { homeStyles } from '../../styles/homeStyles';
@@ -20,6 +21,7 @@ interface WelcomeSectionProps {
   labelAbove?: string;
   leftIcon?: string;
   onTitlePress?: () => void;
+  onMenuPress?: () => void; // For circle mode menu
   // Organize Mode Props
   activeCategoryType?: 'work' | 'life';
   onCategoryTypeChange?: (type: 'work' | 'life') => void;
@@ -35,6 +37,7 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
   labelAbove,
   leftIcon,
   onTitlePress,
+  onMenuPress,
   children,
   hideSearch
 }) => {
@@ -83,30 +86,14 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
     if (mode === 'circle') {
       return (
         <TouchableOpacity
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: 6 }}
           onPress={onTitlePress}
+          activeOpacity={0.7}
         >
-          <View style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            backgroundColor: 'rgba(255,255,255,0.2)'
-          }}>
-            <CoolIcon name="home" size={24} color="#FFFFFF" />
-          </View>
-          <View>
-            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 }}>
-              Circle
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700' }}>
-                {title || 'Select Circle'}
-              </Text>
-              <CoolIcon name="chevron-down" size={20} color="#FFFFFF" />
-            </View>
-          </View>
+          <Text style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700', textAlign: 'left' }}>
+            {title || 'Select Circle'}
+          </Text>
+          <IconMC name="chevron-down" size={20} color="#FFFFFF" />
         </TouchableOpacity>
       );
     }
@@ -220,6 +207,17 @@ export const WelcomeSection: React.FC<WelcomeSectionProps> = ({
           >
             <CoolIcon name="search" size={24} color="#FFFFFF" />
           </ScalePressable>
+        )}
+
+        {/* 3-dot menu for Circle mode */}
+        {mode === 'circle' && onMenuPress && (
+          <TouchableOpacity
+            onPress={onMenuPress}
+            style={{ padding: 4 }}
+            activeOpacity={0.7}
+          >
+            <IconMC name="dots-vertical" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         )}
 
         {/* Avatar - Shown in Circle mode (Right side), Default, Social, Chat, and Organize */}

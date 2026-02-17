@@ -1,18 +1,12 @@
-const { Pool } = require('pg');
+const { PrismaClient } = require('../prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const fs = require('fs');
 const path = require('path');
 
 // Load environment variables
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
-
 async function runMigration() {
-  const client = await pool.connect();
-  
   try {
     console.log('Running safety incidents admin migration...');
     
@@ -21,12 +15,12 @@ async function runMigration() {
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
     
     // Execute the migration
-    await client.query(migrationSQL);
+    await prisma.$executeRawUnsafe(migrationSQL);
     
     console.log('✅ Safety incidents admin migration completed successfully!');
     
     // Verify the migration
-    const result = await client.query(`
+    const result = await prisma.$queryRawUnsafe(`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'safety_alerts' 
@@ -35,43 +29,43 @@ async function runMigration() {
     `);
     
     console.log('✅ Verified new columns in safety_alerts table:');
-    result.rows.forEach(row => {
+    result.forEach(row => {
       console.log(`  - ${row.column_name}: ${row.data_type}`);
     });
     
     // Check if emergency_contacts table exists
-    const contactsTable = await client.query(`
+    const contactsTable = await prisma.$queryRawUnsafe(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_name = 'emergency_contacts'
       )
     `);
     
-    if (contactsTable.rows[0].exists) {
+    if (contactsTable[0].exists) {
       console.log('✅ emergency_contacts table created successfully');
     }
     
     // Check if safety_incident_contacts table exists
-    const incidentContactsTable = await client.query(`
+    const incidentContactsTable = await prisma.$queryRawUnsafe(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_name = 'safety_incident_contacts'
       )
     `);
     
-    if (incidentContactsTable.rows[0].exists) {
+    if (incidentContactsTable[0].exists) {
       console.log('✅ safety_incident_contacts table created successfully');
     }
     
     // Check if safety_incident_family_members table exists
-    const incidentMembersTable = await client.query(`
+    const incidentMembersTable = await prisma.$queryRawUnsafe(`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
         WHERE table_name = 'safety_incident_family_members'
       )
     `);
     
-    if (incidentMembersTable.rows[0].exists) {
+    if (incidentMembersTable[0].exists) {
       console.log('✅ safety_incident_family_members table created successfully');
     }
     
@@ -79,8 +73,7 @@ async function runMigration() {
     console.error('❌ Migration failed:', error);
     throw error;
   } finally {
-    client.release();
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

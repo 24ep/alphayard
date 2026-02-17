@@ -181,7 +181,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 60,
+    paddingTop: 30,
     paddingBottom: 50,
     paddingHorizontal: 20,
     position: 'relative',

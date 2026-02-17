@@ -1,27 +1,19 @@
-const { Pool } = require('pg');
+const { PrismaClient } = require('../prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const dotenv = require('dotenv');
 const path = require('path');
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-});
-
 async function migrate() {
-  const client = await pool.connect();
   try {
     console.log('🚀 Starting Family to Circle Migration Patch...');
-    await client.query('BEGIN');
+    await prisma.$executeRawUnsafe('BEGIN');
 
     // 1. Rename Tables
     console.log('Renaming family_invitations to circle_invitations...');
-    await client.query('ALTER TABLE IF EXISTS family_invitations RENAME TO circle_invitations');
+    await prisma.$executeRawUnsafe('ALTER TABLE IF EXISTS family_invitations RENAME TO circle_invitations');
 
     // 2. Rename Columns
     const tablesToUpdate = [
@@ -32,17 +24,16 @@ async function migrate() {
 
     for (const table of tablesToUpdate) {
       console.log(`Renaming ${table.col} to ${table.newCol} in ${table.name}...`);
-      await client.query(`ALTER TABLE IF EXISTS ${table.name} RENAME COLUMN ${table.col} TO ${table.newCol}`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE IF EXISTS ${table.name} RENAME COLUMN ${table.col} TO ${table.newCol}`);
     }
 
-    await client.query('COMMIT');
+    await prisma.$executeRawUnsafe('COMMIT');
     console.log('✅ Migration patch completed successfully!');
   } catch (err) {
-    await client.query('ROLLBACK');
+    await prisma.$executeRawUnsafe('ROLLBACK');
     console.error('❌ Migration patch failed:', err.message);
   } finally {
-    client.release();
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

@@ -1,4 +1,5 @@
-import { query, pool } from '../config/database';
+import { prisma } from '../lib/prisma';
+import { Prisma } from '../../prisma/generated/prisma/client';
 
 async function seedCountries() {
     const countries = [
@@ -20,18 +21,18 @@ async function seedCountries() {
         console.log('Seeding countries...');
 
         // Check if table exists
-        const tableCheck = await query(`
+        const tableCheck = await prisma.$queryRaw<Array<{ exists: boolean }>>(Prisma.sql`
       SELECT EXISTS (
         SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        WHERE table_schema = 'core' 
         AND table_name = 'countries'
-      );
+      ) as exists;
     `);
 
-        if (!tableCheck.rows[0].exists) {
+        if (!tableCheck[0]?.exists) {
             console.log('Creating countries table...');
-            await query(`
-            CREATE TABLE IF NOT EXISTS countries (
+            await prisma.$executeRaw(Prisma.sql`
+            CREATE TABLE IF NOT EXISTS core.countries (
                 id SERIAL PRIMARY KEY,
                 code VARCHAR(2) UNIQUE NOT NULL,
                 name VARCHAR(100) NOT NULL,
@@ -45,24 +46,23 @@ async function seedCountries() {
         }
 
         for (const country of countries) {
-            await query(
-                `INSERT INTO countries (code, name, flag, phone_code, is_supported)
-         VALUES ($1, $2, $3, $4, $5)
+            await prisma.$executeRaw(Prisma.sql`
+                INSERT INTO core.countries (code, name, flag, phone_code, is_supported)
+         VALUES (${country.code}, ${country.name}, ${country.flag}, ${country.phone_code}, ${country.is_supported})
          ON CONFLICT (code) DO UPDATE 
          SET name = EXCLUDED.name, 
              flag = EXCLUDED.flag, 
              phone_code = EXCLUDED.phone_code, 
              is_supported = EXCLUDED.is_supported,
-             updated_at = CURRENT_TIMESTAMP`,
-                [country.code, country.name, country.flag, country.phone_code, country.is_supported]
-            );
+             updated_at = CURRENT_TIMESTAMP
+            `);
         }
 
         console.log('Countries seeded successfully!');
     } catch (error) {
         console.error('Error seeding countries:', error);
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

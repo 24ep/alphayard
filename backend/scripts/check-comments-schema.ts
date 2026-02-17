@@ -1,5 +1,5 @@
 
-import { query } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -9,19 +9,19 @@ async function checkCommentsSchema() {
     try {
         console.log('🔗 Connecting to database...');
 
-        const result = await query(`
+        const result = await prisma.$queryRawUnsafe(`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'social_comments';
-    `);
+    `) as Array<{ column_name: string; data_type: string }>;
 
         console.log('📋 Columns in social_comments:');
-        result.rows.forEach(row => {
+        result.forEach(row => {
             console.log(`- ${row.column_name} (${row.data_type})`);
         });
 
-        const hasMedia = result.rows.some(r => r.column_name === 'media' || r.column_name === 'media_url');
-        const hasMediaType = result.rows.some(r => r.column_name === 'media_type');
+        const hasMedia = result.some(r => r.column_name === 'media' || r.column_name === 'media_url');
+        const hasMediaType = result.some(r => r.column_name === 'media_type');
 
         if (!hasMedia) {
             console.log('⚠️ Missing media columns. Configuring migration...');
@@ -31,7 +31,7 @@ async function checkCommentsSchema() {
             // Storing as JSONB might be flexible: { type: 'image', url: '...' }
             // Or separate columns: media_url, media_type
 
-            await query(`
+            await prisma.$executeRawUnsafe(`
             ALTER TABLE social_comments
             ADD COLUMN IF NOT EXISTS media_url TEXT,
             ADD COLUMN IF NOT EXISTS media_type VARCHAR(20); -- image, video, gif, sticker
@@ -45,6 +45,8 @@ async function checkCommentsSchema() {
     } catch (error) {
         console.error('❌ Error checking schema:', error);
         process.exit(1);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 

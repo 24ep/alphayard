@@ -1,25 +1,19 @@
 
-import { Client } from 'pg';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
 
-const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('neon.tech') ? { rejectUnauthorized: false } : undefined
-});
-
 async function setupSocialDB() {
     try {
-        await client.connect();
         console.log('Connected to database');
 
         // Enable UUID extension
-        await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+        await prisma.$executeRawUnsafe('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
 
         // Create social_posts table
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS social_posts (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 circle_id UUID NOT NULL, -- Assuming references families(id)
@@ -49,7 +43,7 @@ async function setupSocialDB() {
         console.log('Checked/Created social_posts table');
 
         // Create social_comments table
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS social_comments (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 post_id UUID REFERENCES social_posts(id) ON DELETE CASCADE,
@@ -68,7 +62,7 @@ async function setupSocialDB() {
         console.log('Checked/Created social_comments table');
 
         // Create social_reports table
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS social_reports (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 post_id UUID REFERENCES social_posts(id) ON DELETE CASCADE,
@@ -85,7 +79,7 @@ async function setupSocialDB() {
         console.log('Checked/Created social_reports table');
 
         // Create social_activities table
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS social_activities (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 post_id UUID REFERENCES social_posts(id) ON DELETE CASCADE,
@@ -98,7 +92,7 @@ async function setupSocialDB() {
         console.log('Checked/Created social_activities table');
         
         // Create social_comment_likes table (inferred from code: EXISTS(SELECT 1 FROM social_comment_likes ...))
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS social_comment_likes (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 comment_id UUID REFERENCES social_comments(id) ON DELETE CASCADE,
@@ -113,7 +107,7 @@ async function setupSocialDB() {
     } catch (err) {
         console.error('Error setting up social DB:', err);
     } finally {
-        await client.end();
+        await prisma.$disconnect();
     }
 }
 

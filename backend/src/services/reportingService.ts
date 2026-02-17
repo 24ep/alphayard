@@ -1,4 +1,4 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export enum ReportType {
   USER_ACTIVITY = 'user_activity',
@@ -12,13 +12,13 @@ class ReportingService {
     const { startDate, endDate } = options;
     
     // Example PG query
-    const { rows: activityRows } = await pool.query(`
+    const activityRows = await prisma.$queryRawUnsafe<Array<{ count: string; date: Date }>>(`
       SELECT COUNT(*) as count, created_at::date as date
-      FROM users
+      FROM core.users
       WHERE created_at BETWEEN $1 AND $2
       GROUP BY created_at::date
       ORDER BY date ASC
-    `, [startDate, endDate]);
+    `, startDate, endDate);
 
     return {
       reportType: ReportType.USER_ACTIVITY,

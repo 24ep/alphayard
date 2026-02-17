@@ -1,5 +1,6 @@
 import { Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import { Prisma } from '../../../prisma/generated/prisma/client';
 
 export class ComponentStudioController {
   /**
@@ -7,15 +8,19 @@ export class ComponentStudioController {
    */
   async getSidebar(req: any, res: Response) {
     try {
-      const categoriesResult = await pool.query('SELECT * FROM component_categories ORDER BY position ASC');
-      const stylesResult = await pool.query('SELECT * FROM component_styles WHERE is_active = true ORDER BY name ASC');
+      const categories = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_categories ORDER BY position ASC
+      `;
+      const styles = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_styles WHERE is_active = true ORDER BY name ASC
+      `;
 
-      const sections = categoriesResult.rows.map(category => ({
+      const sections = categories.map(category => ({
         id: category.id,
         name: category.name,
         icon: category.icon,
         description: category.description,
-        components: stylesResult.rows
+        components: styles
           .filter(style => style.category_id === category.id)
           .map(style => ({
             id: style.id,
@@ -46,14 +51,20 @@ export class ComponentStudioController {
         return res.status(400).json({ error: 'Category ID and Name are required' });
       }
 
-      const result = await pool.query(
-        `INSERT INTO component_styles (category_id, definition_id, name, styles, config, mobile_config) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
-         RETURNING *`,
-        [categoryId, definitionId, name, styles || {}, config || {}, mobileConfig || {}]
-      );
+      const result = await prisma.$queryRaw<any[]>`
+        INSERT INTO component_styles (category_id, definition_id, name, styles, config, mobile_config) 
+        VALUES (
+          ${categoryId}::uuid, 
+          ${definitionId || null}::uuid, 
+          ${name}, 
+          ${JSON.stringify(styles || {})}::jsonb, 
+          ${JSON.stringify(config || {})}::jsonb, 
+          ${JSON.stringify(mobileConfig || {})}::jsonb
+        ) 
+        RETURNING *
+      `;
 
-      res.status(201).json({ style: result.rows[0] });
+      res.status(201).json({ style: result[0] });
     } catch (error: any) {
       console.error('Error creating component style:', error);
       res.status(500).json({ error: 'Internal server error', message: error.message });
@@ -68,25 +79,26 @@ export class ComponentStudioController {
       const { id } = req.params;
       const { name, styles, config, mobileConfig, isActive } = req.body;
 
-      const { rows: existing } = await pool.query('SELECT * FROM component_styles WHERE id = $1', [id]);
+      const existing = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_styles WHERE id = ${id}::uuid
+      `;
       if (existing.length === 0) {
         return res.status(404).json({ error: 'Component style not found' });
       }
 
-      const result = await pool.query(
-        `UPDATE component_styles 
-         SET name = COALESCE($1, name),
-             styles = COALESCE($2, styles),
-             config = COALESCE($3, config),
-             mobile_config = COALESCE($4, mobile_config),
-             is_active = COALESCE($5, is_active),
-             updated_at = NOW()
-         WHERE id = $6 
-         RETURNING *`,
-        [name, styles, config, mobileConfig, isActive, id]
-      );
+      const result = await prisma.$queryRaw<any[]>`
+        UPDATE component_styles 
+        SET name = COALESCE(${name || null}, name),
+            styles = COALESCE(${styles ? JSON.stringify(styles) : null}::jsonb, styles),
+            config = COALESCE(${config ? JSON.stringify(config) : null}::jsonb, config),
+            mobile_config = COALESCE(${mobileConfig ? JSON.stringify(mobileConfig) : null}::jsonb, mobile_config),
+            is_active = COALESCE(${isActive ?? null}, is_active),
+            updated_at = NOW()
+        WHERE id = ${id}::uuid 
+        RETURNING *
+      `;
 
-      res.json({ style: result.rows[0] });
+      res.json({ style: result[0] });
     } catch (error: any) {
       console.error('Error updating component style:', error);
       res.status(500).json({ error: 'Internal server error', message: error.message });
@@ -100,20 +112,28 @@ export class ComponentStudioController {
     try {
       const { id } = req.params;
 
-      const { rows } = await pool.query('SELECT * FROM component_styles WHERE id = $1', [id]);
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM component_styles WHERE id = ${id}::uuid
+      `;
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Component style not found' });
       }
 
       const source = rows[0];
-      const result = await pool.query(
-        `INSERT INTO component_styles (category_id, definition_id, name, styles, config, mobile_config) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
-         RETURNING *`,
-        [source.category_id, source.definition_id, `${source.name} (Copy)`, source.styles, source.config, source.mobile_config]
-      );
+      const result = await prisma.$queryRaw<any[]>`
+        INSERT INTO component_styles (category_id, definition_id, name, styles, config, mobile_config) 
+        VALUES (
+          ${source.category_id}::uuid, 
+          ${source.definition_id || null}::uuid, 
+          ${`${source.name} (Copy)`}, 
+          ${JSON.stringify(source.styles)}::jsonb, 
+          ${JSON.stringify(source.config)}::jsonb, 
+          ${JSON.stringify(source.mobile_config)}::jsonb
+        ) 
+        RETURNING *
+      `;
 
-      res.status(201).json({ style: result.rows[0] });
+      res.status(201).json({ style: result[0] });
     } catch (error: any) {
       console.error('Error duplicating component style:', error);
       res.status(500).json({ error: 'Internal server error', message: error.message });
@@ -127,9 +147,11 @@ export class ComponentStudioController {
     try {
       const { id } = req.params;
 
-      const result = await pool.query('DELETE FROM component_styles WHERE id = $1 RETURNING id', [id]);
+      const result = await prisma.$queryRaw<any[]>`
+        DELETE FROM component_styles WHERE id = ${id}::uuid RETURNING id
+      `;
       
-      if (result.rows.length === 0) {
+      if (result.length === 0) {
         return res.status(404).json({ error: 'Component style not found' });
       }
 

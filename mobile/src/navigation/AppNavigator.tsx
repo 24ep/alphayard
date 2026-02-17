@@ -5,6 +5,8 @@ import MainTabNavigator from './MainTabNavigator';
 import EmotionCheckInScreen from '../screens/main/EmotionCheckInScreen';
 import MoodAnalysisScreen from '../screens/main/MoodAnalysisScreen';
 import NotificationScreen from '../screens/main/NotificationScreen';
+import ChatRoomScreen from '../screens/chat/ChatRoomScreen';
+import ChatSettingsScreen from '../screens/chat/ChatSettingsScreen';
 import { TransitionPresets } from '@react-navigation/stack';
 
 export type AppStackParamList = {
@@ -14,6 +16,8 @@ export type AppStackParamList = {
   MoodAnalysis: undefined;
   ChatList: undefined;
   Notifications: undefined;
+  ChatRoom: { chatId: string; chatName: string };
+  ChatSettings: { chatId: string };
 };
 
 const Stack = createStackNavigator<AppStackParamList>();
@@ -42,6 +46,20 @@ const AppNavigator: React.FC = () => {
       <Stack.Screen
         name="Notifications"
         component={NotificationScreen}
+        options={{
+          ...TransitionPresets.SlideFromRightIOS,
+        }}
+      />
+      <Stack.Screen
+        name="ChatRoom"
+        component={ChatRoomScreen as any}
+        options={{
+          ...TransitionPresets.SlideFromRightIOS,
+        }}
+      />
+      <Stack.Screen
+        name="ChatSettings"
+        component={ChatSettingsScreen as any}
         options={{
           ...TransitionPresets.SlideFromRightIOS,
         }}

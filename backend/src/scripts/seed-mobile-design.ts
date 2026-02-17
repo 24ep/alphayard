@@ -1,15 +1,10 @@
 // @ts-nocheck
-import { Client } from 'pg';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load env vars from project root
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
-
-const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('neon.tech') ? { rejectUnauthorized: false } : undefined
-});
 
 const mobilePages = [
     {
@@ -99,14 +94,13 @@ const mobilePages = [
 
 async function seed() {
     try {
-        await client.connect();
         console.log('Connected to database');
 
         // 1. Create Tables (if they don't exist)
         // Note: In Supabase/Production, these likely exist. This is for ensuring dev env matches.
         console.log('Ensuring tables exist...');
 
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS pages (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         slug VARCHAR(255) UNIQUE NOT NULL,
@@ -129,7 +123,7 @@ async function seed() {
 
         // Add unique constraint on slug if not exists (handled by UNIQUE in CREATE, but good for safety)
 
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS page_components (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         page_id UUID REFERENCES pages(id) ON DELETE CASCADE,
@@ -151,33 +145,27 @@ async function seed() {
 
         for (const page of mobilePages) {
             // Upsert page
-            const pageRes = await client.query(`
+            const pageRes = await prisma.$queryRaw<any[]>`
         INSERT INTO pages (slug, title, status, created_by, updated_by)
-        VALUES ($1, $2, $3, $4, $4)
+        VALUES (${page.slug}, ${page.title}, ${page.status}, ${systemUserId}::uuid, ${systemUserId}::uuid)
         ON CONFLICT (slug) DO UPDATE SET
           title = EXCLUDED.title,
           status = EXCLUDED.status
         RETURNING id;
-      `, [page.slug, page.title, page.status, systemUserId]);
+      `;
 
-            const pageId = pageRes.rows[0].id;
+            const pageId = pageRes[0].id;
 
             // Clear existing components for this page (to re-seed cleanly)
-            await client.query(`DELETE FROM page_components WHERE page_id = $1`, [pageId]);
+            await prisma.$executeRaw`DELETE FROM page_components WHERE page_id = ${pageId}::uuid`;
 
             // Insert components
             if (page.components.length > 0) {
                 for (const comp of page.components) {
-                    await client.query(`
+                    await prisma.$executeRaw`
             INSERT INTO page_components (page_id, component_type, position, props, styles)
-            VALUES ($1, $2, $3, $4, $5)
-          `, [
-                        pageId,
-                        comp.componentType,
-                        comp.position,
-                        JSON.stringify(comp.props || {}),
-                        JSON.stringify(comp.styles || {})
-                    ]);
+            VALUES (${pageId}::uuid, ${comp.componentType}, ${comp.position}, ${JSON.stringify(comp.props || {})}::jsonb, ${JSON.stringify(comp.styles || {})}::jsonb)
+          `;
                 }
             }
         }
@@ -186,7 +174,7 @@ async function seed() {
     } catch (err) {
         console.error('Error seeding CMS:', err);
     } finally {
-        await client.end();
+        await prisma.$disconnect();
     }
 }
 

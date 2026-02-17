@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Animated, View } from 'react-native';
+import { Animated, View, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigationAnimation } from '../../contexts/NavigationAnimationContext';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { homeStyles } from '../../styles/homeStyles';
 import { CircleTab } from '../../components/home/CircleTab';
-import { useUserData } from '../../contexts/UserDataContext';
+import { useCircle } from '../../hooks/useCircle';
+import { useUserData } from '../../contexts/UserDataContext'; // Keep for emotionData
 import { CircleStatsDrawer } from '../../components/home/CircleStatsDrawer';
 import { CircleDropdown } from '../../components/home/CircleDropdown';
 import { WelcomeSection } from '../../components/home/WelcomeSection';
@@ -16,24 +17,27 @@ import { useBranding } from '../../contexts/BrandingContext';
 
 const CircleScreen: React.FC = () => {
     const navigation = useNavigation<any>();
-    const {
-        circleStatusMembers,
-        circleLocations,
-        emotionData,
-        selectedCircle,
-        families: circles,
-        setSelectedCircle
-    } = useUserData();
     
+    // Use the new useCircle hook
+    const { 
+        circles, 
+        currentCircle, 
+        selectCircle, 
+        members: circleMembers,
+        leaveCircle 
+    } = useCircle();
+    
+    // Keep emotionData from useUserData as it might be global or derived differently
+    // circleLocations is also in useUserData
+    const { emotionData, circleLocations } = useUserData();
+
     const { categories } = useBranding();
     const selectionTabsConfig = React.useMemo(() => {
         if (!categories) return null;
         for (const cat of categories) {
-            // Updated to use specific 'circle-selection-tabs' instead of generic 'selection-tabs'
             const comp = cat.components.find(c => c.id === 'circle-selection-tabs');
             if (comp) return comp;
         }
-        // Fallback to generic if specific not found (backward compatibility)
         for (const cat of categories) {
             const comp = cat.components.find(c => c.id === 'selection-tabs');
             if (comp) return comp;
@@ -47,11 +51,14 @@ const CircleScreen: React.FC = () => {
     const [showCircleOptions, setShowCircleOptions] = useState(false);
     const [activeTab, setActiveTab] = useState('location');
 
-    // Find the full circle object for the drawer
-    const currentCircleObject = (circles as any[]).find(c => c.name === selectedCircle) || null;
+    // Use currentCircle from hook (which uses useUserData internally)
+    // Cast to any for now if types conflict, effectively "currentCircleObject"
+    const currentCircleObject = currentCircle;
+    const selectedCircle = currentCircle?.name;
 
     // Filter tabs based on settings
-    const currentCircleSettings = currentCircleObject?.settings || {};
+    // Ensure settings exist (fallback to empty object if undefined)
+    const currentCircleSettings = (currentCircleObject as any)?.settings || {};
     
     const tabs = React.useMemo(() => {
         const t = [];
@@ -65,14 +72,19 @@ const CircleScreen: React.FC = () => {
              t.push({ id: 'gallery', label: 'Gallery', icon: 'image-multiple' });
         }
         
-        // Financial - defaulted to false usually
-        if (currentCircleSettings.allowCircleExpenses === true && tabsConfig.showFinancialTab !== false) {
+        // Financial - show by default unless explicitly disabled
+        if (currentCircleSettings.allowCircleExpenses !== false && tabsConfig.showFinancialTab !== false) {
              t.push({ id: 'financial', label: 'Financial', icon: 'wallet' });
         }
         
-        // Health - defaulted to false usually
-        if (currentCircleSettings.allowCircleHealth === true && tabsConfig.showHealthTab !== false) {
+        // Health - show by default unless explicitly disabled
+        if (currentCircleSettings.allowCircleHealth !== false && tabsConfig.showHealthTab !== false) {
              t.push({ id: 'health', label: 'Health', icon: 'heart-pulse' });
+        }
+        
+        // Files - show by default unless explicitly disabled
+        if (currentCircleSettings.allowCircleFiles !== false && tabsConfig.showFilesTab !== false) {
+             t.push({ id: 'files', label: 'Files', icon: 'folder-outline' });
         }
         
         // Fallback: if somehow empty, show location (unless specifically hidden)
@@ -84,8 +96,50 @@ const CircleScreen: React.FC = () => {
 
     // Helper to handle circle selection from dropdown
     const handleCircleSelect = (circle: any) => {
-        setSelectedCircle(circle.name);
+        selectCircle(circle.name);
         setShowCircleDropdown(false);
+    };
+
+    const handleInviteMember = () => {
+        setShowCircleOptions(false);
+        navigation.navigate('CircleSettings', { initialTab: 'members' });
+    };
+
+    const handleLeaveCircle = async () => {
+        if (!currentCircleObject?.id) {
+            Alert.alert('Error', 'No circle selected');
+            return;
+        }
+
+        Alert.alert(
+            'Leave Circle',
+            `Are you sure you want to leave "${currentCircleObject.name}"? You will need to be invited again to rejoin.`,
+            [
+                { text: 'Cancel', style: 'cancel', onPress: () => setShowCircleOptions(false) },
+                {
+                    text: 'Leave',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            if (leaveCircle) {
+                                await leaveCircle();
+                            }
+                            setShowCircleOptions(false);
+                            Alert.alert('Success', 'You have left the circle');
+                        } catch (error: any) {
+                            Alert.alert('Error', error.message || 'Failed to leave circle');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const handleChangeVisibility = () => {
+        setShowCircleOptions(false);
+        // Navigate to settings or show visibility modal
+        // For now, navigate to settings - can be enhanced with a dedicated visibility modal later
+        navigation.navigate('CircleSettings', { initialTab: 'settings' });
     };
 
     const { animateToHome, cardMarginTopAnim } = useNavigationAnimation();
@@ -103,22 +157,26 @@ const CircleScreen: React.FC = () => {
                 <WelcomeSection
                     mode="circle"
                     title={selectedCircle || (circles && circles.length > 0 ? circles[0].name : "Select Circle")}
-                    onTitlePress={() => setShowCircleOptions(true)}
+                    onTitlePress={() => setShowCircleDropdown(true)}
+                    onMenuPress={() => setShowCircleOptions(true)}
                 >
-                    <View style={{ paddingTop: 15, paddingBottom: 0, paddingHorizontal: 0, marginHorizontal: -8 }}>
+                    <View style={{ paddingTop: 15, paddingBottom: 0, paddingHorizontal: 20 }}>
                         <CircleSelectionTabs
                             tabs={tabs}
                             activeTab={activeTab}
                             onTabPress={(id: string) => setActiveTab(id)}
-                            activeColor={tabsConfig.activeColor || "#1d1515ff"}
-                            inactiveColor={tabsConfig.inactiveColor || "#F3F4F6"}
-                            activeTextColor={tabsConfig.activeTextColor || "#fcfcfcff"}
-                            inactiveTextColor={tabsConfig.inactiveTextColor || "#6B7280"}
+                            activeColor="#1F2937"
+                            inactiveColor="#F3F4F6"
+                            activeTextColor="#FFFFFF"
+                            inactiveTextColor="#6B7280"
                             menuBackgroundColor={tabsConfig.menuBackgroundColor || 'transparent'}
-                            fit={true}
-                            variant="underline"
-                            activeIconColor={tabsConfig.activeTextColor || "#FA7272"}
-                            inactiveIconColor={tabsConfig.inactiveTextColor || "#6B7280"}
+                            fit={false}
+                            variant="badge"
+                            showIcons={true}
+                            iconPosition="left"
+                            activeIconColor="#FFFFFF"
+                            inactiveIconColor="#6B7280"
+                            itemSpacing={8}
                             menuShowShadow={false}
                             activeShowShadow={false}
                             inactiveShowShadow={false}
@@ -136,10 +194,11 @@ const CircleScreen: React.FC = () => {
                     }
                 ]}>
                     <CircleTab
-                        circleStatusMembers={circleStatusMembers}
+                        circleStatusMembers={circleMembers || []}
                         circleLocations={circleLocations}
                         emotionData={emotionData}
-                        selectedCircle={selectedCircle}
+                        selectedCircle={selectedCircle || null}
+                        currentCircle={currentCircleObject}
                         onCircleSelect={() => setShowCircleStatsDrawer(true)}
                         activeTab={activeTab}
                         onAddMember={() => navigation.navigate('CircleSettings', { initialTab: 'members' })}
@@ -166,11 +225,9 @@ const CircleScreen: React.FC = () => {
                 <CircleOptionsDrawer
                     visible={showCircleOptions}
                     onClose={() => setShowCircleOptions(false)}
-                    onSettingsPress={() => {
-                        setShowCircleOptions(false);
-                        navigation.navigate('CircleSettings');
-                    }}
-                    onSwitchCirclePress={() => setShowCircleDropdown(true)}
+                    onInviteMember={handleInviteMember}
+                    onLeaveCircle={handleLeaveCircle}
+                    onChangeVisibility={handleChangeVisibility}
                 />
             </SafeAreaView>
         </ScreenBackground>

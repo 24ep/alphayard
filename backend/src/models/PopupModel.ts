@@ -1,9 +1,37 @@
 // import mongoose, { Schema, Document } from 'mongoose';
- // TODO: Fix missing module: mongoose
+// TODO: Fix missing module: mongoose
 
-// Stub mongoose types
-declare const Schema: any;
-declare const mongoose: any;
+// Stub mongoose types for runtime (mongoose not installed)
+class Schema {
+  static Types = { ObjectId: String, Mixed: Object };
+  constructor(definition: any, options?: any) {
+    // Stub implementation
+  }
+  index(fields: any) { return this; }
+  virtual(name: string) { 
+    return {
+      get: (fn: Function) => {}
+    };
+  }
+  pre(hook: string, fn: Function) { return this; }
+  post(hook: string, fn: Function) { return this; }
+  methods: any = {};
+  statics: any = {};
+}
+const mongoose = {
+  model: (name: string, schema: any) => {
+    // Return a stub model
+    return class StubModel {
+      static find() { return { exec: () => Promise.resolve([]) }; }
+      static findOne() { return { exec: () => Promise.resolve(null) }; }
+      static findById() { return { exec: () => Promise.resolve(null) }; }
+      static create() { return Promise.resolve({}); }
+      static updateOne() { return Promise.resolve({ modifiedCount: 0 }); }
+      static deleteOne() { return Promise.resolve({ deletedCount: 0 }); }
+    };
+  },
+  Types: { ObjectId: String }
+};
 
 export interface IPopup {
   type: 'ad' | 'promotion' | 'announcement' | 'emergency';

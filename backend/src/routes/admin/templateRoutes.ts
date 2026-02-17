@@ -1,32 +1,36 @@
 import { Router } from 'express';
 import { TemplateController } from '../../controllers/admin/TemplateController';
-import { authenticateToken } from '../../middleware/auth';
+import { authenticateAdmin } from '../../middleware/adminAuth';
+import { requirePermission } from '../../middleware/permissionCheck';
 
 const router = Router();
 const templateController = new TemplateController();
 
+// Apply admin auth to all routes
+router.use(authenticateAdmin as any);
+
 // Get all templates
-router.get('/templates', authenticateToken as any, templateController.getTemplates.bind(templateController));
+router.get('/templates', requirePermission('templates', 'view'), templateController.getTemplates.bind(templateController));
 
 // Get template categories
-router.get('/templates/categories', authenticateToken as any, templateController.getCategories.bind(templateController));
+router.get('/templates/categories', requirePermission('templates', 'view'), templateController.getCategories.bind(templateController));
 
 // Get template by ID
-router.get('/templates/:id', authenticateToken as any, templateController.getTemplateById.bind(templateController));
+router.get('/templates/:id', requirePermission('templates', 'view'), templateController.getTemplateById.bind(templateController));
 
 // Preview template
-router.get('/templates/:id/preview', authenticateToken as any, templateController.previewTemplate.bind(templateController));
+router.get('/templates/:id/preview', requirePermission('templates', 'view'), templateController.previewTemplate.bind(templateController));
 
 // Create new template
-router.post('/templates', authenticateToken as any, templateController.createTemplate.bind(templateController));
+router.post('/templates', requirePermission('templates', 'create'), templateController.createTemplate.bind(templateController));
 
 // Create template from page
-router.post('/templates/from-page', authenticateToken as any, templateController.createTemplateFromPage.bind(templateController));
+router.post('/templates/from-page', requirePermission('templates', 'create'), templateController.createTemplateFromPage.bind(templateController));
 
 // Update template
-router.put('/templates/:id', authenticateToken as any, templateController.updateTemplate.bind(templateController));
+router.put('/templates/:id', requirePermission('templates', 'edit'), templateController.updateTemplate.bind(templateController));
 
 // Delete template
-router.delete('/templates/:id', authenticateToken as any, templateController.deleteTemplate.bind(templateController));
+router.delete('/templates/:id', requirePermission('templates', 'delete'), templateController.deleteTemplate.bind(templateController));
 
 export default router;

@@ -28,6 +28,84 @@ export default function AuthenticationPage() {
     useEffect(() => {
         if (currentApp?.settings?.branding) {
             setBranding(currentApp.settings.branding);
+        } else {
+            // Set minimal branding to prevent infinite loading - using type assertion for simplicity
+            setBranding({
+                appName: 'Boundary Admin',
+                logoUrl: '',
+                screens: [],
+                typography: {
+                    h1: { family: 'Inter', size: 32, weight: '700', lineHeight: 1.2 },
+                    h2: { family: 'Inter', size: 24, weight: '600', lineHeight: 1.3 },
+                    body: { family: 'Inter', size: 16, weight: '400', lineHeight: 1.5 },
+                    caption: { family: 'Inter', size: 14, weight: '400', lineHeight: 1.4 }
+                },
+                onboarding: {
+                    enabled: false,
+                    skipButton: true,
+                    nextButton: true,
+                    prevButton: true
+                },
+                flows: {
+                    login: {
+                        screens: [],
+                        skipButton: false,
+                        nextButton: true,
+                        prevButton: false
+                    },
+                    signup: {
+                        screens: [],
+                        skipButton: false,
+                        nextButton: true,
+                        prevButton: false
+                    },
+                    resetPassword: {
+                        screens: [],
+                        skipButton: false,
+                        nextButton: true,
+                        prevButton: false
+                    }
+                },
+                social: {
+                    providers: []
+                },
+                features: {
+                    enableChat: false,
+                    enableReferral: false,
+                    enableDarkMode: true,
+                    isMaintenanceMode: false,
+                    maintenanceMessage: ''
+                },
+                navigation: {
+                    tabBar: true,
+                    drawer: false
+                },
+                splash: {
+                    duration: 2000,
+                    image: '',
+                    backgroundColor: '#ffffff'
+                },
+                localization: {
+                    defaultLanguage: 'en',
+                    supportedLanguages: ['en'],
+                    enableRTL: false
+                },
+                legal: {
+                    privacyPolicyUrl: '',
+                    termsOfServiceUrl: '',
+                    cookiePolicyUrl: '',
+                    dataDeletionUrl: '',
+                    dataRequestEmail: ''
+                },
+                support: {
+                    supportEmail: '',
+                    supportWebsite: ''
+                },
+                tagging: {
+                    enabled: false,
+                    tags: []
+                }
+            } as unknown as BrandingConfig);
         }
     }, [currentApp]);
 
@@ -52,7 +130,14 @@ export default function AuthenticationPage() {
         }
     };
 
-    if (!branding) return <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-2 border-blue-500 rounded-full border-t-transparent"/></div>;
+    if (!branding) return (
+        <div className="p-8 flex justify-center items-center min-h-screen">
+            <div className="text-center">
+                <div className="animate-spin h-8 w-8 border-2 border-blue-500 rounded-full border-t-transparent mx-auto mb-4"/>
+                <p className="text-gray-500">Loading authentication settings...</p>
+            </div>
+        </div>
+    );
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">

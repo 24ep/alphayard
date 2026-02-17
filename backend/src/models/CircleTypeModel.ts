@@ -1,71 +1,92 @@
-import { query } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export interface CircleType {
   id: string;
   name: string;
-  code: string;
+  displayName?: string;
   description?: string;
   icon?: string;
-  sort_order: number;
-  created_at: Date;
-  updated_at: Date;
+  color?: string;
+  defaultSettings: any;
+  isSystem: boolean;
+  createdAt: Date;
 }
 
 export class CircleTypeModel {
   static async findAll(): Promise<CircleType[]> {
-    const result = await query(
-      'SELECT * FROM circle_types ORDER BY sort_order ASC'
-    );
-    return result.rows;
+    const circleTypes = await prisma.circleType.findMany({
+      orderBy: { name: 'asc' }
+    });
+    return circleTypes.map(ct => this.mapRow(ct));
   }
 
   static async findById(id: string): Promise<CircleType | null> {
-    const result = await query(
-      'SELECT * FROM circle_types WHERE id = $1',
-      [id]
-    );
-    return result.rows[0] || null;
+    const circleType = await prisma.circleType.findUnique({
+      where: { id }
+    });
+    return circleType ? this.mapRow(circleType) : null;
   }
 
-  static async findByCode(code: string): Promise<CircleType | null> {
-    const result = await query(
-      'SELECT * FROM circle_types WHERE code = $1',
-      [code]
-    );
-    return result.rows[0] || null;
+  static async findByName(name: string): Promise<CircleType | null> {
+    const circleType = await prisma.circleType.findFirst({
+      where: { name }
+    });
+    return circleType ? this.mapRow(circleType) : null;
   }
 
   static async create(data: Partial<CircleType>): Promise<CircleType> {
-    const result = await query(
-      `INSERT INTO circle_types (name, code, description, icon, sort_order)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING *`,
-      [data.name, data.code, data.description, data.icon, data.sort_order || 0]
-    );
-    return result.rows[0];
+    const circleType = await prisma.circleType.create({
+      data: {
+        name: data.name!,
+        displayName: data.displayName,
+        description: data.description,
+        icon: data.icon,
+        color: data.color,
+        defaultSettings: data.defaultSettings || {},
+        isSystem: data.isSystem || false
+      }
+    });
+    return this.mapRow(circleType);
   }
 
   static async update(id: string, data: Partial<CircleType>): Promise<CircleType | null> {
-    const result = await query(
-      `UPDATE circle_types 
-       SET name = COALESCE($2, name),
-           code = COALESCE($3, code),
-           description = COALESCE($4, description),
-           icon = COALESCE($5, icon),
-           sort_order = COALESCE($6, sort_order),
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [id, data.name, data.code, data.description, data.icon, data.sort_order]
-    );
-    return result.rows[0] || null;
+    const circleType = await prisma.circleType.update({
+      where: { id },
+      data: {
+        name: data.name,
+        displayName: data.displayName,
+        description: data.description,
+        icon: data.icon,
+        color: data.color,
+        defaultSettings: data.defaultSettings,
+        isSystem: data.isSystem
+      }
+    });
+    return this.mapRow(circleType);
   }
 
   static async delete(id: string): Promise<boolean> {
-    const result = await query(
-      'DELETE FROM circle_types WHERE id = $1',
-      [id]
-    );
-    return (result.rowCount ?? 0) > 0;
+    try {
+      await prisma.circleType.delete({
+        where: { id }
+      });
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private static mapRow(row: any): CircleType {
+    return {
+      id: row.id,
+      name: row.name,
+      displayName: row.displayName,
+      description: row.description,
+      icon: row.icon,
+      color: row.color,
+      defaultSettings: row.defaultSettings,
+      isSystem: row.isSystem,
+      createdAt: row.createdAt
+    };
   }
 }

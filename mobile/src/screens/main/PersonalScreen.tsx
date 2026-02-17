@@ -13,6 +13,7 @@ import { WelcomeSection } from '../../components/home/WelcomeSection';
 import { CircleSelectionTabs } from '../../components/common/CircleSelectionTabs';
 import CalendarCardContent from '../../components/card/CalendarCardContent';
 import NotesCardContent from '../../components/card/NotesCardContent';
+import { PersonalFilesTab } from '../../components/files';
 import { PersonalTab } from '../../components/home/PersonalTab';
 import { FinancialTab } from '../../components/home/FinancialTab';
 import { HealthSummary } from '../../components/home/HealthSummary';
@@ -101,7 +102,7 @@ const PersonalScreen: React.FC = () => {
     }, [tabNavigationConfig]);
 
     const [activeTab, setActiveTab] = useState<'personal' | 'calendar' | 'organize' | 'finance' | 'health'>('personal');
-    const [activeOrganizeTab, setActiveOrganizeTab] = useState<'note' | 'todo' | 'shopping' | 'files' | 'email'>('note');
+    const [activeOrganizeTab, setActiveOrganizeTab] = useState<'note' | 'files' | 'email'>('note');
 
     // Animation for tabs
     const tabContentOpacityAnim = useState(new Animated.Value(1))[0];
@@ -208,14 +209,12 @@ const PersonalScreen: React.FC = () => {
                 return (
                     <View style={{ flex: 1 }}>
                         {/* Sub-tabs for Organize */}
-                        <View style={{ paddingHorizontal: 0, marginBottom: 16 }}>
+                        <View style={{ paddingHorizontal: 24, paddingVertical: 20, marginBottom: 20 }}>
                             <CircleSelectionTabs
                                 activeTab={activeOrganizeTab}
                                 onTabPress={(id) => setActiveOrganizeTab(id as any)}
                                 tabs={[
                                     { id: 'note', label: 'Note', icon: 'note-text-outline' },
-                                    { id: 'todo', label: 'Todo list', icon: 'checkbox-marked-circle-outline' },
-                                    { id: 'shopping', label: 'Shopping list', icon: 'cart-outline' },
                                     { id: 'files', label: 'My file', icon: 'folder-outline' },
                                     { id: 'email', label: 'Email', icon: 'email-outline' }
                                 ]}
@@ -228,27 +227,18 @@ const PersonalScreen: React.FC = () => {
                                 menuBackgroundColor={organizeTabsConfig?.menuBackgroundColor || 'transparent'}
                                 activeShowShadow={organizeTabsConfig?.activeShowShadow || 'sm'}
                                 inactiveShowShadow={organizeTabsConfig?.inactiveShowShadow || 'none'}
-                                itemSpacing={8}
+                                itemSpacing={4}
                                 fit={true}
+                                variant="segmented"
+                                showIcons={true}
+                                iconPosition="left"
                             />
                         </View>
 
                         {/* Content Switching */}
                         {activeOrganizeTab === 'note' && <NotesCardContent />}
-                        {activeOrganizeTab === 'todo' && (
-                             <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16 }}>
-                                 <Text style={{ color: '#9CA3AF' }}>Todo List Content</Text>
-                             </View>
-                        )}
-                        {activeOrganizeTab === 'shopping' && (
-                             <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16 }}>
-                                 <Text style={{ color: '#9CA3AF' }}>Shopping List Content</Text>
-                             </View>
-                        )}
                         {activeOrganizeTab === 'files' && (
-                             <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16 }}>
-                                 <Text style={{ color: '#9CA3AF' }}>My Files Content</Text>
-                             </View>
+                             <PersonalFilesTab />
                         )}
                         {activeOrganizeTab === 'email' && (
                              <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 16 }}>
@@ -289,6 +279,8 @@ const PersonalScreen: React.FC = () => {
                                 { id: 'calendar', label: 'Calendar', icon: 'calendar' },
                                 { id: 'organize', label: 'Organize', icon: 'text-box-outline' }
                             ]}
+                            showIcons={true}
+                            fit={true}
                             activeColor={tabsConfig.activeColor || "#1d1515ff"}
                             inactiveColor={tabsConfig.inactiveColor || "#F3F4F6"}
                             activeTextColor={tabsConfig.activeTextColor || "#171616ff"}
@@ -296,7 +288,6 @@ const PersonalScreen: React.FC = () => {
                             activeIconColor={tabsConfig.activeIconColor || "#FFFFFF"}
                             inactiveIconColor={tabsConfig.inactiveIconColor || "#6B7280"}
                             menuBackgroundColor={tabsConfig.menuBackgroundColor || 'transparent'}
-                            fit={tabsConfig.fit === 'fit' || tabsConfig.fit === true}
                             menuShowShadow={tabsConfig.menuShowShadow}
                             activeShowShadow={tabsConfig.activeShowShadow}
                             inactiveShowShadow={tabsConfig.inactiveShowShadow}

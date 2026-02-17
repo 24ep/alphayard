@@ -7,7 +7,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { Request, Response, Router } from 'express';
 import { z } from 'zod';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import entityService from '../services/EntityService';
 
 // Store active transports for session management
@@ -126,23 +126,32 @@ export function createMcpServer(): McpServer {
         const { page = 1, limit = 20, search } = args;
         const offset = (page - 1) * limit;
 
-        let query = `SELECT id, email, first_name as "firstName", last_name as "lastName",
-                     avatar_url as "avatarUrl", created_at as "createdAt"
-                     FROM users WHERE 1=1`;
-        const params: any[] = [];
-        let pi = 1;
+        const where = search ? {
+          OR: [
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { firstName: { contains: search, mode: 'insensitive' as const } },
+            { lastName: { contains: search, mode: 'insensitive' as const } }
+          ]
+        } : {};
 
-        if (search) {
-          query += ` AND (email ILIKE $${pi} OR first_name ILIKE $${pi} OR last_name ILIKE $${pi})`;
-          params.push(`%${search}%`);
-          pi++;
-        }
+        const users = await prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            createdAt: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: Math.min(limit, 100),
+          skip: offset
+        });
 
-        query += ` ORDER BY created_at DESC LIMIT $${pi} OFFSET $${pi + 1}`;
-        params.push(Math.min(limit, 100), offset);
-
-        const result = await pool.query(query, params);
-        return success({ users: result.rows, pagination: { page, limit } });
+        return success({ users, pagination: { page, limit } });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -155,13 +164,19 @@ export function createMcpServer(): McpServer {
     GetUserSchema as any,
     async (args: any) => {
       try {
-        const result = await pool.query(
-          `SELECT id, email, first_name as "firstName", last_name as "lastName",
-                  avatar_url as "avatarUrl", created_at as "createdAt"
-           FROM users WHERE id = $1`, [args.userId]
-        );
-        if (result.rows.length === 0) return error(`User not found: ${args.userId}`);
-        return success(result.rows[0]);
+        const user = await prisma.user.findUnique({
+          where: { id: args.userId },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            createdAt: true
+          }
+        });
+        if (!user) return error(`User not found: ${args.userId}`);
+        return success(user);
       } catch (e) {
         return error((e as Error).message);
       }
@@ -174,13 +189,26 @@ export function createMcpServer(): McpServer {
     SearchUsersSchema as any,
     async (args: any) => {
       try {
-        const result = await pool.query(
-          `SELECT id, email, first_name as "firstName", last_name as "lastName"
-           FROM users WHERE email ILIKE $1 OR first_name ILIKE $1 OR last_name ILIKE $1
-           ORDER BY first_name LIMIT $2`,
-          [`%${args.query}%`, Math.min(args.limit || 20, 50)]
-        );
-        return success({ users: result.rows, count: result.rows.length });
+        const users = await prisma.user.findMany({
+          where: {
+            OR: [
+              { email: { contains: args.query, mode: 'insensitive' as const } },
+              { firstName: { contains: args.query, mode: 'insensitive' as const } },
+              { lastName: { contains: args.query, mode: 'insensitive' as const } }
+            ]
+          },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          },
+          orderBy: {
+            firstName: 'asc'
+          },
+          take: Math.min(args.limit || 20, 50)
+        });
+        return success({ users, count: users.length });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -197,13 +225,34 @@ export function createMcpServer(): McpServer {
       try {
         const { page = 1, limit = 20 } = args;
         const offset = (page - 1) * limit;
-        const result = await pool.query(
-          `SELECT c.id, c.name, c.description, c.created_at as "createdAt",
-                  (SELECT COUNT(*) FROM circle_members WHERE circle_id = c.id) as "memberCount"
-           FROM circles c ORDER BY c.created_at DESC LIMIT $1 OFFSET $2`,
-          [Math.min(limit, 100), offset]
-        );
-        return success({ circles: result.rows, pagination: { page, limit } });
+        const circles = await prisma.circle.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            _count: {
+              select: {
+                members: true
+              }
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: Math.min(limit, 100),
+          skip: offset
+        });
+
+        const circlesWithCount = circles.map(c => ({
+          id: c.id,
+          name: c.name,
+          description: c.description,
+          createdAt: c.createdAt,
+          memberCount: c._count.members
+        }));
+
+        return success({ circles: circlesWithCount, pagination: { page, limit } });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -216,12 +265,17 @@ export function createMcpServer(): McpServer {
     CircleIdSchema as any,
     async (args: any) => {
       try {
-        const result = await pool.query(
-          `SELECT id, name, description, created_at as "createdAt"
-           FROM circles WHERE id = $1`, [args.circleId]
-        );
-        if (result.rows.length === 0) return error(`Circle not found: ${args.circleId}`);
-        return success(result.rows[0]);
+        const circle = await prisma.circle.findUnique({
+          where: { id: args.circleId },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true
+          }
+        });
+        if (!circle) return error(`Circle not found: ${args.circleId}`);
+        return success(circle);
       } catch (e) {
         return error((e as Error).message);
       }
@@ -236,12 +290,23 @@ export function createMcpServer(): McpServer {
     AppConfigSchema as any,
     async () => {
       try {
-        const result = await pool.query(
-          `SELECT id, name, display_name as "displayName", description, features, settings
-           FROM applications LIMIT 1`
-        );
-        if (result.rows.length === 0) return error('No app config found');
-        return success(result.rows[0]);
+        const application = await prisma.application.findFirst({
+          select: {
+            id: true,
+            name: true,
+            branding: true,
+            settings: true
+          }
+        });
+        if (!application) return error('No app config found');
+        return success({
+          id: application.id,
+          name: application.name,
+          displayName: application.name,
+          description: null,
+          features: application.settings,
+          settings: application.settings
+        });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -254,11 +319,20 @@ export function createMcpServer(): McpServer {
     CircleTypesSchema as any,
     async () => {
       try {
-        const result = await pool.query(
-          `SELECT id, name, description, icon, color FROM circle_types 
-           WHERE is_active = true ORDER BY sort_order ASC`
-        );
-        return success({ circleTypes: result.rows });
+        const circleTypes = await prisma.circleType.findMany({
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            description: true,
+            icon: true,
+            color: true
+          },
+          orderBy: {
+            createdAt: 'asc'
+          }
+        });
+        return success({ circleTypes });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -274,19 +348,29 @@ export function createMcpServer(): McpServer {
     async (args: any) => {
       try {
         const { userId, limit = 20 } = args;
-        let query = `SELECT id, type, name, updated_at as "updatedAt" FROM chat_conversations`;
-        const params: any[] = [];
+        const where = userId ? {
+          participants: {
+            some: {
+              userId
+            }
+          }
+        } : {};
 
-        if (userId) {
-          query += ` WHERE id IN (SELECT conversation_id FROM chat_participants WHERE user_id = $1)`;
-          params.push(userId);
-        }
+        const conversations = await prisma.chatRoom.findMany({
+          where,
+          select: {
+            id: true,
+            type: true,
+            name: true,
+            updatedAt: true
+          },
+          orderBy: {
+            updatedAt: 'desc'
+          },
+          take: Math.min(limit, 50)
+        });
 
-        query += ` ORDER BY updated_at DESC LIMIT $${params.length + 1}`;
-        params.push(Math.min(limit, 50));
-
-        const result = await pool.query(query, params);
-        return success({ conversations: result.rows });
+        return success({ conversations });
       } catch (e) {
         return error((e as Error).message);
       }
@@ -299,13 +383,22 @@ export function createMcpServer(): McpServer {
     GetMessagesSchema as any,
     async (args: any) => {
       try {
-        const result = await pool.query(
-          `SELECT id, sender_id as "senderId", content, created_at as "createdAt"
-           FROM chat_messages WHERE conversation_id = $1
-           ORDER BY created_at DESC LIMIT $2`,
-          [args.conversationId, Math.min(args.limit || 50, 100)]
-        );
-        return success({ messages: result.rows.reverse() });
+        const messages = await prisma.chatMessage.findMany({
+          where: {
+            roomId: args.conversationId
+          },
+          select: {
+            id: true,
+            senderId: true,
+            content: true,
+            createdAt: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: Math.min(args.limit || 50, 100)
+        });
+        return success({ messages: messages.reverse() });
       } catch (e) {
         return error((e as Error).message);
       }

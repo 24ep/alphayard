@@ -1,15 +1,10 @@
 // @ts-nocheck
-import { Client } from 'pg';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 
 // Load env vars from project root
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
-
-const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.DATABASE_URL && process.env.DATABASE_URL.includes('neon.tech') ? { rejectUnauthorized: false } : undefined
-});
 
 // Social Media Icons - All common platforms
 const SOCIAL_ICONS = [
@@ -212,13 +207,12 @@ const COUNTRY_FLAGS = [
 ];
 
 async function main() {
-    await client.connect();
     console.log('Connected to database');
 
     // Get all active applications
     console.log('Fetching active applications...');
-    const result = await client.query('SELECT id, name, branding FROM applications WHERE is_active = true');
-    const apps = result.rows;
+    const result = await prisma.$queryRawUnsafe<any[]>('SELECT id, name, branding FROM core.applications WHERE is_active = true');
+    const apps = result;
 
     if (apps.length === 0) {
         console.log('No active applications found. Create an application first.');
@@ -274,10 +268,9 @@ async function main() {
         }
 
         // Update the application with new branding
-        await client.query(
-            'UPDATE applications SET branding = $1 WHERE id = $2',
-            [JSON.stringify(branding), app.id]
-        );
+        await prisma.$executeRaw`
+            UPDATE core.applications SET branding = ${JSON.stringify(branding)}::jsonb WHERE id = ${app.id}::uuid
+        `;
 
         console.log(`   ✅ Added ${socialAdded} social icons, ${flagsAdded} country flags.`);
     }
@@ -291,5 +284,5 @@ main()
         process.exit(1);
     })
     .finally(async () => {
-        await client.end();
+        await prisma.$disconnect();
     });

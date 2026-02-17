@@ -23,6 +23,7 @@ import { circleApi } from '../../services/api';
 
 import { ScalePressable } from '../../components/common/ScalePressable';
 import { unwrapEntity } from '../../services/collectionService';
+import api from '../../services/api/apiClient';
 
 const H_PADDING = 20;
 
@@ -54,11 +55,9 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   console.log('[UI] NotesScreen (main) using MainScreenLayout');
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'personal' | 'work' | 'circle' | 'ideas'>('all');
   const [showCreateNote, setShowCreateNote] = useState(false);
   const [showNoteDetail, setShowNoteDetail] = useState(false);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   // To-Do in Notes
   const [showTodoDrawer, setShowTodoDrawer] = useState(false);
@@ -87,11 +86,17 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     { id: '4', name: 'Brown Circle', members: 2 },
   ];
 
+  // Note types from collections
+  const [noteTypes, setNoteTypes] = useState<any[]>([]);
+  const [loadingNoteTypes, setLoadingNoteTypes] = useState(false);
+  const [showNoteTypeSelection, setShowNoteTypeSelection] = useState(false);
+
   // Form state
-  const [noteForm, setNoteForm] = useState<{ title: string; content: string; category: 'personal' | 'work' | 'circle' | 'ideas'; color: string }>({
+  const [noteForm, setNoteForm] = useState<{ title: string; content: string; type?: string; category?: string; color: string }>({
     title: '',
     content: '',
-    category: 'personal',
+    type: '',
+    category: 'personal', // Keep for backward compatibility
     color: '#FFB6C1',
   });
 
@@ -117,7 +122,21 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     try {
       setIsLoading(true);
       const res = await notesApi.list();
-      const items: any[] = res.data?.entities || res.data || [];
+      console.log('[NotesScreen] API response:', {
+        hasSuccess: !!res.success,
+        hasData: !!res.data,
+        dataType: Array.isArray(res.data) ? 'array' : typeof res.data,
+        dataLength: Array.isArray(res.data) ? res.data.length : 'N/A',
+        dataKeys: res.data && typeof res.data === 'object' ? Object.keys(res.data) : []
+      });
+      
+      // Handle response structure: { success: true, data: entities[] }
+      const items: any[] = Array.isArray(res.data) 
+        ? res.data 
+        : (res.data?.entities || res.data?.data || []);
+      
+      console.log('[NotesScreen] Extracted items:', items.length);
+      
       const mapped: Note[] = (items || []).map((n: any) => {
         const unwrapped = unwrapEntity(n);
         return {
@@ -131,16 +150,91 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
           color: unwrapped.color || '#FFB6C1',
         };
       });
+      
+      console.log('[NotesScreen] Mapped notes:', mapped.length);
       setNotes(mapped);
-    } catch (e) {
-      // Keep empty on error
+    } catch (e: any) {
+      console.error('[NotesScreen] Error loading notes:', e);
+      console.error('[NotesScreen] Error details:', {
+        message: e?.message,
+        response: e?.response?.data,
+        status: e?.response?.status
+      });
+      // Keep empty on error but log it
+      setNotes([]);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Load note types from collections
+  const loadNoteTypes = async () => {
+    try {
+      setLoadingNoteTypes(true);
+      // Get the 'note' collection schema
+      const schemaResponse = await api.get(`/mobile/collections/note/schema`);
+      if (schemaResponse.success && schemaResponse.collection) {
+        // Extract type options from schema if available
+        const schema = schemaResponse.collection.schema || [];
+        // Look for 'type' or 'category' field in schema array
+        const typeField = Array.isArray(schema) 
+          ? schema.find((field: any) => (field.key === 'type' || field.key === 'category') && field.options)
+          : null;
+        
+        if (typeField && typeField.options && Array.isArray(typeField.options)) {
+          // Use options from schema
+          setNoteTypes(typeField.options.map((opt: any) => ({
+            value: typeof opt === 'string' ? opt : (opt.value || opt.label),
+            label: typeof opt === 'string' ? opt : (opt.label || opt.value)
+          })));
+        } else {
+          // Fallback: check if schema has enum values
+          const enumField = Array.isArray(schema)
+            ? schema.find((field: any) => field.enum && Array.isArray(field.enum))
+            : null;
+          
+          if (enumField && enumField.enum) {
+            setNoteTypes(enumField.enum.map((val: string) => ({ value: val, label: val })));
+          } else {
+            // Final fallback: use default types
+            setNoteTypes([
+              { value: 'personal', label: 'Personal' },
+              { value: 'work', label: 'Work' },
+              { value: 'circle', label: 'Circle' },
+              { value: 'ideas', label: 'Ideas' }
+            ]);
+          }
+        }
+      } else {
+        // Fallback to default types if schema not found
+        setNoteTypes([
+          { value: 'personal', label: 'Personal' },
+          { value: 'work', label: 'Work' },
+          { value: 'circle', label: 'Circle' },
+          { value: 'ideas', label: 'Ideas' }
+        ]);
+      }
+    } catch (error: any) {
+      // Don't log when backend is unreachable or error is generic (avoid noisy console)
+      const isOffline = error?.code === 'NETWORK_ERROR' || error?.message?.includes('ERR_CONNECTION_REFUSED') || error?.message?.includes('Failed to fetch');
+      if (!isOffline && error?.code !== 'UNKNOWN_ERROR') {
+        console.error('[NotesScreen] Error loading note types:', error);
+      }
+      // Fallback to default types
+      setNoteTypes([
+        { value: 'personal', label: 'Personal' },
+        { value: 'work', label: 'Work' },
+        { value: 'circle', label: 'Circle' },
+        { value: 'ideas', label: 'Ideas' }
+      ]);
+    } finally {
+      setLoadingNoteTypes(false);
+    }
+  };
+
   useEffect(() => {
     loadNotes();
+    loadNoteTypes();
   }, []);
 
   const [tasks, setTasks] = useState<TaskItem[]>([]);
@@ -148,7 +242,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   const loadTodos = async () => {
     try {
       const res = await todosApi.list();
-      const items: any[] = res.data?.entities || res.data || [];
+      const items: any[] = res.data?.data ?? res.data?.entities ?? (Array.isArray(res.data) ? res.data : []) ?? [];
       const mapped: TaskItem[] = (items || []).map((t: any) => {
         const unwrapped = unwrapEntity(t);
         return {
@@ -218,12 +312,31 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   };
 
   const handleCreateNote = () => {
+    // Show note type selection first
+    if (noteTypes.length > 0) {
+      setShowNoteTypeSelection(true);
+    } else {
+      // If no types loaded, use default
+      setNoteForm({
+        title: '',
+        content: '',
+        type: 'personal',
+        category: 'personal',
+        color: '#FFB6C1',
+      });
+      setShowCreateNote(true);
+    }
+  };
+
+  const handleSelectNoteType = (typeValue: string) => {
     setNoteForm({
       title: '',
       content: '',
-      category: 'personal',
+      type: typeValue,
+      category: typeValue, // Keep for backward compatibility
       color: '#FFB6C1',
     });
+    setShowNoteTypeSelection(false);
     setShowCreateNote(true);
   };
 
@@ -244,7 +357,8 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         await notesApi.update(selectedNote.id, {
           title: noteForm.title,
           content: noteForm.content,
-          category: noteForm.category,
+          category: noteForm.type || noteForm.category, // Use type if available, fallback to category
+          type: noteForm.type || noteForm.category,
           color: noteForm.color,
         });
         setShowNoteDetail(false);
@@ -252,7 +366,8 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         await notesApi.create({
           title: noteForm.title,
           content: noteForm.content,
-          category: noteForm.category,
+          category: noteForm.type || noteForm.category, // Use type if available, fallback to category
+          type: noteForm.type || noteForm.category,
           color: noteForm.color,
         });
         setShowCreateNote(false);
@@ -329,12 +444,7 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     }
   };
 
-  const filteredNotes = notes.filter(note => {
-    const matchesCategory = selectedCategory === 'all' || note.category === selectedCategory;
-    const matchesSearch = note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  }).sort((a, b) => {
+  const filteredNotes = notes.sort((a, b) => {
     // Pinned notes first, then by updated date
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
@@ -354,156 +464,115 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
   };
 
   const Content = (
-    <>
+    <View style={{ flex: 1, position: 'relative' }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
 
-        {/* Header (Matches Calendar & Home) */}
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: H_PADDING,
-          paddingTop: 24,
-          paddingBottom: 16,
-        }}>
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontSize: 28, fontWeight: '700', color: '#111827' }}>Organizer</Text>
-            <Text style={{ fontSize: 14, color: '#6B7280' }}>
-              {notes.length} notes • {tasks.filter(t => !t.isCompleted).length} tasks • {shoppingItems.length} to buy
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <TouchableOpacity style={{ padding: 8 }}>
-              <IconMC name="cog-outline" size={HEADER_ICON_SIZE} color="#6B7280" />
-            </TouchableOpacity>
-            <ScalePressable
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: '#E5E7EB',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              onPress={handleCreateNote}
-            >
-              <IconMC name="plus" size={20} color="#6B7280" />
-            </ScalePressable>
-          </View>
-        </View>
-
-        {/* Search Bar */}
-        <View style={{ paddingHorizontal: H_PADDING, marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: '#F3F4F6' }}>
-            <IconMC name="magnify" size={20} color="#9CA3AF" />
-            <TextInput
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search notes, tasks..."
-              style={{ flex: 1, marginLeft: 8, fontSize: 16, color: '#111827' }}
-              placeholderTextColor="#9CA3AF"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <IconMC name="close" size={20} color="#6B7280" />
+        {/* Header (Matches Calendar & Home) - Hidden when embedded */}
+        {!embedded && (
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: H_PADDING,
+            paddingTop: 24,
+            paddingBottom: 16,
+          }}>
+            <View style={{ gap: 4 }}>
+              <Text style={{ fontSize: 28, fontWeight: '700', color: '#111827' }}>Organizer</Text>
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                {notes.length} notes • {tasks.filter(t => !t.isCompleted).length} tasks • {shoppingItems.length} to buy
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity style={{ padding: 8 }}>
+                <IconMC name="cog-outline" size={HEADER_ICON_SIZE} color="#6B7280" />
               </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* Widgets Row (To-Do & Shopping) */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: H_PADDING, gap: 12, marginBottom: 20 }}>
-          {/* To-Do Widget */}
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => setShowTodoDrawer(true)}
-            style={{
-              flex: 1,
-              backgroundColor: '#FFFFFF',
-              borderRadius: 16,
-              padding: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-              borderWidth: 1,
-              borderColor: '#F3F4F6'
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' }}>
-                <IconMC name="format-list-checkbox" size={18} color="#3B82F6" />
-              </View>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{tasks.filter(t => !t.isCompleted).length}</Text>
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 2 }}>To-Do List</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280' }}>
-              {tasks.length > 0 ? tasks[0].title : 'No pending tasks'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Shopping Widget */}
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => setShowShoppingList(true)}
-            style={{
-              flex: 1,
-              backgroundColor: '#FFFFFF',
-              borderRadius: 16,
-              padding: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-              borderWidth: 1,
-              borderColor: '#F3F4F6'
-            }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' }}>
-                <IconMC name="cart-outline" size={18} color="#10B981" />
-              </View>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{shoppingItems.length}</Text>
-            </View>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 2 }}>Shopping</Text>
-            <Text style={{ fontSize: 12, color: '#6B7280' }} numberOfLines={1}>
-              {shoppingItems.length > 0 ? `${shoppingItems[0].item}${shoppingItems.length > 1 ? `, +${shoppingItems.length - 1}` : ''}` : 'List is empty'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-
-
-        {/* Category Filter Pills */}
-        <View style={{ paddingHorizontal: H_PADDING, marginBottom: 20 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {(['all', 'personal', 'work', 'circle', 'ideas'] as const).map(category => (
-              <TouchableOpacity
-                key={category}
-                onPress={() => setSelectedCategory(category)}
+              <ScalePressable
                 style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  borderRadius: 20,
-                  backgroundColor: selectedCategory === category ? '#111827' : '#FFFFFF',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
                   borderWidth: 1,
-                  borderColor: selectedCategory === category ? '#111827' : '#E5E7EB',
+                  borderColor: '#E5E7EB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
+                onPress={handleCreateNote}
               >
-                <Text style={{
-                  fontSize: 14,
-                  fontWeight: '600',
-                  color: selectedCategory === category ? '#FFFFFF' : '#4B5563',
-                }}>
-                  {category === 'all' ? 'All' : category.charAt(0).toUpperCase() + category.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+                <IconMC name="plus" size={20} color="#6B7280" />
+              </ScalePressable>
+            </View>
+          </View>
+        )}
+
+
+        {/* Widgets Row (To-Do & Shopping) - Hidden when embedded (personal page) */}
+        {!embedded && (
+          <View style={{ flexDirection: 'row', paddingHorizontal: H_PADDING, gap: 12, marginBottom: 20 }}>
+            {/* To-Do Widget */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowTodoDrawer(true)}
+              style={{
+                flex: 1,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                padding: 16,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
+                elevation: 2,
+                borderWidth: 1,
+                borderColor: '#F3F4F6'
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="format-list-checkbox" size={18} color="#3B82F6" />
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{tasks.filter(t => !t.isCompleted).length}</Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 2 }}>To-Do List</Text>
+              <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                {tasks.length > 0 ? tasks[0].title : 'No pending tasks'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Shopping Widget */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setShowShoppingList(true)}
+              style={{
+                flex: 1,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 16,
+                padding: 16,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 6,
+                elevation: 2,
+                borderWidth: 1,
+                borderColor: '#F3F4F6'
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' }}>
+                  <IconMC name="cart-outline" size={18} color="#10B981" />
+                </View>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{shoppingItems.length}</Text>
+              </View>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 2 }}>Shopping</Text>
+              <Text style={{ fontSize: 12, color: '#6B7280' }} numberOfLines={1}>
+                {shoppingItems.length > 0 ? `${shoppingItems[0].item}${shoppingItems.length > 1 ? `, +${shoppingItems.length - 1}` : ''}` : 'List is empty'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+
+
 
         {/* Notes List */}
         <View style={{ paddingHorizontal: H_PADDING }}>
@@ -603,28 +672,120 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         </View>
       </ScrollView>
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={{
-          position: 'absolute',
-          right: 20,
-          bottom: 24,
-          width: 56,
-          height: 56,
-          borderRadius: 28,
-          backgroundColor: '#FFB6C1',
-          alignItems: 'center',
-          justifyContent: 'center',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
-        }}
-        onPress={handleCreateNote}
-      >
-        <IconMC name="plus" size={24} color="#1F2937" />
-      </TouchableOpacity>
+      {/* Note Type Selection Drawer */}
+      <Modal visible={showNoteTypeSelection} transparent animationType="slide" onRequestClose={() => setShowNoteTypeSelection(false)}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+          activeOpacity={1}
+          onPress={() => setShowNoteTypeSelection(false)}
+        >
+          <View
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 20,
+              borderTopRightRadius: 20,
+              paddingTop: 12,
+              paddingBottom: 24,
+              maxHeight: '70%',
+            }}
+            onStartShouldSetResponder={() => true}
+          >
+            {/* Handle bar */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ width: 40, height: 4, backgroundColor: '#D1D5DB', borderRadius: 2 }} />
+            </View>
+
+            {/* Header */}
+            <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <Text style={{ fontSize: 22, fontWeight: '700', color: '#111827' }}>
+                  Select Note Type
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowNoteTypeSelection(false)}
+                  style={{ padding: 8 }}
+                >
+                  <IconMC name="close" size={24} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+              <Text style={{ fontSize: 14, color: '#6B7280' }}>
+                Choose the type of note you want to create
+              </Text>
+            </View>
+
+            {/* Content */}
+            <ScrollView 
+              style={{ flex: 1 }} 
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {loadingNoteTypes ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: '#6B7280' }}>Loading types...</Text>
+                </View>
+              ) : noteTypes.length === 0 ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: '#6B7280' }}>No note types available</Text>
+                </View>
+              ) : (
+                <View style={{ gap: 12 }}>
+                  {noteTypes.map((typeOption: any) => {
+                    const typeValue = typeOption.value || typeOption;
+                    const typeLabel = typeOption.label || typeOption;
+                    const typeColor = getCategoryColor(typeValue);
+                    
+                    return (
+                      <TouchableOpacity
+                        key={typeValue}
+                        onPress={() => handleSelectNoteType(typeValue)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 16,
+                          borderRadius: 12,
+                          backgroundColor: '#F9FAFB',
+                          borderWidth: 1,
+                          borderColor: '#E5E7EB',
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <View
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: typeColor + '20',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                          }}
+                        >
+                          <IconMC
+                            name={getCategoryIcon(typeValue)}
+                            size={20}
+                            color={typeColor}
+                          />
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: '600',
+                            color: '#111827',
+                            flex: 1,
+                          }}
+                        >
+                          {typeLabel}
+                        </Text>
+                        <IconMC name="chevron-right" size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Create/Edit Note Modal - Inline WYSIWYG */}
       <Modal visible={showCreateNote || showNoteDetail} transparent animationType="slide" onRequestClose={() => {
@@ -640,29 +801,38 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                 {selectedNote ? 'Edit Note' : 'Create Note'}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                {/* Category selector in header */}
-                <View style={{ flexDirection: 'row', gap: 6 }}>
-                  {(['personal', 'work', 'circle', 'ideas'] as const).map(category => (
-                    <TouchableOpacity
-                      key={category}
-                      onPress={() => setNoteForm(prev => ({ ...prev, category }))}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        backgroundColor: noteForm.category === category ? getCategoryColor(category) : '#F3F4F6',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <IconMC
-                        name={getCategoryIcon(category)}
-                        size={16}
-                        color={noteForm.category === category ? '#FFFFFF' : '#6B7280'}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                {/* Note Type selector dropdown */}
+                {noteTypes.length > 0 && (
+                  <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                    {noteTypes.map((typeOption: any) => {
+                      const typeValue = typeOption.value || typeOption;
+                      const typeLabel = typeOption.label || typeOption;
+                      const isSelected = (noteForm.type || noteForm.category) === typeValue;
+                      return (
+                        <TouchableOpacity
+                          key={typeValue}
+                          onPress={() => setNoteForm(prev => ({ ...prev, type: typeValue, category: typeValue }))}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 16,
+                            backgroundColor: isSelected ? getCategoryColor(typeValue) : '#F3F4F6',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <Text style={{ 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: isSelected ? '#FFFFFF' : '#6B7280' 
+                          }}>
+                            {typeLabel}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
                 <TouchableOpacity onPress={() => {
                   setShowCreateNote(false);
                   setShowNoteDetail(false);
@@ -1058,13 +1228,37 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
           </View>
         </View>
       </Modal>
-    </>
+    </View>
   );
 
   if (embedded) {
     return (
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, position: 'relative' }}>
         {Content}
+        {/* Floating Action Button - Fixed Position (Screen Level) */}
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            right: 20,
+            bottom: 24,
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            backgroundColor: '#FFB6C1',
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 5,
+            zIndex: 1000,
+          }}
+          onPress={handleCreateNote}
+          activeOpacity={0.8}
+        >
+          <IconMC name="plus" size={24} color="#1F2937" />
+        </TouchableOpacity>
       </View>
     );
   }
@@ -1083,6 +1277,30 @@ const NotesScreen: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         availableFamilies={availableFamilies}
       />
       {Content}
+      {/* Floating Action Button - Fixed Position (Screen Level) */}
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          right: 20,
+          bottom: 24,
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          backgroundColor: '#FFB6C1',
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 5,
+          zIndex: 1000,
+        }}
+        onPress={handleCreateNote}
+        activeOpacity={0.8}
+      >
+        <IconMC name="plus" size={24} color="#1F2937" />
+      </TouchableOpacity>
     </MainScreenLayout>
   );
 };

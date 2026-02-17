@@ -1,24 +1,26 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Text,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Box, HStack, VStack, Avatar, Input, IconButton, Menu, Divider, Icon } from 'native-base';
+import { Box, HStack, VStack, Avatar, Input, IconButton, Menu, Icon } from 'native-base';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Location from 'expo-location';
+
 import { useAuth } from '../../contexts/AuthContext';
-import { chatService } from '../../services/chat/ChatService';
+import { chatApi } from '../../services/api';
+import { socketService } from '../../services/socket/SocketService';
 import { analyticsService } from '../../services/analytics/AnalyticsService';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { EmptyState } from '../../components/common/EmptyState';
 import MainScreenLayout from '../../components/layout/MainScreenLayout';
 import { CircleDropdown } from '../../components/home/CircleDropdown';
 
@@ -43,6 +45,11 @@ interface Message {
     emoji: string;
     users: string[];
   }[];
+  mediaUrl?: string; // For images/files
+  location?: {
+      latitude: number;
+      longitude: number;
+  };
 }
 
 interface ChatRoomScreenProps {
@@ -55,7 +62,7 @@ interface ChatRoomScreenProps {
 }
 
 const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { chatId, chatName } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
@@ -67,16 +74,56 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const [showCircleDropdown, setShowCircleDropdown] = useState(false);
   const [selectedCircle, setSelectedCircle] = useState('Smith Circle');
 
+  const mapApiMessageToUiMessage = (apiMsg: any): Message => {
+      const isOwn = apiMsg.senderId === user?.id;
+      return {
+          id: apiMsg.id,
+          text: apiMsg.content,
+          sender: {
+              id: apiMsg.senderId,
+              name: apiMsg.sender ? `${apiMsg.sender.firstName} ${apiMsg.sender.lastName || ''}`.trim() : 'Unknown',
+              avatar: apiMsg.sender?.avatarUrl
+          },
+          timestamp: new Date(apiMsg.createdAt).getTime(),
+          type: apiMsg.type || 'text',
+          status: 'read', // Default to read for history
+          isOwn,
+          replyTo: apiMsg.replyTo ? {
+              id: apiMsg.replyTo,
+              text: 'Replying to message...', // Ideally fetch reply content
+              sender: 'Unknown'
+          } : undefined,
+          reactions: apiMsg.reactions?.map((r: any) => ({
+              emoji: r.emoji,
+              users: [r.userId] // Simplified
+          })),
+          mediaUrl: apiMsg.metadata?.imageUri || apiMsg.metadata?.fileUri,
+          location: (apiMsg.type === 'location' && apiMsg.metadata) ? {
+              latitude: apiMsg.metadata.latitude,
+              longitude: apiMsg.metadata.longitude
+          } : undefined
+      };
+  };
+
   useEffect(() => {
     loadMessages();
     setupMessageListener();
+    
+    return () => {
+        socketService.off('new-message');
+    };
   }, [chatId]);
 
   const loadMessages = async () => {
     try {
       setLoading(true);
-      const chatMessages = await chatService.getMessages(chatId);
-      setMessages(chatMessages);
+      const res = await chatApi.getMessages(chatId);
+      if (res.success && res.data) {
+          const formattedMessages = res.data.map(mapApiMessageToUiMessage);
+          // Sort by timestamp (asc)
+          formattedMessages.sort((a, b) => a.timestamp - b.timestamp);
+          setMessages(formattedMessages);
+      }
     } catch (error) {
       console.error('Failed to load messages:', error);
       Alert.alert('Error', 'Failed to load messages');
@@ -86,37 +133,67 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   };
 
   const setupMessageListener = () => {
-    // Setup real-time message listener
-    chatService.onMessageReceived(chatId, (message: Message) => {
-      setMessages(prev => [...prev, message]);
-      scrollToBottom();
+    socketService.on('new-message', (data: { message: any }) => {
+      if (data.message && data.message.chatRoomId === chatId) {
+          const newMsg = mapApiMessageToUiMessage(data.message);
+          setMessages(prev => {
+              // Deduplicate
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+          });
+          scrollToBottom();
+      }
     });
   };
 
   const sendMessage = async () => {
     if (!messageText.trim()) return;
+    const textToSend = messageText.trim();
+    setMessageText(''); // Clear immediately for UX
 
     try {
       setSending(true);
-      const newMessage = await chatService.sendMessage(
-        chatId,
-        user?.id || 'unknown',
-        messageText.trim(),
-        'text'
-      );
-      
-      setMessages(prev => [...prev, newMessage]);
-      setMessageText('');
+      // Optimistic update
+      const tempId = Date.now().toString();
+      const optimisticMsg: Message = {
+          id: tempId,
+          text: textToSend,
+          sender: { 
+              id: user?.id || 'me', 
+              name: 'Me', // Will be replaced on refresh
+              avatar: user?.avatar 
+          },
+          timestamp: Date.now(),
+          type: 'text',
+          status: 'sending',
+          isOwn: true
+      };
+      setMessages(prev => [...prev, optimisticMsg]);
       scrollToBottom();
+
+      const res = await chatApi.sendMessage(chatId, {
+          content: textToSend,
+          type: 'text'
+      });
+      
+      if (res.success && res.data) {
+          // Replace optimistic message
+          const serverMsg = mapApiMessageToUiMessage(res.data);
+          setMessages(prev => prev.map(m => m.id === tempId ? serverMsg : m));
+      } else {
+           setMessages(prev => prev.filter(m => m.id !== tempId)); // Remove if failed
+           Alert.alert('Error', 'Failed to send message');
+      }
       
       analyticsService.trackEvent('message_sent', {
         chatId,
         messageType: 'text',
-        messageLength: messageText.length,
+        messageLength: textToSend.length,
       });
     } catch (error) {
       console.error('Failed to send message:', error);
       Alert.alert('Error', 'Failed to send message');
+      setMessages(prev => prev.filter(m => m.status === 'sending')); // Remove optimistic
     } finally {
       setSending(false);
     }
@@ -135,12 +212,39 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const handleImagePicker = async () => {
     setShowMenu(false);
     try {
-      const image = await chatService.pickImage();
-      if (image) {
-        await chatService.sendMessage(chatId, {
-          type: 'image',
-          imageUri: image.uri,
+      const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        
+        // 1. Send initial message
+        const sendRes = await chatApi.sendMessage(chatId, {
+            content: 'Image',
+            type: 'image',
         });
+
+        if (sendRes.success && sendRes.data) {
+             const messageId = sendRes.data.id;
+             
+             // 2. Upload attachment
+             // Note: In a real app we might want to show upload progress
+             try {
+                await chatApi.uploadAttachment(messageId, {
+                    uri: asset.uri,
+                    name: asset.fileName || 'image.jpg',
+                    type: asset.mimeType || 'image/jpeg'
+                });
+             } catch (uploadError) {
+                 console.error('Failed to upload attachment:', uploadError);
+                 Alert.alert('Error', 'Message sent but failed to upload image');
+             }
+
+             // 3. Refresh
+             loadMessages(); 
+        }
       }
     } catch (error) {
       console.error('Failed to send image:', error);
@@ -151,13 +255,37 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const handleFilePicker = async () => {
     setShowMenu(false);
     try {
-      const file = await chatService.pickFile();
-      if (file) {
-        await chatService.sendMessage(chatId, {
-          type: 'file',
-          fileUri: file.uri,
-          fileName: file.name,
+      const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*'
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const file = result.assets[0];
+        
+        // 1. Send initial message
+        const sendRes = await chatApi.sendMessage(chatId, {
+            content: file.name,
+            type: 'file',
         });
+
+        if (sendRes.success && sendRes.data) {
+            const messageId = sendRes.data.id;
+
+            // 2. Upload attachment
+            try {
+                await chatApi.uploadAttachment(messageId, {
+                    uri: file.uri,
+                    name: file.name,
+                    type: file.mimeType || 'application/octet-stream' // DocumentPicker usually provides mimeType
+                });
+            } catch (uploadError) {
+                 console.error('Failed to upload file:', uploadError);
+                 Alert.alert('Error', 'Message sent but failed to upload file');
+            }
+
+            // 3. Refresh
+            loadMessages();
+        }
       }
     } catch (error) {
       console.error('Failed to send file:', error);
@@ -168,13 +296,23 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
   const handleLocationShare = async () => {
     setShowMenu(false);
     try {
-      const location = await chatService.getCurrentLocation();
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+          Alert.alert('Permission denied', 'Permission to access location was denied');
+          return;
+      }
+      
+      const location = await Location.getCurrentPositionAsync({});
       if (location) {
-        await chatService.sendMessage(chatId, {
-          type: 'location',
-          latitude: location.latitude,
-          longitude: location.longitude,
+        await chatApi.sendMessage(chatId, {
+           content: 'Shared Location',
+           type: 'location',
+           metadata: { 
+               latitude: location.coords.latitude, 
+               longitude: location.coords.longitude 
+           }
         });
+        loadMessages();
       }
     } catch (error) {
       console.error('Failed to share location:', error);
@@ -357,22 +495,14 @@ const ChatRoomScreen: React.FC<ChatRoomScreenProps> = ({ route }) => {
 
   if (loading) {
     return (
-      <MainScreenLayout
-        selectedCircle={selectedCircle}
-        showCircleDropdown={showCircleDropdown}
-        onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
-      >
+      <MainScreenLayout>
         <LoadingSpinner fullScreen />
       </MainScreenLayout>
     );
   }
 
   return (
-    <MainScreenLayout
-      selectedCircle={selectedCircle}
-      showCircleDropdown={showCircleDropdown}
-      onToggleCircleDropdown={() => setShowCircleDropdown(!showCircleDropdown)}
-    >
+    <MainScreenLayout>
       <Box style={styles.header}>
         <HStack space={3} alignItems="center" flex={1}>
           <IconButton

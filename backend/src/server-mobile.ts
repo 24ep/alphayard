@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 
-console.log(`[Mobile Server] Initialization trigger: ${new Date().toISOString()}`);
+console.log(`[Mobile Server] Initialization trigger: ${new Date().toISOString()} - v4`);
 
 // Load environment variables
 dotenv.config();
@@ -21,7 +21,7 @@ import cluster from 'cluster';
 import os from 'os';
 
 // Import Mobile Routes
-import v1MobileRouter from './routes/v1/mobile';
+import v1Router from './routes/v1'; // Use full v1Router which includes both mobile and admin routes
 import healthRoutes from './routes/health';
 import webhooksRoutes from './routes/mobile/webhooks';
 
@@ -104,16 +104,16 @@ function startServer() {
 
   // Routes
   app.use('/health', healthRoutes);
-  app.use('/api/v1', v1MobileRouter);
-  app.use('/api', v1MobileRouter);
+  app.use('/api/v1', v1Router); // Use full v1Router which includes both mobile and admin routes
+  app.use('/api', v1Router);
   app.use('/webhooks', webhooksRoutes);
 
   app.use(errorHandler);
 
   async function initializeServices() {
     try {
-      const { pool } = require('./config/database');
-      await pool.query('SELECT 1');
+      const { prisma } = require('./config/database');
+      await prisma.$queryRaw`SELECT 1`;
       initializeSocket(io);
 
       const PORT = 4000;

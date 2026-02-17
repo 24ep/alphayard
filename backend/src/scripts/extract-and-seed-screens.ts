@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
@@ -47,8 +47,8 @@ async function seed() {
         }
 
         console.log('\n🚀 Phase 2: Updating application inventory...');
-        const { rows: apps } = await pool.query(
-            "SELECT id, name, branding FROM applications WHERE is_active = true"
+        const apps = await prisma.$queryRawUnsafe<any[]>(
+            "SELECT id, name, branding FROM core.applications WHERE is_active = true"
         );
 
         console.log(`Found ${apps.length} active applications.`);
@@ -99,9 +99,9 @@ async function seed() {
 
             if (addedCount > 0 || uniqueExisting.size !== screens.length) {
                 branding.screens = Array.from(uniqueExisting.values());
-                await pool.query(
-                    "UPDATE applications SET branding = $1, updated_at = NOW() WHERE id = $2",
-                    [JSON.stringify(branding), app.id]
+                await prisma.$executeRawUnsafe(
+                    "UPDATE core.applications SET branding = $1, updated_at = NOW() WHERE id = $2",
+                    JSON.stringify(branding), app.id
                 );
                 console.log(`   ✅ Processed screens (Added: ${addedCount}, Total: ${uniqueExisting.size}).`);
             } else {

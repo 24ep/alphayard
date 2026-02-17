@@ -118,6 +118,7 @@ export interface SecurityConfig {
 export interface AnalyticsConfig {
     sentryDsn: string;
     mixpanelToken: string;
+    googleAnalyticsId: string;
     enableDebugLogs: boolean;
 }
 

@@ -1,32 +1,48 @@
-import { Pool } from 'pg';
+import { prisma } from '../lib/prisma';
 
 export interface Country {
     code: string;
     name: string;
-    dial_code: string;
+    dialCode: string;
     flag: string;
-    is_active: boolean;
+    isActive: boolean;
 }
 
 export class CountryModel {
-    private pool: Pool;
-
-    constructor(pool: Pool) {
-        this.pool = pool;
+    // Static methods (no need for pool injection with Prisma)
+    static async getAllActive(): Promise<Country[]> {
+        const countries = await prisma.country.findMany({
+            where: { isActive: true },
+            orderBy: { name: 'asc' }
+        });
+        return countries.map(c => this.mapRow(c));
     }
 
-    async getAllActive(): Promise<Country[]> {
-        const result = await this.pool.query(
-            'SELECT * FROM public.countries WHERE is_active = true ORDER BY name ASC'
-        );
-        return result.rows;
+    static async getByCode(code: string): Promise<Country | null> {
+        const country = await prisma.country.findUnique({
+            where: { code }
+        });
+        return country ? this.mapRow(country) : null;
     }
 
-    async getByCode(code: string): Promise<Country | null> {
-        const result = await this.pool.query(
-            'SELECT * FROM public.countries WHERE code = $1',
-            [code]
-        );
-        return result.rows[0] || null;
+    static async findAll(): Promise<Country[]> {
+        const countries = await prisma.country.findMany({
+            orderBy: { name: 'asc' }
+        });
+        return countries.map(c => this.mapRow(c));
+    }
+
+    private static mapRow(row: any): Country {
+        return {
+            code: row.code,
+            name: row.name,
+            dialCode: row.dialCode,
+            flag: row.flag,
+            isActive: row.isActive
+        };
     }
 }
+
+// Export a default instance for backwards compatibility
+// (some code may use new CountryModel(pool))
+export default CountryModel;

@@ -1,4 +1,5 @@
-import { UserModel } from '../models/UserModel';
+import { prisma } from '../lib/prisma';
+import type { AuditLog as PrismaAuditLog } from '../lib/prisma';
 
 export enum AuditLevel {
   INFO = 'info',
@@ -53,9 +54,28 @@ export interface AuditLog {
 }
 
 class AuditService {
-  private auditLogs: AuditLog[] = [];
-  private maxLogs = 10000;
   public auditActions = AuditAction;
+
+  /**
+   * Convert Prisma AuditLog to service AuditLog interface
+   */
+  private mapPrismaToService(prismaLog: PrismaAuditLog): AuditLog {
+    const newValues = (prismaLog.newValues as any) || {};
+    return {
+      id: prismaLog.id,
+      userId: prismaLog.actorId || null,
+      action: prismaLog.action,
+      category: newValues.category || AuditCategory.SYSTEM,
+      level: newValues.level || AuditLevel.INFO,
+      description: newValues.description || prismaLog.action,
+      details: newValues.details || {},
+      ipAddress: prismaLog.ipAddress || null,
+      userAgent: newValues.userAgent || null,
+      resourceId: prismaLog.recordId || null,
+      resourceType: prismaLog.tableName || null,
+      timestamp: prismaLog.createdAt,
+    };
+  }
 
   async logAPIEvent(userId: string | null, action: string, path: string, details = {}) {
     return this.logAuditEvent({
@@ -69,31 +89,35 @@ class AuditService {
 
   async logAuditEvent(options: Partial<AuditLog> & { action: string; category: AuditCategory; description: string }) {
     try {
-      const auditLog: AuditLog = {
-        id: this.generateAuditId(),
-        userId: options.userId || null,
-        action: options.action,
+      const level = options.level || AuditLevel.INFO;
+      const actorType = options.userId ? 'user' : 'system';
+      
+      // Store additional metadata in newValues JSON field
+      const newValues = {
         category: options.category,
-        level: options.level || AuditLevel.INFO,
+        level: level,
         description: options.description,
         details: options.details || {},
-        ipAddress: options.ipAddress || null,
         userAgent: options.userAgent || null,
-        resourceId: options.resourceId || null,
-        resourceType: options.resourceType || null,
-        timestamp: new Date(),
       };
 
-      this.auditLogs.push(auditLog);
+      // Store in database using Prisma
+      const auditLog = await prisma.auditLog.create({
+        data: {
+          actorType: actorType,
+          actorId: options.userId || null,
+          action: options.action,
+          tableName: options.resourceType || null,
+          recordId: options.resourceId || null,
+          newValues: newValues,
+          ipAddress: options.ipAddress || null,
+        },
+      });
 
-      if (this.auditLogs.length > this.maxLogs) {
-        this.auditLogs = this.auditLogs.slice(-this.maxLogs);
-      }
+      console.log(`[AUDIT] ${options.category} - ${options.action}: ${options.description}`);
 
-      // Store in DB logic should go here
-      console.log(`[AUDIT] ${auditLog.category} - ${auditLog.action}: ${auditLog.description}`);
-
-      return auditLog;
+      // Return in service format
+      return this.mapPrismaToService(auditLog);
     } catch (error) {
       console.error('Log audit event error:', error);
       throw error;
@@ -121,106 +145,156 @@ class AuditService {
     limit?: number;
     offset?: number;
   }) {
-    let filtered = [...this.auditLogs];
+    try {
+      const where: any = {};
 
-    if (filters.userId) filtered = filtered.filter(l => l.userId === filters.userId);
-    if (filters.action) filtered = filtered.filter(l => l.action === filters.action);
-    if (filters.category) filtered = filtered.filter(l => l.category === filters.category);
-    if (filters.level) filtered = filtered.filter(l => l.level === filters.level);
-    
-    if (filters.startDate) {
-      const start = new Date(filters.startDate);
-      filtered = filtered.filter(l => l.timestamp >= start);
+      if (filters.userId) {
+        where.actorType = 'user';
+        where.actorId = filters.userId;
+      }
+
+      if (filters.action) {
+        where.action = filters.action;
+      }
+
+      if (filters.startDate || filters.endDate) {
+        where.createdAt = {};
+        if (filters.startDate) {
+          where.createdAt.gte = new Date(filters.startDate);
+        }
+        if (filters.endDate) {
+          where.createdAt.lte = new Date(filters.endDate);
+        }
+      }
+
+      const offset = filters.offset || 0;
+      const limit = filters.limit || 100;
+
+      // Fetch logs from database
+      const [prismaLogs, total] = await Promise.all([
+        prisma.auditLog.findMany({
+          where,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          skip: offset,
+          take: limit,
+        }),
+        prisma.auditLog.count({ where }),
+      ]);
+
+      // Convert to service format and apply category/level filters if needed
+      let logs = prismaLogs.map(log => this.mapPrismaToService(log));
+
+      if (filters.category) {
+        logs = logs.filter(l => l.category === filters.category);
+      }
+
+      if (filters.level) {
+        logs = logs.filter(l => l.level === filters.level);
+      }
+
+      return {
+        logs,
+        total,
+        limit,
+        offset,
+      };
+    } catch (error) {
+      console.error('Get audit logs error:', error);
+      throw error;
     }
-    
-    if (filters.endDate) {
-      const end = new Date(filters.endDate);
-      filtered = filtered.filter(l => l.timestamp <= end);
-    }
-
-    // Sort by timestamp descending
-    filtered.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    const total = filtered.length;
-    const offset = filters.offset || 0;
-    const limit = filters.limit || 100;
-    const logs = filtered.slice(offset, offset + limit);
-
-    return {
-      logs,
-      total,
-      limit,
-      offset,
-    };
   }
 
   async getAuditStatistics(filters: { startDate?: string; endDate?: string }) {
-    let filtered = [...this.auditLogs];
-    
-    if (filters.startDate) {
-      const start = new Date(filters.startDate);
-      filtered = filtered.filter(l => l.timestamp >= start);
+    try {
+      const where: any = {};
+
+      if (filters.startDate || filters.endDate) {
+        where.createdAt = {};
+        if (filters.startDate) {
+          where.createdAt.gte = new Date(filters.startDate);
+        }
+        if (filters.endDate) {
+          where.createdAt.lte = new Date(filters.endDate);
+        }
+      }
+
+      // Fetch all logs in the date range
+      const prismaLogs = await prisma.auditLog.findMany({
+        where,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      // Convert to service format
+      const logs = prismaLogs.map(log => this.mapPrismaToService(log));
+
+      const stats: any = {
+        totalLogs: logs.length,
+        byCategory: {},
+        byLevel: {},
+        byAction: {},
+      };
+
+      logs.forEach(log => {
+        stats.byCategory[log.category] = (stats.byCategory[log.category] || 0) + 1;
+        stats.byLevel[log.level] = (stats.byLevel[log.level] || 0) + 1;
+        stats.byAction[log.action] = (stats.byAction[log.action] || 0) + 1;
+      });
+
+      return stats;
+    } catch (error) {
+      console.error('Get audit statistics error:', error);
+      throw error;
     }
-    
-    if (filters.endDate) {
-      const end = new Date(filters.endDate);
-      filtered = filtered.filter(l => l.timestamp <= end);
-    }
-
-    const stats: any = {
-      totalLogs: filtered.length,
-      byCategory: {},
-      byLevel: {},
-      byAction: {},
-    };
-
-    filtered.forEach(log => {
-      stats.byCategory[log.category] = (stats.byCategory[log.category] || 0) + 1;
-      stats.byLevel[log.level] = (stats.byLevel[log.level] || 0) + 1;
-      stats.byAction[log.action] = (stats.byAction[log.action] || 0) + 1;
-    });
-
-    return stats;
   }
 
   async exportAuditLogs(filters: { startDate?: string; endDate?: string }, format: string = 'csv') {
-    const { logs } = await this.getAuditLogs({ ...filters, limit: 10000 });
-    
-    if (format === 'json') {
+    try {
+      const { logs } = await this.getAuditLogs({ ...filters, limit: 10000 });
+      
+      if (format === 'json') {
+        return {
+          data: JSON.stringify(logs, null, 2),
+          format: 'json',
+          filename: `audit_logs_${Date.now()}.json`,
+        };
+      }
+
+      // Simple CSV export
+      const headers = ['ID', 'Timestamp', 'User ID', 'Category', 'Action', 'Level', 'Description'];
+      const rows = logs.map(l => [
+        l.id,
+        l.timestamp.toISOString(),
+        l.userId || '',
+        l.category,
+        l.action,
+        l.level,
+        l.description.replace(/"/g, '""'),
+      ].map(field => `"${field}"`).join(','));
+
+      const csvData = [headers.join(','), ...rows].join('\n');
+      
       return {
-        data: JSON.stringify(logs, null, 2),
-        format: 'json',
-        filename: `audit_logs_${Date.now()}.json`,
+        data: csvData,
+        format: 'csv',
+        filename: `audit_logs_${Date.now()}.csv`,
       };
+    } catch (error) {
+      console.error('Export audit logs error:', error);
+      throw error;
     }
-
-    // Simple CSV export
-    const headers = ['ID', 'Timestamp', 'User ID', 'Category', 'Action', 'Level', 'Description'];
-    const rows = logs.map(l => [
-      l.id,
-      l.timestamp.toISOString(),
-      l.userId || '',
-      l.category,
-      l.action,
-      l.level,
-      l.description.replace(/"/g, '""'),
-    ].map(field => `"${field}"`).join(','));
-
-    const csvData = [headers.join(','), ...rows].join('\n');
-    
-    return {
-      data: csvData,
-      format: 'csv',
-      filename: `audit_logs_${Date.now()}.csv`,
-    };
   }
 
-  private generateAuditId() {
-    return `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  }
-
-  getLogs() {
-    return this.auditLogs;
+  /**
+   * Get logs - kept for backward compatibility
+   * Note: This now fetches from database instead of returning in-memory logs
+   */
+  async getLogs(limit: number = 100) {
+    const { logs } = await this.getAuditLogs({ limit });
+    return logs;
   }
 }
 

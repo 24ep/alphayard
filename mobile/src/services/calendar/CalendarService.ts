@@ -171,4 +171,5 @@ class CalendarService {
 }
 
 export const calendarService = new CalendarService();
+export const calendarApi = calendarService;
 export default calendarService; 

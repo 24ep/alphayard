@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { Client } = require('pg');
+const { prisma } = require('../lib/prisma');
 
 // Load ONLY the root .env (single source of truth)
 const rootEnvPath = path.resolve(__dirname, '../../../.env');
@@ -46,12 +46,11 @@ class PgMigrationRunner {
   constructor() {
     const { databaseUrl } = getDbConfig();
     this.databaseUrl = databaseUrl;
-    this.client = new Client({ connectionString: databaseUrl });
     this.migrationsPath = path.join(__dirname, '..', 'database', 'migrations');
   }
 
   async connect() {
-    await this.client.connect();
+    // Prisma connects automatically
   }
 
   async ensureMigrationsTable() {
@@ -64,7 +63,7 @@ class PgMigrationRunner {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `;
-    await this.client.query(sql);
+    await prisma.$executeRawUnsafe(sql);
   }
 
   getMigrationFiles() {
@@ -95,14 +94,14 @@ class PgMigrationRunner {
   }
 
   async getExecutedMigrations() {
-    const res = await this.client.query('SELECT * FROM migrations ORDER BY id');
+    const res = await prisma.$queryRawUnsafe('SELECT * FROM migrations ORDER BY id');
     const map = new Map();
-    res.rows.forEach(row => map.set(row.id, row));
+    res.forEach(row => map.set(row.id, row));
     return map;
   }
 
   async executeSQL(sql) {
-    await this.client.query(sql);
+    await prisma.$executeRawUnsafe(sql);
   }
 
   async migrate() {
@@ -126,9 +125,8 @@ class PgMigrationRunner {
 
         console.log(`🔄 Running migration: ${migrationId}`);
         await this.executeSQL(up);
-        await this.client.query(
-          'INSERT INTO migrations (id, name, checksum, executed_at) VALUES ($1, $2, $3, NOW())',
-          [migrationId, file, checksum]
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO migrations (id, name, checksum, executed_at) VALUES ('${migrationId}', '${file}', '${checksum}', NOW())`
         );
         executedIds.push(migrationId);
         console.log(`✅ Migration completed: ${migrationId}`);
@@ -139,7 +137,7 @@ class PgMigrationRunner {
       }
     }
 
-    await this.client.end();
+    await prisma.$disconnect();
 
     const result = { success: failedMigrations.length === 0, message: `Executed ${executedIds.length} migrations, ${failedMigrations.length} failed`, executedMigrations: executedIds, failedMigrations };
     if (!result.success) {

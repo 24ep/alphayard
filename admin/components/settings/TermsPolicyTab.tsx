@@ -183,7 +183,7 @@ export function TermsPolicyTab({ app, onSave }: any) {
                     variant="primary" 
                     onClick={handleSaveConfig} 
                     disabled={saving}
-                    className="bg-blue-600 hover:bg-blue-700 text-white h-11 px-10 shadow-lg shadow-blue-500/20"
+                    className="bg-black hover:bg-gray-800 text-white h-11 px-10 shadow-lg shadow-black/20"
                 >
                     {saving ? 'Saving...' : 'Publish Legal Updates'}
                 </Button>

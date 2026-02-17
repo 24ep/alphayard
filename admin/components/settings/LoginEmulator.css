@@ -1,0 +1,317 @@
+/* LoginEmulator Styles */
+
+.device-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  background: white;
+}
+
+.device-frame.mobile {
+  width: 375px;
+  height: 667px;
+}
+
+.device-frame.tablet {
+  width: 768px;
+  height: 1024px;
+}
+
+.device-frame.desktop {
+  width: 1920px;
+  height: 1080px;
+}
+
+.device-frame.mobile-app {
+  width: 375px;
+  height: 812px;
+  border-radius: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.login-container {
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.login-card.mobile {
+  max-width: 100%;
+  padding: 1.5rem;
+  border-radius: 0;
+}
+
+.login-card.mobile-app {
+  max-width: 100%;
+  padding: 1rem;
+  border-radius: 2rem;
+}
+
+.input-field {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.input-field.mobile {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.input-field.mobile-app {
+  padding: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.input-with-icon .input-field {
+  padding-left: 2.5rem;
+}
+
+.input-with-icon.mobile .input-field {
+  padding-left: 2rem;
+}
+
+.input-with-icon.mobile-app .input-field {
+  padding-left: 1.75rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  background-color: white;
+}
+
+.checkbox:checked {
+  background-color: #3b82f6;
+}
+
+.checkbox-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.form-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-actions.horizontal {
+  flex-direction: row;
+  gap: 1rem;
+}
+
+.social-login-divider {
+  position: relative;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+.social-login-divider::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #e5e7eb;
+}
+
+.social-login-divider span {
+  background-color: white;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.social-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.social-buttons.horizontal {
+  flex-direction: row;
+}
+
+.social-buttons.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.social-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background-color: white;
+  font-size: 0.875rem;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.social-button:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.social-button.primary {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.social-button.primary:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.social-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.footer-links a {
+  color: #6b7280;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+.loading-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.result-message {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.result-message.success {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.result-message.error {
+  background-color: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.result-message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.result-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.result-icon.success {
+  background-color: #bbf7d0;
+  color: #166534;
+}
+
+.result-icon.error {
+  background-color: #fecaca;
+  color: #dc2626;
+}
+
+.result-text {
+  flex: 1;
+}
+
+.result-actions {
+  margin-top: 0.5rem;
+}
+
+.result-actions button {
+  font-size: 0.75rem;
+  text-decoration: underline;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.result-actions button:hover {
+  text-decoration: none;
+}

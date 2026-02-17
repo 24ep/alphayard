@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
 
 // Load root .env (if present)
 try {
@@ -19,11 +19,11 @@ function readSqlFile(filePath) {
   return sql;
 }
 
-async function applySql(client, filePath) {
+async function applySql(prisma, filePath) {
   const sql = readSqlFile(filePath);
   process.stdout.write(`\n📄 Running: ${path.basename(filePath)}\n`);
   process.stdout.write(`   📊 File size: ${sql.length} characters\n`);
-  await client.query(sql);
+  await prisma.$executeRawUnsafe(sql);
   process.stdout.write('   ✅ Migration applied\n');
 }
 
@@ -39,10 +39,9 @@ async function main() {
   console.log('🚀 App Configuration Migration Script');
   console.log('====================================\n');
 
-  const client = new Client({ connectionString });
+  const prisma = new PrismaClient();
   
   try {
-    await client.connect();
     console.log('✅ Connected to database\n');
 
     const migrationFile = path.join(__dirname, '..', 'src', 'migrations', '014_app_configuration.sql');
@@ -55,7 +54,7 @@ async function main() {
     console.log('📋 Running App Configuration Migration:');
     console.log(`   File: 014_app_configuration.sql`);
     
-    await applySql(client, migrationFile);
+    await applySql(prisma, migrationFile);
     
     console.log('\n✅ App Configuration migration completed successfully!');
     console.log('\n📊 Created tables:');
@@ -81,7 +80,7 @@ async function main() {
     console.error(err.stack);
     process.exit(1);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

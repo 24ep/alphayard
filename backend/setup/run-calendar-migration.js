@@ -2,7 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
+const prisma = new PrismaClient();
 
 // Load root .env
 try {
@@ -10,15 +11,12 @@ try {
 } catch (_) { }
 
 async function main() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
+    if (!process.env.DATABASE_URL) {
         console.error('❌ DATABASE_URL is not set in .env file');
         process.exit(1);
     }
 
     console.log('🔗 Connecting to database...');
-    const client = new Client({ connectionString });
-    await client.connect();
 
     const migrationPath = path.join(__dirname, '..', 'src', 'migrations', '021_create_events_table.sql');
     const sql = fs.readFileSync(migrationPath, 'utf8');
@@ -27,13 +25,13 @@ async function main() {
     console.log('   Creating table: events');
 
     try {
-        await client.query(sql);
+        await prisma.$executeRawUnsafe(sql);
         console.log('✅ Migration completed successfully!');
     } catch (err) {
         console.error('❌ Migration error:', err.message);
         process.exit(1);
     } finally {
-        await client.end();
+        await prisma.$disconnect();
     }
 }
 

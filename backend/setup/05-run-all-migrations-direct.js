@@ -2,7 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
+const prisma = new PrismaClient();
 
 // Load root .env (if present)
 try {
@@ -19,23 +20,19 @@ function readSqlFile(filePath) {
   return sql;
 }
 
-async function applySql(client, filePath) {
+async function applySql(filePath) {
   const sql = readSqlFile(filePath);
   process.stdout.write(`\n📄 Running: ${path.basename(filePath)}\n`);
   process.stdout.write(`   📊 File size: ${sql.length} characters\n`);
-  await client.query(sql);
+  await prisma.$executeRawUnsafe(sql);
   process.stdout.write('   ✅ Migration applied\n');
 }
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) {
+  if (!process.env.DATABASE_URL) {
     console.error('❌ DATABASE_URL is not set.');
     process.exit(1);
   }
-
-  const client = new Client({ connectionString });
-  await client.connect();
 
   const migrationsDir = path.join(__dirname, '..', 'src', 'database', 'migrations');
   const files = fs
@@ -49,15 +46,15 @@ async function main() {
   for (const file of files) {
     const filePath = path.join(migrationsDir, file);
     try {
-      await applySql(client, filePath);
+      await applySql(filePath);
     } catch (err) {
       console.error(`   ❌ Error in ${file}: ${err.message}`);
-      await client.end();
+      await prisma.$disconnect();
       process.exit(1);
     }
   }
 
-  await client.end();
+  await prisma.$disconnect();
   console.log('\n✅ All migrations completed.');
 }
 

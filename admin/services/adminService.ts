@@ -25,14 +25,28 @@ export interface Role {
   description: string
   permissions: string[]
   color: string
-  isSystem: boolean
+  is_system: boolean
+  priority: number
+  permission_count?: number
+  user_count?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface RoleWithPermissions extends Role {
+  permission_details: Permission[]
 }
 
 export interface Permission {
   id: string
-  name: string
+  module: string
+  action: string
   description: string
-  category: string
+  created_at?: string
+}
+
+export interface PermissionsByModule {
+  [module: string]: Permission[]
 }
 
 export interface UserGroup {
@@ -108,15 +122,39 @@ export interface DashboardStats {
   }
 }
 
+// Storage key for current application (must match AppContext)
+const APP_STORAGE_KEY = 'selected_app_id'
+
 class AdminService {
+  /**
+   * Get the current application ID from localStorage
+   * Used to include X-App-ID header in API requests
+   */
+  private getCurrentAppId(): string | null {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem(APP_STORAGE_KEY)
+  }
+
+  /**
+   * Get auth headers including X-App-ID for multi-tenant requests
+   */
+  private getAuthHeaders(): Record<string, string> {
+    const token = localStorage.getItem('admin_token')
+    const appId = this.getCurrentAppId()
+    
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(appId && { 'X-App-ID': appId })
+    }
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
-    const token = localStorage.getItem('admin_token')
     
     const config: RequestInit = {
       headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
+        ...this.getAuthHeaders(),
         ...options.headers,
       },
       ...options,
@@ -141,25 +179,37 @@ class AdminService {
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        // Try to get error message from response
+        let errorMessage = `HTTP error! status: ${response.status}`
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorData.message || errorMessage
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage
+        }
+        const error = new Error(errorMessage) as any
+        error.status = response.status
+        throw error
       }
       
       return await response.json()
-    } catch (error) {
+    } catch (error: any) {
       console.error('API request failed:', error)
-      // Return empty data instead of throwing error for better UX
-      if (endpoint.includes('/admin/admin-users')) {
+      // Return empty data instead of throwing error for better UX (only for list endpoints)
+      if (endpoint.includes('/admin/admin-users') && error.status !== 500) {
         return [] as T
       }
-      if (endpoint.includes('/admin/roles')) {
+      if (endpoint.includes('/admin/roles') && error.status !== 500) {
         return [] as T
       }
-      if (endpoint.includes('/admin/permissions')) {
+      if (endpoint.includes('/admin/permissions') && error.status !== 500) {
         return [] as T
       }
-      if (endpoint.includes('/admin/user-groups')) {
+      if (endpoint.includes('/admin/user-groups') && error.status !== 500) {
         return [] as T
       }
+      // For 500 errors or other critical errors, always throw
       throw error
     }
   }
@@ -249,27 +299,47 @@ class AdminService {
       name: r.name,
       description: r.description || '',
       permissions: r.permissions || [],
-      color: '#3B82F6',
-      isSystem: false,
+      color: r.color || '#3B82F6',
+      is_system: r.is_system || false,
+      priority: r.priority || 0,
+      permission_count: r.permission_count || 0,
+      user_count: r.user_count || 0,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
     })) as Role[]
   }
 
-  async getRole(id: string): Promise<Role> {
-    return this.request<Role>(`/admin/roles/${id}`)
+  async getRole(id: string): Promise<RoleWithPermissions> {
+    const response = await this.request<{ role: RoleWithPermissions }>(`/admin/roles/${id}`)
+    return response.role
   }
 
-  async createRole(roleData: Partial<Role>): Promise<Role> {
-    return this.request<Role>('/admin/roles', {
+  async createRole(roleData: { 
+    name: string
+    description?: string
+    color?: string
+    priority?: number
+    permission_ids?: string[]
+  }): Promise<RoleWithPermissions> {
+    const response = await this.request<{ role: RoleWithPermissions }>('/admin/roles', {
       method: 'POST',
       body: JSON.stringify(roleData),
     })
+    return response.role
   }
 
-  async updateRole(id: string, roleData: Partial<Role>): Promise<Role> {
-    return this.request<Role>(`/admin/roles/${id}`, {
+  async updateRole(id: string, roleData: { 
+    name?: string
+    description?: string
+    color?: string
+    priority?: number
+    permission_ids?: string[]
+  }): Promise<RoleWithPermissions> {
+    const response = await this.request<{ role: RoleWithPermissions }>(`/admin/roles/${id}`, {
       method: 'PUT',
       body: JSON.stringify(roleData),
     })
+    return response.role
   }
 
   async deleteRole(id: string): Promise<void> {
@@ -278,9 +348,50 @@ class AdminService {
     })
   }
 
+  async getRoleStatistics(): Promise<{
+    total_roles: number
+    total_permissions: number
+    permissions_by_module: { module: string; count: number }[]
+  }> {
+    const response = await this.request<{ statistics: any }>('/admin/roles/statistics')
+    return response.statistics
+  }
+
   // Permissions
   async getPermissions(): Promise<Permission[]> {
-    return this.request<Permission[]>('/admin/permissions')
+    const response = await this.request<{ permissions: Permission[] }>('/admin/permissions')
+    return response.permissions || []
+  }
+
+  async getPermissionsGrouped(): Promise<PermissionsByModule> {
+    const response = await this.request<{ permissions: PermissionsByModule }>('/admin/permissions/grouped')
+    return response.permissions || {}
+  }
+
+  // Role Permissions
+  async setRolePermissions(roleId: string, permissionIds: string[]): Promise<Permission[]> {
+    const response = await this.request<{ permissions: Permission[] }>(`/admin/roles/${roleId}/permissions`, {
+      method: 'PUT',
+      body: JSON.stringify({ permission_ids: permissionIds }),
+    })
+    return response.permissions || []
+  }
+
+  // User Role Assignment
+  async assignRoleToUser(userId: string, roleId: string): Promise<any> {
+    const response = await this.request<{ userRole: any }>(`/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role_id: roleId }),
+    })
+    return response.userRole
+  }
+
+  async getUserPermissions(userId: string): Promise<{ permissions: { module: string; action: string }[]; is_super_admin: boolean }> {
+    return this.request<{ permissions: { module: string; action: string }[]; is_super_admin: boolean }>(`/admin/users/${userId}/permissions`)
+  }
+
+  async getCurrentUserPermissions(): Promise<{ permissions: { module: string; action: string }[]; is_super_admin: boolean }> {
+    return this.request<{ permissions: { module: string; action: string }[]; is_super_admin: boolean }>('/admin/me/permissions')
   }
 
   // User Groups
@@ -411,16 +522,21 @@ class AdminService {
     return this.request<AdminUser>('/auth/me')
   }
 
-  // Families Management
+  // Families Management (Circles Collection)
+  // @deprecated Use getEntities('/admin/entities/circles') instead - these methods use custom endpoints
+  // TODO: Migrate all usages to use generic collection system via getEntities()
   async getFamilies(): Promise<Circle[]> {
+    // DEPRECATED: Use getEntities('/admin/entities/circles') instead
     const response = await this.request<{ families: Circle[] }>('/admin/families')
     return response.families || []
   }
 
+  // @deprecated Use getEntities('/admin/entities/circles/{id}') instead
   async getCircle(id: string): Promise<Circle> {
     return this.request<Circle>(`/admin/families/${id}`)
   }
 
+  // @deprecated Use generic collection create via POST /admin/entities/circles instead
   async createCircle(CircleData: {
     name: string
     description?: string
@@ -432,6 +548,7 @@ class AdminService {
     })
   }
 
+  // @deprecated Use generic collection update via PUT /admin/entities/circles/{id} instead
   async updateCircle(id: string, CircleData: Partial<Circle>): Promise<Circle> {
     return this.request<Circle>(`/admin/families/${id}`, {
       method: 'PUT',
@@ -439,6 +556,7 @@ class AdminService {
     })
   }
 
+  // @deprecated Use generic collection delete via DELETE /admin/entities/circles/{id} instead
   async deleteCircle(id: string): Promise<void> {
     return this.request<void>(`/admin/families/${id}`, {
       method: 'DELETE',
@@ -472,12 +590,16 @@ class AdminService {
     })
   }
 
-  // Social Posts
+  // Social Posts Collection
+  // @deprecated Use getEntities('/admin/entities/social-posts') instead - these methods use custom endpoints
+  // TODO: Migrate all usages to use generic collection system via getEntities()
   async getSocialPosts(): Promise<any[]> {
+    // DEPRECATED: Use getEntities('/admin/entities/social-posts') instead
     const response = await this.request<{ success: boolean; posts: any[] }>('/admin/social-posts')
     return response.posts || []
   }
 
+  // @deprecated Use generic collection delete via DELETE /admin/entities/social-posts/{id} instead
   async deleteSocialPost(id: string): Promise<void> {
      await this.request<{ success: boolean }>(`/admin/social-posts/${id}`, {
       method: 'DELETE'
@@ -560,7 +682,8 @@ class AdminService {
   // Entity Types (Collection Schemas)
   async getEntityTypes(applicationId?: string): Promise<any[]> {
     const params = applicationId ? `?applicationId=${applicationId}` : ''
-    const response = await this.request<{ types: any[] }>(`/admin/entities/types${params}`)
+    const response = await this.request<{ types?: any[], success?: boolean }>(`/admin/entities/types${params}`)
+    // Handle both response formats: { types: [...] } and { success: true, types: [...] }
     return response.types || []
   }
 
@@ -606,15 +729,135 @@ class AdminService {
   }
 
   // Generic Entity Fetch
-  async getEntities(endpoint: string): Promise<any> {
-    return this.request<any>(endpoint)
+  async getEntities(endpoint: string, options?: RequestInit): Promise<any> {
+    return this.request<any>(endpoint, options || {})
   }
 
-  // Tickets (placeholder - no backend endpoint yet)
+  // Generic Entity CRUD operations for collections
+  async getCollectionItems(collectionName: string, params?: { page?: number, limit?: number, search?: string }): Promise<{ entities: any[], total: number }> {
+    const queryParams = new URLSearchParams()
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.limit) queryParams.append('limit', params.limit.toString())
+    if (params?.search) queryParams.append('search', params.search)
+    const queryString = queryParams.toString()
+    return this.request<any>(`/admin/entities/${collectionName}${queryString ? `?${queryString}` : ''}`)
+  }
+
+  async getCollectionItem(collectionName: string, id: string): Promise<any> {
+    const response = await this.request<{ entity: any }>(`/admin/entities/${collectionName}/${id}`)
+    return response.entity
+  }
+
+  async createCollectionItem(collectionName: string, attributes: any, metadata?: any): Promise<any> {
+    const response = await this.request<{ entity: any }>(`/admin/entities/${collectionName}`, {
+      method: 'POST',
+      body: JSON.stringify({ attributes, metadata })
+    })
+    return response.entity
+  }
+
+  async updateCollectionItem(collectionName: string, id: string, attributes: any, metadata?: any): Promise<any> {
+    const response = await this.request<{ entity: any }>(`/admin/entities/${collectionName}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ attributes, metadata })
+    })
+    return response.entity
+  }
+
+  async deleteCollectionItem(collectionName: string, id: string, hard?: boolean): Promise<void> {
+    await this.request<void>(`/admin/entities/${collectionName}/${id}${hard ? '?hard=true' : ''}`, {
+      method: 'DELETE'
+    })
+  }
+
+  // Tickets
   async getTicketsCount(): Promise<number> {
-    // TODO: Implement when ticket management backend is ready
-    // For now, return 0 to hide the badge
-    return 0
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/tickets/count/open`, {
+        headers: this.getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        return data.count || 0
+      }
+      return 0
+    } catch (error) {
+      console.warn('Could not fetch ticket count:', error)
+      return 0
+    }
+  }
+
+  async getTickets(params?: { status?: string; type?: string; priority?: string; search?: string; limit?: number; offset?: number }) {
+    const queryParams = new URLSearchParams()
+    if (params?.status) queryParams.set('status', params.status)
+    if (params?.type) queryParams.set('type', params.type)
+    if (params?.priority) queryParams.set('priority', params.priority)
+    if (params?.search) queryParams.set('search', params.search)
+    if (params?.limit) queryParams.set('limit', String(params.limit))
+    if (params?.offset) queryParams.set('offset', String(params.offset))
+
+    const response = await fetch(`${API_BASE_URL}/admin/tickets?${queryParams}`, {
+      headers: this.getAuthHeaders(),
+    })
+    return response.json()
+  }
+
+  async getTicketById(id: string) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/${id}`, {
+      headers: this.getAuthHeaders(),
+    })
+    return response.json()
+  }
+
+  async getTicketStats() {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/stats`, {
+      headers: this.getAuthHeaders(),
+    })
+    return response.json()
+  }
+
+  async createTicket(data: { title: string; description: string; type: string; priority: string; reporterId?: string; circleId?: string; tags?: string[] }) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    return response.json()
+  }
+
+  async updateTicket(id: string, data: Partial<{ title: string; description: string; type: string; priority: string; status: string; assignedTo: string; tags: string[] }>) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/${id}`, {
+      method: 'PUT',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify(data),
+    })
+    return response.json()
+  }
+
+  async assignTicket(id: string, assignedTo: string) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/${id}/assign`, {
+      method: 'PATCH',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ assignedTo }),
+    })
+    return response.json()
+  }
+
+  async addTicketComment(id: string, content: string, isInternal: boolean = false) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/${id}/comments`, {
+      method: 'POST',
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ content, isInternal }),
+    })
+    return response.json()
+  }
+
+  async deleteTicket(id: string) {
+    const response = await fetch(`${API_BASE_URL}/admin/tickets/${id}`, {
+      method: 'DELETE',
+      headers: this.getAuthHeaders(),
+    })
+    return response.json()
   }
   // File Upload
   async uploadFile(file: File): Promise<{ file: { id: string, url: string, mime_type: string, file_name: string } }> {
@@ -624,19 +867,43 @@ class AdminService {
     const url = `${API_BASE_URL}/storage/upload`
     const token = localStorage.getItem('admin_token')
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    })
-
-    if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`)
+    if (!token) {
+      throw new Error('No authentication token found. Please log in again.')
     }
 
-    return await response.json()
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          // Don't set Content-Type header - let browser set it with boundary for FormData
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        let errorMessage = `Upload failed: ${response.statusText}`
+        try {
+          const errorJson = JSON.parse(errorText)
+          errorMessage = errorJson.message || errorJson.error || errorMessage
+        } catch {
+          // If not JSON, use the text
+          if (errorText) errorMessage = errorText
+        }
+        throw new Error(errorMessage)
+      }
+
+      return await response.json()
+    } catch (error: any) {
+      // Handle network errors (connection refused, etc.)
+      if (error.message?.includes('Failed to fetch') || 
+          error.message?.includes('ERR_CONNECTION_REFUSED') ||
+          error.name === 'TypeError') {
+        throw new Error('Cannot connect to server. Please ensure the backend server is running.')
+      }
+      throw error
+    }
   }
 
   async sendBroadcast(payload: {

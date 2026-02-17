@@ -24,10 +24,10 @@ router.get(
   async (req: any, res: any) => {
     try {
       const { startDate, endDate, type, circleId: querycircleId } = req.query as Record<string, string>;
-      const circleId = querycircleId || req.user.circleId;
+      const circleId = querycircleId || req.user?.circleId;
 
       if (!circleId) {
-        return res.status(400).json({ error: 'No circle context' });
+        return res.json({ events: [] });
       }
 
       const filters: any = {

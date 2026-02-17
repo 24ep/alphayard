@@ -10,10 +10,8 @@ import {
   Dimensions,
   StatusBar,
   Animated,
-  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
 // import { LinearGradient } from 'expo-linear-gradient';
 import { ScreenBackground } from '../../components/ScreenBackground';
 import { 
@@ -21,7 +19,6 @@ import {
   Phone,
   Mail,
   Pencil,
-  Home,
   Activity,
   User,
   FileText,
@@ -29,21 +26,19 @@ import {
 } from 'lucide-react-native';
 import { useAuth } from '../../hooks/useAuth';
 // import { useCircle } from '../../hooks/useCircle';
-import { userService } from '../../services/user/UserService';
+import { userService, UserProfile } from '../../services/user/UserService';
 import { ProfileStatusTab } from '../../components/profile/ProfileStatusTab';
 import { ProfileInfoTab } from '../../components/profile/ProfileInfoTab';
 import { ProfileSocialTab } from '../../components/profile/ProfileSocialTab';
 import { ProfileFinancialTab } from '../../components/profile/ProfileFinancialTab';
 import { EditProfileModal } from '../../components/profile/EditProfileModal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { colors } from '../../theme/colors';
 
 // Cast icons to avoid lint issues
 const ArrowLeftIcon = ArrowLeft as any;
 const PhoneIcon = Phone as any;
 const MailIcon = Mail as any;
 const PencilIcon = Pencil as any;
-const HomeIcon = Home as any;
 const ActivityIcon = Activity as any;
 const UserIcon = User as any;
 const FileTextIcon = FileText as any;
@@ -58,25 +53,13 @@ const TABS = [
   { key: 'financial', label: 'Financial', icon: WalletIcon },
 ];
 
-interface UserProfile {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phoneNumber: string;
-  avatar?: string;
-  bio?: string;
-}
-
 const ProfileScreen: React.FC = () => {
-  const { t } = useTranslation();
   const navigation = useNavigation();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   // const { currentCircle } = useCircle();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -85,27 +68,32 @@ const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     loadProfile();
-  }, []);
+  }, [user]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      // Use mock data if API fails
-      const mockProfile = {
-        id: user?.id || '1',
-        firstName: user?.firstName || 'John',
-        lastName: user?.lastName || 'Doe',
-        email: user?.email || 'john.doe@example.com',
-        phoneNumber: '+66 123 456 789',
-        avatar: user?.avatar,
-        bio: 'Living life to the fullest with my wonderful circle.',
-      };
+      
+      // Initial data from auth context
+      if (user) {
+          setProfile({
+              id: user.id || '',
+              firstName: user.firstName || '',
+              lastName: user.lastName || '',
+              email: user.email || '',
+              avatar: (user as any).avatar, // Temporary cast until User interface is updated
+              // Map other fields if available in user object
+          } as UserProfile);
+      }
 
       try {
         const response = await userService.getProfile();
-        setProfile((response.data as unknown as UserProfile) || (mockProfile as UserProfile));
-      } catch {
-        setProfile(mockProfile as UserProfile);
+        if (response.data) {
+             setProfile(prev => ({ ...prev, ...response.data } as UserProfile));
+        }
+      } catch (err) {
+        console.warn('Failed to fetch profile details, using auth data', err);
+        // Fallback to auth data is already set
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -114,11 +102,7 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadProfile();
-    setRefreshing(false);
-  };
+
 
   const handleTabPress = (index: number) => {
     setActiveTab(index);
@@ -329,7 +313,7 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: 'transparent',
-    paddingTop: 50,
+    paddingTop: 20,
     paddingHorizontal: 16,
     paddingBottom: 16,
   },

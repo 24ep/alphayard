@@ -108,13 +108,13 @@ export function CircleSafetyIncidents() {
   const loadData = async () => {
     setLoading(true)
     try {
-      // Fetch real families data from API
-      const familiesData = await adminService.getFamilies()
-      const formattedFamilies: Circle[] = familiesData.map(Circle => ({
-        id: Circle.id,
-        name: Circle.name,
-        description: Circle.description || '',
-        memberCount: Circle.member_count || 0
+      // Fetch real families data from API using generic collection endpoint
+      const response = await adminService.getCollectionItems('circles')
+      const formattedFamilies: Circle[] = (response.entities || []).map((entity: any) => ({
+        id: entity.id,
+        name: entity.attributes?.name || entity.data?.name || '',
+        description: entity.attributes?.description || entity.data?.description || '',
+        memberCount: entity.attributes?.member_count || entity.data?.member_count || 0
       }))
       setFamilies(formattedFamilies)
       

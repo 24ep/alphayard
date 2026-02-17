@@ -1,73 +1,69 @@
-const { Pool } = require('pg');
+const { PrismaClient } = require('../prisma/generated/prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
 const bcrypt = require('bcrypt');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(process.cwd(), '.env') });
 
-const dbUrl = process.env.DATABASE_URL ||
-    (process.env.DB_USER && process.env.DB_PASSWORD && process.env.DB_HOST && process.env.DB_PORT && process.env.DB_NAME
-        ? `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`
-        : undefined);
-
-if (!dbUrl) {
-    console.error('DATABASE_URL is missing/incomplete in .env');
-    process.exit(1);
-}
-
-const pool = new Pool({ connectionString: dbUrl });
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function seedAdmin() {
     try {
         console.log('--- Seeding Admin User ---');
 
         // 1. Ensure Super Admin role exists
-        const roleRes = await pool.query("SELECT id FROM admin_roles WHERE name = 'super_admin' OR name = 'Super Admin' LIMIT 1");
+        const roleRes = await prisma.$queryRawUnsafe("SELECT id FROM admin.admin_roles WHERE name = 'super_admin' OR name = 'Super Admin' LIMIT 1");
         let roleId;
-        if (roleRes.rows.length === 0) {
+        if (roleRes.length === 0) {
             console.log('Creating super_admin role...');
-            const newRole = await pool.query(`
-                INSERT INTO admin_roles (name, description, permissions)
-                VALUES ('Super Admin', 'Full system access', '{"all": true}')
+            const newRole = await prisma.$queryRawUnsafe(`
+                INSERT INTO admin.admin_roles (name, display_name, description)
+                VALUES ('super_admin', 'Super Admin', 'Full system access')
                 RETURNING id
             `);
-            roleId = newRole.rows[0].id;
+            roleId = newRole[0].id;
         } else {
-            roleId = roleRes.rows[0].id;
+            roleId = roleRes[0].id;
             console.log('Super Admin role found:', roleId);
         }
 
         // 2. Ensure User exists in users table
         const email = 'admin@bondarys.com';
         const password = 'admin123';
-        const userRes = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+        const escapedEmail = email.replace(/'/g, "''");
+        const userRes = await prisma.$queryRawUnsafe(`SELECT id FROM core.users WHERE email = '${escapedEmail}'`);
         let userId;
         
-        if (userRes.rows.length === 0) {
+        if (userRes.length === 0) {
             console.log(`Creating user ${email}...`);
             const passwordHash = await bcrypt.hash(password, 10);
+            const escapedPasswordHash = passwordHash.replace(/'/g, "''");
             
-            // We use both password and password_hash to be safe against schema variations
-            const newUser = await pool.query(`
-                INSERT INTO users (email, password_hash, password, first_name, last_name, is_active)
-                VALUES ($1, $2, $3, 'Super', 'Admin', true)
+            // Insert user with password_hash
+            const newUser = await prisma.$queryRawUnsafe(`
+                INSERT INTO core.users (email, password_hash, first_name, last_name, is_active)
+                VALUES ('${escapedEmail}', '${escapedPasswordHash}', 'Super', 'Admin', true)
                 RETURNING id
-            `, [email, passwordHash, passwordHash]);
-            userId = newUser.rows[0].id;
+            `);
+            userId = newUser[0].id;
         } else {
-            userId = userRes.rows[0].id;
+            userId = userRes[0].id;
             console.log('User record found:', userId);
         }
 
-        // 3. Ensure Admin link exists
-        const adminRes = await pool.query("SELECT id FROM admin_users WHERE user_id = $1", [userId]);
-        if (adminRes.rows.length === 0) {
-            console.log('Linking user to admin_users...');
-            await pool.query(`
-                INSERT INTO admin_users (user_id, admin_role_id, is_active, is_super_admin)
-                VALUES ($1, $2, true, true)
-            `, [userId, roleId]);
+        // 3. Ensure Admin entry exists
+        const adminRes = await prisma.$queryRawUnsafe(`SELECT id FROM admin.admin_users WHERE email = '${escapedEmail}'`);
+        if (adminRes.length === 0) {
+            console.log('Creating admin user...');
+            const passwordHash = await bcrypt.hash(password, 10);
+            const escapedPasswordHash = passwordHash.replace(/'/g, "''");
+            await prisma.$executeRawUnsafe(`
+                INSERT INTO admin.admin_users (email, password_hash, name, role_id, is_active, is_super_admin)
+                VALUES ('${escapedEmail}', '${escapedPasswordHash}', 'Super Admin', '${roleId}', true, true)
+            `);
             console.log('✅ Admin user seeded successfully!');
         } else {
-            console.log('✅ Admin link already exists.');
+            console.log('✅ Admin user already exists.');
         }
 
         console.log(`\nCredentials:\nEmail: ${email}\nPassword: ${password}\n`);
@@ -75,7 +71,7 @@ async function seedAdmin() {
     } catch (err) {
         console.error('Error seeding admin:', err);
     } finally {
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

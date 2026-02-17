@@ -5,7 +5,8 @@
     "backend",
     "mobile",
     "web",
-    "packages/*"
+    "packages/*",
+    "sdk/*"
   ],
   "scripts": {
     "setup": "node scripts/setup.js",
@@ -25,6 +26,7 @@
     "type-check:all": "npm run type-check --workspaces --if-present"
   },
   "dependencies": {
+    "@appkit/identity-sdk": "^1.0.0",
     "@supabase/supabase-js": "^2.74.0",
     "axios": "^1.13.2",
     "cors": "^2.8.5",

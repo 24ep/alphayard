@@ -1,10 +1,9 @@
-import { pool } from '../src/config/database';
+import { prisma } from '../src/lib/prisma';
 
 async function fixEmailLogs() {
     console.log('Creating email_logs table manually...');
-    const client = await pool.connect();
     try {
-        await client.query(`
+        await prisma.$executeRaw`
             CREATE TABLE IF NOT EXISTS email_logs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 to_email VARCHAR(255) NOT NULL,
@@ -19,13 +18,12 @@ async function fixEmailLogs() {
             CREATE INDEX IF NOT EXISTS idx_email_logs_to_email ON email_logs(to_email);
             CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);
             CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at);
-        `);
+        `;
         console.log('✅ email_logs table created successfully.');
     } catch (err: any) {
         console.error('❌ Failed to create email_logs table:', err.message);
     } finally {
-        client.release();
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

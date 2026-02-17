@@ -1,17 +1,18 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
 import { CategoryConfig, ComponentStyle, ComponentConfig } from './types'
 import { ColorPickerPopover, colorValueToCss } from '../ui/ColorPickerPopover'
 import { SegmentedControl } from '../ui/SegmentedControl'
 import { MobileGuide } from '../ui/MobileGuide'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon, EyeIcon, CodeBracketIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { IconPickerPopover } from '../ui/IconPickerPopover'
 import * as HeroIcons from '@heroicons/react/24/outline'
 import { clsx } from 'clsx'
 import { ShadowPickerPopover } from '../ui/ShadowPickerPopover'
 
 import { renderPreview } from './ComponentPreviews'
+import { ReactNativeComponentInfo } from './ReactNativeComponentInfo'
 
 interface StyleConfigPopoverProps {
     isOpen: boolean
@@ -34,6 +35,8 @@ export function StyleConfigPopover({
     activePopover,
     setActivePopover
 }: StyleConfigPopoverProps) {
+    const [activeTab, setActiveTab] = useState<'preview' | 'react-native'>('preview')
+    
     if (!component) return null
     const styles = component.styles
     const config = component.config
@@ -89,10 +92,47 @@ export function StyleConfigPopover({
                                             </div>
                                         </div>
                                         <div className="relative mt-6 flex-1 px-4 sm:px-6 space-y-6">
-                                            {/* Preview Section - Type-Specific Renderers */}
-                                            <div className="w-full bg-gray-50 rounded-xl border border-gray-100 p-8 flex items-center justify-center min-h-[120px]">
-                                                {renderPreview(component, styles)}
+                                            {/* Tab Navigation */}
+                                            <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+                                                <button
+                                                    onClick={() => setActiveTab('preview')}
+                                                    className={clsx(
+                                                        "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                                                        activeTab === 'preview' 
+                                                            ? "bg-white text-gray-900 shadow-sm" 
+                                                            : "text-gray-500 hover:text-gray-700"
+                                                    )}
+                                                >
+                                                    <EyeIcon className="w-4 h-4" />
+                                                    Preview
+                                                </button>
+                                                <button
+                                                    onClick={() => setActiveTab('react-native')}
+                                                    className={clsx(
+                                                        "flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all",
+                                                        activeTab === 'react-native' 
+                                                            ? "bg-white text-gray-900 shadow-sm" 
+                                                            : "text-gray-500 hover:text-gray-700",
+                                                        !component.mobileConfig && "opacity-50 cursor-not-allowed"
+                                                    )}
+                                                    disabled={!component.mobileConfig}
+                                                >
+                                                    <CodeBracketIcon className="w-4 h-4" />
+                                                    React Native
+                                                </button>
                                             </div>
+
+                                            {/* Preview Section - Type-Specific Renderers */}
+                                            {activeTab === 'preview' && (
+                                                <div className="w-full bg-gray-50 rounded-xl border border-gray-100 p-8 flex items-center justify-center min-h-[120px]">
+                                                    {renderPreview(component, styles)}
+                                                </div>
+                                            )}
+
+                                            {/* React Native Component Info */}
+                                            {activeTab === 'react-native' && (
+                                                <ReactNativeComponentInfo component={component} showFullPath />
+                                            )}
 
 
 

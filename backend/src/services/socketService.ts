@@ -545,7 +545,7 @@ class SocketService {
         AND jsonb_array_length(u.raw_user_meta_data->'deviceTokens') > 0
       `, [circleIds]);
 
-      const deviceTokens = res.rows.flatMap(r => r.device_tokens || []);
+      const deviceTokens = (res as any[]).flatMap(r => r.device_tokens || []);
 
       if (deviceTokens.length > 0) {
         // TODO: Send push notifications using Firebase

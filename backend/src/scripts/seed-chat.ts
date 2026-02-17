@@ -1,24 +1,24 @@
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 async function seedChat() {
   console.log('🌱 Seeding Chat Module...');
 
   try {
     // 1. Get a circle
-    const circleRes = await pool.query('SELECT * FROM circles LIMIT 1');
-    if (circleRes.rows.length === 0) {
+    const circleRes = await prisma.$queryRawUnsafe<any[]>('SELECT * FROM bondarys.circles LIMIT 1');
+    if (circleRes.length === 0) {
       console.log('❌ No families found. Please run basic seeds first.');
       process.exit(1);
     }
-    const circle = circleRes.rows[0];
+    const circle = circleRes[0];
     console.log(`🏠 Using circle: ${circle.name} (${circle.id})`);
 
     // 2. Get circle Members
-    const membersRes = await pool.query(
-      'SELECT u.id, u.first_name, u.email FROM circle_members fm JOIN users u ON u.id = fm.user_id WHERE fm.circle_id = $1',
-      [circle.id]
+    const membersRes = await prisma.$queryRawUnsafe<any[]>(
+      'SELECT u.id, u.first_name, u.email FROM bondarys.circle_members fm JOIN core.users u ON u.id = fm.user_id WHERE fm.circle_id = $1',
+      circle.id
     );
-    const members = membersRes.rows;
+    const members = membersRes;
     if (members.length < 2) {
       console.log('⚠️ Not enough circle members for a conversation. Need at least 2.');
       // Look for a test user to add if needed, or just warn
@@ -26,26 +26,26 @@ async function seedChat() {
     console.log(`👥 Found ${members.length} members: ${members.map(m => m.first_name).join(', ')}`);
 
     // 3. Get or Create "circle" Chat Room
-    let roomRes = await pool.query(
+    let roomRes = await prisma.$queryRawUnsafe<any[]>(
       "SELECT * FROM chat_rooms WHERE circle_id = $1 AND type = 'circle'",
-      [circle.id]
+      circle.id
     );
 
     let roomId;
-    if (roomRes.rows.length === 0) {
+    if (roomRes.length === 0) {
       console.log('Creates new circle chat room...');
-      roomRes = await pool.query(
+      roomRes = await prisma.$queryRawUnsafe<any[]>(
         "INSERT INTO chat_rooms (circle_id, name, type) VALUES ($1, $2, 'circle') RETURNING id",
-        [circle.id, `${circle.name} circle Chat`]
+        circle.id, `${circle.name} circle Chat`
       );
-      roomId = roomRes.rows[0].id;
+      roomId = roomRes[0].id;
     } else {
-      roomId = roomRes.rows[0].id;
+      roomId = roomRes[0].id;
       console.log(`Reusing existing chat room: ${roomId}`);
     }
 
     // 4. Clear existing messages in this room (optional, for clean seed)
-    await pool.query('DELETE FROM chat_messages WHERE room_id = $1', [roomId]);
+    await prisma.$executeRawUnsafe('DELETE FROM bondarys.chat_messages WHERE room_id = $1', roomId);
     console.log('🧹 Cleared old messages.');
 
     // 5. Seed Messages
@@ -71,19 +71,17 @@ async function seedChat() {
       // Calculate timestamp based on offset
       const timestamp = new Date(Date.now() - msg.offsetMinutes * 60000);
 
-      await pool.query(
-        "INSERT INTO chat_messages (room_id, sender_id, content, type, created_at, updated_at) VALUES ($1, $2, $3, 'text', $4, $4)",
-        [roomId, msg.sender.id, msg.text, timestamp]
+      await prisma.$executeRawUnsafe(
+        "INSERT INTO bondarys.chat_messages (room_id, sender_id, content, type, created_at, updated_at) VALUES ($1, $2, $3, 'text', $4, $4)",
+        roomId, msg.sender.id, msg.text, timestamp
       );
     }
 
     console.log(`✅ Seeded ${messages.length} messages.`);
     console.log('✨ Chat Module Seeding Complete!');
-    await pool.end();
     process.exit(0);
   } catch (err) {
     console.error('❌ Seeding failed:', err);
-    await pool.end();
     process.exit(1);
   }
 }

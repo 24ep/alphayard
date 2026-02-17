@@ -1,20 +1,17 @@
 
-import { Client } from 'pg';
+import { PrismaClient } from '../../prisma/generated/prisma/client';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const client = new Client({
-  connectionString: process.env.DATABASE_URL,
-});
+const prisma = new PrismaClient();
 
 async function createTable() {
   try {
-    await client.connect();
     console.log('Connected to DB');
 
-    await client.query(`
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS circle_invitations (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         circle_id UUID NOT NULL REFERENCES circles(id) ON DELETE CASCADE,
@@ -30,16 +27,16 @@ async function createTable() {
     `);
     
     // Add indexes for performance
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_invitations_email ON circle_invitations(email);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_invitations_circle ON circle_invitations(circle_id);`);
-    await client.query(`CREATE INDEX IF NOT EXISTS idx_invitations_token ON circle_invitations(token);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_invitations_email ON circle_invitations(email);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_invitations_circle ON circle_invitations(circle_id);`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_invitations_token ON circle_invitations(token);`);
 
     console.log('Table circle_invitations created successfully.');
 
   } catch (err) {
     console.error('Migration Error:', err);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

@@ -93,16 +93,8 @@ module.exports = {
   		},
   		fontFamily: {
   			sans: [
-  				'Inter',
-  				'-apple-system',
-  				'BlinkMacSystemFont',
-  				'SF Pro Display"',
-  				'SF Pro Text"',
-  				'system-ui',
-  				'Segoe UI',
-  				'Roboto',
-  				'Helvetica Neue',
-  				'Arial',
+  				'"DM Sans"',
+  				'"IBM Plex Sans Thai"',
   				'sans-serif'
   			],
   			mono: [

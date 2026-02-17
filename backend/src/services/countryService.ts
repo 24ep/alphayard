@@ -1,5 +1,5 @@
 
-import { query } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 export interface Country {
     id: number;
@@ -13,10 +13,11 @@ export interface Country {
 export class CountryService {
     async getAllCountries(): Promise<Country[]> {
         try {
-            const { rows } = await query(
-                'SELECT * FROM countries WHERE is_supported = TRUE ORDER BY name ASC'
-            );
-            return rows;
+            const countries = await prisma.country.findMany({
+                where: { isActive: true },
+                orderBy: { name: 'asc' }
+            });
+            return countries.map(c => this.mapToServiceFormat(c));
         } catch (error) {
             console.error('Error fetching countries:', error);
             throw error;
@@ -25,18 +26,39 @@ export class CountryService {
 
     async searchCountries(term: string): Promise<Country[]> {
         try {
-            const { rows } = await query(
-                `SELECT * FROM countries 
-         WHERE is_supported = TRUE 
-         AND (name ILIKE $1 OR code ILIKE $1)
-         ORDER BY name ASC`,
-                [`%${term}%`]
-            );
-            return rows;
+            const countries = await prisma.country.findMany({
+                where: {
+                    isActive: true,
+                    OR: [
+                        { name: { contains: term, mode: 'insensitive' } },
+                        { code: { contains: term, mode: 'insensitive' } }
+                    ]
+                },
+                orderBy: { name: 'asc' }
+            });
+            return countries.map(c => this.mapToServiceFormat(c));
         } catch (error) {
             console.error('Error searching countries:', error);
             throw error;
         }
+    }
+
+    private mapToServiceFormat(country: {
+        id: string;
+        code: string;
+        name: string;
+        flagEmoji: string | null;
+        phoneCode: string | null;
+        isActive: boolean;
+    }): Country {
+        return {
+            id: parseInt(country.id.replace(/-/g, '').substring(0, 8), 16) || 0, // Convert UUID to number (approximation)
+            code: country.code,
+            name: country.name,
+            flag: country.flagEmoji || '',
+            phone_code: country.phoneCode || '',
+            is_supported: country.isActive
+        };
     }
 }
 

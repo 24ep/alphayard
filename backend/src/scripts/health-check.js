@@ -1,5 +1,7 @@
-const { pool } = require('../config/database');
+const { PrismaClient } = require('../prisma/generated/prisma');
 const winston = require('winston');
+
+const prisma = new PrismaClient();
 
 // Configure logger
 const logger = winston.createLogger({
@@ -19,7 +21,7 @@ async function runHealthCheck() {
     console.log('🔍 Running database health check...\n');
 
     const start = Date.now();
-    await pool.query('SELECT 1');
+    await prisma.$queryRawUnsafe('SELECT 1');
     const responseTime = Date.now() - start;
     
     console.log('📊 Health Status:');
@@ -32,7 +34,7 @@ async function runHealthCheck() {
     
     // Test user table access
     try {
-      const { rowCount } = await pool.query('SELECT 1 FROM users LIMIT 1');
+      const result = await prisma.$queryRawUnsafe('SELECT 1 FROM users LIMIT 1');
       console.log('   ✅ User table access: OK');
     } catch (error) {
       console.log(`   ❌ User table access: FAILED - ${error.message}`);
@@ -40,7 +42,7 @@ async function runHealthCheck() {
 
     // Test circle table access
     try {
-      const { rowCount } = await pool.query('SELECT 1 FROM circles LIMIT 1');
+      const result = await prisma.$queryRawUnsafe('SELECT 1 FROM circles LIMIT 1');
       console.log('   ✅ circle table access: OK');
     } catch (error) {
       console.log(`   ❌ circle table access: FAILED - ${error.message}`);
@@ -48,17 +50,19 @@ async function runHealthCheck() {
 
     // Test location table access
     try {
-      const { rowCount } = await pool.query('SELECT 1 FROM user_locations LIMIT 1');
+      const result = await prisma.$queryRawUnsafe('SELECT 1 FROM user_locations LIMIT 1');
       console.log('   ✅ Location table access: OK');
     } catch (error) {
       console.log(`   ❌ Location table access: FAILED - ${error.message}`);
     }
 
     console.log('\n✅ Database health check completed successfully!');
+    await prisma.$disconnect();
     process.exit(0);
 
   } catch (error) {
     console.error('\n❌ Health check failed:', error.message);
+    await prisma.$disconnect();
     process.exit(1);
   }
 }

@@ -116,18 +116,18 @@ export const handleSendMessage = (io: Server, socket: Socket & { userId?: string
         io.to(`chat:${chatId}`).emit('new-message', {
             message: {
                 id: message.id,
-                chatRoomId: message.room_id,
-                senderId: message.sender_id,
+                chatRoomId: message.roomId,
+                senderId: message.senderId,
                 content: message.content,
-                type: message.type,
+                type: message.messageType,
                 metadata: message.metadata,
-                replyTo: message.reply_to_id,
-                editedAt: message.edited_at,
-                deletedAt: message.deleted_at,
-                isPinned: message.is_pinned,
+                replyTo: message.replyToId,
+                editedAt: message.editedAt,
+                deletedAt: message.deletedAt,
+                isPinned: false,
                 reactions,
-                createdAt: message.created_at,
-                updatedAt: message.updated_at,
+                createdAt: message.createdAt,
+                updatedAt: message.createdAt,
             },
         });
     } catch (error) {
@@ -171,7 +171,7 @@ export const handleUpdateMessage = (io: Server, socket: Socket & { userId?: stri
             return;
         }
 
-        if (message.sender_id !== socket.userId) {
+        if (message.senderId !== socket.userId) {
             socket.emit('message-update-error', {
                 error: 'Access denied',
                 message: 'You can only edit your own messages',
@@ -196,21 +196,21 @@ export const handleUpdateMessage = (io: Server, socket: Socket & { userId?: stri
         const reactions = await chatService.getMessageReactions(updatedMessage.id);
 
         // Emit to all users in the chat
-        io.to(`chat:${updatedMessage.room_id}`).emit('message-updated', {
+        io.to(`chat:${updatedMessage.roomId}`).emit('message-updated', {
             message: {
                 id: updatedMessage.id,
-                chatRoomId: updatedMessage.room_id,
-                senderId: updatedMessage.sender_id,
+                chatRoomId: updatedMessage.roomId,
+                senderId: updatedMessage.senderId,
                 content: updatedMessage.content,
-                type: updatedMessage.type,
+                type: updatedMessage.messageType,
                 metadata: updatedMessage.metadata,
-                replyTo: updatedMessage.reply_to_id,
-                editedAt: updatedMessage.edited_at,
-                deletedAt: updatedMessage.deleted_at,
-                isPinned: updatedMessage.is_pinned,
+                replyTo: updatedMessage.replyToId,
+                editedAt: updatedMessage.editedAt,
+                deletedAt: updatedMessage.deletedAt,
+                isPinned: false,
                 reactions,
-                createdAt: updatedMessage.created_at,
-                updatedAt: updatedMessage.updated_at,
+                createdAt: updatedMessage.createdAt,
+                updatedAt: updatedMessage.editedAt || updatedMessage.createdAt,
             },
         });
     } catch (error) {
@@ -251,10 +251,10 @@ export const handleDeleteMessage = (io: Server, socket: Socket & { userId?: stri
             return;
         }
 
-        const chat = await chatService.findChatRoomById(message.room_id);
-        const isSender = message.sender_id === socket.userId;
+        const chat = await chatService.findChatRoomById(message.roomId);
+        const isSender = message.senderId === socket.userId;
         const isAdmin = chat
-            ? await chatService.isAdmin(message.room_id, socket.userId)
+            ? await chatService.isAdmin(message.roomId, socket.userId)
             : false;
 
         if (!isSender && !isAdmin) {
@@ -275,9 +275,9 @@ export const handleDeleteMessage = (io: Server, socket: Socket & { userId?: stri
         }
 
         // Emit to all users in the chat
-        io.to(`chat:${message.room_id}`).emit('message-deleted', {
+        io.to(`chat:${message.roomId}`).emit('message-deleted', {
             messageId: message.id,
-            chatRoomId: message.room_id,
+            chatRoomId: message.roomId,
             deletedBy: socket.userId,
             timestamp: new Date().toISOString(),
         });

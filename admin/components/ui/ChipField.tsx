@@ -29,7 +29,7 @@ export const ChipField = ({
   const [inputValue, setInputValue] = useState("");
 
   const activeColors = {
-    primary: "bg-blue-600 dark:bg-blue-500 text-white",
+    primary: "bg-black dark:bg-gray-800 text-white",
     slate: "bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900",
     indigo: "bg-indigo-600 dark:bg-indigo-500 text-white",
   };

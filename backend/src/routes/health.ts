@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { pool } from '../config/database';
+import { prisma } from '../lib/prisma';
 
 const router = express.Router();
 
@@ -10,7 +10,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     // Check database connection
     const start = Date.now();
-    await pool.query('SELECT 1');
+    await prisma.$queryRaw`SELECT 1`;
     const responseTime = Date.now() - start;
     
     res.json({
@@ -42,12 +42,17 @@ router.get('/detailed', async (req: Request, res: Response) => {
   try {
     const start = Date.now();
     // Use circles instead of families
-    const { rows: statsRows } = await pool.query(`
+    // Note: unified_entities table doesn't have a Prisma model, using $queryRaw
+    const statsRows = await prisma.$queryRaw<Array<{
+      usersCount: bigint;
+      familiesCount: bigint;
+      locationsCount: bigint;
+    }>>`
       SELECT 
-        (SELECT count(*) FROM users) as "usersCount",
+        (SELECT count(*) FROM core.users) as "usersCount",
         (SELECT count(*) FROM unified_entities WHERE type = 'circle') as "familiesCount",
         (SELECT count(*) FROM unified_entities WHERE type = 'location_history') as "locationsCount"
-    `);
+    `;
     const responseTime = Date.now() - start;
     
     res.json({

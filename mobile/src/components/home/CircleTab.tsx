@@ -6,6 +6,7 @@ import { CircleMemberDrawer } from './CircleMemberDrawer';
 import { CircleHealthTab } from './CircleHealthTab';
 import { ProfileFinancialTab } from '../profile/ProfileFinancialTab';
 import GalleryCardContent from '../card/GalleryCardContent';
+import { CircleFilesTab } from '../files';
 
 import { 
   Plus,
@@ -21,6 +22,7 @@ interface CircleTabProps {
   circleLocations: any[];
   emotionData: any[];
   selectedCircle: string | null;
+  currentCircle?: any;
   onCircleSelect: () => void;
   activeTab: string;
   onAddMember?: () => void;
@@ -31,6 +33,7 @@ export const CircleTab: React.FC<CircleTabProps> = ({
   circleLocations,
   emotionData,
   activeTab,
+  currentCircle,
   onAddMember,
 }) => {
   /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -52,9 +55,9 @@ export const CircleTab: React.FC<CircleTabProps> = ({
     switch (activeTab) {
       case 'location':
         return (
-          <View style={{ height: height - 130, width: '100%', position: 'relative' }}>
+          <View style={[styles.locationContainer, { height: height - 250 }]}>
              <CircleLocationMap
-                locations={circleLocations}
+                locations={circleLocations || []}
                 onMemberSelect={(loc: any) => {
                   const mem = circleStatusMembers.find(m => m.id === loc.userId) || circleStatusMembers[0]; 
                   handleMemberPress(mem);
@@ -141,22 +144,65 @@ export const CircleTab: React.FC<CircleTabProps> = ({
         return (
           <CircleHealthTab emotionData={emotionData} />
         );
+      case 'files':
+        return currentCircle?.id ? (
+          <View style={[styles.card, { flex: 1, minHeight: 400 }]}>
+            <CircleFilesTab 
+              circleId={currentCircle.id} 
+              circleName={currentCircle.name}
+            />
+          </View>
+        ) : null;
       default:
         return null;
     }
   };
 
+  const renderCircleInfo = () => {
+    if (!currentCircle) return null;
+    return (
+      <View style={styles.circleInfoSection}>
+        {currentCircle.avatar_url ? (
+          <Image source={{ uri: currentCircle.avatar_url }} style={styles.circleAvatar} />
+        ) : (
+          <View style={[styles.circleAvatar, styles.circleAvatarPlaceholder]}>
+            <Text style={styles.circleAvatarText}>
+              {currentCircle.name?.charAt(0)?.toUpperCase() || 'C'}
+            </Text>
+          </View>
+        )}
+        <View style={styles.circleInfoText}>
+          <Text style={styles.circleName}>{currentCircle.name || 'Circle'}</Text>
+          {currentCircle.description && (
+            <Text style={styles.circleDescription} numberOfLines={2}>
+              {currentCircle.description}
+            </Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.mainContainer}>
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.container}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ height: 10 }} />
-        {renderContent()}
-      </ScrollView>
+      {activeTab === 'location' ? (
+        // For location tab, don't use ScrollView - map should be fixed height
+        <View style={{ flex: 1 }}>
+          {renderCircleInfo()}
+          {renderContent()}
+        </View>
+      ) : (
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.container}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {renderCircleInfo()}
+          <View style={{ height: 10 }} />
+          {renderContent()}
+        </ScrollView>
+      )}
 
       {/* Drawers */}
       <CircleMemberDrawer
@@ -175,6 +221,51 @@ export const CircleTab: React.FC<CircleTabProps> = ({
 const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
+    backgroundColor: 'transparent',
+  },
+  circleInfoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  circleAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginRight: 16,
+    backgroundColor: '#F3F4F6',
+  },
+  circleAvatarPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FA7272',
+  },
+  circleAvatarText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  circleInfoText: {
+    flex: 1,
+  },
+  circleName: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  circleDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  locationContainer: {
+    width: '100%',
+    position: 'relative',
     backgroundColor: 'transparent',
   },
   container: {

@@ -571,6 +571,7 @@ class LocationService {
   setCircleData(families: any[]) {
     this.circleData = families;
     this.updateCircleLocations();
+    this.initializeSocketListeners();
   }
 
   setCurrentUser(user: any) {
@@ -596,6 +597,41 @@ class LocationService {
     this.circleLocationListeners.forEach(callback => {
       callback(this.circleLocations);
     });
+  }
+
+  // Socket Integration
+  initializeSocketListeners() {
+    socketService.on('location:update', (data: { userId: string; latitude: number; longitude: number; accuracy?: number; address?: string; timestamp: string }) => {
+       this.handleRemoteLocationUpdate(data);
+    });
+  }
+
+  private handleRemoteLocationUpdate(data: { userId: string; latitude: number; longitude: number; accuracy?: number; address?: string; timestamp: string }) {
+      // Find member in circleLocations
+      const memberIndex = this.circleLocations.findIndex(m => m.userId === data.userId);
+      
+      if (memberIndex !== -1) {
+          // Update existing member
+          const updatedMember = {
+              ...this.circleLocations[memberIndex],
+              latitude: data.latitude,
+              longitude: data.longitude,
+              accuracy: data.accuracy,
+              timestamp: new Date(data.timestamp),
+              // Only update address if provided, otherwise keep existing or fetch new one if needed
+              // For bandwidth, we might not send address with every update
+              ...(data.address ? { address: data.address } : {}) 
+          };
+          
+          this.circleLocations[memberIndex] = updatedMember;
+          this.notifyCircleLocationListeners();
+      } else {
+          // Verify if this user belongs to any of our circles before adding?
+          // For now, if we receive an update, we assume they are relevant (socket room logic should handle filtering)
+          // But if they aren't in our initial list, we might be missing profile data (name, avatar).
+          // We can fetch it or ignore. Let's ignore for now to avoid ghost users without names.
+          // logger.warn('Received location update for unknown user:', data.userId);
+      }
   }
 
   private updateCircleLocations() {

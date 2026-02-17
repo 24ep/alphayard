@@ -1,35 +1,24 @@
-
-import { Client } from 'pg';
+import { PrismaClient, Prisma } from '../../prisma/generated/prisma/client';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.error('DATABASE_URL is not defined in .env');
-  process.exit(1);
-}
-
-const client = new Client({
-  connectionString,
-});
+const prisma = new PrismaClient();
 
 async function generateAvatars() {
   try {
-    await client.connect();
     console.log('Connected to database to generate avatars...');
 
     // 1. Get all users with null avatar_url
-    const res = await client.query(`
+    const res = await prisma.$queryRawUnsafe(`
       SELECT id, first_name, last_name, avatar_url 
       FROM users 
       WHERE avatar_url IS NULL OR avatar_url = ''
-    `);
+    `) as Array<{ id: string; first_name: string | null; last_name: string | null; avatar_url: string | null }>;
 
-    const usersWithoutAvatar = res.rows;
+    const usersWithoutAvatar = res;
     console.log(`Found ${usersWithoutAvatar.length} users needing avatars.`);
 
     // 2. Update each user with a DiceBear URL
@@ -40,11 +29,9 @@ async function generateAvatars() {
       const seed = user.id; 
       const avatarUrl = `https://api.dicebear.com/9.x/avataaars/png?seed=${seed}`;
 
-      await client.query(`
-        UPDATE users 
-        SET avatar_url = $1, updated_at = NOW() 
-        WHERE id = $2
-      `, [avatarUrl, user.id]);
+      await prisma.$executeRaw(
+        Prisma.sql`UPDATE users SET avatar_url = ${avatarUrl}, updated_at = NOW() WHERE id = ${user.id}`
+      );
 
       updatedCount++;
       if (updatedCount % 10 === 0) {
@@ -58,7 +45,7 @@ async function generateAvatars() {
     console.error('Error generating avatars:', err);
     process.exit(1);
   } finally {
-    await client.end();
+    await prisma.$disconnect();
   }
 }
 

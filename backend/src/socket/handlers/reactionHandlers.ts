@@ -45,7 +45,7 @@ export const handleAddReaction = (io: Server, socket: Socket & { userId?: string
             return;
         }
 
-        const chat = await chatService.findChatRoomById(message.room_id);
+        const chat = await chatService.findChatRoomById(message.roomId);
         if (!chat) {
             socket.emit('reaction-error', {
                 error: 'Chat room not found',
@@ -55,7 +55,7 @@ export const handleAddReaction = (io: Server, socket: Socket & { userId?: string
         }
 
         const isParticipant = await chatService.isParticipant(
-            message.room_id,
+            message.roomId,
             socket.userId
         );
         if (!isParticipant) {
@@ -79,9 +79,9 @@ export const handleAddReaction = (io: Server, socket: Socket & { userId?: string
         const reactions = await chatService.getMessageReactions(messageId);
 
         // Emit to all users in the chat
-        io.to(`chat:${message.room_id}`).emit('reaction-added', {
+        io.to(`chat:${message.roomId}`).emit('reaction-added', {
             messageId: message.id,
-            chatRoomId: message.room_id,
+            chatRoomId: message.roomId,
             userId: socket.userId,
             emoji,
             reactions,
@@ -128,7 +128,7 @@ export const handleRemoveReaction = (io: Server, socket: Socket & { userId?: str
             return;
         }
 
-        const chat = await chatService.findChatRoomById(message.room_id);
+        const chat = await chatService.findChatRoomById(message.roomId);
         if (!chat) {
             socket.emit('reaction-error', {
                 error: 'Chat room not found',
@@ -138,7 +138,7 @@ export const handleRemoveReaction = (io: Server, socket: Socket & { userId?: str
         }
 
         const isParticipant = await chatService.isParticipant(
-            message.room_id,
+            message.roomId,
             socket.userId
         );
         if (!isParticipant) {
@@ -162,9 +162,9 @@ export const handleRemoveReaction = (io: Server, socket: Socket & { userId?: str
         const reactions = await chatService.getMessageReactions(messageId);
 
         // Emit to all users in the chat
-        io.to(`chat:${message.room_id}`).emit('reaction-removed', {
+        io.to(`chat:${message.roomId}`).emit('reaction-removed', {
             messageId: message.id,
-            chatRoomId: message.room_id,
+            chatRoomId: message.roomId,
             userId: socket.userId,
             emoji,
             reactions,

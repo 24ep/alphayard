@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import { Map, MapMarker } from '../ui/map';
 // import { Avatar } from 'native-base';
 
@@ -31,28 +31,43 @@ export const CircleLocationMap: React.FC<CircleLocationMapProps> = ({
       } 
     : defaultRegion;
 
+  // Filter out invalid locations
+  const validLocations = locations.filter(loc => 
+    loc && typeof loc.latitude === 'number' && typeof loc.longitude === 'number' &&
+    !isNaN(loc.latitude) && !isNaN(loc.longitude)
+  );
+
   return (
     <View style={styles.container}>
-      <Map 
-        style={styles.map} 
-        initialRegion={initialRegion}
-        theme="light" // Can be dynamic based on app theme
-      >
-        {locations.map((loc, index) => (
-          <MapMarker
-            key={loc.id || index}
-            latitude={loc.latitude}
-            longitude={loc.longitude}
-            onClick={() => onMemberSelect?.(loc)}
-          >
-            {/* Custom Marker Content */}
-            <View style={styles.markerContainer}>
-               <View style={styles.markerDot} />
-               {/* Could show Avatar here if available */}
-            </View>
-          </MapMarker>
-        ))}
-      </Map>
+      {validLocations.length === 0 && locations.length > 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No valid locations available</Text>
+        </View>
+      ) : (
+        <Map 
+          style={styles.map} 
+          initialRegion={initialRegion}
+          theme="light" // Can be dynamic based on app theme
+          loadingEnabled={true}
+          loadingIndicatorColor="#666666"
+          loadingBackgroundColor="#FFFFFF"
+        >
+          {validLocations.map((loc, index) => (
+            <MapMarker
+              key={loc.id || index}
+              latitude={loc.latitude}
+              longitude={loc.longitude}
+              onClick={() => onMemberSelect?.(loc)}
+            >
+              {/* Custom Marker Content */}
+              <View style={styles.markerContainer}>
+                 <View style={styles.markerDot} />
+                 {/* Could show Avatar here if available */}
+              </View>
+            </MapMarker>
+          ))}
+        </Map>
+      )}
     </View>
   );
 };
@@ -60,12 +75,13 @@ export const CircleLocationMap: React.FC<CircleLocationMapProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'transparent',
     borderRadius: 16,
     overflow: 'hidden',
+    width: '100%',
+    height: '100%',
   },
   map: {
-    flex: 1,
     width: '100%',
     height: '100%',
   },
@@ -85,7 +101,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
-  }
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
 });
 
 

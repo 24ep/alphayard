@@ -9,27 +9,34 @@ router.use(authenticateToken as any);
 
 /**
  * Mapping helper for SocialPost
+ * Maps unified entity format to mobile app format
  */
-const mapToMobileFormat = (post: any) => ({
-    id: post.id,
-    author: {
-        name: `${post.author?.first_name || ''} ${post.author?.last_name || ''}`.trim() || 'User',
-        avatar: post.author?.avatar_url || null,
-        isVerified: true,
-    },
-    content: post.content,
-    timestamp: post.created_at,
-    likes: post.likes_count || 0,
-    comments: post.comments_count || 0,
-    shares: post.shares_count || 0,
-    isLiked: false, // Default to false, real implementation should check social_post_likes
-    media: post.media_urls?.[0] ? {
-        type: post.type === 'video' ? 'video' : 'image',
-        url: post.media_urls[0]
-    } : undefined,
-    location: post.location,
-    tags: post.tags || [],
-});
+const mapToMobileFormat = (post: any) => {
+    // Unified entities store data in attributes/data field
+    const attrs = post.attributes || post.data || {};
+    const authorName = attrs.author_name || attrs.authorName || 'User';
+    
+    return {
+        id: post.id,
+        author: {
+            name: authorName,
+            avatar: attrs.author_avatar || attrs.avatar || null,
+            isVerified: true,
+        },
+        content: attrs.content || '',
+        timestamp: post.createdAt || post.created_at,
+        likes: attrs.like_count || attrs.likes_count || attrs.likes || 0,
+        comments: attrs.comments_count || attrs.comments || 0,
+        shares: attrs.shares_count || attrs.shares || 0,
+        isLiked: false, // Default to false, real implementation should check social_post_likes
+        media: attrs.media_urls?.[0] || attrs.mediaUrls?.[0] ? {
+            type: (attrs.type === 'video' || attrs.post_type === 'video') ? 'video' : 'image',
+            url: attrs.media_urls?.[0] || attrs.mediaUrls?.[0]
+        } : undefined,
+        location: attrs.location || null,
+        tags: attrs.tags || [],
+    };
+};
 
 /**
  * GET /api/social/posts

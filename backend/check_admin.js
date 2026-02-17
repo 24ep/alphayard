@@ -1,23 +1,20 @@
 
-const { Pool } = require('pg');
+const { PrismaClient } = require('./prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
 
 async function checkAdmin() {
   try {
     console.log('--- Checking Admin Users ---');
-    const adminRes = await pool.query('SELECT id, email, user_id FROM admin_users');
-    console.table(adminRes.rows);
+    const adminRes = await prisma.$queryRawUnsafe('SELECT id, email, user_id FROM admin_users');
+    console.table(adminRes);
 
-    if (adminRes.rows.length > 0) {
-      const userId = adminRes.rows[0].user_id;
+    if (adminRes.length > 0) {
+      const userId = adminRes[0].user_id;
       console.log(`--- Checking User with ID: ${userId} ---`);
-      const userRes = await pool.query('SELECT id, email, is_active FROM users WHERE id = $1', [userId]);
-      console.table(userRes.rows);
+      const userRes = await prisma.$queryRawUnsafe('SELECT id, email, is_active FROM users WHERE id = $1', userId);
+      console.table(userRes);
     } else {
       console.log('No admin users found in admin_users table.');
     }
@@ -28,7 +25,7 @@ async function checkAdmin() {
   } catch (err) {
     console.error('Error:', err);
   } finally {
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

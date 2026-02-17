@@ -34,6 +34,12 @@ export interface SocketEvents {
   'call-answered': (data: { answererId: string; answer: boolean }) => void;
   'call-ended': (data: { endedBy: string }) => void;
   'call-signal': (data: { fromId: string; signal: any }) => void;
+
+  // Notification events
+  'notification:new': (data: { id: string; type: string; title: string; message: string; data?: any; timestamp: string }) => void;
+  'notification:read': (data: { notificationId: string }) => void;
+  'notification:deleted': (data: { notificationId: string }) => void;
+  'notification:count': (data: { unreadCount: number }) => void;
 }
 
 class SocketService {
@@ -81,7 +87,14 @@ class SocketService {
         });
 
         this.socket.on('connect_error', async (error) => {
-          console.error('Socket connection error:', error.message);
+          // Only log if it's not a connection refused error (backend offline)
+          const isConnectionRefused = error.message?.includes('ERR_CONNECTION_REFUSED') || 
+                                     error.message?.includes('Connection refused') ||
+                                     error.message?.includes('websocket error');
+          
+          if (!isConnectionRefused) {
+            console.error('Socket connection error:', error.message);
+          }
 
           // Handle authentication errors
           if (error.message.includes('jwt expired') ||
@@ -248,6 +261,38 @@ class SocketService {
       } else {
         this.socket.removeAllListeners(event);
       }
+    }
+  }
+
+  // =============================================
+  // NOTIFICATION METHODS
+  // =============================================
+
+  // Subscribe to notification events
+  subscribeToNotifications(): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('notification:subscribe');
+    }
+  }
+
+  // Unsubscribe from notification events
+  unsubscribeFromNotifications(): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('notification:unsubscribe');
+    }
+  }
+
+  // Mark notification as read via socket
+  markNotificationRead(notificationId: string): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('notification:mark-read', { notificationId });
+    }
+  }
+
+  // Request unread notification count
+  requestNotificationCount(): void {
+    if (this.socket && this.isConnected) {
+      this.socket.emit('notification:get-count');
     }
   }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,11 @@ import {
   ScrollView,
   FlatList,
   Image,
-  StyleSheet,
-  Dimensions,
+  StatusBar,
+  SafeAreaView,
   Alert,
-  StatusBar
+  StyleSheet
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Folder,
   HardDrive,
@@ -21,7 +20,6 @@ import {
   Search,
   ArrowLeft,
   ChevronRight,
-  Plus,
   Image as ImageIcon,
   Video,
   FileText,
@@ -34,8 +32,9 @@ import {
   Loader
 } from 'lucide-react-native';
 import GalleryScreen from '../main/GalleryScreen';
+import { fileManagementApi } from '../../services/api/fileManagement';
 
-const { width, height } = Dimensions.get('window');
+// const { width, height } = Dimensions.get('window'); // Dimensions unused
 const THEME_COLOR = '#FA7272';
 const SIDEBAR_WIDTH = 80;
 
@@ -45,56 +44,35 @@ type StorageSource = 'device' | 'network' | 'icloud' | 'gdrive' | 'onedrive' | '
 interface FileItem {
   id: string;
   name: string;
-  type: 'folder' | 'file' | 'image' | 'video' | 'doc';
+  type: 'folder' | 'file' | 'image' | 'video' | 'doc' | 'audio' | 'other';
   size?: string;
   date: string;
   items?: number; // for folders
   thumbnail?: string;
 }
 
-// Mock Data Generators
-const generateMockFiles = (source: StorageSource, path: string): FileItem[] => {
-  if (source === 'recycle_bin') {
-    return [
-      { id: 'del1', name: 'Old Report.pdf', type: 'doc', size: '2.4 MB', date: '2025-12-01' },
-      { id: 'del2', name: 'Deleted Photo.jpg', type: 'image', size: '3.1 MB', date: '2026-01-10', thumbnail: 'https://images.unsplash.com/photo-1531804055935-76f44d7c3621?q=80&w=2000&auto=format&fit=crop' },
-    ];
-  }
-
-  const baseItems: FileItem[] = [
-    { id: 'f1', name: 'Documents', type: 'folder', items: 12, date: '2026-01-15' },
-    { id: 'f2', name: 'Images', type: 'folder', items: 450, date: '2026-01-18' },
-    { id: 'f3', name: 'Work Projects', type: 'folder', items: 8, date: '2026-01-12' },
-    { id: 'doc1', name: 'Project_Alpha_Specs.pdf', type: 'doc', size: '4.2 MB', date: '2026-01-19' },
-    { id: 'img1', name: 'Design_Mockup_v2.png', type: 'image', size: '1.8 MB', date: '2026-01-19', thumbnail: 'https://images.unsplash.com/photo-1558655146-d09347e0c766?q=80&w=2000&auto=format&fit=crop' },
-    { id: 'vid1', name: 'Demo_Recording.mp4', type: 'video', size: '45.2 MB', date: '2026-01-18' },
-  ];
-
-  if (source === 'gdrive') return [...baseItems, { id: 'gd1', name: 'Shared_Team_Sheet.xlsx', type: 'doc', size: '1.2 MB', date: '2026-01-20' }];
-  if (source === 'onedrive') return [...baseItems, { id: 'od1', name: 'Presentation.pptx', type: 'doc', size: '12.5 MB', date: '2026-01-20' }];
-  
-  return baseItems;
+// Helper to format bytes
+const formatSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
-const StorageScreen: React.FC = ({ navigation }: any) => {
-  const [currentSource, setCurrentSource] = useState<StorageSource>('device');
-  const [currentPath, setCurrentPath] = useState<string[]>(['Home']);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+const StorageScreen = ({ navigation }: any) => {
+  const [currentSource, setCurrentSource] = useState<StorageSource>('network');
+  const [currentPath, setCurrentPath] = useState<{id: string | null, name: string}[]>([{id: null, name: 'Home'}]);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isGalleryMode, setIsGalleryMode] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const [loading, setLoading] = useState(false);
-
   
-  // Gallery Integration Node
-  const [isGalleryMode, setIsGalleryMode] = useState(false);
-
-  // Cloud Connection States (Simulated)
-  const [cloudStatus, setCloudStatus] = useState({
-    device: true,
-    network: true,
+  // Cloud connection status (mock)
+  const [cloudStatus, setCloudStatus] = useState<Record<string, boolean>>({
     icloud: false,
     gdrive: true,
-    onedrive: false,
-    recycle_bin: true
+    onedrive: false
   });
 
   useEffect(() => {
@@ -103,14 +81,60 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
 
   const loadFiles = async () => {
     setLoading(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 600));
-    setFiles(generateMockFiles(currentSource, currentPath.join('/')));
-    setLoading(false);
+    try {
+      if (currentSource === 'network') {
+        const parentId = currentPath[currentPath.length - 1].id;
+        const [foldersRes, filesRes] = await Promise.all([
+          fileManagementApi.getFolders(parentId || undefined),
+          fileManagementApi.getFiles({ folderId: parentId || undefined })
+        ]);
+
+        if (foldersRes.success && filesRes.success) {
+          const folderItems: FileItem[] = foldersRes.folders.map(f => ({
+            id: f.id,
+            name: f.name,
+            type: 'folder',
+            date: new Date(f.updatedAt).toLocaleDateString(),
+            items: f.itemCount
+          }));
+
+          const fileItems: FileItem[] = filesRes.files.map(f => ({
+            id: f.id,
+            name: f.fileName,
+            type: f.fileType === 'document' ? 'doc' : f.fileType,
+            size: formatSize(f.size),
+            date: new Date(f.updatedAt).toLocaleDateString(),
+            thumbnail: f.thumbnailUrl || f.url
+          }));
+
+          setFiles([...folderItems, ...fileItems]);
+        }
+      } else if (currentSource === 'recycle_bin') {
+         const trashRes = await fileManagementApi.getTrash();
+         if (trashRes.success) {
+            setFiles(trashRes.files.map(f => ({
+                id: f.id,
+                name: f.fileName,
+                type: f.fileType === 'document' ? 'doc' : f.fileType,
+                size: formatSize(f.size),
+                date: new Date(f.updatedAt).toLocaleDateString(),
+                thumbnail: f.thumbnailUrl
+            })));
+         }
+      } else {
+         // Placeholder for device/cloud sources
+         setFiles([]); 
+      }
+    } catch (error) {
+      console.error('Failed to load files:', error);
+      Alert.alert('Error', 'Failed to load files');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSourceChange = (source: StorageSource) => {
-    if (!cloudStatus[source]) {
+    if (!cloudStatus[source] && source !== 'device' && source !== 'network' && source !== 'recycle_bin') {
       // Prompt to connect
       Alert.alert(
         "Connect Account", 
@@ -118,29 +142,26 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
         [
           { text: "Cancel", style: "cancel" },
           { text: "Connect", onPress: () => {
-            setLoading(true);
-            setTimeout(() => {
-              setCloudStatus(prev => ({ ...prev, [source]: true }));
-              setCurrentSource(source);
-              setLoading(false);
-            }, 1500);
+             // Mock connect
+             setCloudStatus(prev => ({ ...prev, [source]: true }));
+             setCurrentSource(source);
           }}
         ]
       );
       return;
     }
     setCurrentSource(source);
-    setCurrentPath(['Home']);
+    setCurrentPath([{id: null, name: 'Home'}]);
     setIsGalleryMode(false);
   };
 
-  const handleFolderPress = (folderName: string) => {
-    if (folderName === 'Images' || folderName === 'Gallery' || folderName === 'Photos') {
-      setIsGalleryMode(true);
-      setCurrentPath(prev => [...prev, folderName]);
-    } else {
-      setCurrentPath(prev => [...prev, folderName]);
+  const handleFolderPress = (folderId: string, folderName: string) => {
+    // Check if gallery folder (simplified logic)
+    if (folderName === 'Images' || folderName === 'Gallery') {
+      // Maybe switch to gallery mode? 
+      // For now just navigate folder
     }
+    setCurrentPath(prev => [...prev, {id: folderId, name: folderName}]);
   };
 
   const handleBack = () => {
@@ -170,15 +191,16 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
   };
 
   const getSourceIcon = (source: StorageSource, active: boolean) => {
-    const color = active ? THEME_COLOR : '#9CA3AF';
+    const iconColor = active ? THEME_COLOR : '#9CA3AF';
+    const props = { size: 24, color: iconColor };
     switch (source) {
-      case 'device': return <Smartphone size={24} color={color} />;
-      case 'network': return <Server size={24} color={color} />;
-      case 'icloud': return <Cloud size={24} color={color} />;
-      case 'gdrive': return <Disc size={24} color={color} />;
-      case 'onedrive': return <CloudLightning size={24} color={color} />;
-      case 'recycle_bin': return <Trash2 size={24} color={color} />;
-      default: return <HardDrive size={24} color={color} />;
+      case 'device': return <Smartphone {...props} />;
+      case 'network': return <Server {...props} />;
+      case 'icloud': return <Cloud {...props} />;
+      case 'gdrive': return <Disc {...props} />;
+      case 'onedrive': return <CloudLightning {...props} />;
+      case 'recycle_bin': return <Trash2 {...props} />;
+      default: return <HardDrive {...props} />;
     }
   };
 
@@ -208,15 +230,13 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
     if (item.thumbnail) {
       return <Image source={{ uri: item.thumbnail }} style={styles.fileThumbnail} />;
     }
-    const color = item.type === 'folder' ? '#FFCC00' : 
-                  item.type === 'image' ? '#4CAF50' : 
-                  item.type === 'video' ? '#F44336' : '#2196F3';
     
     switch (item.type) {
-      case 'folder': return <Folder size={32} color={color} fill={color} fillOpacity={0.2} />;
-      case 'image': return <ImageIcon size={32} color={color} />;
-      case 'video': return <Video size={32} color={color} />;
-      default: return <FileText size={32} color={color} />;
+      case 'folder': return <Folder size={24} {...({color: "#FF9F43", fill: "#FF9F43", fillOpacity: 0.2} as any)} />;
+      case 'image': return <ImageIcon size={24} {...({color: "#3B82F6"} as any)} />;
+      case 'video': return <Video size={24} {...({color: "#EF4444"} as any)} />;
+      case 'doc': return <FileText size={24} {...({color: "#10B981"} as any)} />;
+      default: return <FileText size={24} {...({color: "#6B7280"} as any)} />;
     }
   };
 
@@ -228,7 +248,7 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
     if (loading) {
       return (
         <View style={styles.centerContainer}>
-          <Loader size={32} color={THEME_COLOR} style={{ transform: [{ rotate: '45deg' }] }} />
+          <Loader size={32} {...({color: THEME_COLOR, style: { transform: [{ rotate: '45deg' }] }} as any)} />
           <Text style={styles.loadingText}>Syncing {getSourceName(currentSource)}...</Text>
         </View>
       );
@@ -237,7 +257,7 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
     if (files.length === 0) {
       return (
         <View style={styles.centerContainer}>
-          <Folder size={64} color="#E5E7EB" />
+          <Folder size={64} {...({color: "#E5E7EB"} as any)} />
           <Text style={styles.emptyText}>Folder is empty</Text>
         </View>
       );
@@ -254,7 +274,7 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
           <TouchableOpacity
             style={viewMode === 'grid' ? styles.gridItem : styles.listItem}
             onPress={() => {
-              if (item.type === 'folder') handleFolderPress(item.name);
+              if (item.type === 'folder') handleFolderPress(item.id, item.name);
               else Alert.alert('File Preview', `Opening ${item.name}...`);
             }}
           >
@@ -282,7 +302,7 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
                         </Text>
                     </View>
                     <TouchableOpacity style={{ padding: 8 }}>
-                         <MoreVertical size={20} color="#9CA3AF" />
+                         <MoreVertical size={20} {...({color: "#9CA3AF"} as any)} />
                     </TouchableOpacity>
                 </View>
             )}
@@ -328,15 +348,15 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
             <View style={styles.header}>
                 <View style={styles.headerTop}>
                     <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-                        <ArrowLeft size={24} color="#1F2937" />
+                        <ArrowLeft size={24} {...({color: "#1F2937"} as any)} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>{getSourceName(currentSource)}</Text>
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                          <TouchableOpacity onPress={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')}>
-                            {viewMode === 'grid' ? <ListIcon size={24} color="#1F2937" /> : <Grid size={24} color="#1F2937" />}
+                            {viewMode === 'grid' ? <ListIcon size={24} {...({color: "#1F2937"} as any)} /> : <Grid size={24} {...({color: "#1F2937"} as any)} />}
                          </TouchableOpacity>
                          <TouchableOpacity>
-                            <Search size={24} color="#1F2937" />
+                            <Search size={24} {...({color: "#1F2937"} as any)} />
                          </TouchableOpacity>
                     </View>
                 </View>
@@ -346,10 +366,10 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.breadcrumbBar}>
                         {currentPath.map((segment, index) => (
                             <View key={index} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                 {index > 0 && <ChevronRight size={16} color="#9CA3AF" />}
+                                 {index > 0 && <ChevronRight size={16} {...({color: "#4B5563"} as any)} />}
                                  <TouchableOpacity onPress={() => setCurrentPath(currentPath.slice(0, index + 1))}>
                                      <Text style={[styles.breadcrumbText, index === currentPath.length - 1 && styles.breadcrumbActive]}>
-                                         {segment}
+                                         {segment.name}
                                      </Text>
                                  </TouchableOpacity>
                             </View>
@@ -365,9 +385,9 @@ const StorageScreen: React.FC = ({ navigation }: any) => {
 
             {/* Floating Action Button */}
             {!isGalleryMode && (
-                <TouchableOpacity style={styles.fab}>
-                    <Plus size={28} color="#FFFFFF" />
-                </TouchableOpacity>
+                <TouchableOpacity style={styles.fab} onPress={() => {/* Handle menu */}}>
+              <MoreVertical size={24} {...({color: '#6B7280'} as any)} />
+            </TouchableOpacity>
             )}
         </View>
 
@@ -593,6 +613,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#9CA3AF',
+  },
+  moreButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -109,8 +109,8 @@ function startServer() {
 
   async function initializeServices() {
     try {
-      const { pool } = require('./config/database');
-      await pool.query('SELECT 1');
+      const { prisma } = require('./config/database');
+      await prisma.$queryRaw`SELECT 1`;
       
       const PORT = 3001;
       server.listen(PORT, '::', () => {

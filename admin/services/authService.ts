@@ -6,6 +6,12 @@ export interface LoginCredentials {
   password: string
 }
 
+export interface SSOLoginCredentials {
+  provider: string
+  idToken?: string
+  accessToken?: string
+}
+
 export interface AuthUser {
   id: string
   email: string
@@ -70,6 +76,23 @@ class AuthService {
       body: JSON.stringify({
         email: credentials.email,
         password: credentials.password
+      }),
+    })
+
+    // Store token in localStorage
+    localStorage.setItem('admin_token', response.token)
+    localStorage.setItem('admin_user', JSON.stringify(response.user))
+
+    return response
+  }
+
+  async ssoLogin(credentials: SSOLoginCredentials): Promise<AuthResponse> {
+    const response = await this.request<AuthResponse>(`/admin/auth/sso/${credentials.provider}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: credentials.provider,
+        idToken: credentials.idToken,
+        accessToken: credentials.accessToken
       }),
     })
 

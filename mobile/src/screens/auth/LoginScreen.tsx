@@ -29,10 +29,35 @@ const colors = {
   textSecondary: '#666666',
 };
 
+// Map SSO provider names to MaterialCommunityIcons names
+const getSSOProviderIcon = (providerName: string): string => {
+  const iconMap: Record<string, string> = {
+    google: 'google',
+    facebook: 'facebook',
+    apple: 'apple',
+    github: 'github',
+    microsoft: 'microsoft',
+    twitter: 'twitter',
+    x: 'twitter', // X uses Twitter icon
+    linkedin: 'linkedin',
+    discord: 'discord',
+    slack: 'slack',
+    line: 'message-text', // LINE uses message icon (closest available)
+  };
+  return iconMap[providerName.toLowerCase()] || 'login';
+};
+
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { checkUserExists, requestOtp, loginWithSSO, isLoading, clearLoginError } = useAuth();
+  const { checkUserExists, requestOtp, loginWithSSO, isLoading, clearLoginError, ssoProviders, loadSSOProviders } = useAuth();
   const { logoUrl, flows } = useBranding();
+
+  // Load SSO providers on mount if not already loaded
+  useEffect(() => {
+    if (ssoProviders.length === 0) {
+      loadSSOProviders();
+    }
+  }, []);
 
   // State
   const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
@@ -90,18 +115,27 @@ const LoginScreen: React.FC = () => {
       const exists = await checkUserExists(finalIdentifier);
       console.log('[LOGIN] User exists:', exists);
 
-      // 2. Request OTP and Navigate to Verification
-      console.log('[LOGIN] Requesting OTP for:', finalIdentifier);
-      try {
-        await requestOtp(finalIdentifier);
-        // Navigate with appropriate mode based on existence
-        navigation.navigate('TwoFactorMethod', { 
-          identifier: finalIdentifier, 
-          mode: exists ? 'login' : 'signup' 
+      if (exists) {
+        // 2. Request OTP and Navigate to Verification for existing users
+        console.log('[LOGIN] Requesting OTP for:', finalIdentifier);
+        try {
+          await requestOtp(finalIdentifier);
+          navigation.navigate('TwoFactorMethod', { 
+            identifier: finalIdentifier, 
+            mode: 'login' 
+          });
+        } catch (otpErr: any) {
+          console.error('[LOGIN] OTP request failed:', otpErr);
+          Alert.alert('Error', 'Failed to send verification code. Please try again.');
+        }
+      } else {
+        // 3. Navigate to Multi-step Signup for new users
+        console.log('[LOGIN] Redirecting to multi-step signup for:', finalIdentifier);
+        // Navigate to Step 1 (signup method selection) with pre-filled email
+        navigation.navigate('Step1Username', { 
+          email: loginMethod === 'email' ? finalIdentifier : '',
+          phone: loginMethod === 'phone' ? finalIdentifier : ''
         });
-      } catch (otpErr: any) {
-        console.error('[LOGIN] OTP request failed:', otpErr);
-        Alert.alert('Error', 'Failed to send verification code. Please try again.');
       }
     } catch (err: any) {
       console.error('Login flow error:', err);
@@ -113,7 +147,7 @@ const LoginScreen: React.FC = () => {
     }
   };
 
-  const handleSSOLogin = async (provider: 'google' | 'facebook' | 'apple') => {
+  const handleSSOLogin = async (provider: 'google' | 'facebook' | 'apple' | 'microsoft' | 'twitter' | 'x' | 'line' | string) => {
     try {
       await loginWithSSO(provider);
     } catch (error: any) {
@@ -252,18 +286,35 @@ const LoginScreen: React.FC = () => {
                       <View style={styles.socialSection}>
                         <Text style={styles.socialSectionText}>Or continue with</Text>
                         <View style={styles.socialButtons}>
-                          <TouchableOpacity style={[styles.socialButton, styles.facebookButton]} onPress={() => handleSSOLogin('facebook')}>
-                            <Icon name="facebook" size={24} color="#1877F2" />
-                          </TouchableOpacity>
-                          <TouchableOpacity style={[styles.socialButton, styles.twitterButton]} onPress={() => handleSSOLogin('google')}>
-                            <Icon name="twitter" size={24} color="#1DA1F2" />
-                          </TouchableOpacity>
-                          <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => handleSSOLogin('google')}>
-                            <Icon name="google" size={24} color="#DB4437" />
-                          </TouchableOpacity>
-                          <TouchableOpacity style={[styles.socialButton, styles.appleButton]} onPress={() => handleSSOLogin('apple')}>
-                            <Icon name="apple" size={24} color="#000000" />
-                          </TouchableOpacity>
+                          {/* Dynamic SSO providers from backend */}
+                          {ssoProviders.length > 0 ? (
+                            ssoProviders.map((provider) => (
+                              <TouchableOpacity
+                                key={provider.id}
+                                style={[styles.socialButton, { borderColor: provider.buttonColor || '#e5e5e5' }]}
+                                onPress={() => handleSSOLogin(provider.name as any)}
+                              >
+                                <Icon 
+                                  name={getSSOProviderIcon(provider.name)} 
+                                  size={24} 
+                                  color={provider.buttonColor || '#333'} 
+                                />
+                              </TouchableOpacity>
+                            ))
+                          ) : (
+                            // Fallback to default providers if none configured
+                            <>
+                              <TouchableOpacity style={[styles.socialButton, styles.googleButton]} onPress={() => handleSSOLogin('google')}>
+                                <Icon name="google" size={24} color="#DB4437" />
+                              </TouchableOpacity>
+                              <TouchableOpacity style={[styles.socialButton, styles.facebookButton]} onPress={() => handleSSOLogin('facebook')}>
+                                <Icon name="facebook" size={24} color="#1877F2" />
+                              </TouchableOpacity>
+                              <TouchableOpacity style={[styles.socialButton, styles.appleButton]} onPress={() => handleSSOLogin('apple')}>
+                                <Icon name="apple" size={24} color="#000000" />
+                              </TouchableOpacity>
+                            </>
+                          )}
                         </View>
                       </View>
                     )}

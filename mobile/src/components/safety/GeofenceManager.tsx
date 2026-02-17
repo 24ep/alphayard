@@ -26,8 +26,7 @@ import {
   Spinner,
 } from 'native-base';
 // Mock MapView component for development
-import { MapCN } from '../../components/common/MapCN';
-import { Marker, Circle } from 'react-native-maps';
+import { MapCN, Marker, Circle } from '../../components/common/MapCN';
 import IconMC from 'react-native-vector-icons/MaterialCommunityIcons';
 import { colors } from '../../theme/colors';
 import { textStyles } from '../../theme/typography';

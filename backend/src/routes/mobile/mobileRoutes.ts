@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { pool } from '../../config/database'
+import { prisma } from '../../lib/prisma'
 import path from 'path'
 import fs from 'fs'
 import collectionsRouter from './collectionsRoutes'
@@ -38,9 +38,9 @@ router.get('/branding', async (req, res) => {
     let branding: any = {};
 
     // 1. Try global app_settings first (Fastest)
-    const { rows: settingsRows } = await pool.query(
-      "SELECT value FROM app_settings WHERE key = 'branding' LIMIT 1"
-    );
+    const settingsRows = await prisma.$queryRaw<any[]>`
+      SELECT value FROM public.app_settings WHERE key = 'branding' LIMIT 1
+    `;
 
     if (settingsRows.length > 0 && settingsRows[0].value) {
       const val = settingsRows[0].value;
@@ -51,9 +51,9 @@ router.get('/branding', async (req, res) => {
     // This handles cases where Admin saved to 'applications' table but sync to 'app_settings' failed or lagged
     if (!branding.screens || branding.screens.length === 0) {
       console.log('[mobileRoutes] Global branding missing screens. Falling back to active application...');
-      const { rows: appRows } = await pool.query(
-        "SELECT branding FROM applications WHERE is_active = true LIMIT 1"
-      );
+      const appRows = await prisma.$queryRaw<any[]>`
+        SELECT branding FROM core.applications WHERE is_active = true LIMIT 1
+      `;
 
       if (appRows.length > 0 && appRows[0].branding) {
         let appBranding = appRows[0].branding;
@@ -141,15 +141,19 @@ router.post('/inventory/seed', async (req, res) => {
     const { appId } = req.body;
     const extractedScreens = await extractMobileScreens();
     
-    let query = "SELECT id, name, branding FROM applications WHERE is_active = true";
-    let params: any[] = [];
-    
-    if (appId) {
-      query += " AND id = $1";
-      params.push(appId);
-    }
+    // Add core screens that might not be detected by regex but are essential
+    ['marketing', 'getstart', 'welcome', 'login', 'signup', 'home', 'personal', 'circle', 'social', 'apps', 'settings', 'profile', 'chat', 'twofactor-method', 'twofactor-verify', 'search-drawer', 'pin-setup', 'pin-unlock'].forEach(id => extractedScreens.add(id));
 
-    const { rows: apps } = await pool.query(query, params);
+    let apps;
+    if (appId) {
+      apps = await prisma.$queryRaw<any[]>`
+        SELECT id, name, branding FROM core.applications WHERE is_active = true AND id = ${appId}::uuid
+      `;
+    } else {
+      apps = await prisma.$queryRaw<any[]>`
+        SELECT id, name, branding FROM core.applications WHERE is_active = true
+      `;
+    }
     let updatedAppsCount = 0;
     let totalAddedCount = 0;
 
@@ -196,10 +200,9 @@ router.post('/inventory/seed', async (req, res) => {
 
       if (addedInThisApp > 0 || uniqueExisting.size !== screens.length) {
         branding.screens = Array.from(uniqueExisting.values());
-        await pool.query(
-          "UPDATE applications SET branding = $1, updated_at = NOW() WHERE id = $2",
-          [JSON.stringify(branding), app.id]
-        );
+        await prisma.$executeRaw`
+          UPDATE core.applications SET branding = ${JSON.stringify(branding)}::jsonb, updated_at = NOW() WHERE id = ${app.id}::uuid
+        `;
         updatedAppsCount++;
         totalAddedCount += addedInThisApp;
       }

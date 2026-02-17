@@ -1,12 +1,13 @@
 
-const { pool } = require('./src/config/database');
+const { PrismaClient } = require('./prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 
 async function describeTable() {
   try {
     console.log('--- TABLE SCHEMA: admin_users ---');
-    const { rows } = await pool.query(`
+    const rows = await prisma.$queryRawUnsafe(`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
       WHERE table_name = 'admin_users'
@@ -15,7 +16,7 @@ async function describeTable() {
     console.table(rows);
 
     console.log('--- TABLE SCHEMA: users ---');
-     const { rows: usersRows } = await pool.query(`
+     const usersRows = await prisma.$queryRawUnsafe(`
       SELECT column_name, data_type, is_nullable
       FROM information_schema.columns
       WHERE table_name = 'users'
@@ -26,7 +27,7 @@ async function describeTable() {
   } catch (err) {
     console.error('FAILED TO DESCRIBE TABLE:', err);
   } finally {
-    await pool.end();
+    await prisma.$disconnect();
   }
 }
 

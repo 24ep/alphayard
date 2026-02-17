@@ -1,12 +1,13 @@
 import { Request, Response } from 'express';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
+import { Prisma } from '../../../prisma/generated/prisma/client';
 
 /**
  * App Configuration Controller
  * Manages dynamic app configuration similar to Adobe Experience Manager (AEM)
  * Handles themes, screens, assets, feature flags, etc.
  * 
- * REFACTORED: Using direct PostgreSQL pool instead of Supabase client
+ * MIGRATED: Using Prisma client with $queryRaw for tables not yet in Prisma schema
  */
 export class AppConfigController {
 
@@ -18,7 +19,7 @@ export class AppConfigController {
     try {
       const { platform } = req.query;
 
-      // Fetch all configuration data in parallel using direct SQL
+      // Fetch all configuration data in parallel using Prisma $queryRaw
       const [
         configResult,
         screensResult,
@@ -27,26 +28,38 @@ export class AppConfigController {
         assetsResult,
         brandingResult
       ] = await Promise.all([
-        pool.query('SELECT * FROM app_configuration WHERE is_active = true'),
-        pool.query('SELECT * FROM app_screens WHERE is_active = true'),
-        pool.query('SELECT * FROM app_themes WHERE is_active = true'),
-        pool.query('SELECT * FROM app_feature_flags'),
-        pool.query('SELECT * FROM app_assets WHERE is_active = true'),
-        pool.query("SELECT * FROM app_settings WHERE key = 'branding' LIMIT 1")
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM app_configuration WHERE is_active = true
+        `,
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM app_screens WHERE is_active = true
+        `,
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM app_themes WHERE is_active = true
+        `,
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM app_feature_flags
+        `,
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM app_assets WHERE is_active = true
+        `,
+        prisma.$queryRaw<any[]>`
+          SELECT * FROM public.app_settings WHERE key = 'branding' LIMIT 1
+        `
       ]);
 
       // Transform configuration into key-value object
       const configuration: Record<string, any> = {};
-      if (configResult.rows) {
-        configResult.rows.forEach((config: any) => {
+      if (configResult) {
+        configResult.forEach((config: any) => {
           configuration[config.config_key] = config.config_value;
         });
       }
 
       // Transform screens into key-value object
       const screens: Record<string, any> = {};
-      if (screensResult.rows) {
-        screensResult.rows.forEach((screen: any) => {
+      if (screensResult) {
+        screensResult.forEach((screen: any) => {
           screens[screen.screen_key] = {
             name: screen.screen_name,
             type: screen.screen_type,
@@ -57,10 +70,10 @@ export class AppConfigController {
       }
 
       // Get default theme
-      const defaultTheme = themesResult.rows?.find((t: any) => t.is_default) || themesResult.rows?.[0];
+      const defaultTheme = themesResult?.find((t: any) => t.is_default) || themesResult?.[0];
 
       // Filter feature flags based on platform
-      let features = featuresResult.rows || [];
+      let features = featuresResult || [];
       if (platform) {
         features = features.filter((f: any) =>
           !f.target_platforms ||
@@ -70,7 +83,7 @@ export class AppConfigController {
       }
 
       // Filter assets based on platform
-      let assets = assetsResult.rows || [];
+      let assets = assetsResult || [];
       if (platform) {
         assets = assets.filter((a: any) =>
           a.platform === 'all' || a.platform === platform
@@ -97,7 +110,7 @@ export class AppConfigController {
         version: '1.0.0',
         timestamp: new Date().toISOString(),
         configuration,
-        branding: brandingResult.rows[0]?.value || null,
+        branding: brandingResult[0]?.value || null,
         screens,
         theme: defaultTheme ? {
           key: defaultTheme.theme_key,
@@ -129,10 +142,9 @@ export class AppConfigController {
     try {
       const { screenKey } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM app_screens WHERE screen_key = $1 AND is_active = true LIMIT 1',
-        [screenKey]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM app_screens WHERE screen_key = ${screenKey} AND is_active = true LIMIT 1
+      `;
 
       const data = rows[0];
 
@@ -183,18 +195,21 @@ export class AppConfigController {
       }
 
       // First get current version
-      const { rows: currentRows } = await pool.query(
-        'SELECT version FROM app_screens WHERE screen_key = $1',
-        [screenKey]
-      );
+      const currentRows = await prisma.$queryRaw<any[]>`
+        SELECT version FROM app_screens WHERE screen_key = ${screenKey}
+      `;
 
-      const { rows } = await pool.query(
-        `UPDATE app_screens 
-         SET configuration = $1, updated_by = $2, version = $3, updated_at = NOW()
-         WHERE screen_key = $4
-         RETURNING *`,
-        [configuration, userId, (currentRows[0]?.version || 0) + 1, screenKey]
-      );
+      const newVersion = (currentRows[0]?.version || 0) + 1;
+
+      const rows = await prisma.$queryRaw<any[]>`
+        UPDATE app_screens 
+        SET configuration = ${JSON.stringify(configuration)}::jsonb, 
+            updated_by = ${userId}, 
+            version = ${newVersion}, 
+            updated_at = NOW()
+        WHERE screen_key = ${screenKey}
+        RETURNING *
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Screen not found' });
@@ -212,9 +227,9 @@ export class AppConfigController {
    */
   async getThemes(req: Request, res: Response) {
     try {
-      const { rows } = await pool.query(
-        'SELECT * FROM app_themes WHERE is_active = true ORDER BY is_default DESC'
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM app_themes WHERE is_active = true ORDER BY is_default DESC
+      `;
 
       res.json({ themes: rows });
     } catch (error) {
@@ -238,36 +253,35 @@ export class AppConfigController {
 
       // If setting as default, unset others first
       if (is_default) {
-        await pool.query(
-          'UPDATE app_themes SET is_default = false WHERE theme_key != $1',
-          [themeKey]
-        );
+        await prisma.$queryRaw`
+          UPDATE app_themes SET is_default = false WHERE theme_key != ${themeKey}
+        `;
       }
 
-      // Build dynamic update
-      const updates: string[] = ['updated_by = $1', 'updated_at = NOW()'];
-      const params: any[] = [userId];
-      let paramIndex = 2;
+      // Build dynamic update using Prisma.sql for dynamic queries
+      const updateParts: Prisma.Sql[] = [
+        Prisma.sql`updated_by = ${userId}`,
+        Prisma.sql`updated_at = NOW()`
+      ];
 
       if (theme_config !== undefined) {
-        updates.push(`theme_config = $${paramIndex++}`);
-        params.push(theme_config);
+        updateParts.push(Prisma.sql`theme_config = ${JSON.stringify(theme_config)}::jsonb`);
       }
       if (theme_name !== undefined) {
-        updates.push(`theme_name = $${paramIndex++}`);
-        params.push(theme_name);
+        updateParts.push(Prisma.sql`theme_name = ${theme_name}`);
       }
       if (is_default !== undefined) {
-        updates.push(`is_default = $${paramIndex++}`);
-        params.push(is_default);
+        updateParts.push(Prisma.sql`is_default = ${is_default}`);
       }
 
-      params.push(themeKey);
-
-      const { rows } = await pool.query(
-        `UPDATE app_themes SET ${updates.join(', ')} WHERE theme_key = $${paramIndex} RETURNING *`,
-        params
-      );
+      const updateClause = Prisma.join(updateParts, ', ');
+      
+      const rows = await prisma.$queryRaw<any[]>`
+        UPDATE app_themes 
+        SET ${updateClause}
+        WHERE theme_key = ${themeKey}
+        RETURNING *
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Theme not found' });
@@ -287,10 +301,9 @@ export class AppConfigController {
     try {
       const { assetKey } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT * FROM app_assets WHERE asset_key = $1 AND is_active = true LIMIT 1',
-        [assetKey]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM app_assets WHERE asset_key = ${assetKey} AND is_active = true LIMIT 1
+      `;
 
       const data = rows[0];
 
@@ -334,17 +347,23 @@ export class AppConfigController {
       const { assetType } = req.params;
       const { platform } = req.query;
 
-      let sql = 'SELECT * FROM app_assets WHERE asset_type = $1 AND is_active = true';
-      const params: any[] = [assetType];
-
+      let rows: any[];
       if (platform) {
-        sql += " AND (platform = 'all' OR platform = $2)";
-        params.push(platform);
+        rows = await prisma.$queryRaw<any[]>`
+          SELECT * FROM app_assets 
+          WHERE asset_type = ${assetType} 
+            AND is_active = true 
+            AND (platform = 'all' OR platform = ${platform as string})
+          ORDER BY priority DESC
+        `;
+      } else {
+        rows = await prisma.$queryRaw<any[]>`
+          SELECT * FROM app_assets 
+          WHERE asset_type = ${assetType} 
+            AND is_active = true 
+          ORDER BY priority DESC
+        `;
       }
-
-      sql += ' ORDER BY priority DESC';
-
-      const { rows } = await pool.query(sql, params);
 
       res.json({ assets: rows });
     } catch (error) {
@@ -365,22 +384,32 @@ export class AppConfigController {
 
       const { asset_key, asset_name, asset_type, asset_url, platform, priority, metadata, dimensions } = req.body;
 
-      const { rows } = await pool.query(
-        `INSERT INTO app_assets (asset_key, asset_name, asset_type, asset_url, platform, priority, metadata, dimensions, updated_by, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
-         ON CONFLICT (asset_key) DO UPDATE SET
-           asset_name = EXCLUDED.asset_name,
-           asset_type = EXCLUDED.asset_type,
-           asset_url = EXCLUDED.asset_url,
-           platform = EXCLUDED.platform,
-           priority = EXCLUDED.priority,
-           metadata = EXCLUDED.metadata,
-           dimensions = EXCLUDED.dimensions,
-           updated_by = EXCLUDED.updated_by,
-           updated_at = NOW()
-         RETURNING *`,
-        [asset_key, asset_name, asset_type, asset_url, platform || 'all', priority || 0, metadata || {}, dimensions || {}, userId]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        INSERT INTO app_assets (asset_key, asset_name, asset_type, asset_url, platform, priority, metadata, dimensions, updated_by, is_active)
+        VALUES (
+          ${asset_key}, 
+          ${asset_name}, 
+          ${asset_type}, 
+          ${asset_url}, 
+          ${platform || 'all'}, 
+          ${priority || 0}, 
+          ${JSON.stringify(metadata || {})}::jsonb, 
+          ${JSON.stringify(dimensions || {})}::jsonb, 
+          ${userId}, 
+          true
+        )
+        ON CONFLICT (asset_key) DO UPDATE SET
+          asset_name = EXCLUDED.asset_name,
+          asset_type = EXCLUDED.asset_type,
+          asset_url = EXCLUDED.asset_url,
+          platform = EXCLUDED.platform,
+          priority = EXCLUDED.priority,
+          metadata = EXCLUDED.metadata,
+          dimensions = EXCLUDED.dimensions,
+          updated_by = EXCLUDED.updated_by,
+          updated_at = NOW()
+        RETURNING *
+      `;
 
       res.json({ asset: rows[0] });
     } catch (error) {
@@ -396,7 +425,9 @@ export class AppConfigController {
     try {
       const { platform } = req.query;
 
-      const { rows } = await pool.query('SELECT * FROM app_feature_flags');
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT * FROM app_feature_flags
+      `;
 
       // Filter by platform if specified
       let features = rows || [];
@@ -434,25 +465,27 @@ export class AppConfigController {
         return res.status(401).json({ error: 'Unauthorized' });
       }
 
-      const updates: string[] = ['updated_by = $1', 'updated_at = NOW()'];
-      const params: any[] = [userId];
-      let paramIndex = 2;
+      // Build dynamic update using Prisma.sql for dynamic queries
+      const updateParts: Prisma.Sql[] = [
+        Prisma.sql`updated_by = ${userId}`,
+        Prisma.sql`updated_at = NOW()`
+      ];
 
       if (is_enabled !== undefined) {
-        updates.push(`is_enabled = $${paramIndex++}`);
-        params.push(is_enabled);
+        updateParts.push(Prisma.sql`is_enabled = ${is_enabled}`);
       }
       if (rollout_percentage !== undefined) {
-        updates.push(`rollout_percentage = $${paramIndex++}`);
-        params.push(rollout_percentage);
+        updateParts.push(Prisma.sql`rollout_percentage = ${rollout_percentage}`);
       }
 
-      params.push(featureKey);
+      const updateClause = Prisma.join(updateParts, ', ');
 
-      const { rows } = await pool.query(
-        `UPDATE app_feature_flags SET ${updates.join(', ')} WHERE feature_key = $${paramIndex} RETURNING *`,
-        params
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        UPDATE app_feature_flags 
+        SET ${updateClause}
+        WHERE feature_key = ${featureKey}
+        RETURNING *
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Feature flag not found' });
@@ -472,10 +505,10 @@ export class AppConfigController {
     try {
       const { configKey } = req.params;
 
-      const { rows } = await pool.query(
-        'SELECT config_value FROM app_configuration WHERE config_key = $1 AND is_active = true LIMIT 1',
-        [configKey]
-      );
+      const rows = await prisma.$queryRaw<any[]>`
+        SELECT config_value FROM app_configuration 
+        WHERE config_key = ${configKey} AND is_active = true LIMIT 1
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Configuration not found' });
@@ -502,18 +535,21 @@ export class AppConfigController {
       }
 
       // First get current version
-      const { rows: currentRows } = await pool.query(
-        'SELECT version FROM app_configuration WHERE config_key = $1',
-        [configKey]
-      );
+      const currentRows = await prisma.$queryRaw<any[]>`
+        SELECT version FROM app_configuration WHERE config_key = ${configKey}
+      `;
 
-      const { rows } = await pool.query(
-        `UPDATE app_configuration 
-         SET config_value = $1, updated_by = $2, version = $3, updated_at = NOW()
-         WHERE config_key = $4
-         RETURNING *`,
-        [value, userId, (currentRows[0]?.version || 0) + 1, configKey]
-      );
+      const newVersion = (currentRows[0]?.version || 0) + 1;
+
+      const rows = await prisma.$queryRaw<any[]>`
+        UPDATE app_configuration 
+        SET config_value = ${JSON.stringify(value)}::jsonb, 
+            updated_by = ${userId}, 
+            version = ${newVersion}, 
+            updated_at = NOW()
+        WHERE config_key = ${configKey}
+        RETURNING *
+      `;
 
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Configuration not found' });

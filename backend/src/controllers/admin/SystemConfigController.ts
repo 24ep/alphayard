@@ -1,18 +1,11 @@
 import { Request, Response } from 'express';
 import { SystemConfigModel } from '../../models/SystemConfigModel';
 import { CountryModel } from '../../models/CountryModel';
-import { pool } from '../../config/database';
 
 export class SystemConfigController {
-    private countryModel: CountryModel;
-
-    constructor() {
-        this.countryModel = new CountryModel(pool);
-    }
-
     async getCountries(req: Request, res: Response) {
         try {
-            const countries = await this.countryModel.getAllActive();
+            const countries = await CountryModel.getAllActive();
             res.json(countries);
         } catch (error) {
             console.error('Error fetching countries:', error);

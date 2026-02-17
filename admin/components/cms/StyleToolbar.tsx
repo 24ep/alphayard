@@ -138,7 +138,8 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
                     : 'border-gray-300'
                 }`}
                 style={{ backgroundColor: color }}
-                title={`Background: ${color}`}
+                aria-label={`Select color ${color}`}
+                title={`Select color ${color}`}
               />
             ))}
           </div>
@@ -206,6 +207,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
             <button
               onClick={onMoveUp}
               className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              aria-label="Move up"
               title="Move up"
             >
               <ArrowUpIcon className="h-4 w-4" />
@@ -215,6 +217,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
             <button
               onClick={onMoveDown}
               className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              aria-label="Move down"
               title="Move down"
             >
               <ArrowDownIcon className="h-4 w-4" />
@@ -224,6 +227,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
             <button
               onClick={onMoveLeft}
               className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              aria-label="Move left"
               title="Move left"
             >
               <ArrowLeftIcon className="h-4 w-4" />
@@ -233,6 +237,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
             <button
               onClick={onMoveRight}
               className="p-1 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+              aria-label="Move right"
               title="Move right"
             >
               <ArrowRightIcon className="h-4 w-4" />
@@ -242,6 +247,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
             <button
               onClick={onDuplicate}
               className="p-1 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded"
+              aria-label="Duplicate"
               title="Duplicate"
             >
               <DocumentDuplicateIcon className="h-4 w-4" />
@@ -250,6 +256,7 @@ export const StyleToolbar: React.FC<StyleToolbarProps> = ({
           <button
             onClick={onDelete}
             className="p-1 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+            aria-label="Delete"
             title="Delete"
           >
             <TrashIcon className="h-4 w-4" />

@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const { PrismaClient } = require('../src/prisma/generated/prisma');
 
 // Load root .env
 try {
@@ -10,15 +10,9 @@ try {
 } catch (_) { }
 
 async function main() {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString) {
-        console.error('❌ DATABASE_URL is not set in .env file');
-        process.exit(1);
-    }
+    const prisma = new PrismaClient();
 
     console.log('🔗 Connecting to database...');
-    const client = new Client({ connectionString });
-    await client.connect();
 
     const migrationPath = path.join(__dirname, '..', 'src', 'migrations', '020_notes_todos_extended.sql');
     const sql = fs.readFileSync(migrationPath, 'utf8');
@@ -28,13 +22,13 @@ async function main() {
     console.log('   Adding columns: category, priority, due_date to todos');
 
     try {
-        await client.query(sql);
+        await prisma.$executeRawUnsafe(sql);
         console.log('✅ Migration completed successfully!');
     } catch (err) {
         console.error('❌ Migration error:', err.message);
         process.exit(1);
     } finally {
-        await client.end();
+        await prisma.$disconnect();
     }
 }
 

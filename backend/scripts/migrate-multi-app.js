@@ -1,24 +1,16 @@
-const { Pool } = require('pg');
+const { PrismaClient, Prisma } = require('../prisma/generated/prisma/client');
+const prisma = new PrismaClient();
 const dotenv = require('dotenv');
 const path = require('path');
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-});
-
 async function migrate() {
-    const client = await pool.connect();
     try {
-        await client.query('BEGIN');
+        await prisma.$executeRawUnsafe('BEGIN');
 
         console.log('Creating applications table...');
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             CREATE TABLE IF NOT EXISTS public.applications (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -29,39 +21,38 @@ async function migrate() {
                 is_active BOOLEAN DEFAULT true,
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            );
+            )
         `);
 
         console.log('Adding application_id to families...');
-        await client.query(`
+        await prisma.$executeRawUnsafe(`
             ALTER TABLE public.families 
-            ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES public.applications(id);
+            ADD COLUMN IF NOT EXISTS application_id UUID REFERENCES public.applications(id)
         `);
 
         console.log('Creating default application...');
-        const res = await client.query(`
+        const res = await prisma.$queryRaw(Prisma.sql`
             INSERT INTO public.applications (name, slug, description)
-            VALUES ('Default App', 'default-app', 'The initial default application')
+            VALUES (${'Default App'}, ${'default-app'}, ${'The initial default application'})
             ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-            RETURNING id;
+            RETURNING id
         `);
         
-        const defaultAppId = res.rows[0].id;
+        const defaultAppId = res[0].id;
         console.log(`Default App ID: ${defaultAppId}`);
 
         console.log('Mapping existing families to default application...');
-        await client.query(`
-            UPDATE public.families SET application_id = $1 WHERE application_id IS NULL;
-        `, [defaultAppId]);
+        await prisma.$executeRaw(Prisma.sql`
+            UPDATE public.families SET application_id = ${defaultAppId}::uuid WHERE application_id IS NULL
+        `);
 
-        await client.query('COMMIT');
+        await prisma.$executeRawUnsafe('COMMIT');
         console.log('Migration completed successfully.');
     } catch (err) {
-        await client.query('ROLLBACK');
+        await prisma.$executeRawUnsafe('ROLLBACK');
         console.error('Migration failed:', err);
     } finally {
-        client.release();
-        await pool.end();
+        await prisma.$disconnect();
     }
 }
 

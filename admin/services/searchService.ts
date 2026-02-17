@@ -60,23 +60,18 @@ class SearchService {
         console.error('Error searching users:', error)
       }
 
-      // Search families
+      // Search families using generic collection endpoint
       try {
-        const families = await adminService.getFamilies()
-        const CircleResults = families
-          .filter(Circle => 
-            Circle.name?.toLowerCase().includes(searchTerm) ||
-            Circle.id?.toLowerCase().includes(searchTerm)
-          )
-          .slice(0, 5)
-          .map(Circle => ({
-            id: Circle.id || '',
+        const response = await adminService.getCollectionItems('circles', { search: searchTerm, limit: 5 })
+        const CircleResults = (response.entities || [])
+          .map((entity: any) => ({
+            id: entity.id || '',
             type: 'Circle' as const,
-            title: Circle.name || 'Unnamed Circle',
-            subtitle: `Circle ID: ${Circle.id}`,
-            description: `${Circle.member_count || 0} members`,
-            url: `?module=families&id=${Circle.id}`,
-            metadata: { memberCount: Circle.member_count }
+            title: entity.attributes?.name || entity.data?.name || 'Unnamed Circle',
+            subtitle: `Circle ID: ${entity.id}`,
+            description: `${entity.attributes?.member_count || entity.data?.member_count || 0} members`,
+            url: `?module=families&id=${entity.id}`,
+            metadata: { memberCount: entity.attributes?.member_count || entity.data?.member_count || 0 }
           }))
         results.push(...CircleResults)
       } catch (error) {

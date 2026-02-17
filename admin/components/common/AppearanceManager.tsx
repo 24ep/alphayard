@@ -56,16 +56,54 @@ export function AppearanceManager() {
 
   useEffect(() => {
     if (currentApp) {
-      const sourceBranding = currentApp.branding || currentApp.settings?.branding
+      // Parse branding if it's a string (can happen if stored as JSON string)
+      let sourceBranding = currentApp.branding || currentApp.settings?.branding
+      if (sourceBranding) {
+        // If branding is a string, parse it
+        if (typeof sourceBranding === 'string') {
+          try {
+            sourceBranding = JSON.parse(sourceBranding)
+            console.log('[AppearanceManager] Parsed branding from string:', { screens: sourceBranding.screens?.length })
+          } catch (e) {
+            console.error('[AppearanceManager] Failed to parse branding string:', e)
+            sourceBranding = null
+          }
+        }
+        
+        // Log loaded branding for debugging
+        console.log('[AppearanceManager] Loading branding:', {
+          hasBranding: !!sourceBranding,
+          screensCount: sourceBranding?.screens?.length || 0,
+          screens: sourceBranding?.screens?.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            hasBackground: !!s.background,
+            backgroundType: typeof s.background === 'string' ? 'string' : s.background?.mode || 'none'
+          }))
+        })
+        }
+        
       if (sourceBranding) {
         // Ensure critical sub-objects exist
         const defaultScreens = [
+            { id: 'marketing', name: 'Marketing', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'getstart', name: 'Get Started', background: '', resizeMode: 'cover', type: 'screen' },
             { id: 'welcome', name: 'Welcome', background: '', resizeMode: 'cover', type: 'screen' },
             { id: 'login', name: 'Login / Sign Up', background: '', resizeMode: 'cover', type: 'screen' },
-            { id: 'home', name: 'Home (You)', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'signup', name: 'Signup Flow', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'twofactor-method', name: '2FA Method', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'twofactor-verify', name: '2FA Verify', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'personal', name: 'Personal (You)', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'home', name: 'Home (Legacy)', background: '', resizeMode: 'cover', type: 'screen' },
             { id: 'circle', name: 'Circle', background: '', resizeMode: 'cover', type: 'screen' },
             { id: 'social', name: 'Social', background: '', resizeMode: 'cover', type: 'screen' },
-            { id: 'apps', name: 'Workspace (Apps)', background: '', resizeMode: 'cover', type: 'screen' }
+            { id: 'apps', name: 'Workspace (Apps)', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'settings', name: 'Settings', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'profile', name: 'Profile', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'chat', name: 'Chat List', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'pin-setup', name: 'Pin Setup', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'pin-unlock', name: 'Pin Unlock', background: '', resizeMode: 'cover', type: 'screen' },
+            { id: 'search-drawer', name: 'Search Drawer', background: '', resizeMode: 'cover', type: 'screen' }
         ];
 
         // Merge existing screens with defaults (PRESERVE Custom Screens + Remove Case-Insensitive Duplicates)
@@ -89,9 +127,19 @@ export function AppearanceManager() {
                     // Start fresh if missing
                     screenMap.set(lowerId, def);
                 } else {
-                    // Merge defaults into existing if needed (optional, but good for missing props)
+                    // Merge defaults into existing if needed (PRESERVE existing background/images)
                     const existing = screenMap.get(lowerId);
-                    screenMap.set(lowerId, { ...def, ...existing });
+                    // Deep merge to preserve nested objects like background
+                    const merged = {
+                        ...def,
+                        ...existing,
+                        // Preserve background structure (important for images)
+                        background: existing.background || def.background,
+                        // Preserve other important fields
+                        resizeMode: existing.resizeMode || def.resizeMode,
+                        name: existing.name || def.name
+                    };
+                    screenMap.set(lowerId, merged);
                 }
             });
 
@@ -117,7 +165,7 @@ export function AppearanceManager() {
             announcements: sourceBranding.announcements || { enabled: false, text: '', linkUrl: '', type: 'info', isDismissible: true },
             updates: sourceBranding.updates || { minVersion: '1.0.0', storeUrl: '', forceUpdate: false },
             api: sourceBranding.api || { baseUrl: '', timeout: 30000, cacheExpiry: 3600 },
-            analytics: sourceBranding.analytics || { sentryDsn: '', mixpanelToken: '', enableDebugLogs: false },
+            analytics: sourceBranding.analytics || { sentryDsn: '', mixpanelToken: '', googleAnalyticsId: '', enableDebugLogs: false },
             security: sourceBranding.security || { sessionTimeout: 3600, disableScreenshots: true, mandatoryMFA: false },
             legal: sourceBranding.legal || { privacyPolicyUrl: '', termsOfServiceUrl: '', cookiePolicyUrl: '', dataDeletionUrl: '', dataRequestEmail: '' },
             seo: sourceBranding.seo || { title: currentApp.name, description: '', keywords: [], ogImage: '', twitterHandle: '', appleAppId: '' },
@@ -144,7 +192,7 @@ export function AppearanceManager() {
                             name: comp.name,
                             type: comp.type,
                             styles: comp.styles,
-                            mobileConfig: comp.mobileConfig,
+                            mobileConfig: comp.mobileConfig || defaultComp?.mobileConfig,
                             config: { ...(defaultComp?.config || {}), ...(comp.config || {}) }
                         };
                     })
@@ -303,7 +351,7 @@ export function AppearanceManager() {
           localization: { defaultLanguage: 'en', supportedLanguages: ['en'], enableRTL: false },
           api: { baseUrl: '', timeout: 30000, cacheExpiry: 3600 },
           security: { sessionTimeout: 3600, disableScreenshots: true, mandatoryMFA: false },
-          analytics: { sentryDsn: '', mixpanelToken: '', enableDebugLogs: false },
+          analytics: { sentryDsn: '', mixpanelToken: '', googleAnalyticsId: '', enableDebugLogs: false },
           legal: { privacyPolicyUrl: '', termsOfServiceUrl: '', cookiePolicyUrl: '', dataDeletionUrl: '', dataRequestEmail: '' },
           seo: { title: currentApp.name, description: '', keywords: [], ogImage: '', twitterHandle: '', appleAppId: '' },
           ux: { animations: 'standard', haptics: 'light', loadingStyle: 'spinner' },
@@ -340,16 +388,52 @@ export function AppearanceManager() {
     try {
       const brandingPayload = { ...branding, categories: categories }
       
+      // Log image URLs before saving for debugging
+      console.log('[AppearanceManager] Saving branding with screens:', brandingPayload.screens?.map(s => ({
+        id: s.id,
+        name: s.name,
+        background: s.background
+      })))
+      
       // Save global branding settings
-      await adminService.upsertApplicationSetting({ 
+      const result = await adminService.upsertApplicationSetting({ 
           setting_key: 'branding', 
           setting_value: brandingPayload 
       })
+      
+      // Update local state with saved branding to ensure immediate UI update
+      if (result?.setting?.value) {
+        const savedBranding = typeof result.setting.value === 'string' 
+          ? JSON.parse(result.setting.value) 
+          : result.setting.value
+        
+        // Log saved branding to verify image URLs are preserved
+        console.log('[AppearanceManager] Saved branding loaded from response:', {
+          screensCount: savedBranding.screens?.length || 0,
+          screens: savedBranding.screens?.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            hasBackground: !!s.background,
+            backgroundType: typeof s.background === 'string' ? 'string' : s.background?.mode || 'none',
+            backgroundImage: typeof s.background === 'object' && s.background?.mode === 'image' ? s.background.image : null
+          }))
+        })
+        
+        setBranding(savedBranding)
+        
+        // Also update currentApp in context to ensure it's in sync
+        // This ensures that when the component re-renders, it has the latest branding
+        if (currentApp) {
+          const updatedApp = { ...currentApp, branding: savedBranding }
+          // Note: We can't directly update currentApp here, but refreshApplications will reload it
+        }
+      }
       
       toast({ title: "Appearance updated", description: "Visual changes saved successfully." })
       await refreshApplications()
     } catch (error) {
       console.error('Failed to save appearance:', error)
+      toast({ title: "Save failed", description: "Could not save appearance changes.", variant: "destructive" })
     } finally {
       setSaving(false)
     }
@@ -365,17 +449,37 @@ export function AppearanceManager() {
       try {
           // Perform actual file upload
           const response = await adminService.uploadFile(file)
-          const realUrl = response.file.url
+          const realUrl = response.file?.url || response.file?.id
+          
+          console.log('[AppearanceManager] File uploaded:', {
+            field,
+            screenId,
+            fileId: response.file?.id,
+            url: realUrl,
+            fullResponse: response
+          })
+
+          if (!realUrl) {
+            throw new Error('No URL returned from upload')
+          }
 
           if (screenId && field === 'screens') {
               setBranding(prev => {
                   if (!prev) return null
+                  const updatedScreens = prev.screens?.map(s => s.id === screenId ? { 
+                      ...s, 
+                      background: { mode: 'image', image: realUrl }
+                  } : s) || []
+                  
+                  console.log('[AppearanceManager] Updated screen background:', {
+                    screenId,
+                    url: realUrl,
+                    updatedScreen: updatedScreens.find(s => s.id === screenId)
+                  })
+                  
                   return {
                       ...prev,
-                      screens: prev.screens?.map(s => s.id === screenId ? { 
-                          ...s, 
-                          background: { mode: 'image', image: realUrl }
-                      } : s) || []
+                      screens: updatedScreens
                   }
               })
           } else {
@@ -383,15 +487,41 @@ export function AppearanceManager() {
           }
 
           toast({ title: "Asset uploaded", description: "Image uploaded successfully. Please Save Changes." })
-      } catch (error) {
+      } catch (error: any) {
           console.error('Upload failed:', error)
-          toast({ title: "Upload failed", description: "Could not upload image. Please try again.", variant: "destructive" })
+          toast({ 
+            title: "Upload failed", 
+            description: error.message || "Could not upload image. Please try again.", 
+            variant: "destructive" 
+          })
       } finally {
           setUploading(null)
       }
   }
 
-  const activeCategory = categories.find(c => c.id === selectedCategory)
+  let activeCategory: any = categories.find(c => c.id === selectedCategory)
+
+  // If no direct category match, check if selectedCategory is a componentName (Component Studio)
+  if (!activeCategory) {
+      const matchingComponents: any[] = []
+      categories.forEach(cat => {
+          cat.components.forEach(comp => {
+              if (comp.mobileConfig?.componentName === selectedCategory) {
+                  matchingComponents.push(comp)
+              }
+          })
+      })
+
+      if (matchingComponents.length > 0) {
+          activeCategory = {
+              id: selectedCategory,
+              name: selectedCategory.replace(/([A-Z])/g, ' $1').trim(), // Add spaces to CamelCase
+              description: `Manage styles for ${selectedCategory} components.`,
+              icon: 'library',
+              components: matchingComponents
+          }
+      }
+  }
 
   // Accordion Section Logic
   const sidebarSections = getSidebarSections(categories)
@@ -542,7 +672,8 @@ export function AppearanceManager() {
                             activeCategory={activeCategory} 
                             handleUpdateComponentStyle={(catId, compId, field, value) => {
                                 setCategories(prev => prev.map(c => {
-                                    if (c.id === catId) {
+                                    // Update if category contains this component (works for both Category View and Component Studio View)
+                                    if (c.components.some(comp => comp.id === compId)) {
                                         return {
                                             ...c,
                                             components: c.components.map((comp: any) => 
@@ -555,7 +686,7 @@ export function AppearanceManager() {
                             }}
                             handleUpdateComponentConfig={(catId, compId, field, value) => {
                                 setCategories(prev => prev.map(c => {
-                                    if (c.id === catId) {
+                                    if (c.components.some(comp => comp.id === compId)) {
                                         return {
                                             ...c,
                                             components: c.components.map((comp: any) => 
@@ -571,7 +702,7 @@ export function AppearanceManager() {
                             }}
                             handleDuplicateComponent={(catId: string, compId: string) => {
                                 setCategories(prev => prev.map(c => {
-                                    if (c.id === catId) {
+                                    if (c.components.some(comp => comp.id === compId)) {
                                         const compIndex = c.components.findIndex(comp => comp.id === compId);
                                         if (compIndex === -1) return c;
                                         

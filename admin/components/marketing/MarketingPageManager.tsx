@@ -157,7 +157,7 @@ export default function MarketingPageManager() {
         </div>
         <Button 
           onClick={() => handleOpenModal()}
-          className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+          className="bg-black hover:bg-gray-800 text-white flex items-center gap-2"
         >
           <Plus className="w-4 h-4" /> Add New Slide
         </Button>
@@ -438,7 +438,7 @@ export default function MarketingPageManager() {
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button type="submit" className="bg-black hover:bg-gray-800 text-white">
               {editingSlide ? 'Update Slide' : 'Create Slide'}
             </Button>
           </div>

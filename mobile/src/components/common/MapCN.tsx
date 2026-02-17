@@ -1,76 +1,62 @@
 import React from 'react';
-import MapView, { MapViewProps, UrlTile, PROVIDER_DEFAULT, PROVIDER_GOOGLE, Marker as RNMarker, MapMarkerProps as RNMarkerProps } from 'react-native-maps';
+import { View, Platform } from 'react-native';
+import { Map, MapMarker, MapCircle } from '../ui/map';
 import { useColorModeValue } from 'native-base';
-import { Platform } from 'react-native';
 
-export interface MarkerProps extends RNMarkerProps {
-    avatarLabel?: string;
-    isOnline?: boolean;
-    children?: React.ReactNode;
-}
+// Re-export Marker with compatible props
+export const Marker = MapMarker;
+export const Circle = MapCircle;
 
-export const Marker: React.FC<MarkerProps> = ({ avatarLabel, isOnline, children, ...props }) => {
-    return <RNMarker {...props}>{children}</RNMarker>;
-};
-
-interface MapCNProps extends MapViewProps {
+interface MapCNProps {
     children?: React.ReactNode;
     theme?: 'light' | 'dark' | 'system';
     focusCoordinate?: {
         latitude: number;
         longitude: number;
     };
+    style?: any;
+    region?: {
+        latitude: number;
+        longitude: number;
+        latitudeDelta: number;
+        longitudeDelta: number;
+    };
+    // Compatibility props
+    showsUserLocation?: boolean;
+    showsMyLocationButton?: boolean;
+    showsCompass?: boolean;
+    provider?: any;
+    mapType?: any;
+    rotateEnabled?: boolean;
+    onPress?: (e: any) => void;
 }
 
 /**
  * MapCN Component
- * Replicates the visual style of https://mapcn.vercel.app/ using CartoDB tiles.
+ * Now wraps the MapLibre-based Map component to provide the MapCN style.
  */
-export const MapCN: React.FC<MapCNProps> = ({ children, theme = 'system', style, focusCoordinate, ...props }) => {
+export const MapCN: React.FC<MapCNProps> = ({ 
+    children, 
+    theme = 'system', 
+    style, 
+    focusCoordinate, 
+    region,
+    showsUserLocation,
+    ...props 
+}) => {
     const systemColorMode = useColorModeValue('light', 'dark');
     const activeTheme = theme === 'system' ? systemColorMode : theme;
-    const mapRef = React.useRef<MapView>(null);
-
-    React.useEffect(() => {
-        if (focusCoordinate && mapRef.current) {
-            mapRef.current.animateToRegion({
-                latitude: focusCoordinate.latitude,
-                longitude: focusCoordinate.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            }, 1000);
-        }
-    }, [focusCoordinate]);
-
-    // CartoDB Basemap URLs (Standard for "mapcn" clean look)
-    const tileUrl = activeTheme === 'dark'
-        ? "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"
-        : "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
-
+    
+    // Map existing props to new component
     return (
-        <MapView
-            ref={mapRef}
-            provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : PROVIDER_DEFAULT}
-            mapType={Platform.OS === 'android' ? "none" : "standard"} // On iOS standard + overlay often works better, but "none" is safer for pure tiles. Let's try "none".
-            style={[{ flex: 1 }, style]}
-            rotateEnabled={true}
-            showsUserLocation={true}
-            showsMyLocationButton={true}
-            showsCompass={true}
+        <Map
+            theme={activeTheme === 'dark' ? 'dark' : 'light'}
+            style={style}
+            initialRegion={region} // Note: region changes won't be animated automatically by this simple wrapper, would need Ref
+            showsUserLocation={showsUserLocation}
             {...props}
         >
-            {/* 
-        Render the Carto Tiles. 
-        Note: On Google Maps (Android), mapType="none" hides the base map, and UrlTile renders our custom tiles.
-      */}
-            <UrlTile
-                urlTemplate={tileUrl}
-                zIndex={-3}
-                maximumZ={19}
-                flipY={false}
-                tileSize={256}
-            />
             {children}
-        </MapView>
+        </Map>
     );
 };

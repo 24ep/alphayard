@@ -1,6 +1,6 @@
 import express from 'express';
 import { body } from 'express-validator';
-import { pool } from '../../config/database';
+import { prisma } from '../../lib/prisma';
 import { authenticateToken } from '../../middleware/auth';
 import { validateRequest } from '../../middleware/validation';
 
@@ -12,19 +12,19 @@ router.use(authenticateToken as any);
 // List users (for admin console/mobile users management)
 router.get('/', async (_req: any, res: any) => {
   try {
-    // Fetch basic user info using native pg pool
-    const result = await pool.query(`
+    // Fetch basic user info using Prisma
+    const result = await prisma.$queryRaw<any[]>`
       SELECT 
-        id, email, first_name, last_name, phone, avatar_url, date_of_birth, 
+        id, email, first_name, last_name, phone_number as phone, avatar_url, date_of_birth, 
         user_type, 
         (SELECT json_agg(target_id) FROM entity_relations WHERE source_id = users.id AND relation_type = 'member_of') as circle_ids,
         is_onboarding_complete, 
-        preferences, raw_user_meta_data->>'role' as role, is_active, created_at, updated_at
-      FROM users
+        preferences, preferences->>'role' as role, is_active, created_at, updated_at
+      FROM core.users
       ORDER BY created_at DESC
-    `);
+    `;
 
-    const data = result.rows;
+    const data = result;
 
     const users = (data || []).map((u: any) => ({
       id: u.id,
@@ -66,19 +66,19 @@ router.get('/', async (_req: any, res: any) => {
 // Get user profile
 router.get('/profile', async (req: any, res: any) => {
   try {
-    // Get user profile using native pg pool
-    const result = await pool.query(`
+    // Get user profile using Prisma
+    const result = await prisma.$queryRaw<any[]>`
       SELECT 
-        id, email, first_name, last_name, avatar_url, phone, date_of_birth, 
+        id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, 
         user_type, 
         (SELECT json_agg(target_id) FROM entity_relations WHERE source_id = users.id AND relation_type = 'member_of') as circle_ids,
         is_onboarding_complete, 
-        preferences, raw_user_meta_data->>'role' as role, is_active, created_at, updated_at
-      FROM users
-      WHERE id = $1
-    `, [req.user.id]);
+        preferences, preferences->>'role' as role, is_active, created_at, updated_at
+      FROM core.users
+      WHERE id = ${req.user.id}
+    `;
 
-    const user = result.rows[0];
+    const user = result[0];
 
     if (!user) {
       return res.status(404).json({
@@ -142,21 +142,21 @@ router.put('/profile', [
 
     if (firstName) { fields.push(`first_name = $${idx++}`); params.push(firstName); }
     if (lastName) { fields.push(`last_name = $${idx++}`); params.push(lastName); }
-    if (phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(phone); }
+    if (phone !== undefined) { fields.push(`phone_number = $${idx++}`); params.push(phone); }
     if (dateOfBirth) { fields.push(`date_of_birth = $${idx++}`); params.push(dateOfBirth); }
 
     fields.push(`updated_at = $${idx++}`);
     params.push(new Date().toISOString());
 
     const updateQuery = `
-      UPDATE users 
+      UPDATE core.users 
       SET ${fields.join(', ')} 
       WHERE id = $1 
-      RETURNING id, email, first_name, last_name, avatar_url, phone, date_of_birth, updated_at
+      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, updated_at
     `;
 
-    const result = await pool.query(updateQuery, params);
-    const user = result.rows[0];
+    const result = await prisma.$queryRawUnsafe<any[]>(updateQuery, params);
+    const user = result[0];
 
     if (!user) {
       return res.status(500).json({

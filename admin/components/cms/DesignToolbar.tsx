@@ -66,11 +66,14 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 text-left">Font Weight</label>
+                <label htmlFor="font-weight" className="block text-xs font-medium text-gray-700 mb-1 text-left">Font Weight</label>
                 <select
+                  id="font-weight"
                   value={component.props?.fontWeight || 'normal'}
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, fontWeight: e.target.value } })}
                   className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                  aria-label="Font weight"
+                  title="Select font weight"
                 >
                   <option value="normal" style={{ fontWeight: 'normal' }}>Normal</option>
                   <option value="medium" style={{ fontWeight: '500' }}>Medium</option>
@@ -129,11 +132,14 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1 text-left">Line Height</label>
+                <label htmlFor="line-height" className="block text-xs font-medium text-gray-700 mb-1 text-left">Line Height</label>
                 <select
+                  id="line-height"
                   value={component.props?.lineHeight || 1.5}
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, lineHeight: parseFloat(e.target.value) } })}
                   className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                  aria-label="Line height"
+                  title="Select line height"
                 >
                   <option value={1} style={{ lineHeight: '1.0' }}>1.0 - Tight</option>
                   <option value={1.2} style={{ lineHeight: '1.2' }}>1.2 - Compact</option>
@@ -164,13 +170,17 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
           <div className="space-y-3">
             {/* Border Color */}
             <div>
-              <label className="block text-xs text-gray-600 mb-1 text-left">Border</label>
+              <label htmlFor="border-color" className="block text-xs text-gray-600 mb-1 text-left">Border</label>
               <div className="flex items-center space-x-2">
                 <input
+                  id="border-color"
                   type="color"
                   value={component.props?.borderColor || '#E5E7EB'}
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, borderColor: e.target.value } })}
                   className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
+                  aria-label="Border color"
+                  title="Select border color"
+                  placeholder="Border color"
                 />
                 <input
                   type="text"
@@ -185,13 +195,17 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
             {/* Text Color */}
             {(component.type === 'text' || component.type === 'heading' || component.type === 'paragraph' || component.type === 'caption' || component.type === 'button') && (
               <div>
-                <label className="block text-xs text-gray-600 mb-1 text-left">Text Color</label>
+                <label htmlFor="text-color" className="block text-xs text-gray-600 mb-1 text-left">Text Color</label>
                 <div className="flex items-center space-x-2">
                   <input
+                    id="text-color"
                     type="color"
                     value={component.props?.color || '#000000'}
                     onChange={(e) => onUpdate(component.id, { props: { ...component.props, color: e.target.value } })}
                     className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
+                    aria-label="Text color"
+                    title="Select text color"
+                    placeholder="Text color"
                   />
                   <input
                     type="text"
@@ -251,6 +265,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, paddingX: parseInt(e.target.value) } })}
                   className="text-xs border border-gray-300 rounded px-2 py-1"
                   placeholder="X"
+                  aria-label="Padding X"
+                  title="Horizontal padding"
                 />
                 <input
                   type="number"
@@ -258,6 +274,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, paddingY: parseInt(e.target.value) } })}
                   className="text-xs border border-gray-300 rounded px-2 py-1"
                   placeholder="Y"
+                  aria-label="Padding Y"
+                  title="Vertical padding"
                 />
               </div>
             </div>
@@ -270,6 +288,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, marginX: parseInt(e.target.value) } })}
                   className="text-xs border border-gray-300 rounded px-2 py-1"
                   placeholder="X"
+                  aria-label="Margin X"
+                  title="Horizontal margin"
                 />
                 <input
                   type="number"
@@ -277,6 +297,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                   onChange={(e) => onUpdate(component.id, { props: { ...component.props, marginY: parseInt(e.target.value) } })}
                   className="text-xs border border-gray-300 rounded px-2 py-1"
                   placeholder="Y"
+                  aria-label="Margin Y"
+                  title="Vertical margin"
                 />
               </div>
             </div>
@@ -289,6 +311,9 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
                 min="0"
                 max="10"
+                aria-label="Border width"
+                title="Border width in pixels"
+                placeholder="0"
               />
             </div>
           </div>
@@ -320,6 +345,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                   className="flex-1 text-xs border border-gray-300 rounded px-2 py-1"
                   placeholder="0"
                   min="0"
+                  aria-label="Border radius"
+                  title="Border radius in pixels"
                 />
                 <span className="text-xs text-gray-500">px</span>
               </div>
@@ -327,24 +354,30 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
 
             {/* Opacity */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">Opacity: {Math.round((component.props?.opacity || 1) * 100)}%</label>
+              <label htmlFor="opacity" className="block text-xs font-medium text-gray-700 mb-1 text-left">Opacity: {Math.round((component.props?.opacity || 1) * 100)}%</label>
               <input
+                id="opacity"
                 type="range"
                 min="0"
                 max="100"
                 value={(component.props?.opacity || 1) * 100}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, opacity: parseInt(e.target.value) / 100 } })}
                 className="w-full h-2"
+                aria-label="Opacity"
+                title="Adjust opacity"
               />
             </div>
 
             {/* Shadow */}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1 text-left">Shadow</label>
+              <label htmlFor="shadow" className="block text-xs font-medium text-gray-700 mb-1 text-left">Shadow</label>
               <select
+                id="shadow"
                 value={component.props?.boxShadow || 'none'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, boxShadow: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Shadow"
+                title="Select shadow effect"
               >
                 <option value="none">None</option>
                 <option value="sm">Small</option>
@@ -366,6 +399,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.blur || 0}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, blur: parseInt(e.target.value) } })}
                 className="w-full h-2"
+                aria-label="Blur"
+                title="Adjust blur effect"
               />
             </div>
 
@@ -379,6 +414,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={(component.props?.brightness || 1) * 100}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, brightness: parseInt(e.target.value) / 100 } })}
                 className="w-full h-2"
+                aria-label="Brightness"
+                title="Adjust brightness"
               />
             </div>
 
@@ -392,6 +429,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={(component.props?.contrast || 1) * 100}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, contrast: parseInt(e.target.value) / 100 } })}
                 className="w-full h-2"
+                aria-label="Contrast"
+                title="Adjust contrast"
               />
             </div>
 
@@ -405,6 +444,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={(component.props?.saturation || 1) * 100}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, saturation: parseInt(e.target.value) / 100 } })}
                 className="w-full h-2"
+                aria-label="Saturation"
+                title="Adjust saturation"
               />
             </div>
 
@@ -418,6 +459,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.hueRotate || 0}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, hueRotate: parseInt(e.target.value) } })}
                 className="w-full h-2"
+                aria-label="Hue rotate"
+                title="Adjust hue rotation"
               />
             </div>
           </div>
@@ -447,6 +490,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, zIndex: parseInt(e.target.value) || 1 } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
                 placeholder="1"
+                aria-label="Z-index"
+                title="Stacking order"
               />
             </div>
 
@@ -457,6 +502,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.position || 'absolute'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, position: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Position"
+                title="Select position type"
               >
                 <option value="absolute">Absolute</option>
                 <option value="relative">Relative</option>
@@ -472,6 +519,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.display || 'block'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, display: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Display"
+                title="Select display type"
               >
                 <option value="block">Block</option>
                 <option value="inline">Inline</option>
@@ -489,6 +538,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.overflow || 'visible'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, overflow: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Overflow"
+                title="Select overflow behavior"
               >
                 <option value="visible">Visible</option>
                 <option value="hidden">Hidden</option>
@@ -504,6 +555,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.cursor || 'default'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, cursor: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Cursor"
+                title="Select cursor style"
               >
                 <option value="default">Default</option>
                 <option value="pointer">Pointer</option>
@@ -524,6 +577,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, transition: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
                 placeholder="all 0.3s ease"
+                aria-label="Transition"
+                title="CSS transition properties"
               />
             </div>
 
@@ -534,6 +589,8 @@ export const DesignToolbar: React.FC<DesignToolbarProps> = ({
                 value={component.props?.animation || 'none'}
                 onChange={(e) => onUpdate(component.id, { props: { ...component.props, animation: e.target.value } })}
                 className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                aria-label="Animation"
+                title="Select animation effect"
               >
                 <option value="none">None</option>
                 <option value="pulse">Pulse</option>
