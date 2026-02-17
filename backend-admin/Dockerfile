@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend-admin/package*.json ./
 RUN npm install
 
-COPY . .
+COPY backend-admin/ .
 
 RUN npm run build
 

@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend-mobile/package*.json ./
 RUN npm install
 
-COPY . .
+COPY backend-mobile/ .
 
 RUN npm run build
 
