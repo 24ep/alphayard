@@ -13,7 +13,7 @@ const getStore = (prefix: string) => {
       const client = await redisService.getClient();
       if (!client) return null;
       // Use any cast to avoid TS rest parameter spread issues on call
-      return await (client as any).call(...args);
+      return await (client as any).call.apply(client, args);
     },
     prefix: `rate_limit:${prefix}:`,
   });
