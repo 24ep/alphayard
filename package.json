@@ -12,6 +12,7 @@
     "dev:backend-admin": "npm run dev --workspace=backend-admin",
     "dev:backend-mobile": "npm run dev --workspace=backend-mobile",
     "dev:boundary-app": "npm run start --workspace=boundary-app",
+    "build": "echo 'ERROR: You are building from the project root. Please set the Root Directory in Railway to your service folder (e.g., backend-admin).' && exit 1",
     "build:all": "npm run build --workspaces --if-present",
     "lint:all": "npm run lint --workspaces --if-present",
     "type-check:all": "npm run type-check --workspaces --if-present"
