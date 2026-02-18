@@ -3,24 +3,22 @@ title UniApps Dev Console
 
 echo --- Starting UniApps Development Environment ---
 
-:: Start Backend Admin in a new window
-echo [1/4] Starting Backend Admin...
-start "Backend-Admin" cmd /c "cd backend-admin && npm run dev"
 
 :: Start Backend Mobile in a new window
-echo [2/4] Starting Backend Mobile...
+echo [1/3] Starting Backend Mobile...
 start "Backend-Mobile" cmd /c "cd backend-mobile && npm run dev"
 
 :: Start Admin in a new window
-echo [3/4] Starting Admin...
+echo [2/3] Starting Admin...
 start "Admin" cmd /c "cd admin && npm run dev"
 
 :: Start Boundary App in a new window
-echo [4/4] Starting Boundary App...
+echo [3/3] Starting Boundary App...
 start "Boundary-App" cmd /c "cd boundary-app && npm run web"
 
 echo --- All services are starting in separate windows ---
-echo Backend Admin:  http://localhost:3001
+echo Backend Admin (Unified): http://localhost:3002/api
+
 echo Backend Mobile: http://localhost:4000
 echo Admin console:   http://localhost:3002
 echo Boundary App:   http://localhost:19006

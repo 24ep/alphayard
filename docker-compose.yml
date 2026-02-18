@@ -7,34 +7,6 @@ services:
   # Application Services (independently deployable)
   # ==========================================
 
-  # Backend Admin API Service
-  backend-admin:
-    build:
-      context: .
-      dockerfile: backend-admin/Dockerfile
-    container_name: uniapps-backend-admin
-    ports:
-      - "3001:3001"
-    env_file: .env
-    environment:
-      - NODE_ENV=${NODE_ENV:-development}
-      - ADMIN_PORT=3001
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-postgres}
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - uniapps-network
-    restart: unless-stopped
-    healthcheck:
-      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
   # Backend Mobile API Service
   backend-mobile:
     build:
@@ -63,7 +35,7 @@ services:
       timeout: 10s
       retries: 3
 
-  # Admin Frontend (Next.js)
+  # Admin Frontend & Backend (Unified)
   admin:
     build:
       context: .
@@ -73,9 +45,12 @@ services:
       - "3002:3001"
     environment:
       - NODE_ENV=production
-      - BACKEND_ADMIN_URL=http://backend-admin:3001
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-postgres}
+      - REDIS_URL=redis://redis:6379
     depends_on:
-      backend-admin:
+      db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - uniapps-network

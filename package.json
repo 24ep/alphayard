@@ -3,7 +3,6 @@
   "private": true,
   "workspaces": [
     "admin",
-    "backend-admin",
     "backend-mobile",
     "boundary-app"
   ],
