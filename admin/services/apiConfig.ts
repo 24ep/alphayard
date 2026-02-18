@@ -1,8 +1,8 @@
 // Shared API base URL configuration for the admin console
-// In the browser, use relative URL so requests go through Next.js proxy (next.config.js rewrites /api/* -> localhost:4000/api/*)
+// In the browser, use relative URL so requests go through Next.js proxy (next.config.js rewrites /api/* -> 127.0.0.1:3001/api/*)
 // On the server (SSR), call the backend directly
 const defaultBase = typeof window !== 'undefined'
-  ? '/api/v1'  // Browser: relative URL -> Next.js proxy -> backend:4000
-  : 'http://localhost:4000/api/v1';  // SSR: direct call
+  ? '/api/v1'  // Browser: relative URL -> Next.js proxy -> backend:3001
+  : 'http://127.0.0.1:3001/api/v1';  // SSR: direct call
 
 export const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || defaultBase;

@@ -8,7 +8,7 @@ import { LookerStudioEditor } from '../../../../components/cms/LookerStudioEdito
 export default function StudioCreateContentPage() {
   const router = useRouter()
 
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiBase = ''
 
   const handleSave = async (page: any) => {
     try {

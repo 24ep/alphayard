@@ -14,7 +14,7 @@ export const BackendStatusIndicator: React.FC<BackendStatusIndicatorProps> = ({ 
     const checkBackendStatus = async () => {
       try {
         setIsChecking(true)
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/health`, {
+        const response = await fetch('/api/health', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         })

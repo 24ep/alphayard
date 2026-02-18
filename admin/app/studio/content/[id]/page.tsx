@@ -10,7 +10,7 @@ export default function StudioEditContentPage() {
   const params = useParams()
   const [pageData, setPageData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+  const apiBase = ''
 
   useEffect(() => {
     const fetchData = async () => {
