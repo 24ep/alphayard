@@ -4,6 +4,7 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY appkit/package*.json ./
+COPY appkit/prisma ./prisma/
 RUN npm install
 
 # Rebuild the source code only when needed
