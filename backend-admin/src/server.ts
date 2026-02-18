@@ -53,8 +53,9 @@ if (process.env.SENTRY_DSN) {
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
+const useCluster = isProduction && process.env.ENABLE_CLUSTER === 'true';
 
-if (isProduction && cluster.isPrimary) {
+if (useCluster && cluster.isPrimary) {
   const numCPUs = os.cpus().length;
   console.log(`🚀 Starting UniApps Admin Backend in cluster mode with ${numCPUs} workers`);
   for (let i = 0; i < numCPUs; i++) cluster.fork();
@@ -107,16 +108,31 @@ function startServer() {
   app.use(errorHandler);
 
   async function initializeServices() {
+    const PORT = Number(process.env.PORT || process.env.ADMIN_PORT || 3001);
+    const HOST = '0.0.0.0'; // Essential for Railway and Docker
+
     try {
+      console.log('📡 Initializing services...');
       const { prisma } = require('./config/database');
-      await prisma.$queryRaw`SELECT 1`;
       
-      const PORT = Number(process.env.ADMIN_PORT || 3001);
-      server.listen(PORT, '::', () => {
-        console.log(`🚀 UniApps Admin Backend Server running on port ${PORT}`);
+      // Attempt database connection but don't block the whole server if it fails
+      prisma.$queryRaw`SELECT 1`
+        .then(() => console.log('✅ Database connection successful'))
+        .catch((err: any) => {
+          console.warn('⚠️ Database connection warning:');
+          console.warn(`   ${err.message}`);
+          console.warn('   💡 The server is running, but database-dependent features may fail.');
+        });
+
+      server.listen(PORT, HOST, () => {
+        console.log(`🚀 UniApps Admin Backend Server running on http://${HOST}:${PORT}`);
+        if (process.env.RAILWAY_STATIC_URL) {
+          console.log(`🌐 Railway Public URL: https://${process.env.RAILWAY_STATIC_URL}`);
+        }
       });
     } catch (error) {
-      console.error('❌ Failed to start admin server:', error);
+      console.error('❌ Critical failure during startup:');
+      console.error(error);
       process.exit(1);
     }
   }
