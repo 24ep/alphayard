@@ -43,7 +43,7 @@ const handle = app.getRequestHandler();
 
         // Handle Next.js requests
         // This failsafe route catches everything not handled by the Express routes
-        server.all('*', (req, res) => {
+        server.all('(.*)', (req, res) => {
             return handle(req, res);
         });
 
