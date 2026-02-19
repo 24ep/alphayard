@@ -144,7 +144,7 @@ export const authenticateToken = async (
     } catch (e) {}
 
     next();
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof jwt.JsonWebTokenError) {
       log(`JWT Error: ${error.message}`);
       return res.status(401).json({
