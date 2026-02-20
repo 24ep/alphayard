@@ -16,9 +16,9 @@ import versionControlRoutes from '../admin/versionControlRoutes';
 const router = Router();
 
 // Admin Routes
-router.use('/admin', adminRoutes);
-router.use('/admin', adminUsersRoutes);
 router.use('/admin/auth', adminUsersRoutes);
+router.use('/admin', adminUsersRoutes);
+router.use('/admin', adminRoutes);
 router.use('/admin/entities', entityRoutes);
 router.use('/admin/preferences', preferencesRoutes);
 router.use('/admin/applications', applicationRoutes);

@@ -5,6 +5,9 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { config } from '../../config/env';
 import { AdminRequest } from '../../middleware/adminAuth';
+import auditService from '../../services/auditService';
+import { AuditAction } from '../../services/auditService';
+
 
 export class AdminUserController {
   
@@ -50,7 +53,7 @@ export class AdminUserController {
              where: { roleId: adminUser.roleId! },
              include: { permission: true }
          });
-         permissions = rolePermissions.map(rp => `${rp.permission.module}:${rp.permission.action}`);
+         permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`);
       }
 
       // Generate JWT
@@ -76,7 +79,14 @@ export class AdminUserController {
         data: { lastLoginAt: new Date() }
       });
 
+      // Audit login
+      await auditService.logAuthenticationEvent(adminUser.id, AuditAction.LOGIN, {
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
       return res.json({
+
         token,
         user: {
           id: adminUser.id,
