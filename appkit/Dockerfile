@@ -1,4 +1,5 @@
 FROM node:20-alpine AS base
+RUN apk add --no-cache openssl libc6-compat
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -54,4 +55,10 @@ EXPOSE 3001
 
 ENV PORT 3001
 
+# Copy entrypoint script
+COPY appkit/scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Use the bootstrap script as entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "dist/server.js"]
