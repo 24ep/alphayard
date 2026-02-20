@@ -8,77 +8,13 @@
 // ============================================================================
 
 import { PrismaClient } from '@prisma/client';
-// Prevent multiple instances of Prisma Client in development
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
 
-export const prisma = global.prisma || new PrismaClient({
-  log: ['query', 'error', 'warn'],
-});
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
-if (process.env.NODE_ENV !== 'production') {
-  global.prisma = prisma;
-}
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
 
-// Export types for convenience
-export type { 
-  // Core models
-  Application,
-  User,
-  UserApplication,
-  Country,
-  Language,
-  Currency,
-  UserSession,
-  UserDevice,
-  LoginHistory,
-  UserSettings,
-  File,
-  FileFolder,
-  GalleryItem,
-  GalleryAlbum,
-  Notification,
-  UserPushToken,
-  EmailTemplate,
-  SubscriptionPlan,
-  Subscription,
-  SystemConfig,
-  AppSetting,
-  
-  // Admin models
-  AdminUser,
-  AdminRole,
-  AdminPermission,
-  AdminRolePermission,
-  AdminUserApplication,
-  AdminActivityLog,
-  AuditLog,
-  
-  // AppKit models
-  CircleType,
-  Circle,
-  CircleMember,
-  EmergencyContact,
-  SafetyIncident,
-  SocialPost,
-  SocialComment,
-  SocialReaction,
-  SocialStory,
-  SocialStoryView,
-  UserFollow,
-  FriendRequest,
-  ChatRoom,
-  ChatParticipant,
-  ChatMessage,
-  ChatReadReceipt,
-  ChatReaction,
-  UserLocation,
-  Geofence,
-  LocationShare,
-  Note,
-  Todo,
-} from '@prisma/client';
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export default prisma;
