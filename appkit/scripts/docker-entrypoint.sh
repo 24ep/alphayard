@@ -7,7 +7,7 @@ echo "🚀 Starting UniApps Admin Server Bootstrap..."
 # In a real production environment, you should use prisma migrate deploy
 # but for this environment, db push is used to ensure all 4 schemas are synced.
 echo "🔄 Synchronizing database schema..."
-npx prisma db push --accept-data-loss
+npx prisma db push --accept-data-loss --skip-generate
 
 echo "✅ Database synchronization complete."
 
