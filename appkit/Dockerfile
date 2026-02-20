@@ -47,17 +47,14 @@ COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-# Production image, copy all the files and run next
+# Copy entrypoint script
+COPY appkit/scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 USER nextjs
 
 EXPOSE 3001
-
 ENV PORT 3001
-
-# Copy entrypoint script
-COPY appkit/scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Use the bootstrap script as entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
