@@ -5,7 +5,7 @@
  * and proper user mappings for social media features.
  */
 
-import { prisma } from '../database';
+import { prisma } from '../../lib/prisma';
 import { mapToAuthorProfile, mapToMentionerProfile } from '../../utils/userMappings';
 
 export interface PostWithAuthor {

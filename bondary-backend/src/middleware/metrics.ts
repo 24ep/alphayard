@@ -1,14 +1,15 @@
 ﻿import { Request, Response, NextFunction } from 'express';
 import { promisify } from 'util';
-import { register, Counter, Histogram, Gauge, Registry } from 'prom-client';
+import { register, Counter, Histogram, Gauge, Registry, collectDefaultMetrics } from 'prom-client';
 
 // Create a custom registry for our metrics
 const registry = new Registry();
 
 // Default metrics (process info, etc.)
-register.collectDefaultMetrics({
+collectDefaultMetrics({
   prefix: 'boundary_',
   gcDurationBuckets: [0.001, 0.01, 0.1, 1, 2, 5],
+  register: registry,
 });
 
 // Custom metrics

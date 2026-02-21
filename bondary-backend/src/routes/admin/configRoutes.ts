@@ -283,6 +283,8 @@ class AdminConfigService {
           description: true,
           isActive: true,
           logoUrl: true,
+          branding: true,
+          settings: true,
           createdAt: true,
           updatedAt: true,
           _count: {
