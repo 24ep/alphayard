@@ -157,19 +157,19 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
 
         const basicsQuery = `
             SELECT 
-                (SELECT COUNT(*) FROM core.users) as total_users,
-                (SELECT COUNT(*) FROM core.users WHERE is_active = true) as active_users,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'circle' AND status != 'deleted') as total_families,
-                (SELECT COUNT(*) FROM core.subscriptions WHERE status IN ('active', 'trialing')) as active_subscriptions,
-                (SELECT COALESCE(SUM(jsonb_array_length(COALESCE(branding->'screens', '[]'::jsonb))), 0) FROM core.applications WHERE is_active = true) as total_screens
+                (SELECT COUNT(*) FROM public.users) as total_users,
+                (SELECT COUNT(*) FROM public.users WHERE is_active = true) as active_users,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'circle' AND status != 'deleted') as total_families,
+                (SELECT COUNT(*) FROM public.subscriptions WHERE status IN ('active', 'trialing')) as active_subscriptions,
+                (SELECT COALESCE(SUM(jsonb_array_length(COALESCE(branding->'screens', '[]'::jsonb))), 0) FROM public.applications WHERE is_active = true) as total_screens
         `;
         const basics = await prisma.$queryRawUnsafe<any[]>(basicsQuery);
 
         const recentQuery = `
             SELECT 
-                (SELECT COUNT(*) FROM core.users WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_users,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'circle' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_families,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'safety_alert' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_alerts,
+                (SELECT COUNT(*) FROM public.users WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_users,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'circle' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_families,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'safety_alert' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_alerts,
                 (SELECT COUNT(*) FROM appkit.chat_messages WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_messages
         `;
         const recent = await prisma.$queryRawUnsafe<any[]>(recentQuery, days);
@@ -179,7 +179,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                 COALESCE(SUM((plan->>'price')::NUMERIC), 0) as total_revenue,
                 COALESCE(AVG((plan->>'price')::NUMERIC), 0) as avg_revenue,
                 COUNT(*) as subscription_count
-            FROM core.subscriptions
+            FROM public.subscriptions
             WHERE created_at >= NOW() - INTERVAL '1 day' * $1
         `;
         const revenue = await prisma.$queryRawUnsafe<any[]>(revenueQuery, days);
@@ -190,7 +190,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                 EXTRACT(MONTH FROM created_at) as month,
                 EXTRACT(DAY FROM created_at) as day,
                 COUNT(*) as count
-            FROM core.users
+            FROM public.users
             WHERE created_at >= NOW() - INTERVAL '1 day' * $1
             GROUP BY year, month, day
             ORDER BY year, month, day
@@ -252,13 +252,13 @@ router.get('/alerts', authenticateAdmin as any, async (req: Request, res: Respon
             SELECT sa.id, sa.data, sa.metadata, sa.created_at, sa.status,
                    u.email as user_email,
                    u.first_name || ' ' || u.last_name as user_name
-            FROM unified_entities sa
-            JOIN core.users u ON sa.owner_id = u.id
+            FROM public.unified_entities sa
+            JOIN public.users u ON sa.owner_id = u.id
             ${whereClause} AND sa.type = 'safety_alert'
             ORDER BY sa.${sortField} ${direction}
             LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
         `;
-        const countQuery = `SELECT COUNT(*) FROM unified_entities sa ${whereClause} AND sa.type = 'safety_alert'`;
+        const countQuery = `SELECT COUNT(*) FROM public.unified_entities sa ${whereClause} AND sa.type = 'safety_alert'`;
 
         const [alertsRes, countRes] = await Promise.all([
             prisma.$queryRawUnsafe<any[]>(alertsQuery, ...params, parseInt(limit as string), offset),
@@ -313,11 +313,11 @@ router.post('/broadcast', authenticateAdmin as any, [
         if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
         const { title, message, type, target = 'all' } = req.body;
-        let userQuery = 'SELECT id, email, first_name as "firstName" FROM core.users WHERE is_active = true';
+        let userQuery = 'SELECT id, email, first_name as "firstName" FROM public.users WHERE is_active = true';
         if (target === 'premium') {
             // Premium targeting not available - subscription tables removed
             // Fall back to all active users
-            userQuery = 'SELECT id, email, first_name as "firstName" FROM core.users WHERE is_active = true';
+            userQuery = 'SELECT id, email, first_name as "firstName" FROM public.users WHERE is_active = true';
         }
 
         const users = await prisma.$queryRawUnsafe<any[]>(userQuery);
@@ -358,8 +358,7 @@ router.post('/application-settings', authenticateAdmin as any, requirePermission
 
         if (setting_key === 'branding') {
             try { 
-                await prisma.$executeRawUnsafe(`UPDATE core.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`, valueStr);
-                try { await prisma.$executeRawUnsafe(`UPDATE public.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`, valueStr); } catch (e) { /* public.applications may not exist */ }
+                await prisma.$executeRawUnsafe(`UPDATE public.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`, valueStr);
             } catch (syncError) { console.error('Failed to sync branding:', syncError); }
         }
         res.json({ setting: rows[0] });

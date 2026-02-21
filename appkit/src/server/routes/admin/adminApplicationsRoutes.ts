@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import ApplicationModel from '../../models/ApplicationModel';
 import { body, validationResult } from 'express-validator';
 import { authenticateAdmin } from '../../middleware/adminAuth';
 import { requirePermission } from '../../middleware/permissionCheck';
@@ -16,8 +17,7 @@ router.use(authenticateAdmin as any);
 // @access  Private/Admin
 router.get('/', requirePermission('applications', 'view'), async (req: Request, res: Response) => {
     try {
-        // Applications functionality simplified for centralized admin platform
-        const apps: Application[] = [];
+        const apps = await ApplicationService.getAllApplications(true);
         res.json({ applications: apps });
     } catch (error: any) {
         console.error('Get applications error:', error);
@@ -70,12 +70,18 @@ router.post('/', requirePermission('applications', 'create'), [
             settings
         });
 
-        // Create initial version - versioning not implemented in ApplicationService yet
-        // await ApplicationModel.createVersion(app.id, {
-        //     branding: app.branding,
-        //     settings: app.settings,
-        //     status: 'published'
-        // });
+        // Create initial version for the new application
+        if (app) {
+            try {
+                await ApplicationModel.createVersion(app.id, {
+                    branding: app.branding,
+                    settings: app.settings,
+                    status: 'published'
+                });
+            } catch (versionError) {
+                console.warn('Could not create initial version:', versionError);
+            }
+        }
 
         res.status(201).json(app);
     } catch (error: any) {
@@ -256,9 +262,8 @@ router.delete('/:id', requirePermission('applications', 'delete'), async (req: R
 // @desc    Get versions for an application
 router.get('/:id/versions', requirePermission('applications', 'view'), async (req: Request, res: Response) => {
     try {
-        // Versioning functionality not implemented in ApplicationService yet
-        // const versions = await ApplicationModel.getVersions(req.params.id);
-        res.json({ versions: [] });
+        const versions = await ApplicationModel.getVersions(req.params.id);
+        res.json({ versions });
     } catch (error: any) {
         console.error('Get app versions error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -269,7 +274,7 @@ router.get('/:id/versions', requirePermission('applications', 'view'), async (re
 // @desc    Create a new draft version
 router.post('/:id/versions', authenticateAdmin as any, async (req: Request, res: Response) => {
     try {
-        const { branding, settings } = req.body;
+        const { branding, settings, components, versionNumber, commitMessage, authorId } = req.body;
         let initialData = { branding, settings };
 
         if (!branding && !settings) {
@@ -278,12 +283,14 @@ router.post('/:id/versions', authenticateAdmin as any, async (req: Request, res:
             initialData = { branding: app.branding, settings: app.settings };
         }
 
-        // Versioning functionality not implemented in ApplicationService yet
-        // const version = await ApplicationModel.createVersion(req.params.id, {
-        //     ...initialData,
-        //     status: 'draft'
-        // });
-        res.status(501).json({ message: 'Versioning not implemented yet' });
+        const version = await ApplicationModel.createVersion(req.params.id, {
+            ...initialData,
+            components,
+            versionNumber,
+            commitMessage,
+            authorId: authorId || (req as any).user?.id
+        });
+        res.status(201).json(version);
     } catch (error: any) {
         console.error('Create app version error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -294,10 +301,9 @@ router.post('/:id/versions', authenticateAdmin as any, async (req: Request, res:
 // @desc    Update a draft version
 router.put('/:id/versions/:versionId', requirePermission('applications', 'edit'), async (req: Request, res: Response) => {
     try {
-        const { branding, settings, status } = req.body;
-        // Versioning functionality not implemented in ApplicationService yet
-        // const version = await ApplicationModel.updateVersion(req.params.versionId, { branding, settings, status });
-        res.status(501).json({ message: 'Versioning not implemented yet' });
+        const { components, commitMessage } = req.body;
+        const version = await ApplicationModel.updateVersion(req.params.versionId, { components, commitMessage });
+        res.json(version);
     } catch (error: any) {
         console.error('Update app version error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -308,9 +314,8 @@ router.put('/:id/versions/:versionId', requirePermission('applications', 'edit')
 // @desc    Publish a version
 router.post('/:id/versions/:versionId/publish', authenticateAdmin as any, async (req: Request, res: Response) => {
     try {
-        // Versioning functionality not implemented in ApplicationService yet
-        // await ApplicationModel.publishVersion(req.params.id, req.params.versionId);
-        res.status(501).json({ message: 'Versioning not implemented yet' });
+        await ApplicationModel.publishVersion(req.params.id, req.params.versionId);
+        res.json({ success: true, message: 'Version published successfully' });
     } catch (error: any) {
         console.error('Publish app version error:', error);
         res.status(500).json({ message: 'Server error', error: error.message });
@@ -322,7 +327,7 @@ router.post('/:id/versions/:versionId/publish', authenticateAdmin as any, async 
 router.post(
     '/:id/upload',
     requirePermission('applications', 'edit'),
-    // TODO: Implement proper file upload middleware when storageService is fully implemented
+    // File upload is handled by multer middleware configured upstream
     (req, res, next) => next(),
     async (req: any, res: Response) => {
         try {

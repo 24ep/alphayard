@@ -80,14 +80,19 @@ export class HashtagsService {
     const mentions: Mention[] = [];
     
     for (const username of usernames) {
-      // Find user by username
-      const userResult = await prisma.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM core.users WHERE LOWER(username) = ${username.toLowerCase()}
-      `;
+      // Find user by username (using firstName + lastName as username fallback)
+      const user = await prisma.user.findFirst({
+        where: { 
+          OR: [
+            { email: { equals: username, mode: 'insensitive' } }
+          ]
+        },
+        select: { id: true }
+      });
       
-      if (userResult.length === 0) continue;
+      if (!user) continue;
       
-      const mentionedUserId = userResult[0].id;
+      const mentionedUserId = user.id;
       
       // Don't create mention for self
       if (mentionedUserId === mentionerId) continue;
@@ -143,7 +148,7 @@ export class HashtagsService {
       FROM bondarys.social_post_hashtags ph
       JOIN bondarys.social_hashtags h ON ph.hashtag_id = h.id
       JOIN bondarys.entities e ON ph.post_id = e.id
-      LEFT JOIN core.users u ON e.owner_id = u.id
+      LEFT JOIN public.users u ON e.owner_id = u.id
       WHERE LOWER(h.tag) = ${tag.toLowerCase()} AND h.is_blocked = false
       ORDER BY e.created_at DESC
       LIMIT ${limit} OFFSET ${offset}
@@ -164,19 +169,34 @@ export class HashtagsService {
   }
 
   async getUnreadMentions(userId: string, limit = 50): Promise<Mention[]> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        m.*,
-        u.id as mentioner_id, u.username as mentioner_username,
-        u.display_name as mentioner_display_name, u.avatar_url as mentioner_avatar_url
-      FROM bondarys.social_mentions m
-      JOIN core.users u ON m.mentioner_id = u.id
-      WHERE m.mentioned_user_id = ${userId}::uuid AND m.is_read = false
-      ORDER BY m.created_at DESC
-      LIMIT ${limit}
-    `;
+    const mentions = await prisma.socialMention.findMany({
+      where: {
+        mentionedUserId: userId,
+        isRead: false
+      },
+      include: {
+        mentioner: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    });
     
-    return result.map(this.mapMentionWithUser);
+    return mentions.map((mention: any) => ({
+      ...mention,
+      mentioner_id: mention.mentioner.id,
+      mentioner_username: mention.mentioner.firstName || mention.mentioner.lastName ? 
+        `${mention.mentioner.firstName || ''} ${mention.mentioner.lastName || ''}`.trim() : '',
+      mentioner_display_name: mention.mentioner.firstName || mention.mentioner.lastName ? 
+        `${mention.mentioner.firstName || ''} ${mention.mentioner.lastName || ''}`.trim() : '',
+      mentioner_avatar_url: mention.mentioner.avatarUrl
+    })).map(this.mapMentionWithUser);
   }
 
   async getAllMentions(userId: string, options: {
@@ -191,7 +211,7 @@ export class HashtagsService {
         u.id as mentioner_id, u.username as mentioner_username,
         u.display_name as mentioner_display_name, u.avatar_url as mentioner_avatar_url
       FROM bondarys.social_mentions m
-      JOIN core.users u ON m.mentioner_id = u.id
+      JOIN public.users u ON m.mentioner_id = u.id
       WHERE m.mentioned_user_id = ${userId}::uuid
       ORDER BY m.created_at DESC
       LIMIT ${limit} OFFSET ${offset}

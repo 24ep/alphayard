@@ -41,13 +41,8 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/detailed', async (req: Request, res: Response) => {
   try {
     const start = Date.now();
-    // Note: unified_entities table doesn't have a Prisma model, using $queryRaw
-    const statsRows = await prisma.$queryRaw<Array<{
-      usersCount: bigint;
-    }>>`
-      SELECT 
-        (SELECT count(*) FROM core.users) as "usersCount"
-    `;
+    // Get users count using Prisma client
+    const usersCount = await prisma.user.count();
     const responseTime = Date.now() - start;
     
     res.json({
@@ -59,7 +54,7 @@ router.get('/detailed', async (req: Request, res: Response) => {
         responseTime: `${responseTime}ms`
       },
       database: {
-        stats: statsRows[0],
+        stats: { usersCount },
         connection: 'ok'
       }
     });

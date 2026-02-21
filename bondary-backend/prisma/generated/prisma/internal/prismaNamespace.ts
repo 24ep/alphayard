@@ -80,12 +80,12 @@ export type PrismaVersion = {
 }
 
 /**
- * Prisma Client JS version: 7.4.0
- * Query Engine version: ab56fe763f921d033a6c195e7ddeb3e255bdbb57
+ * Prisma Client JS version: 7.4.1
+ * Query Engine version: 55ae170b1ced7fc6ed07a15f110549408c501bb3
  */
 export const prismaVersion: PrismaVersion = {
-  client: "7.4.0",
-  engine: "ab56fe763f921d033a6c195e7ddeb3e255bdbb57"
+  client: "7.4.1",
+  engine: "55ae170b1ced7fc6ed07a15f110549408c501bb3"
 }
 
 /**
@@ -444,7 +444,11 @@ export const ModelName = {
   SocialReport: 'SocialReport',
   SocialActivity: 'SocialActivity',
   SocialCommentLike: 'SocialCommentLike',
-  EntityRelation: 'EntityRelation'
+  EntityRelation: 'EntityRelation',
+  FileTag: 'FileTag',
+  FileTagAssignment: 'FileTagAssignment',
+  FileShare: 'FileShare',
+  FileRecentAccess: 'FileRecentAccess'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -460,7 +464,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "application" | "user" | "userApplication" | "country" | "language" | "currency" | "userSession" | "userDevice" | "userMFA" | "securityPolicy" | "userGroup" | "userGroupMember" | "identityAuditLog" | "oAuthProvider" | "loginHistory" | "userSettings" | "file" | "fileFolder" | "galleryItem" | "galleryAlbum" | "notification" | "userPushToken" | "emailTemplate" | "subscriptionPlan" | "subscription" | "systemConfig" | "appSetting" | "adminUser" | "adminRole" | "adminPermission" | "adminRolePermission" | "adminUserApplication" | "adminActivityLog" | "auditLog" | "circleType" | "circle" | "circleMember" | "circleInvitation" | "emergencyContact" | "safetyIncident" | "socialPost" | "socialComment" | "socialReaction" | "socialStory" | "socialStoryView" | "userFollow" | "friendRequest" | "chatRoom" | "chatParticipant" | "chatMessage" | "chatReadReceipt" | "chatReaction" | "userLocation" | "geofence" | "locationShare" | "note" | "todo" | "socialReport" | "socialActivity" | "socialCommentLike" | "entityRelation"
+    modelProps: "application" | "user" | "userApplication" | "country" | "language" | "currency" | "userSession" | "userDevice" | "userMFA" | "securityPolicy" | "userGroup" | "userGroupMember" | "identityAuditLog" | "oAuthProvider" | "loginHistory" | "userSettings" | "file" | "fileFolder" | "galleryItem" | "galleryAlbum" | "notification" | "userPushToken" | "emailTemplate" | "subscriptionPlan" | "subscription" | "systemConfig" | "appSetting" | "adminUser" | "adminRole" | "adminPermission" | "adminRolePermission" | "adminUserApplication" | "adminActivityLog" | "auditLog" | "circleType" | "circle" | "circleMember" | "circleInvitation" | "emergencyContact" | "safetyIncident" | "socialPost" | "socialComment" | "socialReaction" | "socialStory" | "socialStoryView" | "userFollow" | "friendRequest" | "chatRoom" | "chatParticipant" | "chatMessage" | "chatReadReceipt" | "chatReaction" | "userLocation" | "geofence" | "locationShare" | "note" | "todo" | "socialReport" | "socialActivity" | "socialCommentLike" | "entityRelation" | "fileTag" | "fileTagAssignment" | "fileShare" | "fileRecentAccess"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -4978,6 +4982,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    FileTag: {
+      payload: Prisma.$FileTagPayload<ExtArgs>
+      fields: Prisma.FileTagFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FileTagFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FileTagFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        findFirst: {
+          args: Prisma.FileTagFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FileTagFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        findMany: {
+          args: Prisma.FileTagFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>[]
+        }
+        create: {
+          args: Prisma.FileTagCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        createMany: {
+          args: Prisma.FileTagCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FileTagCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>[]
+        }
+        delete: {
+          args: Prisma.FileTagDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        update: {
+          args: Prisma.FileTagUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        deleteMany: {
+          args: Prisma.FileTagDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FileTagUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FileTagUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>[]
+        }
+        upsert: {
+          args: Prisma.FileTagUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagPayload>
+        }
+        aggregate: {
+          args: Prisma.FileTagAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFileTag>
+        }
+        groupBy: {
+          args: Prisma.FileTagGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileTagGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FileTagCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileTagCountAggregateOutputType> | number
+        }
+      }
+    }
+    FileTagAssignment: {
+      payload: Prisma.$FileTagAssignmentPayload<ExtArgs>
+      fields: Prisma.FileTagAssignmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FileTagAssignmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FileTagAssignmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        findFirst: {
+          args: Prisma.FileTagAssignmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FileTagAssignmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        findMany: {
+          args: Prisma.FileTagAssignmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>[]
+        }
+        create: {
+          args: Prisma.FileTagAssignmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        createMany: {
+          args: Prisma.FileTagAssignmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FileTagAssignmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>[]
+        }
+        delete: {
+          args: Prisma.FileTagAssignmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        update: {
+          args: Prisma.FileTagAssignmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.FileTagAssignmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FileTagAssignmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FileTagAssignmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.FileTagAssignmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileTagAssignmentPayload>
+        }
+        aggregate: {
+          args: Prisma.FileTagAssignmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFileTagAssignment>
+        }
+        groupBy: {
+          args: Prisma.FileTagAssignmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileTagAssignmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FileTagAssignmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileTagAssignmentCountAggregateOutputType> | number
+        }
+      }
+    }
+    FileShare: {
+      payload: Prisma.$FileSharePayload<ExtArgs>
+      fields: Prisma.FileShareFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FileShareFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FileShareFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        findFirst: {
+          args: Prisma.FileShareFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FileShareFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        findMany: {
+          args: Prisma.FileShareFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>[]
+        }
+        create: {
+          args: Prisma.FileShareCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        createMany: {
+          args: Prisma.FileShareCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FileShareCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>[]
+        }
+        delete: {
+          args: Prisma.FileShareDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        update: {
+          args: Prisma.FileShareUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        deleteMany: {
+          args: Prisma.FileShareDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FileShareUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FileShareUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>[]
+        }
+        upsert: {
+          args: Prisma.FileShareUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileSharePayload>
+        }
+        aggregate: {
+          args: Prisma.FileShareAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFileShare>
+        }
+        groupBy: {
+          args: Prisma.FileShareGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileShareGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FileShareCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileShareCountAggregateOutputType> | number
+        }
+      }
+    }
+    FileRecentAccess: {
+      payload: Prisma.$FileRecentAccessPayload<ExtArgs>
+      fields: Prisma.FileRecentAccessFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FileRecentAccessFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FileRecentAccessFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        findFirst: {
+          args: Prisma.FileRecentAccessFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FileRecentAccessFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        findMany: {
+          args: Prisma.FileRecentAccessFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>[]
+        }
+        create: {
+          args: Prisma.FileRecentAccessCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        createMany: {
+          args: Prisma.FileRecentAccessCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FileRecentAccessCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>[]
+        }
+        delete: {
+          args: Prisma.FileRecentAccessDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        update: {
+          args: Prisma.FileRecentAccessUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        deleteMany: {
+          args: Prisma.FileRecentAccessDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FileRecentAccessUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FileRecentAccessUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>[]
+        }
+        upsert: {
+          args: Prisma.FileRecentAccessUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FileRecentAccessPayload>
+        }
+        aggregate: {
+          args: Prisma.FileRecentAccessAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFileRecentAccess>
+        }
+        groupBy: {
+          args: Prisma.FileRecentAccessGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileRecentAccessGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FileRecentAccessCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FileRecentAccessCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -5044,6 +5344,10 @@ export const UserScalarFieldEnum = {
   dateOfBirth: 'dateOfBirth',
   gender: 'gender',
   bio: 'bio',
+  username: 'username',
+  displayName: 'displayName',
+  followersCount: 'followersCount',
+  followingCount: 'followingCount',
   userType: 'userType',
   circleIds: 'circleIds',
   isOnboardingComplete: 'isOnboardingComplete',
@@ -6049,6 +6353,60 @@ export const EntityRelationScalarFieldEnum = {
 export type EntityRelationScalarFieldEnum = (typeof EntityRelationScalarFieldEnum)[keyof typeof EntityRelationScalarFieldEnum]
 
 
+export const FileTagScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  color: 'color',
+  userId: 'userId',
+  circleId: 'circleId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FileTagScalarFieldEnum = (typeof FileTagScalarFieldEnum)[keyof typeof FileTagScalarFieldEnum]
+
+
+export const FileTagAssignmentScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  tagId: 'tagId',
+  assignedBy: 'assignedBy',
+  createdAt: 'createdAt'
+} as const
+
+export type FileTagAssignmentScalarFieldEnum = (typeof FileTagAssignmentScalarFieldEnum)[keyof typeof FileTagAssignmentScalarFieldEnum]
+
+
+export const FileShareScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  sharedBy: 'sharedBy',
+  sharedWithUserId: 'sharedWithUserId',
+  sharedWithCircleId: 'sharedWithCircleId',
+  shareLink: 'shareLink',
+  linkPasswordHash: 'linkPasswordHash',
+  permission: 'permission',
+  expiresAt: 'expiresAt',
+  downloadLimit: 'downloadLimit',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FileShareScalarFieldEnum = (typeof FileShareScalarFieldEnum)[keyof typeof FileShareScalarFieldEnum]
+
+
+export const FileRecentAccessScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  userId: 'userId',
+  accessType: 'accessType',
+  accessedAt: 'accessedAt'
+} as const
+
+export type FileRecentAccessScalarFieldEnum = (typeof FileRecentAccessScalarFieldEnum)[keyof typeof FileRecentAccessScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -6363,6 +6721,10 @@ export type GlobalOmitConfig = {
   socialActivity?: Prisma.SocialActivityOmit
   socialCommentLike?: Prisma.SocialCommentLikeOmit
   entityRelation?: Prisma.EntityRelationOmit
+  fileTag?: Prisma.FileTagOmit
+  fileTagAssignment?: Prisma.FileTagAssignmentOmit
+  fileShare?: Prisma.FileShareOmit
+  fileRecentAccess?: Prisma.FileRecentAccessOmit
 }
 
 /* Types for Logging */

@@ -35,8 +35,8 @@ router.get('/', requirePermission('subscriptions', 'view'), async (req: Request,
         }
 
         const countQuery = `
-            SELECT COUNT(*) FROM core.subscriptions s
-            LEFT JOIN core.users u ON s.user_id = u.id
+            SELECT COUNT(*) FROM public.subscriptions s
+            LEFT JOIN public.users u ON s.user_id = u.id
             ${whereClause}
         `;
         const countRows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(countQuery, ...params);
@@ -56,8 +56,8 @@ router.get('/', requirePermission('subscriptions', 'view'), async (req: Request,
                 u.email,
                 u.first_name,
                 u.last_name
-            FROM core.subscriptions s
-            LEFT JOIN core.users u ON s.user_id = u.id
+            FROM public.subscriptions s
+            LEFT JOIN public.users u ON s.user_id = u.id
             ${whereClause}
             ORDER BY s.created_at DESC
             LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -95,8 +95,8 @@ router.get('/:id', requirePermission('subscriptions', 'view'), async (req: Reque
                 u.first_name,
                 u.last_name,
                 u.phone_number as phone
-            FROM core.subscriptions s
-            LEFT JOIN core.users u ON s.user_id = u.id
+            FROM public.subscriptions s
+            LEFT JOIN public.users u ON s.user_id = u.id
             WHERE s.id = $1
         `, id);
 
@@ -106,7 +106,7 @@ router.get('/:id', requirePermission('subscriptions', 'view'), async (req: Reque
 
         // Get payment history
         const payments = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT * FROM payments 
+            SELECT * FROM public.payments 
             WHERE subscription_id = $1 
             ORDER BY created_at DESC
             LIMIT 10
@@ -166,7 +166,7 @@ router.put('/:id', authenticateAdmin as any, async (req: Request, res: Response)
         params.push(id);
 
         const query = `
-            UPDATE core.subscriptions 
+            UPDATE public.subscriptions 
             SET ${updates.join(', ')}
             WHERE id = $${paramIndex}
             RETURNING *
@@ -194,14 +194,16 @@ router.post('/:id/cancel', requirePermission('subscriptions', 'edit'), async (re
         const { immediate = false } = req.body;
 
         if (immediate) {
-            await prisma.$executeRawUnsafe(`
-                UPDATE core.subscriptions 
-                SET status = 'canceled', updated_at = NOW()
-                WHERE id = $1
-            `, id);
+            await prisma.subscription.update({
+                where: { id: id },
+                data: {
+                    status: 'canceled',
+                    updatedAt: new Date()
+                }
+            });
         } else {
             await prisma.$executeRawUnsafe(`
-                UPDATE core.subscriptions 
+                UPDATE public.subscriptions 
                 SET cancel_at_period_end = true, updated_at = NOW()
                 WHERE id = $1
             `, id);
@@ -221,11 +223,17 @@ router.post('/:id/reactivate', authenticateAdmin as any, async (req: Request, re
     try {
         const { id } = req.params;
 
-        await prisma.$executeRawUnsafe(`
-            UPDATE core.subscriptions 
-            SET status = 'active', cancel_at_period_end = false, updated_at = NOW()
-            WHERE id = $1
-        `, id);
+        await prisma.subscription.update({
+            where: { id: id },
+            data: {
+                status: 'active',
+                canceledAt: null,
+                metadata: {
+                    cancelAtPeriodEnd: false
+                },
+                updatedAt: new Date()
+            }
+        });
 
         res.json({ message: 'Subscription reactivated' });
     } catch (error: any) {
@@ -247,7 +255,7 @@ router.get('/stats/overview', requirePermission('subscriptions', 'view'), async 
                 COUNT(*) FILTER (WHERE status = 'past_due') as past_due_count,
                 COUNT(*) as total_count,
                 COALESCE(SUM((plan->>'price')::NUMERIC) FILTER (WHERE status = 'active'), 0) as monthly_revenue
-            FROM core.subscriptions
+            FROM public.subscriptions
         `);
 
         res.json(rows[0]);

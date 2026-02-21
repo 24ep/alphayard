@@ -69,11 +69,22 @@ export function AccountSettingsModal({ isOpen, onClose }: AccountSettingsModalPr
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving account settings:', formData)
+  const handleSave = async () => {
+    try {
+      const res = await fetch('/api/admin/account/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+      if (!res.ok) {
+        console.error('Failed to save account settings');
+      }
+    } catch (error) {
+      console.error('Error saving account settings:', error);
+    }
     onClose()
   }
+
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },

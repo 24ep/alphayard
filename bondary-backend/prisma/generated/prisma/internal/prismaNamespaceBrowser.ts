@@ -111,7 +111,11 @@ export const ModelName = {
   SocialReport: 'SocialReport',
   SocialActivity: 'SocialActivity',
   SocialCommentLike: 'SocialCommentLike',
-  EntityRelation: 'EntityRelation'
+  EntityRelation: 'EntityRelation',
+  FileTag: 'FileTag',
+  FileTagAssignment: 'FileTagAssignment',
+  FileShare: 'FileShare',
+  FileRecentAccess: 'FileRecentAccess'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -157,6 +161,10 @@ export const UserScalarFieldEnum = {
   dateOfBirth: 'dateOfBirth',
   gender: 'gender',
   bio: 'bio',
+  username: 'username',
+  displayName: 'displayName',
+  followersCount: 'followersCount',
+  followingCount: 'followingCount',
   userType: 'userType',
   circleIds: 'circleIds',
   isOnboardingComplete: 'isOnboardingComplete',
@@ -1160,6 +1168,60 @@ export const EntityRelationScalarFieldEnum = {
 } as const
 
 export type EntityRelationScalarFieldEnum = (typeof EntityRelationScalarFieldEnum)[keyof typeof EntityRelationScalarFieldEnum]
+
+
+export const FileTagScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  color: 'color',
+  userId: 'userId',
+  circleId: 'circleId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FileTagScalarFieldEnum = (typeof FileTagScalarFieldEnum)[keyof typeof FileTagScalarFieldEnum]
+
+
+export const FileTagAssignmentScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  tagId: 'tagId',
+  assignedBy: 'assignedBy',
+  createdAt: 'createdAt'
+} as const
+
+export type FileTagAssignmentScalarFieldEnum = (typeof FileTagAssignmentScalarFieldEnum)[keyof typeof FileTagAssignmentScalarFieldEnum]
+
+
+export const FileShareScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  sharedBy: 'sharedBy',
+  sharedWithUserId: 'sharedWithUserId',
+  sharedWithCircleId: 'sharedWithCircleId',
+  shareLink: 'shareLink',
+  linkPasswordHash: 'linkPasswordHash',
+  permission: 'permission',
+  expiresAt: 'expiresAt',
+  downloadLimit: 'downloadLimit',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FileShareScalarFieldEnum = (typeof FileShareScalarFieldEnum)[keyof typeof FileShareScalarFieldEnum]
+
+
+export const FileRecentAccessScalarFieldEnum = {
+  id: 'id',
+  fileId: 'fileId',
+  userId: 'userId',
+  accessType: 'accessType',
+  accessedAt: 'accessedAt'
+} as const
+
+export type FileRecentAccessScalarFieldEnum = (typeof FileRecentAccessScalarFieldEnum)[keyof typeof FileRecentAccessScalarFieldEnum]
 
 
 export const SortOrder = {

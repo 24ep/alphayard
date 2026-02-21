@@ -8,7 +8,7 @@ async function verifyAll() {
     console.log(`COUNTS:admin=${adminCount},audit=${auditCount}`);
     
     // Check schemas again
-    const schemas: any = await prisma.$queryRawUnsafe("SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('public', 'core', 'admin', 'bondarys')");
+    const schemas: any = await prisma.$queryRawUnsafe("SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('public', 'admin', 'bondarys')");
     console.log('SCHEMAS:' + schemas.map((s: any) => s.schema_name).join(','));
 
   } catch (e: any) {

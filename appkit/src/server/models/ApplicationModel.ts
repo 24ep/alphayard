@@ -37,43 +37,35 @@ export interface UpdateApplicationData {
  */
 class ApplicationModel {
     async create(data: CreateApplicationData): Promise<Application> {
-        const result = await prisma.$queryRaw<any[]>`
-            INSERT INTO applications (
-                id, name, display_name, description, domain, is_active, settings, created_at, updated_at
-            )
-            VALUES (
-                gen_random_uuid()::uuid,
-                ${data.name},
-                ${data.displayName},
-                ${data.description || null},
-                ${data.domain || null},
-                ${data.isActive !== undefined ? data.isActive : true},
-                ${JSON.stringify(data.settings || {})}::jsonb,
-                NOW(),
-                NOW()
-            )
-            RETURNING *
-        `;
+        const application = await prisma.application.create({
+            data: {
+                name: data.name,
+                slug: data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                description: data.description,
+                isActive: data.isActive !== undefined ? data.isActive : true,
+                settings: data.settings || {}
+            }
+        });
 
-        return this.mapRowToApplication(result[0]);
+        return this.mapRowToApplication(application);
     }
 
     async findById(id: string): Promise<Application | null> {
-        const result = await prisma.$queryRaw<any[]>`
-            SELECT * FROM applications WHERE id = ${id}::uuid
-        `;
+        const application = await prisma.application.findUnique({
+            where: { id }
+        });
 
-        if (!result[0]) return null;
-        return this.mapRowToApplication(result[0]);
+        if (!application) return null;
+        return this.mapRowToApplication(application);
     }
 
     async findByName(name: string): Promise<Application | null> {
-        const result = await prisma.$queryRaw<any[]>`
-            SELECT * FROM applications WHERE name = ${name}
-        `;
+        const application = await prisma.application.findFirst({
+            where: { name }
+        });
 
-        if (!result[0]) return null;
-        return this.mapRowToApplication(result[0]);
+        if (!application) return null;
+        return this.mapRowToApplication(application);
     }
 
     async findAll(page: number = 1, limit: number = 20): Promise<{
@@ -84,21 +76,18 @@ class ApplicationModel {
     }> {
         const offset = (page - 1) * limit;
 
-        // Get total count
-        const countResult = await prisma.$queryRaw<any[]>`
-            SELECT COUNT(*) as total FROM applications
-        `;
-        const total = parseInt(countResult[0].total, 10);
-
-        // Get applications
-        const result = await prisma.$queryRaw<any[]>`
-            SELECT * FROM applications 
-            ORDER BY created_at DESC 
-            LIMIT ${limit} OFFSET ${offset}
-        `;
+        // Get total count and applications in parallel
+        const [total, applications] = await Promise.all([
+            prisma.application.count(),
+            prisma.application.findMany({
+                orderBy: { createdAt: 'desc' },
+                skip: offset,
+                take: limit
+            })
+        ]);
 
         return {
-            applications: result.map(this.mapRowToApplication),
+            applications: applications.map(this.mapRowToApplication),
             total,
             page,
             limit
@@ -106,88 +95,117 @@ class ApplicationModel {
     }
 
     async update(id: string, data: UpdateApplicationData): Promise<Application | null> {
-        const updates: string[] = [];
-        const params: any[] = [];
+        const updateData: any = {};
 
         if (data.displayName !== undefined) {
-            updates.push(`display_name = $${params.length + 1}`);
-            params.push(data.displayName);
+            updateData.displayName = data.displayName;
         }
         if (data.description !== undefined) {
-            updates.push(`description = $${params.length + 1}`);
-            params.push(data.description);
+            updateData.description = data.description;
         }
         if (data.domain !== undefined) {
-            updates.push(`domain = $${params.length + 1}`);
-            params.push(data.domain);
+            updateData.domain = data.domain;
         }
         if (data.isActive !== undefined) {
-            updates.push(`is_active = $${params.length + 1}`);
-            params.push(data.isActive);
+            updateData.isActive = data.isActive;
         }
         if (data.settings !== undefined) {
-            updates.push(`settings = $${params.length + 1}::jsonb`);
-            params.push(JSON.stringify(data.settings));
+            updateData.settings = data.settings;
         }
 
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
             return this.findById(id);
         }
 
-        updates.push(`updated_at = NOW()`);
+        const application = await prisma.application.update({
+            where: { id },
+            data: updateData
+        });
 
-        const query = `
-            UPDATE applications 
-            SET ${updates.join(', ')}
-            WHERE id = $${params.length + 1}::uuid
-            RETURNING *
-        `;
-        params.push(id);
-
-        const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
-        if (!result[0]) return null;
-        return this.mapRowToApplication(result[0]);
+        return this.mapRowToApplication(application);
     }
 
     async delete(id: string): Promise<boolean> {
-        const result = await prisma.$executeRaw`
-            DELETE FROM applications WHERE id = ${id}::uuid
-        `;
-        return result > 0;
+        try {
+            await prisma.application.delete({
+                where: { id }
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 
     async getVersions(id: string): Promise<any[]> {
-        // Mock implementation - return empty array for now
-        return [];
+        const result = await prisma.$queryRaw<any[]>`
+            SELECT cv.* FROM public.content_versions cv
+            JOIN public.content_pages cp ON cv.page_id = cp.id
+            WHERE cp.slug = ${id}
+            ORDER BY cv.version_number DESC
+        `;
+        return result;
     }
 
     async createVersion(id: string, data: any): Promise<any> {
-        // Mock implementation - return null for now
-        return null;
+        const result = await prisma.$queryRaw<any[]>`
+            INSERT INTO public.content_versions (
+                id, page_id, version_number, components, author_id, commit_message, created_at
+            )
+            VALUES (
+                gen_random_uuid()::uuid,
+                (SELECT id FROM public.content_pages WHERE slug = ${id}),
+                ${data.versionNumber},
+                ${JSON.stringify(data.components || [])}::jsonb,
+                ${data.authorId || null}::uuid,
+                ${data.commitMessage || null},
+                NOW()
+            )
+            RETURNING *
+        `;
+        return result[0];
     }
 
     async updateVersion(versionId: string, data: any): Promise<any> {
-        // Mock implementation - return null for now
-        return null;
+        const result = await prisma.$queryRaw<any[]>`
+            UPDATE public.content_versions
+            SET components = ${JSON.stringify(data.components)}::jsonb,
+                commit_message = ${data.commitMessage || null}
+            WHERE id = ${versionId}::uuid
+            RETURNING *
+        `;
+        return result[0];
     }
 
     async publishVersion(id: string, versionId: string): Promise<void> {
-        // Mock implementation - do nothing for now
-        console.log(`Publishing version ${versionId} for application ${id}`);
+        const versionRows = await prisma.$queryRaw<any[]>`
+            SELECT * FROM public.content_versions WHERE id = ${versionId}::uuid
+        `;
+
+        const version = versionRows[0];
+        if (version) {
+            await prisma.$queryRaw<any[]>`
+                UPDATE public.content_pages
+                SET status = 'published',
+                    version_number = ${version.version_number},
+                    components = ${JSON.stringify(version.components || [])}::jsonb,
+                    updated_at = NOW()
+                WHERE id = ${version.page_id}::uuid
+            `;
+        }
     }
 
     private mapRowToApplication(row: any): Application {
         return {
             id: row.id,
             name: row.name,
-            displayName: row.display_name,
+            displayName: row.displayName,
             description: row.description,
             domain: row.domain,
             branding: row.branding || {},
-            isActive: row.is_active,
+            isActive: row.isActive,
             settings: row.settings || {},
-            createdAt: new Date(row.created_at),
-            updatedAt: new Date(row.updated_at)
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt
         };
     }
 }

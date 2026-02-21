@@ -16,7 +16,7 @@ router.get('/templates', requirePermission('templates', 'view'), templateControl
 router.get('/templates/categories', requirePermission('templates', 'view'), templateController.getCategories.bind(templateController));
 
 // Get template by ID
-router.get('/templates/:id', requirePermission('templates', 'view'), templateController.getTemplateById.bind(templateController));
+router.get('/templates/:id', requirePermission('templates', 'view'), templateController.getTemplate.bind(templateController));
 
 // Preview template
 router.get('/templates/:id/preview', requirePermission('templates', 'view'), templateController.previewTemplate.bind(templateController));

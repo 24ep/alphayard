@@ -37,12 +37,19 @@ export const sendSocketNotification = async (
     const timestamp = new Date().toISOString();
 
     // Save to database
-    // Using $queryRaw because the code uses 'message' and 'status' columns which don't match Prisma schema (body/isRead)
-    await prisma.$queryRaw`
-      INSERT INTO core.notifications (id, user_id, type, title, message, data, status, action_url, created_at)
-      VALUES (${id}::uuid, ${userId}::uuid, ${notification.type}, ${notification.title}, ${notification.message}, 
-        ${notification.data ? JSON.stringify(notification.data) : null}::jsonb, 'unread', ${notification.actionUrl}, NOW())
-    `;
+    // Create notification using Prisma client
+    await prisma.notification.create({
+      data: {
+        id,
+        userId,
+        type: notification.type,
+        title: notification.title,
+        body: notification.message,
+        data: notification.data || {},
+        actionUrl: notification.actionUrl,
+        isRead: false
+      }
+    });
 
     const notificationPayload = {
       id,
@@ -101,12 +108,19 @@ export const sendCircleNotification = async (
       const id = uuidv4();
       
       // Save to database
-      // Using $queryRaw because the code uses 'message', 'status', and 'sender_id' columns which don't match Prisma schema
-      await prisma.$queryRaw`
-        INSERT INTO core.notifications (id, user_id, type, title, message, data, status, action_url, sender_id, created_at)
-        VALUES (${id}::uuid, ${member.userId}::uuid, ${notification.type}, ${notification.title}, ${notification.message},
-          ${notification.data ? JSON.stringify(notification.data) : null}::jsonb, 'unread', ${notification.actionUrl}, ${senderId}::uuid, NOW())
-      `;
+      // Create notification using Prisma client
+      await prisma.notification.create({
+        data: {
+          id,
+          userId: member.userId,
+          type: notification.type,
+          title: notification.title,
+          body: notification.message,
+          data: notification.data || {},
+          actionUrl: notification.actionUrl,
+          isRead: false
+        }
+      });
 
       const notificationPayload = {
         id,
@@ -442,10 +456,16 @@ export const initializeSocket = (io: Server) => {
         const { notificationId } = data;
         if (!notificationId || !socket.userId) return;
 
-        // Using $queryRaw because the code uses 'status' column which doesn't match Prisma schema (isRead)
-        await prisma.$queryRaw`
-          UPDATE core.notifications SET status = 'read', updated_at = NOW() WHERE id = ${notificationId}::uuid AND user_id = ${socket.userId}::uuid
-        `;
+        // Mark notification as read using Prisma client
+        await prisma.notification.updateMany({
+          where: { 
+            id: notificationId,
+            userId: socket.userId
+          },
+          data: {
+            isRead: true
+          }
+        });
 
         // Emit to user's notification room
         io.to(`notifications:${socket.userId}`).emit('notification:read', { notificationId });
@@ -459,12 +479,15 @@ export const initializeSocket = (io: Server) => {
       try {
         if (!socket.userId) return;
 
-        // Using $queryRaw because the code uses 'status' column which doesn't match Prisma schema (isRead)
-        const result = await prisma.$queryRaw<Array<{ count: bigint }>>`
-          SELECT COUNT(*) as count FROM core.notifications WHERE user_id = ${socket.userId}::uuid AND status = 'unread'
-        `;
+        // Get unread notification count using Prisma client
+        const count = await prisma.notification.count({
+          where: {
+            userId: socket.userId,
+            isRead: false
+          }
+        });
 
-        socket.emit('notification:count', { unreadCount: Number(result[0]?.count || 0) });
+        socket.emit('notification:count', { unreadCount: count });
       } catch (error) {
         console.error('Error getting notification count:', error);
         socket.emit('notification:count', { unreadCount: 0 });

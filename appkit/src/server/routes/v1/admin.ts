@@ -12,6 +12,7 @@ import marketingRoutes from '../admin/marketingRoutes';
 import localizationRoutes from '../admin/localizationRoutes';
 import dynamicContentRoutes from '../admin/dynamicContentRoutes';
 import versionControlRoutes from '../admin/versionControlRoutes';
+import ssoProvidersRoutes from '../admin/ssoProviders';
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.use('/admin', adminRoutes);
 router.use('/admin/entities', entityRoutes);
 router.use('/admin/preferences', preferencesRoutes);
 router.use('/admin/applications', applicationRoutes);
+router.use('/admin/sso-providers', ssoProvidersRoutes);
 router.use('/audit', auditRoutes);
 
 // CMS Routes

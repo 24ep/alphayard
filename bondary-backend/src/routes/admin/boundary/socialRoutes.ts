@@ -115,7 +115,7 @@ router.get('/:id', requirePermission('social', 'view'), async (req, res) => {
                 u.data->>'lastName' as last_name,
                 u.data->>'avatar' as avatar
             FROM unified_entities ue
-            JOIN core.users u ON ue.owner_id = u.id::text
+            JOIN public.users u ON ue.owner_id = u.id::text
             WHERE ue.data->>'postId' = $1 AND ue.type = 'comment' AND ue.status != 'deleted'
             ORDER BY ue.created_at ASC
         `, id);
@@ -128,7 +128,7 @@ router.get('/:id', requirePermission('social', 'view'), async (req, res) => {
                 u.data->>'firstName' as first_name,
                 u.data->>'lastName' as last_name
             FROM entity_relations er
-            JOIN core.users u ON er.source_id = u.id::text
+            JOIN public.users u ON er.source_id = u.id::text
             WHERE er.target_id = $1 AND er.relation_type = 'like'
         `, id);
         

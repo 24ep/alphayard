@@ -25,13 +25,14 @@ class EntityService {
         // Ensure ownerId is valid before inserting
         if (input.ownerId) {
             console.log('[EntityService] Verifying ownerId before insert:', { ownerId: input.ownerId, typeName: input.typeName });
-            const ownerCheck = await prisma.$queryRaw<any[]>`
-                SELECT id FROM core.users WHERE id = ${input.ownerId}::uuid
-            `;
-            console.log('[EntityService] Owner check result:', { ownerId: input.ownerId, found: ownerCheck.length > 0 });
-            if (ownerCheck.length === 0) {
-                console.error('[EntityService] CRITICAL: ownerId does not exist in core.users:', input.ownerId);
-                throw new Error(`Invalid owner_id: ${input.ownerId} does not exist in core.users table`);
+            const ownerCheck = await prisma.user.findUnique({
+                where: { id: input.ownerId },
+                select: { id: true }
+            });
+            console.log('[EntityService] Owner check result:', { ownerId: input.ownerId, found: !!ownerCheck });
+            if (!ownerCheck) {
+                console.error('[EntityService] CRITICAL: ownerId does not exist in public.users:', input.ownerId);
+                throw new Error(`Invalid owner_id: ${input.ownerId} does not exist in users table`);
             }
         } else {
             console.log('[EntityService] No ownerId provided for entity creation');
@@ -75,7 +76,7 @@ class EntityService {
         }
 
         // Build dynamic update using raw query
-        let updateQuery = `UPDATE unified_entities SET updated_at = NOW()`;
+        let updateQuery = `UPDATE public.unified_entities SET updated_at = NOW()`;
         
         if (hasStatus) {
             updateQuery += `, status = '${input.status}'`;
@@ -99,12 +100,12 @@ class EntityService {
     async deleteEntity(id: string, hard: boolean = false): Promise<boolean> {
         if (hard) {
             const result = await prisma.$executeRaw`
-                DELETE FROM unified_entities WHERE id = ${id}::uuid
+                DELETE FROM public.unified_entities WHERE id = ${id}::uuid
             `;
             return result > 0;
         } else {
             const result = await prisma.$executeRaw`
-                UPDATE unified_entities SET status = 'deleted', updated_at = NOW() 
+                UPDATE public.unified_entities SET status = 'deleted', updated_at = NOW() 
                 WHERE id = ${id}::uuid
             `;
             return result > 0;
@@ -147,7 +148,7 @@ class EntityService {
 
         // Get total count
         const countResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT COUNT(*) as total FROM unified_entities WHERE ${whereClause}`
+            `SELECT COUNT(*) as total FROM public.unified_entities WHERE ${whereClause}`
         );
         const total = parseInt(countResult[0].total, 10);
 
@@ -156,7 +157,7 @@ class EntityService {
         const orderDir = options.orderDir || 'DESC';
 
         const rows = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM unified_entities WHERE ${whereClause} 
+            `SELECT * FROM public.unified_entities WHERE ${whereClause} 
              ORDER BY ${orderBy} ${orderDir} LIMIT ${limit} OFFSET ${offset}`
         );
 
@@ -174,10 +175,10 @@ class EntityService {
     async createRelation(sourceId: string, targetId: string, type: string, metadata: any = {}): Promise<boolean> {
         try {
             await prisma.$executeRaw`
-                INSERT INTO entity_relations (source_id, target_id, relation_type, metadata)
+                INSERT INTO public.entity_relations (source_id, target_id, relation_type, metadata)
                 VALUES (${sourceId}::uuid, ${targetId}::uuid, ${type}, ${JSON.stringify(metadata)}::jsonb)
                 ON CONFLICT (source_id, target_id, relation_type) 
-                DO UPDATE SET metadata = entity_relations.metadata || ${JSON.stringify(metadata)}::jsonb
+                DO UPDATE SET metadata = public.entity_relations.metadata || ${JSON.stringify(metadata)}::jsonb
             `;
             return true;
         } catch (error) {
@@ -188,7 +189,7 @@ class EntityService {
 
     async deleteRelation(sourceId: string, targetId: string, type: string): Promise<boolean> {
         const result = await prisma.$executeRaw`
-            DELETE FROM entity_relations 
+            DELETE FROM public.entity_relations 
             WHERE source_id = ${sourceId}::uuid AND target_id = ${targetId}::uuid AND relation_type = ${type}
         `;
         return result > 0;
@@ -197,8 +198,8 @@ class EntityService {
     async queryRelatedEntities(sourceId: string, relationType: string, targetTypeName?: string): Promise<Entity[]> {
         let query = `
             SELECT e.*
-            FROM entity_relations er
-            JOIN unified_entities e ON er.target_id = e.id
+            FROM public.entity_relations er
+            JOIN public.unified_entities e ON er.target_id = e.id
             WHERE er.source_id = '${sourceId}'::uuid AND er.relation_type = '${relationType}'
         `;
 
@@ -215,8 +216,8 @@ class EntityService {
     async queryEntitiesByRelation(targetId: string, relationType: string): Promise<(Entity & { relation_metadata: any, joined_at: Date })[]> {
         const rows = await prisma.$queryRaw<any[]>`
             SELECT e.*, er.metadata as rel_meta, er.created_at as joined_at
-            FROM entity_relations er
-            JOIN unified_entities e ON er.source_id = e.id
+            FROM public.entity_relations er
+            JOIN public.unified_entities e ON er.source_id = e.id
             WHERE er.target_id = ${targetId}::uuid AND er.relation_type = ${relationType}
             ORDER BY er.created_at ASC
         `;
@@ -230,7 +231,7 @@ class EntityService {
 
     async hasRelation(sourceId: string, targetId: string, relationType: string): Promise<boolean> {
         const rows = await prisma.$queryRaw<any[]>`
-            SELECT 1 FROM entity_relations 
+            SELECT 1 FROM public.entity_relations 
             WHERE source_id = ${sourceId}::uuid AND target_id = ${targetId}::uuid AND relation_type = ${relationType}
         `;
         return rows.length > 0;
@@ -242,7 +243,7 @@ class EntityService {
     async searchEntities(typeName: string, query: string, options: { applicationId?: string, limit?: number } = {}): Promise<Entity[]> {
         const limit = Math.min(options.limit || 20, 100);
         
-        let sql = `SELECT * FROM unified_entities 
+        let sql = `SELECT * FROM public.unified_entities 
                    WHERE type = '${typeName}' AND status != 'deleted' AND data::text ILIKE '%${query}%'`;
 
         if (options.applicationId) {
@@ -297,7 +298,7 @@ class EntityService {
                 can_create as "canCreate",
                 can_update as "canUpdate",
                 can_delete as "canDelete"
-            FROM entity_types 
+            FROM public.entity_types 
             WHERE name NOT IN ('users', 'admin-users', 'admin_users')
         `;
         
@@ -332,7 +333,7 @@ class EntityService {
                 can_create as "canCreate",
                 can_update as "canUpdate",
                 can_delete as "canDelete"
-            FROM entity_types 
+            FROM public.entity_types 
             WHERE name = ${typeName}
         `;
         
@@ -363,7 +364,7 @@ class EntityService {
                     can_create as "canCreate",
                     can_update as "canUpdate",
                     can_delete as "canDelete"
-                FROM entity_types 
+                FROM public.entity_types 
                 WHERE id = ${id}::uuid
             `;
         }
@@ -387,7 +388,7 @@ class EntityService {
                     can_create as "canCreate",
                     can_update as "canUpdate",
                     can_delete as "canDelete"
-                FROM entity_types 
+                FROM public.entity_types 
                 WHERE name = ${id}
             `;
         }
@@ -405,7 +406,7 @@ class EntityService {
         category?: string;
     }): Promise<any> {
         const rows = await prisma.$queryRaw<any[]>`
-            INSERT INTO entity_types (
+            INSERT INTO public.entity_types (
                 name, 
                 display_name, 
                 title,
@@ -486,7 +487,7 @@ class EntityService {
         }
         
         const query = `
-            UPDATE entity_types 
+            UPDATE public.entity_types 
             SET ${updates.join(', ')}, updated_at = NOW()
             WHERE id = '${id}'::uuid OR name = '${id}'
             RETURNING 
@@ -514,7 +515,7 @@ class EntityService {
 
     async deleteEntityType(id: string): Promise<boolean> {
         const result = await prisma.$executeRaw`
-            DELETE FROM entity_types 
+            DELETE FROM public.entity_types 
             WHERE (id = ${id}::uuid OR name = ${id}) AND is_system = false
         `;
         

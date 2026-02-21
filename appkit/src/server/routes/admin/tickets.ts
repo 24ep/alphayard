@@ -12,34 +12,52 @@ router.use(authenticateAdmin as any);
 // Get ticket statistics
 router.get('/stats', requirePermission('tickets', 'view'), async (req: Request, res: Response) => {
   try {
-    const statsResult = await prisma.$queryRawUnsafe<Array<{
-      total: bigint;
-      open: bigint;
-      in_progress: bigint;
-      resolved: bigint;
-      closed: bigint;
-      overdue: bigint;
-    }>>(`
-      SELECT
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'open') as open,
-        COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
-        COUNT(*) FILTER (WHERE status = 'resolved') as resolved,
-        COUNT(*) FILTER (WHERE status = 'closed') as closed,
-        COUNT(*) FILTER (WHERE status = 'open' AND created_at < NOW() - INTERVAL '48 hours') as overdue
-      FROM support_tickets
-    `);
+    // Get all statistics in parallel using Prisma
+    const [
+      total,
+      open,
+      inProgress,
+      resolved,
+      closed,
+      overdue
+    ] = await Promise.all([
+      prisma.supportTicket.count(),
+      prisma.supportTicket.count({ where: { status: 'open' } }),
+      prisma.supportTicket.count({ where: { status: 'in_progress' } }),
+      prisma.supportTicket.count({ where: { status: 'resolved' } }),
+      prisma.supportTicket.count({ where: { status: 'closed' } }),
+      prisma.supportTicket.count({ 
+        where: { 
+          status: 'open',
+          createdAt: { lt: new Date(Date.now() - 48 * 60 * 60 * 1000) }
+        }
+      })
+    ]);
 
-    // Calculate average resolution time
-    const avgResult = await prisma.$queryRawUnsafe<Array<{
-      avg_hours: number;
-    }>>(`
-      SELECT AVG(EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600) as avg_hours
-      FROM support_tickets
-      WHERE resolved_at IS NOT NULL
-    `);
+    // Calculate average resolution time manually
+    const resolvedTickets = await prisma.supportTicket.findMany({
+      where: { resolvedAt: { not: null } },
+      select: { createdAt: true, resolvedAt: true }
+    });
 
-    const stats = statsResult[0];
+    const avgHours = resolvedTickets.length > 0
+      ? resolvedTickets.reduce((sum: number, ticket: any) => {
+          const hours = ticket.resolvedAt 
+            ? (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60 * 60)
+            : 0;
+          return sum + hours;
+        }, 0) / resolvedTickets.length
+      : 0;
+
+    const stats = {
+      total,
+      open,
+      in_progress: inProgress,
+      resolved,
+      closed,
+      overdue,
+      avg_hours: avgHours
+    };
     
     res.json({
       success: true,
@@ -50,7 +68,7 @@ router.get('/stats', requirePermission('tickets', 'view'), async (req: Request, 
         resolved: Number(stats.resolved || 0),
         closed: Number(stats.closed || 0),
         overdue: Number(stats.overdue || 0),
-        avgResolutionTime: Math.round(Number(avgResult[0]?.avg_hours || 0))
+        avgResolutionTime: Math.round(Number(stats.avg_hours || 0))
       }
     });
   } catch (error) {
@@ -64,82 +82,65 @@ router.get('/', requirePermission('tickets', 'view'), async (req: Request, res: 
   try {
     const { status, type, priority, search, limit = 50, offset = 0, assignedTo } = req.query;
     
-    let query = `
-      SELECT t.*,
-             r.first_name as reporter_first_name, r.last_name as reporter_last_name, r.email as reporter_email,
-             a.first_name as assigned_first_name, a.last_name as assigned_last_name, a.email as assigned_email,
-             c.name as circle_name
-      FROM support_tickets t
-      LEFT JOIN core.users r ON t.reporter_id = r.id
-      LEFT JOIN admin.admin_users a ON t.assigned_to = a.id
-      LEFT JOIN appkit.circles c ON t.circle_id = c.id
-      WHERE 1=1
-    `;
-    const params: any[] = [];
-    let paramIndex = 1;
+    // Build where conditions for Prisma
+    const whereConditions: any = {};
 
     if (status && status !== 'all') {
-      params.push(status);
-      query += ` AND t.status = $${paramIndex++}`;
+      whereConditions.status = status;
     }
     if (type && type !== 'all') {
-      params.push(type);
-      query += ` AND t.type = $${paramIndex++}`;
+      whereConditions.type = type;
     }
     if (priority && priority !== 'all') {
-      params.push(priority);
-      query += ` AND t.priority = $${paramIndex++}`;
+      whereConditions.priority = priority;
     }
     if (assignedTo) {
-      params.push(assignedTo);
-      query += ` AND t.assigned_to = $${paramIndex++}`;
+      whereConditions.assignedTo = assignedTo;
     }
     if (search) {
-      params.push(`%${search}%`);
-      query += ` AND (t.title ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`;
-      paramIndex++;
+      whereConditions.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
     }
 
-    query += ` ORDER BY 
-      CASE t.priority 
-        WHEN 'urgent' THEN 1 
-        WHEN 'high' THEN 2 
-        WHEN 'medium' THEN 3 
-        WHEN 'low' THEN 4 
-      END,
-      t.created_at DESC
-    `;
-
-    params.push(limit, offset);
-    query += ` LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
-
-    const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+    // Get tickets with proper relationships
+    const result = await prisma.supportTicket.findMany({
+      where: whereConditions,
+      include: {
+        reporter: {
+          select: { 
+            firstName: true, 
+            lastName: true, 
+            email: true 
+          }
+        },
+        assigned: {
+          select: { 
+            name: true, 
+            email: true 
+          }
+        },
+        circle: {
+          select: { 
+            name: true 
+          }
+        }
+      },
+      orderBy: [
+        { priority: 'asc' }, // Note: This might need custom ordering for priority levels
+        { createdAt: 'desc' }
+      ],
+      skip: Number(offset),
+      take: Number(limit)
+    });
 
     // Get total count
-    let countQuery = `SELECT COUNT(*) FROM support_tickets t WHERE 1=1`;
-    const countParams: any[] = [];
-    let countParamIndex = 1;
-    
-    if (status && status !== 'all') {
-      countParams.push(status);
-      countQuery += ` AND t.status = $${countParamIndex++}`;
-    }
-    if (type && type !== 'all') {
-      countParams.push(type);
-      countQuery += ` AND t.type = $${countParamIndex++}`;
-    }
-    if (priority && priority !== 'all') {
-      countParams.push(priority);
-      countQuery += ` AND t.priority = $${countParamIndex++}`;
-    }
-    if (search) {
-      countParams.push(`%${search}%`);
-      countQuery += ` AND (t.title ILIKE $${countParamIndex} OR t.description ILIKE $${countParamIndex})`;
-    }
+    const total = await prisma.supportTicket.count({
+      where: whereConditions
+    });
 
-    const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(countQuery, ...countParams);
-
-    const tickets = result.map(row => ({
+    const tickets = result.map((row: any) => ({
       id: row.id,
       title: row.title,
       description: row.description,
@@ -147,16 +148,16 @@ router.get('/', requirePermission('tickets', 'view'), async (req: Request, res: 
       priority: row.priority,
       status: row.status,
       reporter: {
-        id: row.reporter_id,
-        name: `${row.reporter_first_name || ''} ${row.reporter_last_name || ''}`.trim(),
-        email: row.reporter_email,
-        circleId: row.circle_id,
-        circleName: row.circle_name
+        id: row.reporterId,
+        name: `${row.reporter?.firstName || ''} ${row.reporter?.lastName || ''}`.trim(),
+        email: row.reporter?.email,
+        circleId: row.circleId,
+        circleName: row.circle?.name || null
       },
-      assignedTo: row.assigned_to ? {
-        id: row.assigned_to,
-        name: `${row.assigned_first_name || ''} ${row.assigned_last_name || ''}`.trim(),
-        email: row.assigned_email
+      assignedTo: row.assigned ? {
+        id: row.assignedTo,
+        name: row.assigned?.name || null,
+        email: row.assigned?.email
       } : null,
       tags: row.tags || [],
       attachments: row.attachments || [],
@@ -168,7 +169,7 @@ router.get('/', requirePermission('tickets', 'view'), async (req: Request, res: 
     res.json({
       success: true,
       tickets,
-      total: Number(countResult[0].count),
+      total: Number(total),
       limit: Number(limit as string),
       offset: Number(offset as string)
     });
@@ -183,71 +184,75 @@ router.get('/:id', requirePermission('tickets', 'view'), async (req: Request, re
   try {
     const { id } = req.params;
 
-    const ticketResult = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT t.*,
-             r.first_name as reporter_first_name, r.last_name as reporter_last_name, r.email as reporter_email,
-             a.first_name as assigned_first_name, a.last_name as assigned_last_name, a.email as assigned_email,
-             c.name as circle_name
-      FROM support_tickets t
-      LEFT JOIN core.users r ON t.reporter_id = r.id
-      LEFT JOIN admin.admin_users a ON t.assigned_to = a.id
-      LEFT JOIN appkit.circles c ON t.circle_id = c.id
-      WHERE t.id = $1
-    `, id);
+    const ticket = await prisma.supportTicket.findUnique({
+      where: { id },
+      include: {
+        reporter: {
+          select: { 
+            firstName: true, 
+            lastName: true, 
+            email: true 
+          }
+        },
+        assigned: {
+          select: { 
+            name: true, 
+            email: true 
+          }
+        },
+        circle: {
+          select: { 
+            name: true 
+          }
+        },
+        comments: {
+          orderBy: { createdAt: 'asc' }
+        }
+      }
+    });
 
-    if (ticketResult.length === 0) {
+    if (!ticket) {
       return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    // Get comments
-    const commentsResult = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT c.*, 
-             COALESCE(u.first_name, au.first_name) as author_first_name,
-             COALESCE(u.last_name, au.last_name) as author_last_name,
-             CASE WHEN au.id IS NOT NULL THEN 'admin' ELSE 'user' END as author_role
-      FROM ticket_comments c
-      LEFT JOIN core.users u ON c.author_id = u.id AND c.author_type = 'user'
-      LEFT JOIN admin.admin_users au ON c.author_id = au.id AND c.author_type = 'admin'
-      WHERE c.ticket_id = $1
-      ORDER BY c.created_at ASC
-    `, id);
-
-    const row = ticketResult[0];
-    const ticket = {
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      type: row.type,
-      priority: row.priority,
-      status: row.status,
+    // Format the ticket response
+    const formattedTicket = {
+      id: ticket.id,
+      title: ticket.title,
+      description: ticket.description,
+      type: ticket.type,
+      priority: ticket.priority,
+      status: ticket.status,
       reporter: {
-        id: row.reporter_id,
-        name: `${row.reporter_first_name || ''} ${row.reporter_last_name || ''}`.trim(),
-        email: row.reporter_email,
-        circleId: row.circle_id,
-        circleName: row.circle_name
+        id: ticket.reporterId,
+        name: `${ticket.reporter?.firstName || ''} ${ticket.reporter?.lastName || ''}`.trim(),
+        email: ticket.reporter?.email,
+        circleId: ticket.circleId,
+        circleName: ticket.circle?.name || null
       },
-      assignedTo: row.assigned_to ? {
-        id: row.assigned_to,
-        name: `${row.assigned_first_name || ''} ${row.assigned_last_name || ''}`.trim(),
-        email: row.assigned_email
+      assignedTo: ticket.assigned ? {
+        id: ticket.assignedTo,
+        name: ticket.assigned?.name || null,
+        email: ticket.assigned?.email
       } : null,
-      tags: row.tags || [],
-      attachments: row.attachments || [],
-      comments: commentsResult.map(c => ({
+      tags: ticket.tags || [],
+      attachments: ticket.attachments || [],
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      resolvedAt: ticket.resolvedAt,
+      comments: ticket.comments.map((c: any) => ({
         id: c.id,
         content: c.content,
+        isInternal: c.isInternal,
+        createdAt: c.createdAt,
         author: {
-          id: c.author_id,
-          name: `${c.author_first_name || ''} ${c.author_last_name || ''}`.trim(),
-          role: c.author_role
-        },
-        isInternal: c.is_internal,
-        createdAt: c.created_at
-      })),
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      resolvedAt: row.resolved_at
+          id: c.authorId,
+          name: c.authorType === 'admin' 
+            ? `${c.adminUser?.firstName || ''} ${c.adminUser?.lastName || ''}`.trim()
+            : `${c.user?.firstName || ''} ${c.user?.lastName || ''}`.trim(),
+          role: c.authorType
+        }
+      }))
     };
 
     res.json({ success: true, ticket });
@@ -263,13 +268,22 @@ router.post('/', requirePermission('tickets', 'create'), async (req: Request, re
     const { title, description, type, priority, reporterId, circleId, tags, attachments } = req.body;
     const id = uuidv4();
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      INSERT INTO support_tickets (id, title, description, type, priority, status, reporter_id, circle_id, tags, attachments, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, 'open', $6, $7, $8, $9, NOW(), NOW())
-      RETURNING *
-    `, id, title, description, type || 'other', priority || 'medium', reporterId, circleId, tags || [], attachments || []);
+    const ticket = await prisma.supportTicket.create({
+      data: {
+        id,
+        title,
+        description,
+        type: type || 'other',
+        priority: priority || 'medium',
+        status: 'open',
+        reporterId,
+        circleId,
+        tags: tags || [],
+        attachments: attachments || []
+      }
+    });
 
-    res.json({ success: true, ticket: result[0] });
+    res.json({ success: true, ticket });
   } catch (error) {
     console.error('Error creating ticket:', error);
     res.status(500).json({ success: false, error: 'Failed to create ticket' });
@@ -282,37 +296,33 @@ router.put('/:id', requirePermission('tickets', 'edit'), async (req: Request, re
     const { id } = req.params;
     const { title, description, type, priority, status, assignedTo, tags } = req.body;
 
-    const updates: string[] = ['updated_at = NOW()'];
-    const values: any[] = [];
-    let paramIndex = 1;
+    const updateData: any = {
+      updatedAt: new Date()
+    };
 
-    if (title !== undefined) { updates.push(`title = $${paramIndex++}`); values.push(title); }
-    if (description !== undefined) { updates.push(`description = $${paramIndex++}`); values.push(description); }
-    if (type !== undefined) { updates.push(`type = $${paramIndex++}`); values.push(type); }
-    if (priority !== undefined) { updates.push(`priority = $${paramIndex++}`); values.push(priority); }
+    if (title !== undefined) { updateData.title = title; }
+    if (description !== undefined) { updateData.description = description; }
+    if (type !== undefined) { updateData.type = type; }
+    if (priority !== undefined) { updateData.priority = priority; }
     if (status !== undefined) { 
-      updates.push(`status = $${paramIndex++}`); 
-      values.push(status);
+      updateData.status = status;
       if (status === 'resolved' || status === 'closed') {
-        updates.push(`resolved_at = NOW()`);
+        updateData.resolvedAt = new Date();
       }
     }
-    if (assignedTo !== undefined) { updates.push(`assigned_to = $${paramIndex++}`); values.push(assignedTo || null); }
-    if (tags !== undefined) { updates.push(`tags = $${paramIndex++}`); values.push(tags); }
+    if (assignedTo !== undefined) { updateData.assignedTo = assignedTo || null; }
+    if (tags !== undefined) { updateData.tags = tags; }
 
-    values.push(id);
+    const result = await prisma.supportTicket.update({
+      where: { id },
+      data: updateData
+    });
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      UPDATE support_tickets SET ${updates.join(', ')}
-      WHERE id = $${paramIndex}
-      RETURNING *
-    `, ...values);
-
-    if (result.length === 0) {
+    if (!result) {
       return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    res.json({ success: true, ticket: result[0] });
+    res.json({ success: true, ticket: result });
   } catch (error) {
     console.error('Error updating ticket:', error);
     res.status(500).json({ success: false, error: 'Failed to update ticket' });
@@ -325,18 +335,32 @@ router.patch('/:id/assign', requirePermission('tickets', 'edit'), async (req: Re
     const { id } = req.params;
     const { assignedTo } = req.body;
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      UPDATE support_tickets 
-      SET assigned_to = $1, status = CASE WHEN status = 'open' THEN 'in_progress' ELSE status END, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *
-    `, assignedTo, id);
+    // First get current ticket to check status
+    const currentTicket = await prisma.supportTicket.findUnique({
+      where: { id },
+      select: { status: true }
+    });
 
-    if (result.length === 0) {
+    if (!currentTicket) {
       return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
-    res.json({ success: true, ticket: result[0] });
+    // Update with conditional status change
+    const updateData: any = {
+      assignedTo,
+      updatedAt: new Date()
+    };
+
+    if (currentTicket.status === 'open') {
+      updateData.status = 'in_progress';
+    }
+
+    const result = await prisma.supportTicket.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ success: true, ticket: result });
   } catch (error) {
     console.error('Error assigning ticket:', error);
     res.status(500).json({ success: false, error: 'Failed to assign ticket' });
@@ -351,27 +375,36 @@ router.post('/:id/comments', requirePermission('tickets', 'edit'), async (req: R
     const adminUser = (req as any).adminUser;
     const commentId = uuidv4();
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      INSERT INTO ticket_comments (id, ticket_id, author_id, author_type, content, is_internal, created_at)
-      VALUES ($1, $2, $3, 'admin', $4, $5, NOW())
-      RETURNING *
-    `, commentId, id, adminUser?.id, content, isInternal);
+    const comment = await prisma.ticketComment.create({
+      data: {
+        id: commentId,
+        ticketId: id,
+        authorId: adminUser?.id,
+        authorType: 'admin',
+        content,
+        isInternal
+      }
+    });
 
     // Update ticket updated_at
-    await prisma.$executeRawUnsafe(`UPDATE support_tickets SET updated_at = NOW() WHERE id = $1`, id);
+    await prisma.supportTicket.update({
+      where: { id },
+      data: { updatedAt: new Date() }
+    });
 
     res.json({ 
       success: true, 
       comment: {
-        id: result[0].id,
-        content: result[0].content,
+        id: comment.id,
+        content: comment.content,
         author: {
-          id: adminUser?.id,
-          name: adminUser?.name || 'Admin',
+          id: comment.authorId,
+          firstName: adminUser?.firstName,
+          lastName: adminUser?.lastName,
           role: 'admin'
         },
-        isInternal: result[0].is_internal,
-        createdAt: result[0].created_at
+        isInternal: comment.isInternal,
+        createdAt: comment.createdAt
       }
     });
   } catch (error) {
@@ -386,12 +419,16 @@ router.delete('/:id', requirePermission('tickets', 'delete'), async (req: Reques
     const { id } = req.params;
 
     // Delete comments first
-    await prisma.$executeRawUnsafe(`DELETE FROM ticket_comments WHERE ticket_id = $1`, id);
+    await prisma.ticketComment.deleteMany({
+      where: { ticketId: id }
+    });
     
     // Delete ticket
-    const result = await prisma.$queryRawUnsafe<any[]>(`DELETE FROM support_tickets WHERE id = $1 RETURNING id`, id);
+    const result = await prisma.supportTicket.delete({
+      where: { id }
+    });
 
-    if (result.length === 0) {
+    if (!result) {
       return res.status(404).json({ success: false, error: 'Ticket not found' });
     }
 
@@ -405,10 +442,10 @@ router.delete('/:id', requirePermission('tickets', 'delete'), async (req: Reques
 // Get tickets count (for badge)
 router.get('/count/open', async (req: Request, res: Response) => {
   try {
-    const result = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`
-      SELECT COUNT(*) as count FROM support_tickets WHERE status IN ('open', 'in_progress')
-    `);
-    res.json({ success: true, count: parseInt(String(result[0].count)) });
+    const result = await prisma.supportTicket.count({
+      where: { status: { in: ['open', 'in_progress'] } }
+    });
+    res.json({ success: true, count: result });
   } catch (error) {
     console.error('Error getting ticket count:', error);
     res.json({ success: true, count: 0 });

@@ -182,18 +182,35 @@ export class PollsService {
   }
 
   async getVoters(pollId: string, optionId: string, limit = 50, offset = 0): Promise<any[]> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        u.id, u.username, u.display_name, u.avatar_url, u.is_verified,
-        pv.created_at as voted_at
-      FROM bondarys.social_poll_votes pv
-      JOIN core.users u ON pv.user_id = u.id
-      WHERE pv.poll_id = ${pollId}::uuid AND pv.option_id = ${optionId}::uuid
-      ORDER BY pv.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
+    const votes = await prisma.socialPollVote.findMany({
+      where: {
+        pollId: pollId,
+        optionId: optionId
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            isVerified: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
     
-    return result;
+    return votes.map(vote => ({
+      id: vote.user.id,
+      username: vote.user.username,
+      display_name: vote.user.displayName,
+      avatar_url: vote.user.avatarUrl,
+      is_verified: vote.user.isVerified,
+      voted_at: vote.createdAt
+    }));
   }
 
   async closePoll(postId: string, userId: string): Promise<boolean> {

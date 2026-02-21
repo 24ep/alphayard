@@ -322,3 +322,23 @@ export type SocialCommentLike = Prisma.SocialCommentLikeModel
  * 
  */
 export type EntityRelation = Prisma.EntityRelationModel
+/**
+ * Model FileTag
+ * 
+ */
+export type FileTag = Prisma.FileTagModel
+/**
+ * Model FileTagAssignment
+ * 
+ */
+export type FileTagAssignment = Prisma.FileTagAssignmentModel
+/**
+ * Model FileShare
+ * 
+ */
+export type FileShare = Prisma.FileShareModel
+/**
+ * Model FileRecentAccess
+ * 
+ */
+export type FileRecentAccess = Prisma.FileRecentAccessModel

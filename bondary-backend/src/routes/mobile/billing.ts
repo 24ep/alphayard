@@ -72,23 +72,24 @@ router.post('/apply-coupon', authenticateToken as any, [ body('coupon').notEmpty
         const userId = req.user.id;
         const { coupon } = req.body;
 
-        const subRows = await prisma.$queryRaw<any[]>`
-            SELECT * FROM core.subscriptions WHERE user_id = ${userId} AND status IN ('active', 'trialing') LIMIT 1
-        `;
+        const activeSubscription = await prisma.subscription.findFirst({
+            where: {
+              userId: userId,
+              status: { in: ['active', 'trialing'] }
+            }
+        });
 
-        if (subRows.length === 0) {
+        if (!activeSubscription) {
             return res.status(404).json({ message: 'No active subscription found' });
         }
-
-        const subscription = subRows[0];
 
         // Validate coupon exists
         await stripe.coupons.retrieve(coupon);
 
-        const updated = await stripe.subscriptions.update(subscription.stripe_subscription_id, { coupon });
+        const updated = await stripe.subscriptions.update(activeSubscription.externalId, { coupon });
         
         const updatedRows = await prisma.$queryRaw<any[]>`
-            UPDATE core.subscriptions SET status = ${updated.status}, updated_at = NOW() WHERE id = ${subscription.id} RETURNING *
+            UPDATE public.subscriptions SET status = ${updated.status}, updated_at = NOW() WHERE id = ${activeSubscription.id} RETURNING *
         `;
 
         const sub = updatedRows[0];

@@ -280,10 +280,10 @@ export async function getSessions(userId: string, options?: {
 }
 
 export async function getSessionById(sessionId: string): Promise<UserSession | null> {
-  const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.user_sessions WHERE id = ${sessionId}::uuid
-  `;
-  return result[0] ? mapSession(result[0]) : null;
+  const session = await prisma.userSession.findUnique({
+    where: { id: sessionId }
+  });
+  return session ? mapSession(session) : null;
 }
 
 export async function createSession(data: {
@@ -304,21 +304,25 @@ export async function createSession(data: {
   const expiresAt = new Date();
   expiresAt.setHours(expiresAt.getHours() + (data.expiresInHours || 24));
   
-  const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.user_sessions (
-      user_id, session_token, refresh_token, device_id, device_type, device_name,
-      browser, os, ip_address, country, city, is_remembered, expires_at
-    ) VALUES (
-      ${data.userId}::uuid, ${sessionToken}, ${refreshToken}, 
-      ${data.deviceId || null}, ${data.deviceType || null}, ${data.deviceName || null},
-      ${data.browser || null}, ${data.os || null}, ${data.ipAddress || null}, 
-      ${data.country || null}, ${data.city || null}, ${data.isRemembered || false}, 
-      ${expiresAt}
-    )
-    RETURNING *
-  `;
+  const result = await prisma.userSession.create({
+    data: {
+      userId: data.userId,
+      sessionToken: sessionToken,
+      refreshToken: refreshToken,
+      deviceId: data.deviceId,
+      deviceType: data.deviceType,
+      deviceName: data.deviceName,
+      browser: data.browser,
+      os: data.os,
+      ipAddress: data.ipAddress,
+      country: data.country,
+      city: data.city,
+      isRemembered: data.isRemembered || false,
+      expiresAt: expiresAt
+    }
+  });
   
-  return mapSession(result[0]);
+  return mapSession(result);
 }
 
 export async function revokeSession(
@@ -326,14 +330,15 @@ export async function revokeSession(
   revokedBy?: string,
   reason?: string
 ): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE core.user_sessions SET
-      is_active = false,
-      revoked_at = NOW(),
-      revoked_by = ${revokedBy || null}::uuid,
-      revoke_reason = ${reason || null}
-    WHERE id = ${sessionId}::uuid
-  `;
+  await prisma.userSession.update({
+    where: { id: sessionId },
+    data: {
+      isActive: false,
+      revokedAt: new Date(),
+      revokedBy: revokedBy,
+      revokeReason: reason
+    }
+  });
 }
 
 export async function revokeAllSessions(
@@ -342,7 +347,7 @@ export async function revokeAllSessions(
   revokedBy?: string
 ): Promise<number> {
   let query = `
-    UPDATE core.user_sessions SET
+    UPDATE public.user_sessions SET
       is_active = false,
       revoked_at = NOW(),
       revoked_by = ${revokedBy ? `'${revokedBy}'::uuid` : 'NULL'},
@@ -359,9 +364,10 @@ export async function revokeAllSessions(
 }
 
 export async function updateSessionActivity(sessionId: string): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE core.user_sessions SET last_activity_at = NOW() WHERE id = ${sessionId}::uuid
-  `;
+  await prisma.userSession.update({
+    where: { id: sessionId },
+    data: { lastActivityAt: new Date() }
+  });
 }
 
 // =====================================================
@@ -412,10 +418,10 @@ export async function getDevices(userId: string): Promise<UserDevice[]> {
 }
 
 export async function getDeviceById(deviceId: string): Promise<UserDevice | null> {
-  const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.user_devices WHERE id = ${deviceId}::uuid
-  `;
-  return result[0] ? mapDevice(result[0]) : null;
+  const device = await prisma.userDevice.findUnique({
+    where: { id: deviceId }
+  });
+  return device ? mapDevice(device) : null;
 }
 
 export async function registerDevice(data: {
@@ -434,43 +440,23 @@ export async function registerDevice(data: {
   city?: string;
 }): Promise<UserDevice> {
   // Check if device already exists
-  const existing = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.user_devices WHERE user_id = ${data.userId}::uuid AND device_fingerprint = ${data.deviceFingerprint}
-  `;
+  const existing = await prisma.userDevice.findFirst({
+    where: {
+      userId: data.userId,
+      deviceFingerprint: data.deviceFingerprint
+    }
+  });
   
-  if (existing[0]) {
+  if (existing) {
     // Update existing device
     const deviceName = data.deviceName || null;
     const os = data.os || null;
     const osVersion = data.osVersion || null;
     const browser = data.browser || null;
-    const browserVersion = data.browserVersion || null;
-    const ipAddress = data.ipAddress || null;
-    const country = data.country || null;
-    const city = data.city || null;
-    
-    const result = await prisma.$queryRaw<any[]>`
-      UPDATE core.user_devices SET
-        device_name = COALESCE(${deviceName}, device_name),
-        os = COALESCE(${os}, os),
-        os_version = COALESCE(${osVersion}, os_version),
-        browser = COALESCE(${browser}, browser),
-        browser_version = COALESCE(${browserVersion}, browser_version),
-        last_seen_at = NOW(),
-        last_ip_address = ${ipAddress},
-        last_location_country = ${country},
-        last_location_city = ${city},
-        login_count = login_count + 1,
-        updated_at = NOW()
-      WHERE id = ${existing[0].id}::uuid
-      RETURNING *
-    `;
-    return mapDevice(result[0]);
   }
   
-  // Create new device
   const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.user_devices (
+    INSERT INTO public.user_devices (
       user_id, device_fingerprint, device_name, device_type, brand, model,
       os, os_version, browser, browser_version, last_ip_address,
       last_location_country, last_location_city
@@ -489,47 +475,53 @@ export async function registerDevice(data: {
 
 export async function trustDevice(deviceId: string, trusted: boolean): Promise<void> {
   const trustLevel = trusted ? 'trusted' : 'normal';
-  await prisma.$executeRaw`
-    UPDATE core.user_devices SET
-      is_trusted = ${trusted},
-      trust_level = ${trustLevel},
-      updated_at = NOW()
-    WHERE id = ${deviceId}::uuid
-  `;
+  await prisma.userDevice.update({
+    where: { id: deviceId },
+    data: {
+      isTrusted: trusted,
+      trustLevel: trustLevel,
+      updatedAt: new Date()
+    }
+  });
 }
 
 export async function blockDevice(deviceId: string, reason?: string): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE core.user_devices SET
-      is_blocked = true,
-      blocked_at = NOW(),
-      blocked_reason = ${reason || null},
-      updated_at = NOW()
-    WHERE id = ${deviceId}::uuid
-  `;
+  await prisma.userDevice.update({
+    where: { id: deviceId },
+    data: {
+      isBlocked: true,
+      blockedAt: new Date(),
+      blockedReason: reason || null,
+      updatedAt: new Date()
+    }
+  });
 }
 
 export async function unblockDevice(deviceId: string): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE core.user_devices SET
-      is_blocked = false,
-      blocked_at = NULL,
-      blocked_reason = NULL,
-      updated_at = NOW()
-    WHERE id = ${deviceId}::uuid
-  `;
+  await prisma.userDevice.update({
+    where: { id: deviceId },
+    data: {
+      isBlocked: false,
+      blockedAt: null,
+      blockedReason: null,
+      updatedAt: new Date()
+    }
+  });
 }
 
 export async function deleteDevice(deviceId: string): Promise<void> {
   // Revoke all sessions for this device first
-  await prisma.$executeRaw`
-    UPDATE core.user_sessions SET is_active = false, revoke_reason = 'Device removed'
-    WHERE device_id = ${deviceId}::uuid
-  `;
+  await prisma.userSession.updateMany({
+    where: { deviceId: deviceId },
+    data: {
+      isActive: false,
+      revokeReason: 'Device removed'
+    }
+  });
   
-  await prisma.$executeRaw`
-    DELETE FROM core.user_devices WHERE id = ${deviceId}::uuid
-  `;
+  await prisma.userDevice.delete({
+    where: { id: deviceId }
+  });
 }
 
 // =====================================================
@@ -537,9 +529,13 @@ export async function deleteDevice(deviceId: string): Promise<void> {
 // =====================================================
 
 export async function getMFASettings(userId: string): Promise<UserMFA[]> {
-  const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.user_mfa WHERE user_id = ${userId}::uuid ORDER BY is_primary DESC, mfa_type
-  `;
+  const result = await prisma.userMFA.findMany({
+    where: { userId: userId },
+    orderBy: [
+      { isPrimary: 'desc' },
+      { mfaType: 'asc' }
+    ]
+  });
   return result.map(mapMFA);
 }
 
@@ -549,27 +545,46 @@ export async function enableMFA(userId: string, mfaType: string, data: {
   email?: string;
   isPrimary?: boolean;
 }): Promise<UserMFA> {
-  const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.user_mfa (user_id, mfa_type, is_enabled, is_primary, totp_secret, phone_number, email)
-    VALUES (${userId}::uuid, ${mfaType}, true, ${data.isPrimary || false}, ${data.totpSecret || null}, ${data.phoneNumber || null}, ${data.email || null})
-    ON CONFLICT (user_id, mfa_type) DO UPDATE SET
-      is_enabled = true,
-      is_primary = EXCLUDED.is_primary,
-      totp_secret = COALESCE(EXCLUDED.totp_secret, core.user_mfa.totp_secret),
-      phone_number = COALESCE(EXCLUDED.phone_number, core.user_mfa.phone_number),
-      email = COALESCE(EXCLUDED.email, core.user_mfa.email),
-      updated_at = NOW()
-    RETURNING *
-  `;
+  const result = await prisma.userMFA.upsert({
+    where: {
+      userId_mfaType: {
+        userId: userId,
+        mfaType: mfaType
+      }
+    },
+    update: {
+      isEnabled: true,
+      isPrimary: data.isPrimary || false,
+      totpSecret: data.totpSecret,
+      phoneNumber: data.phoneNumber,
+      email: data.email,
+      updatedAt: new Date()
+    },
+    create: {
+      userId: userId,
+      mfaType: mfaType,
+      isEnabled: true,
+      isPrimary: data.isPrimary || false,
+      totpSecret: data.totpSecret,
+      phoneNumber: data.phoneNumber,
+      email: data.email
+    }
+  });
   
-  return mapMFA(result[0]);
+  return mapMFA(result);
 }
 
 export async function disableMFA(userId: string, mfaType: string): Promise<void> {
-  await prisma.$executeRaw`
-    UPDATE core.user_mfa SET is_enabled = false, updated_at = NOW()
-    WHERE user_id = ${userId}::uuid AND mfa_type = ${mfaType}
-  `;
+  await prisma.userMFA.updateMany({
+    where: {
+      userId: userId,
+      mfaType: mfaType
+    },
+    data: {
+      isEnabled: false,
+      updatedAt: new Date()
+    }
+  });
 }
 
 export async function generateBackupCodes(userId: string): Promise<string[]> {
@@ -582,40 +597,59 @@ export async function generateBackupCodes(userId: string): Promise<string[]> {
     hashedCodes.push(await bcrypt.hash(code, 10));
   }
   
-  await prisma.$executeRaw`
-    INSERT INTO core.user_mfa (user_id, mfa_type, is_enabled, backup_codes, backup_codes_generated_at)
-    VALUES (${userId}::uuid, 'backup_codes', true, ${JSON.stringify(hashedCodes)}::jsonb, NOW())
-    ON CONFLICT (user_id, mfa_type) DO UPDATE SET
-      backup_codes = ${JSON.stringify(hashedCodes)}::jsonb,
-      backup_codes_generated_at = NOW(),
-      backup_codes_used = 0,
-      updated_at = NOW()
-  `;
+  await prisma.userMFA.upsert({
+    where: {
+      userId_mfaType: {
+        userId: userId,
+        mfaType: 'backup_codes'
+      }
+    },
+    update: {
+      isEnabled: true,
+      backupCodes: hashedCodes,
+      backupCodesGeneratedAt: new Date(),
+      backupCodesUsed: 0,
+      updatedAt: new Date()
+    },
+    create: {
+      userId: userId,
+      mfaType: 'backup_codes',
+      isEnabled: true,
+      backupCodes: hashedCodes,
+      backupCodesGeneratedAt: new Date(),
+      backupCodesUsed: 0
+    }
+  });
   
   return codes;
 }
 
 export async function verifyBackupCode(userId: string, code: string): Promise<boolean> {
-  const result = await prisma.$queryRaw<any[]>`
-    SELECT backup_codes FROM core.user_mfa WHERE user_id = ${userId}::uuid AND mfa_type = 'backup_codes'
-  `;
+  const mfa = await prisma.userMFA.findFirst({
+    where: {
+      userId: userId,
+      mfaType: 'backup_codes',
+      isEnabled: true
+    }
+  });
   
-  if (!result[0]?.backup_codes) return false;
+  if (!mfa?.backupCodes) return false;
   
-  const hashedCodes: string[] = result[0].backup_codes;
+  const hashedCodes: string[] = mfa.backupCodes as string[];
   
   for (let i = 0; i < hashedCodes.length; i++) {
     if (await bcrypt.compare(code.toUpperCase(), hashedCodes[i])) {
       // Remove used code
       hashedCodes.splice(i, 1);
-      await prisma.$executeRaw`
-        UPDATE core.user_mfa SET
-          backup_codes = ${JSON.stringify(hashedCodes)}::jsonb,
-          backup_codes_used = backup_codes_used + 1,
-          last_used_at = NOW(),
-          updated_at = NOW()
-        WHERE user_id = ${userId}::uuid AND mfa_type = 'backup_codes'
-      `;
+      await prisma.userMFA.update({
+        where: { id: mfa.id },
+        data: {
+          backupCodes: hashedCodes,
+          backupCodesUsed: (mfa.backupCodesUsed || 0) + 1,
+          lastUsedAt: new Date(),
+          updatedAt: new Date()
+        }
+      });
       return true;
     }
   }
@@ -628,7 +662,7 @@ export async function verifyBackupCode(userId: string, code: string): Promise<bo
 // =====================================================
 
 export async function getSecurityPolicies(applicationId?: string): Promise<SecurityPolicy[]> {
-  let query = 'SELECT * FROM core.security_policies WHERE is_active = true';
+  let query = 'SELECT * FROM public.security_policies WHERE is_active = true';
   const params: any[] = [];
   
   if (applicationId) {
@@ -645,14 +679,14 @@ export async function getSecurityPolicies(applicationId?: string): Promise<Secur
 
 export async function getSecurityPolicy(policyId: string): Promise<SecurityPolicy | null> {
   const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.security_policies WHERE id = ${policyId}::uuid
+    SELECT * FROM public.security_policies WHERE id = ${policyId}::uuid
   `;
   return result[0] ? mapSecurityPolicy(result[0]) : null;
 }
 
 export async function createSecurityPolicy(data: Partial<SecurityPolicy>): Promise<SecurityPolicy> {
   const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.security_policies (
+    INSERT INTO public.security_policies (
       application_id, policy_name, policy_type, is_active, priority,
       password_min_length, password_max_length, password_require_uppercase,
       password_require_lowercase, password_require_number, password_require_special,
@@ -737,7 +771,7 @@ export async function updateSecurityPolicy(policyId: string, data: Partial<Secur
   fields.push('updated_at = NOW()');
   values.push(policyId);
   
-  const query = `UPDATE core.security_policies SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
+  const query = `UPDATE public.security_policies SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
   const result = await prisma.$queryRawUnsafe<any[]>(query, ...values);
   
   return mapSecurityPolicy(result[0]);
@@ -745,7 +779,7 @@ export async function updateSecurityPolicy(policyId: string, data: Partial<Secur
 
 export async function deleteSecurityPolicy(policyId: string): Promise<void> {
   await prisma.$executeRaw`
-    DELETE FROM core.security_policies WHERE id = ${policyId}::uuid
+    DELETE FROM public.security_policies WHERE id = ${policyId}::uuid
   `;
 }
 
@@ -795,11 +829,11 @@ export async function getLoginHistory(options: {
   
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   
-  const countQuery = `SELECT COUNT(*)::bigint as count FROM core.login_history ${whereClause}`;
+  const countQuery = `SELECT COUNT(*)::bigint as count FROM public.login_history ${whereClause}`;
   const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(countQuery, ...params);
   
   params.push(limit, offset);
-  const resultQuery = `SELECT * FROM core.login_history ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+  const resultQuery = `SELECT * FROM public.login_history ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
   const result = await prisma.$queryRawUnsafe<any[]>(resultQuery, ...params);
   
   return {
@@ -831,7 +865,7 @@ export async function logLoginAttempt(data: {
   sessionId?: string;
 }): Promise<LoginHistoryEntry> {
   const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.login_history (
+    INSERT INTO public.login_history (
       user_id, email, username, login_method, social_provider, success, failure_reason,
       ip_address, user_agent, device_type, device_id, country, city,
       mfa_required, mfa_method, mfa_success, risk_score, is_suspicious, suspicious_reason, session_id
@@ -855,7 +889,7 @@ export async function logLoginAttempt(data: {
 // =====================================================
 
 export async function getOAuthProviders(applicationId?: string): Promise<OAuthProvider[]> {
-  let query = 'SELECT * FROM core.oauth_providers';
+  let query = 'SELECT * FROM public.oauth_providers';
   
   if (applicationId) {
     query += ` WHERE application_id = '${applicationId}'::uuid OR application_id IS NULL`;
@@ -869,14 +903,14 @@ export async function getOAuthProviders(applicationId?: string): Promise<OAuthPr
 
 export async function getOAuthProvider(providerId: string): Promise<OAuthProvider | null> {
   const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.oauth_providers WHERE id = ${providerId}::uuid
+    SELECT * FROM public.oauth_providers WHERE id = ${providerId}::uuid
   `;
   return result[0] ? mapOAuthProvider(result[0]) : null;
 }
 
 export async function createOAuthProvider(data: Partial<OAuthProvider>): Promise<OAuthProvider> {
   const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.oauth_providers (
+    INSERT INTO public.oauth_providers (
       application_id, provider_name, display_name, is_enabled, client_id, client_secret,
       authorization_url, token_url, userinfo_url, scopes, claims_mapping,
       allow_signup, require_email_verified, auto_link_by_email,
@@ -943,7 +977,7 @@ export async function updateOAuthProvider(providerId: string, data: Partial<OAut
   fields.push('updated_at = NOW()');
   values.push(providerId);
   
-  const query = `UPDATE core.oauth_providers SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
+  const query = `UPDATE public.oauth_providers SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
   const result = await prisma.$queryRawUnsafe<any[]>(query, ...values);
   
   return mapOAuthProvider(result[0]);
@@ -951,7 +985,7 @@ export async function updateOAuthProvider(providerId: string, data: Partial<OAut
 
 export async function deleteOAuthProvider(providerId: string): Promise<void> {
   await prisma.$executeRaw`
-    DELETE FROM core.oauth_providers WHERE id = ${providerId}::uuid
+    DELETE FROM public.oauth_providers WHERE id = ${providerId}::uuid
   `;
 }
 
@@ -960,7 +994,7 @@ export async function deleteOAuthProvider(providerId: string): Promise<void> {
 // =====================================================
 
 export async function getUserGroups(applicationId?: string): Promise<UserGroup[]> {
-  let query = 'SELECT * FROM core.user_groups';
+  let query = 'SELECT * FROM public.user_groups';
   
   if (applicationId) {
     query += ` WHERE application_id = '${applicationId}'::uuid OR application_id IS NULL`;
@@ -974,7 +1008,7 @@ export async function getUserGroups(applicationId?: string): Promise<UserGroup[]
 
 export async function getUserGroup(groupId: string): Promise<UserGroup | null> {
   const result = await prisma.$queryRaw<any[]>`
-    SELECT * FROM core.user_groups WHERE id = ${groupId}::uuid
+    SELECT * FROM public.user_groups WHERE id = ${groupId}::uuid
   `;
   return result[0] ? mapUserGroup(result[0]) : null;
 }
@@ -983,7 +1017,7 @@ export async function createUserGroup(data: Partial<UserGroup>): Promise<UserGro
   const slug = data.slug || data.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
   
   const result = await prisma.$queryRaw<any[]>`
-    INSERT INTO core.user_groups (
+    INSERT INTO public.user_groups (
       application_id, name, slug, description, role_id, permissions,
       is_system, is_default, metadata, color, icon
     ) VALUES (
@@ -1045,7 +1079,7 @@ export async function updateUserGroup(groupId: string, data: Partial<UserGroup>)
   fields.push('updated_at = NOW()');
   values.push(groupId);
   
-  const query = `UPDATE core.user_groups SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
+  const query = `UPDATE public.user_groups SET ${fields.join(', ')} WHERE id = $${paramIndex}::uuid RETURNING *`;
   const result = await prisma.$queryRawUnsafe<any[]>(query, ...values);
   
   return mapUserGroup(result[0]);
@@ -1053,13 +1087,13 @@ export async function updateUserGroup(groupId: string, data: Partial<UserGroup>)
 
 export async function deleteUserGroup(groupId: string): Promise<void> {
   await prisma.$executeRaw`
-    DELETE FROM core.user_groups WHERE id = ${groupId}::uuid AND is_system = false
+    DELETE FROM public.user_groups WHERE id = ${groupId}::uuid AND is_system = false
   `;
 }
 
 export async function addUserToGroup(groupId: string, userId: string, role?: string, addedBy?: string): Promise<void> {
   await prisma.$executeRaw`
-    INSERT INTO core.user_group_members (group_id, user_id, role, added_by)
+    INSERT INTO public.user_group_members (group_id, user_id, role, added_by)
     VALUES (${groupId}::uuid, ${userId}::uuid, ${role || 'member'}, ${addedBy || null}::uuid)
     ON CONFLICT (group_id, user_id) DO UPDATE SET role = EXCLUDED.role
   `;
@@ -1067,15 +1101,15 @@ export async function addUserToGroup(groupId: string, userId: string, role?: str
 
 export async function removeUserFromGroup(groupId: string, userId: string): Promise<void> {
   await prisma.$executeRaw`
-    DELETE FROM core.user_group_members WHERE group_id = ${groupId}::uuid AND user_id = ${userId}::uuid
+    DELETE FROM public.user_group_members WHERE group_id = ${groupId}::uuid AND user_id = ${userId}::uuid
   `;
 }
 
 export async function getGroupMembers(groupId: string): Promise<any[]> {
   const result = await prisma.$queryRaw<any[]>`
     SELECT ugm.*, u.email, u.first_name, u.last_name, u.avatar_url as avatar
-    FROM core.user_group_members ugm
-    JOIN core.users u ON u.id = ugm.user_id
+    FROM public.user_group_members ugm
+    JOIN public.users u ON u.id = ugm.user_id
     WHERE ugm.group_id = ${groupId}::uuid
     ORDER BY ugm.created_at DESC
   `;
@@ -1084,8 +1118,8 @@ export async function getGroupMembers(groupId: string): Promise<any[]> {
 
 export async function getUserGroupMemberships(userId: string): Promise<UserGroup[]> {
   const result = await prisma.$queryRaw<any[]>`
-    SELECT ug.* FROM core.user_groups ug
-    JOIN core.user_group_members ugm ON ugm.group_id = ug.id
+    SELECT ug.* FROM public.user_groups ug
+    JOIN public.user_group_members ugm ON ugm.group_id = ug.id
     WHERE ugm.user_id = ${userId}::uuid
   `;
   return result.map(mapUserGroup);
@@ -1116,7 +1150,7 @@ export async function logIdentityAction(data: {
   errorMessage?: string;
 }): Promise<void> {
   await prisma.$executeRaw`
-    INSERT INTO core.identity_audit_log (
+    INSERT INTO public.identity_audit_log (
       actor_type, actor_id, actor_email, target_type, target_id, target_email,
       action, action_category, description, old_value, new_value, metadata,
       ip_address, user_agent, device_id, session_id, status, error_message
@@ -1175,11 +1209,11 @@ export async function getIdentityAuditLog(options: {
   
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   
-  const countQuery = `SELECT COUNT(*)::bigint as count FROM core.identity_audit_log ${whereClause}`;
+  const countQuery = `SELECT COUNT(*)::bigint as count FROM public.identity_audit_log ${whereClause}`;
   const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(countQuery, ...params);
   
   params.push(limit, offset);
-  const resultQuery = `SELECT * FROM core.identity_audit_log ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
+  const resultQuery = `SELECT * FROM public.identity_audit_log ${whereClause} ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
   const result = await prisma.$queryRawUnsafe<any[]>(resultQuery, ...params);
   
   return {
@@ -1215,13 +1249,13 @@ export async function getUserAnalytics(options?: {
   
   // Total users
   const totalResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.users
+    SELECT COUNT(*)::bigint as count FROM public.users
   `;
   const totalUsers = Number(totalResult[0]?.count || 0);
   
   // Active users (logged in within last 30 days)
   const activeResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(DISTINCT user_id)::bigint as count FROM core.login_history 
+    SELECT COUNT(DISTINCT user_id)::bigint as count FROM public.login_history 
     WHERE success = true AND created_at > ${monthAgo}
   `;
   const activeUsers = Number(activeResult[0]?.count || 0);
@@ -1229,37 +1263,37 @@ export async function getUserAnalytics(options?: {
   // New users today
   const todayStart = new Date(today.setHours(0, 0, 0, 0));
   const newTodayResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.users WHERE created_at >= ${todayStart}
+    SELECT COUNT(*)::bigint as count FROM public.users WHERE created_at >= ${todayStart}
   `;
   const newUsersToday = Number(newTodayResult[0]?.count || 0);
   
   // New users this week
   const newWeekResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.users WHERE created_at >= ${weekAgo}
+    SELECT COUNT(*)::bigint as count FROM public.users WHERE created_at >= ${weekAgo}
   `;
   const newUsersThisWeek = Number(newWeekResult[0]?.count || 0);
   
   // New users this month
   const newMonthResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.users WHERE created_at >= ${monthAgo}
+    SELECT COUNT(*)::bigint as count FROM public.users WHERE created_at >= ${monthAgo}
   `;
   const newUsersThisMonth = Number(newMonthResult[0]?.count || 0);
   
   // Verified users
   const verifiedResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.users WHERE is_verified = true
+    SELECT COUNT(*)::bigint as count FROM public.users WHERE is_verified = true
   `;
   const verifiedUsers = Number(verifiedResult[0]?.count || 0);
   
   // Users with MFA
   const mfaResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(DISTINCT user_id)::bigint as count FROM core.user_mfa WHERE is_enabled = true
+    SELECT COUNT(DISTINCT user_id)::bigint as count FROM public.user_mfa WHERE is_enabled = true
   `;
   const usersWithMFA = Number(mfaResult[0]?.count || 0);
   
   // Logins by method
   const methodResult = await prisma.$queryRaw<any[]>`
-    SELECT login_method, COUNT(*)::bigint as count FROM core.login_history
+    SELECT login_method, COUNT(*)::bigint as count FROM public.login_history
     WHERE success = true AND created_at > ${monthAgo}
     GROUP BY login_method
   `;
@@ -1270,7 +1304,7 @@ export async function getUserAnalytics(options?: {
   
   // Logins by day (last 30 days)
   const dailyResult = await prisma.$queryRaw<any[]>`
-    SELECT DATE(created_at) as date, COUNT(*)::bigint as count FROM core.login_history
+    SELECT DATE(created_at) as date, COUNT(*)::bigint as count FROM public.login_history
     WHERE success = true AND created_at > ${monthAgo}
     GROUP BY DATE(created_at)
     ORDER BY date
@@ -1282,14 +1316,14 @@ export async function getUserAnalytics(options?: {
   
   // Failed logins (last 24 hours)
   const failedResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.login_history
+    SELECT COUNT(*)::bigint as count FROM public.login_history
     WHERE success = false AND created_at > ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
   `;
   const failedLogins = Number(failedResult[0]?.count || 0);
   
   // Suspicious logins (last 24 hours)
   const suspiciousResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(*)::bigint as count FROM core.login_history
+    SELECT COUNT(*)::bigint as count FROM public.login_history
     WHERE is_suspicious = true AND created_at > ${new Date(Date.now() - 24 * 60 * 60 * 1000)}
   `;
   const suspiciousLogins = Number(suspiciousResult[0]?.count || 0);

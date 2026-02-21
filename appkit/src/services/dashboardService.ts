@@ -209,8 +209,8 @@ class DashboardService {
       throw new Error('Data source not found')
     }
 
-    // Mock data fetching based on data source type
-    return this.getMockData(dataSource, params)
+    // Fetch live data based on data source type and configuration
+    return this.fetchLiveData(dataSource, params)
   }
 
   // Private Methods
@@ -376,120 +376,66 @@ class DashboardService {
     ]
   }
 
-  private async getMockData(dataSource: DataSource, params?: any): Promise<any> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300))
+  private async fetchLiveData(dataSource: DataSource, params?: any): Promise<any> {
+    try {
+      // For API-type data sources, fetch from configured endpoint
+      if (dataSource.type === 'api' && dataSource.endpoint) {
+        const res = await fetch(dataSource.endpoint)
+        if (res.ok) return res.json()
+      }
 
-    switch (dataSource.id) {
-      case 'family_stats':
-        return {
-          totalFamilies: 12,
-          totalUsers: 48,
-          activeUsers: 32,
-          totalContent: 156,
-          trends: {
-            totalFamilies: { change: 2, direction: 'up' },
-            totalUsers: { change: 5, direction: 'up' },
-            activeUsers: { change: -1, direction: 'down' },
-            totalContent: { change: 8, direction: 'up' }
-          }
+      // For database/computed types, use admin API endpoints
+      switch (dataSource.id) {
+        case 'appkit_stats':
+        case 'family_stats': {
+          const res = await fetch('/api/admin/dashboard/stats')
+          if (res.ok) return res.json()
+          return { totalFamilies: 0, totalUsers: 0, activeUsers: 0, totalContent: 0 }
         }
 
-      case 'activity_data':
-        return {
-          labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-          datasets: [
-            {
-              label: 'Logins',
-              data: [45, 52, 38, 61, 55, 42, 48],
-              borderColor: '#dc2626'
-            },
-            {
-              label: 'Content Views',
-              data: [120, 135, 98, 156, 142, 118, 134],
-              borderColor: '#2563eb'
-            },
-            {
-              label: 'Uploads',
-              data: [8, 12, 6, 15, 11, 9, 13],
-              borderColor: '#16a34a'
-            }
-          ]
+        case 'activity_data': {
+          const res = await fetch('/api/admin/dashboard/activity')
+          if (res.ok) return res.json()
+          return { labels: [], datasets: [] }
         }
 
-      case 'recent_content':
-        return [
-          { id: 1, title: 'Family Photo Album', type: 'gallery', author: 'John Doe', created_at: '2024-01-20T10:30:00Z', status: 'published' },
-          { id: 2, title: 'Birthday Party Video', type: 'video', author: 'Jane Smith', created_at: '2024-01-19T15:45:00Z', status: 'published' },
-          { id: 3, title: 'Family Newsletter', type: 'document', author: 'Mike Johnson', created_at: '2024-01-18T09:15:00Z', status: 'published' },
-          { id: 4, title: 'Vacation Photos', type: 'gallery', author: 'Sarah Wilson', created_at: '2024-01-17T14:20:00Z', status: 'published' },
-          { id: 5, title: 'Recipe Collection', type: 'document', author: 'Tom Brown', created_at: '2024-01-16T11:00:00Z', status: 'published' }
-        ]
-
-      case 'content_library':
-        return {
-          data: [
-            { id: 1, title: 'Family Photo Album', type: 'gallery', author: 'John Doe', created_at: '2024-01-20T10:30:00Z', views: 45, status: 'published' },
-            { id: 2, title: 'Birthday Party Video', type: 'video', author: 'Jane Smith', created_at: '2024-01-19T15:45:00Z', views: 32, status: 'published' },
-            { id: 3, title: 'Family Newsletter', type: 'document', author: 'Mike Johnson', created_at: '2024-01-18T09:15:00Z', views: 28, status: 'published' },
-            { id: 4, title: 'Vacation Photos', type: 'gallery', author: 'Sarah Wilson', created_at: '2024-01-17T14:20:00Z', views: 67, status: 'published' },
-            { id: 5, title: 'Recipe Collection', type: 'document', author: 'Tom Brown', created_at: '2024-01-16T11:00:00Z', views: 23, status: 'published' }
-          ],
-          total: 156,
-          page: 1,
-          pageSize: 20
+        case 'recent_content':
+        case 'content_library': {
+          const res = await fetch('/api/admin/dashboard/content?limit=10')
+          if (res.ok) return res.json()
+          return []
         }
 
-      case 'storage_usage':
-        return {
-          totalStorage: 10737418240, // 10GB
-          usedStorage: 6442450944,   // 6GB
-          availableStorage: 4294967296, // 4GB
-          usagePercentage: 60,
-          trends: {
-            usedStorage: { change: 524288000, direction: 'up' }, // 500MB increase
-            availableStorage: { change: -524288000, direction: 'down' }
-          }
+        case 'storage_usage': {
+          const res = await fetch('/api/admin/dashboard/storage')
+          if (res.ok) return res.json()
+          return { totalStorage: 0, usedStorage: 0, availableStorage: 0, usagePercentage: 0 }
         }
 
-      case 'recent_media':
-        return [
-          { id: 1, filename: 'family_photo_1.jpg', type: 'image', size: 2048576, created_at: '2024-01-20T10:30:00Z', thumbnail_url: '/thumbnails/family_photo_1_thumb.jpg' },
-          { id: 2, filename: 'birthday_video.mp4', type: 'video', size: 52428800, created_at: '2024-01-19T15:45:00Z', thumbnail_url: '/thumbnails/birthday_video_thumb.jpg' },
-          { id: 3, filename: 'vacation_photo_2.jpg', type: 'image', size: 1536000, created_at: '2024-01-18T09:15:00Z', thumbnail_url: '/thumbnails/vacation_photo_2_thumb.jpg' },
-          { id: 4, filename: 'family_photo_3.jpg', type: 'image', size: 1894400, created_at: '2024-01-17T14:20:00Z', thumbnail_url: '/thumbnails/family_photo_3_thumb.jpg' }
-        ]
-
-      case 'user_engagement':
-        return {
-          dailyActiveUsers: 32,
-          sessionDuration: 1245, // seconds
-          pageViews: 456,
-          bounceRate: 0.23,
-          trends: {
-            dailyActiveUsers: { change: 3, direction: 'up' },
-            sessionDuration: { change: 45, direction: 'up' },
-            pageViews: { change: 12, direction: 'up' },
-            bounceRate: { change: -0.02, direction: 'down' }
-          }
+        case 'recent_media': {
+          const res = await fetch('/api/admin/files?type=media&limit=12')
+          if (res.ok) return res.json()
+          return []
         }
 
-      case 'active_users':
-        return {
-          onlineUsers: 8,
-          todayUsers: 32,
-          weekUsers: 156,
-          monthUsers: 445,
-          trends: {
-            onlineUsers: { change: 2, direction: 'up' },
-            todayUsers: { change: 5, direction: 'up' },
-            weekUsers: { change: 12, direction: 'up' },
-            monthUsers: { change: 23, direction: 'up' }
-          }
+        case 'user_engagement': {
+          const res = await fetch('/api/admin/dashboard/engagement')
+          if (res.ok) return res.json()
+          return { dailyActiveUsers: 0, sessionDuration: 0, pageViews: 0, bounceRate: 0 }
         }
 
-      default:
-        return { message: 'No data available for this data source' }
+        case 'active_users': {
+          const res = await fetch('/api/admin/dashboard/active-users')
+          if (res.ok) return res.json()
+          return { onlineUsers: 0, todayUsers: 0, weekUsers: 0, monthUsers: 0 }
+        }
+
+        default:
+          return { message: 'No data available for this data source' }
+      }
+    } catch (error) {
+      console.error(`Error fetching data for ${dataSource.id}:`, error)
+      return { message: 'Failed to fetch data', error: String(error) }
     }
   }
 }

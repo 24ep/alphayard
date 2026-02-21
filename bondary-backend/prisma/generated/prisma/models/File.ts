@@ -304,6 +304,9 @@ export type FileWhereInput = {
   application?: Prisma.XOR<Prisma.ApplicationNullableScalarRelationFilter, Prisma.ApplicationWhereInput> | null
   folder?: Prisma.XOR<Prisma.FileFolderNullableScalarRelationFilter, Prisma.FileFolderWhereInput> | null
   galleryItem?: Prisma.XOR<Prisma.GalleryItemNullableScalarRelationFilter, Prisma.GalleryItemWhereInput> | null
+  fileTagAssignments?: Prisma.FileTagAssignmentListRelationFilter
+  fileShares?: Prisma.FileShareListRelationFilter
+  fileRecentAccesses?: Prisma.FileRecentAccessListRelationFilter
 }
 
 export type FileOrderByWithRelationInput = {
@@ -327,6 +330,9 @@ export type FileOrderByWithRelationInput = {
   application?: Prisma.ApplicationOrderByWithRelationInput
   folder?: Prisma.FileFolderOrderByWithRelationInput
   galleryItem?: Prisma.GalleryItemOrderByWithRelationInput
+  fileTagAssignments?: Prisma.FileTagAssignmentOrderByRelationAggregateInput
+  fileShares?: Prisma.FileShareOrderByRelationAggregateInput
+  fileRecentAccesses?: Prisma.FileRecentAccessOrderByRelationAggregateInput
 }
 
 export type FileWhereUniqueInput = Prisma.AtLeast<{
@@ -353,6 +359,9 @@ export type FileWhereUniqueInput = Prisma.AtLeast<{
   application?: Prisma.XOR<Prisma.ApplicationNullableScalarRelationFilter, Prisma.ApplicationWhereInput> | null
   folder?: Prisma.XOR<Prisma.FileFolderNullableScalarRelationFilter, Prisma.FileFolderWhereInput> | null
   galleryItem?: Prisma.XOR<Prisma.GalleryItemNullableScalarRelationFilter, Prisma.GalleryItemWhereInput> | null
+  fileTagAssignments?: Prisma.FileTagAssignmentListRelationFilter
+  fileShares?: Prisma.FileShareListRelationFilter
+  fileRecentAccesses?: Prisma.FileRecentAccessListRelationFilter
 }, "id">
 
 export type FileOrderByWithAggregationInput = {
@@ -419,6 +428,9 @@ export type FileCreateInput = {
   application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
   folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
   galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
 }
 
 export type FileUncheckedCreateInput = {
@@ -439,6 +451,9 @@ export type FileUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
 }
 
 export type FileUpdateInput = {
@@ -459,6 +474,9 @@ export type FileUpdateInput = {
   application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
   folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
   galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateInput = {
@@ -479,6 +497,9 @@ export type FileUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
 }
 
 export type FileCreateManyInput = {
@@ -611,6 +632,11 @@ export type FileSumOrderByAggregateInput = {
 export type FileNullableScalarRelationFilter = {
   is?: Prisma.FileWhereInput | null
   isNot?: Prisma.FileWhereInput | null
+}
+
+export type FileScalarRelationFilter = {
+  is?: Prisma.FileWhereInput
+  isNot?: Prisma.FileWhereInput
 }
 
 export type FileCreateNestedManyWithoutApplicationInput = {
@@ -763,6 +789,48 @@ export type FileUpdateOneWithoutGalleryItemNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.FileUpdateToOneWithWhereWithoutGalleryItemInput, Prisma.FileUpdateWithoutGalleryItemInput>, Prisma.FileUncheckedUpdateWithoutGalleryItemInput>
 }
 
+export type FileCreateNestedOneWithoutFileTagAssignmentsInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedCreateWithoutFileTagAssignmentsInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileTagAssignmentsInput
+  connect?: Prisma.FileWhereUniqueInput
+}
+
+export type FileUpdateOneRequiredWithoutFileTagAssignmentsNestedInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedCreateWithoutFileTagAssignmentsInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileTagAssignmentsInput
+  upsert?: Prisma.FileUpsertWithoutFileTagAssignmentsInput
+  connect?: Prisma.FileWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FileUpdateToOneWithWhereWithoutFileTagAssignmentsInput, Prisma.FileUpdateWithoutFileTagAssignmentsInput>, Prisma.FileUncheckedUpdateWithoutFileTagAssignmentsInput>
+}
+
+export type FileCreateNestedOneWithoutFileSharesInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileSharesInput, Prisma.FileUncheckedCreateWithoutFileSharesInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileSharesInput
+  connect?: Prisma.FileWhereUniqueInput
+}
+
+export type FileUpdateOneRequiredWithoutFileSharesNestedInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileSharesInput, Prisma.FileUncheckedCreateWithoutFileSharesInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileSharesInput
+  upsert?: Prisma.FileUpsertWithoutFileSharesInput
+  connect?: Prisma.FileWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FileUpdateToOneWithWhereWithoutFileSharesInput, Prisma.FileUpdateWithoutFileSharesInput>, Prisma.FileUncheckedUpdateWithoutFileSharesInput>
+}
+
+export type FileCreateNestedOneWithoutFileRecentAccessesInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileRecentAccessesInput, Prisma.FileUncheckedCreateWithoutFileRecentAccessesInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileRecentAccessesInput
+  connect?: Prisma.FileWhereUniqueInput
+}
+
+export type FileUpdateOneRequiredWithoutFileRecentAccessesNestedInput = {
+  create?: Prisma.XOR<Prisma.FileCreateWithoutFileRecentAccessesInput, Prisma.FileUncheckedCreateWithoutFileRecentAccessesInput>
+  connectOrCreate?: Prisma.FileCreateOrConnectWithoutFileRecentAccessesInput
+  upsert?: Prisma.FileUpsertWithoutFileRecentAccessesInput
+  connect?: Prisma.FileWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FileUpdateToOneWithWhereWithoutFileRecentAccessesInput, Prisma.FileUpdateWithoutFileRecentAccessesInput>, Prisma.FileUncheckedUpdateWithoutFileRecentAccessesInput>
+}
+
 export type FileCreateWithoutApplicationInput = {
   id?: string
   filename: string
@@ -780,6 +848,9 @@ export type FileCreateWithoutApplicationInput = {
   user: Prisma.UserCreateNestedOneWithoutFilesInput
   folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
   galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
 }
 
 export type FileUncheckedCreateWithoutApplicationInput = {
@@ -799,6 +870,9 @@ export type FileUncheckedCreateWithoutApplicationInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
 }
 
 export type FileCreateOrConnectWithoutApplicationInput = {
@@ -866,6 +940,9 @@ export type FileCreateWithoutUserInput = {
   application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
   folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
   galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
 }
 
 export type FileUncheckedCreateWithoutUserInput = {
@@ -885,6 +962,9 @@ export type FileUncheckedCreateWithoutUserInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
 }
 
 export type FileCreateOrConnectWithoutUserInput = {
@@ -930,6 +1010,9 @@ export type FileCreateWithoutFolderInput = {
   user: Prisma.UserCreateNestedOneWithoutFilesInput
   application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
   galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
 }
 
 export type FileUncheckedCreateWithoutFolderInput = {
@@ -949,6 +1032,9 @@ export type FileUncheckedCreateWithoutFolderInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
 }
 
 export type FileCreateOrConnectWithoutFolderInput = {
@@ -994,6 +1080,9 @@ export type FileCreateWithoutGalleryItemInput = {
   user: Prisma.UserCreateNestedOneWithoutFilesInput
   application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
   folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
 }
 
 export type FileUncheckedCreateWithoutGalleryItemInput = {
@@ -1013,6 +1102,9 @@ export type FileUncheckedCreateWithoutGalleryItemInput = {
   isPublic?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
 }
 
 export type FileCreateOrConnectWithoutGalleryItemInput = {
@@ -1048,6 +1140,9 @@ export type FileUpdateWithoutGalleryItemInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
   application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
   folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateWithoutGalleryItemInput = {
@@ -1067,6 +1162,321 @@ export type FileUncheckedUpdateWithoutGalleryItemInput = {
   isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
+}
+
+export type FileCreateWithoutFileTagAssignmentsInput = {
+  id?: string
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutFilesInput
+  application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
+  folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
+  galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
+}
+
+export type FileUncheckedCreateWithoutFileTagAssignmentsInput = {
+  id?: string
+  userId: string
+  applicationId?: string | null
+  folderId?: string | null
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
+}
+
+export type FileCreateOrConnectWithoutFileTagAssignmentsInput = {
+  where: Prisma.FileWhereUniqueInput
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedCreateWithoutFileTagAssignmentsInput>
+}
+
+export type FileUpsertWithoutFileTagAssignmentsInput = {
+  update: Prisma.XOR<Prisma.FileUpdateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedUpdateWithoutFileTagAssignmentsInput>
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedCreateWithoutFileTagAssignmentsInput>
+  where?: Prisma.FileWhereInput
+}
+
+export type FileUpdateToOneWithWhereWithoutFileTagAssignmentsInput = {
+  where?: Prisma.FileWhereInput
+  data: Prisma.XOR<Prisma.FileUpdateWithoutFileTagAssignmentsInput, Prisma.FileUncheckedUpdateWithoutFileTagAssignmentsInput>
+}
+
+export type FileUpdateWithoutFileTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
+  application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
+  folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
+  galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
+}
+
+export type FileUncheckedUpdateWithoutFileTagAssignmentsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  applicationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
+}
+
+export type FileCreateWithoutFileSharesInput = {
+  id?: string
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutFilesInput
+  application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
+  folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
+  galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutFileInput
+}
+
+export type FileUncheckedCreateWithoutFileSharesInput = {
+  id?: string
+  userId: string
+  applicationId?: string | null
+  folderId?: string | null
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutFileInput
+}
+
+export type FileCreateOrConnectWithoutFileSharesInput = {
+  where: Prisma.FileWhereUniqueInput
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileSharesInput, Prisma.FileUncheckedCreateWithoutFileSharesInput>
+}
+
+export type FileUpsertWithoutFileSharesInput = {
+  update: Prisma.XOR<Prisma.FileUpdateWithoutFileSharesInput, Prisma.FileUncheckedUpdateWithoutFileSharesInput>
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileSharesInput, Prisma.FileUncheckedCreateWithoutFileSharesInput>
+  where?: Prisma.FileWhereInput
+}
+
+export type FileUpdateToOneWithWhereWithoutFileSharesInput = {
+  where?: Prisma.FileWhereInput
+  data: Prisma.XOR<Prisma.FileUpdateWithoutFileSharesInput, Prisma.FileUncheckedUpdateWithoutFileSharesInput>
+}
+
+export type FileUpdateWithoutFileSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
+  application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
+  folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
+  galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
+}
+
+export type FileUncheckedUpdateWithoutFileSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  applicationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
+}
+
+export type FileCreateWithoutFileRecentAccessesInput = {
+  id?: string
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutFilesInput
+  application?: Prisma.ApplicationCreateNestedOneWithoutFilesInput
+  folder?: Prisma.FileFolderCreateNestedOneWithoutFilesInput
+  galleryItem?: Prisma.GalleryItemCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutFileInput
+}
+
+export type FileUncheckedCreateWithoutFileRecentAccessesInput = {
+  id?: string
+  userId: string
+  applicationId?: string | null
+  folderId?: string | null
+  filename: string
+  originalFilename?: string | null
+  mimeType?: string | null
+  fileSize?: bigint | number | null
+  storagePath: string
+  storageProvider?: string
+  url?: string | null
+  thumbnailUrl?: string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedCreateNestedOneWithoutFileInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedCreateNestedManyWithoutFileInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutFileInput
+}
+
+export type FileCreateOrConnectWithoutFileRecentAccessesInput = {
+  where: Prisma.FileWhereUniqueInput
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileRecentAccessesInput, Prisma.FileUncheckedCreateWithoutFileRecentAccessesInput>
+}
+
+export type FileUpsertWithoutFileRecentAccessesInput = {
+  update: Prisma.XOR<Prisma.FileUpdateWithoutFileRecentAccessesInput, Prisma.FileUncheckedUpdateWithoutFileRecentAccessesInput>
+  create: Prisma.XOR<Prisma.FileCreateWithoutFileRecentAccessesInput, Prisma.FileUncheckedCreateWithoutFileRecentAccessesInput>
+  where?: Prisma.FileWhereInput
+}
+
+export type FileUpdateToOneWithWhereWithoutFileRecentAccessesInput = {
+  where?: Prisma.FileWhereInput
+  data: Prisma.XOR<Prisma.FileUpdateWithoutFileRecentAccessesInput, Prisma.FileUncheckedUpdateWithoutFileRecentAccessesInput>
+}
+
+export type FileUpdateWithoutFileRecentAccessesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
+  application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
+  folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
+  galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+}
+
+export type FileUncheckedUpdateWithoutFileRecentAccessesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  applicationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  folderId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  filename?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFilename?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  mimeType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fileSize?: Prisma.NullableBigIntFieldUpdateOperationsInput | bigint | number | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  storageProvider?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  thumbnailUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
 }
 
 export type FileCreateManyApplicationInput = {
@@ -1104,6 +1514,9 @@ export type FileUpdateWithoutApplicationInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
   folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
   galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateWithoutApplicationInput = {
@@ -1123,6 +1536,9 @@ export type FileUncheckedUpdateWithoutApplicationInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateManyWithoutApplicationInput = {
@@ -1178,6 +1594,9 @@ export type FileUpdateWithoutUserInput = {
   application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
   folder?: Prisma.FileFolderUpdateOneWithoutFilesNestedInput
   galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateWithoutUserInput = {
@@ -1197,6 +1616,9 @@ export type FileUncheckedUpdateWithoutUserInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateManyWithoutUserInput = {
@@ -1252,6 +1674,9 @@ export type FileUpdateWithoutFolderInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutFilesNestedInput
   application?: Prisma.ApplicationUpdateOneWithoutFilesNestedInput
   galleryItem?: Prisma.GalleryItemUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateWithoutFolderInput = {
@@ -1271,6 +1696,9 @@ export type FileUncheckedUpdateWithoutFolderInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   galleryItem?: Prisma.GalleryItemUncheckedUpdateOneWithoutFileNestedInput
+  fileTagAssignments?: Prisma.FileTagAssignmentUncheckedUpdateManyWithoutFileNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutFileNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutFileNestedInput
 }
 
 export type FileUncheckedUpdateManyWithoutFolderInput = {
@@ -1291,6 +1719,53 @@ export type FileUncheckedUpdateManyWithoutFolderInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+
+/**
+ * Count Type FileCountOutputType
+ */
+
+export type FileCountOutputType = {
+  fileTagAssignments: number
+  fileShares: number
+  fileRecentAccesses: number
+}
+
+export type FileCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  fileTagAssignments?: boolean | FileCountOutputTypeCountFileTagAssignmentsArgs
+  fileShares?: boolean | FileCountOutputTypeCountFileSharesArgs
+  fileRecentAccesses?: boolean | FileCountOutputTypeCountFileRecentAccessesArgs
+}
+
+/**
+ * FileCountOutputType without action
+ */
+export type FileCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileCountOutputType
+   */
+  select?: Prisma.FileCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * FileCountOutputType without action
+ */
+export type FileCountOutputTypeCountFileTagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileTagAssignmentWhereInput
+}
+
+/**
+ * FileCountOutputType without action
+ */
+export type FileCountOutputTypeCountFileSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileShareWhereInput
+}
+
+/**
+ * FileCountOutputType without action
+ */
+export type FileCountOutputTypeCountFileRecentAccessesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileRecentAccessWhereInput
+}
 
 
 export type FileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1314,6 +1789,10 @@ export type FileSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   application?: boolean | Prisma.File$applicationArgs<ExtArgs>
   folder?: boolean | Prisma.File$folderArgs<ExtArgs>
   galleryItem?: boolean | Prisma.File$galleryItemArgs<ExtArgs>
+  fileTagAssignments?: boolean | Prisma.File$fileTagAssignmentsArgs<ExtArgs>
+  fileShares?: boolean | Prisma.File$fileSharesArgs<ExtArgs>
+  fileRecentAccesses?: boolean | Prisma.File$fileRecentAccessesArgs<ExtArgs>
+  _count?: boolean | Prisma.FileCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["file"]>
 
 export type FileSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1385,6 +1864,10 @@ export type FileInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   application?: boolean | Prisma.File$applicationArgs<ExtArgs>
   folder?: boolean | Prisma.File$folderArgs<ExtArgs>
   galleryItem?: boolean | Prisma.File$galleryItemArgs<ExtArgs>
+  fileTagAssignments?: boolean | Prisma.File$fileTagAssignmentsArgs<ExtArgs>
+  fileShares?: boolean | Prisma.File$fileSharesArgs<ExtArgs>
+  fileRecentAccesses?: boolean | Prisma.File$fileRecentAccessesArgs<ExtArgs>
+  _count?: boolean | Prisma.FileCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type FileIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1404,6 +1887,9 @@ export type $FilePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     application: Prisma.$ApplicationPayload<ExtArgs> | null
     folder: Prisma.$FileFolderPayload<ExtArgs> | null
     galleryItem: Prisma.$GalleryItemPayload<ExtArgs> | null
+    fileTagAssignments: Prisma.$FileTagAssignmentPayload<ExtArgs>[]
+    fileShares: Prisma.$FileSharePayload<ExtArgs>[]
+    fileRecentAccesses: Prisma.$FileRecentAccessPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1820,6 +2306,9 @@ export interface Prisma__FileClient<T, Null = never, ExtArgs extends runtime.Typ
   application<T extends Prisma.File$applicationArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$applicationArgs<ExtArgs>>): Prisma.Prisma__ApplicationClient<runtime.Types.Result.GetResult<Prisma.$ApplicationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   folder<T extends Prisma.File$folderArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$folderArgs<ExtArgs>>): Prisma.Prisma__FileFolderClient<runtime.Types.Result.GetResult<Prisma.$FileFolderPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   galleryItem<T extends Prisma.File$galleryItemArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$galleryItemArgs<ExtArgs>>): Prisma.Prisma__GalleryItemClient<runtime.Types.Result.GetResult<Prisma.$GalleryItemPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  fileTagAssignments<T extends Prisma.File$fileTagAssignmentsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$fileTagAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileTagAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileShares<T extends Prisma.File$fileSharesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$fileSharesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileSharePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileRecentAccesses<T extends Prisma.File$fileRecentAccessesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.File$fileRecentAccessesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileRecentAccessPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2315,6 +2804,78 @@ export type File$galleryItemArgs<ExtArgs extends runtime.Types.Extensions.Intern
    */
   include?: Prisma.GalleryItemInclude<ExtArgs> | null
   where?: Prisma.GalleryItemWhereInput
+}
+
+/**
+ * File.fileTagAssignments
+ */
+export type File$fileTagAssignmentsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileTagAssignment
+   */
+  select?: Prisma.FileTagAssignmentSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileTagAssignment
+   */
+  omit?: Prisma.FileTagAssignmentOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileTagAssignmentInclude<ExtArgs> | null
+  where?: Prisma.FileTagAssignmentWhereInput
+  orderBy?: Prisma.FileTagAssignmentOrderByWithRelationInput | Prisma.FileTagAssignmentOrderByWithRelationInput[]
+  cursor?: Prisma.FileTagAssignmentWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileTagAssignmentScalarFieldEnum | Prisma.FileTagAssignmentScalarFieldEnum[]
+}
+
+/**
+ * File.fileShares
+ */
+export type File$fileSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileShare
+   */
+  select?: Prisma.FileShareSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileShare
+   */
+  omit?: Prisma.FileShareOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileShareInclude<ExtArgs> | null
+  where?: Prisma.FileShareWhereInput
+  orderBy?: Prisma.FileShareOrderByWithRelationInput | Prisma.FileShareOrderByWithRelationInput[]
+  cursor?: Prisma.FileShareWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileShareScalarFieldEnum | Prisma.FileShareScalarFieldEnum[]
+}
+
+/**
+ * File.fileRecentAccesses
+ */
+export type File$fileRecentAccessesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileRecentAccess
+   */
+  select?: Prisma.FileRecentAccessSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileRecentAccess
+   */
+  omit?: Prisma.FileRecentAccessOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileRecentAccessInclude<ExtArgs> | null
+  where?: Prisma.FileRecentAccessWhereInput
+  orderBy?: Prisma.FileRecentAccessOrderByWithRelationInput | Prisma.FileRecentAccessOrderByWithRelationInput[]
+  cursor?: Prisma.FileRecentAccessWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileRecentAccessScalarFieldEnum | Prisma.FileRecentAccessScalarFieldEnum[]
 }
 
 /**

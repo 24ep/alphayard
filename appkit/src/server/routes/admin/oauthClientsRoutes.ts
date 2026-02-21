@@ -37,83 +37,67 @@ router.get('/', requirePermission('settings', 'view'), async (req: AdminRequest,
         const { page = '1', limit = '20', search } = req.query;
         const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
         
-        let whereClause = 'WHERE 1=1';
-        const params: any[] = [];
-        let paramIndex = 1;
-        
-        // Filter by application if not super admin
-        if (!req.admin?.isSuperAdmin && req.applicationId) {
-            whereClause += ` AND (application_id = $${paramIndex} OR application_id IS NULL)`;
-            params.push(req.applicationId);
-            paramIndex++;
-        }
-        
-        // Search filter
-        if (search) {
-            whereClause += ` AND (name ILIKE $${paramIndex} OR client_id ILIKE $${paramIndex})`;
-            params.push(`%${search}%`);
-            paramIndex++;
-        }
-        
+        const searchStr = search as string;
         // Get total count
-        const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-            `SELECT COUNT(*) FROM oauth_clients ${whereClause}`,
-            ...params
-        );
-        const total = parseInt(String(countResult[0].count));
+        const count = await prisma.oAuthClient.count({
+            where: {
+                // Add filtering logic here based on whereClause
+                ...(req.applicationId && !req.admin?.isSuperAdmin && {
+                    OR: [
+                        { applicationId: req.applicationId },
+                        { applicationId: null }
+                    ]
+                }),
+                ...(searchStr && {
+                    OR: [
+                        { name: { contains: searchStr, mode: 'insensitive' } },
+                        { clientId: { contains: searchStr, mode: 'insensitive' } }
+                    ]
+                })
+            }
+        });
         
-        // Get clients
-        const rows = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT oc.*, 
-                   a.name as application_name,
-                   au.email as created_by_email,
-                   (SELECT COUNT(*) FROM oauth_user_consents WHERE client_id = oc.id AND revoked_at IS NULL) as consent_count
-            FROM oauth_clients oc
-            LEFT JOIN core.applications a ON oc.application_id = a.id
-            LEFT JOIN admin.admin_users au ON oc.created_by = au.id
-            ${whereClause}
-            ORDER BY oc.created_at DESC
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-        `, ...params, limit, offset);
-        
-        const clients = rows.map(row => ({
-            id: row.id,
-            client_id: row.client_id,
-            client_type: row.client_type,
-            name: row.name,
-            description: row.description,
-            logo_url: row.logo_url,
-            homepage_url: row.homepage_url,
-            redirect_uris: row.redirect_uris,
-            grant_types: row.grant_types,
-            allowed_scopes: row.allowed_scopes,
-            default_scopes: row.default_scopes,
-            access_token_lifetime: row.access_token_lifetime,
-            refresh_token_lifetime: row.refresh_token_lifetime,
-            require_pkce: row.require_pkce,
-            require_consent: row.require_consent,
-            first_party: row.first_party,
-            is_active: row.is_active,
-            application_name: row.application_name,
-            created_by_email: row.created_by_email,
-            consent_count: parseInt(row.consent_count),
-            created_at: row.created_at,
-            updated_at: row.updated_at
-        }));
+        // Get clients using Prisma client
+        const clients = await prisma.oAuthClient.findMany({
+            where: {
+                // Add filtering logic here based on whereClause
+                ...(req.applicationId && !req.admin?.isSuperAdmin && {
+                    OR: [
+                        { applicationId: req.applicationId },
+                        { applicationId: null }
+                    ]
+                }),
+                ...(searchStr && {
+                    OR: [
+                        { name: { contains: searchStr, mode: 'insensitive' } },
+                        { clientId: { contains: searchStr, mode: 'insensitive' } }
+                    ]
+                })
+            },
+            include: {
+                application: {
+                    select: { name: true }
+                },
+                creator: {
+                    select: { email: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: offset,
+            take: parseInt(limit as string)
+        });
         
         res.json({
             data: clients,
             pagination: {
                 page: parseInt(page as string),
                 limit: parseInt(limit as string),
-                total,
-                totalPages: Math.ceil(total / parseInt(limit as string))
+                total: count,
+                totalPages: Math.ceil(count / parseInt(limit as string))
             }
         });
-        
-    } catch (error: unknown) {
-        console.error('Error fetching OAuth clients:', error);
-        res.status(500).json({ error: 'Failed to fetch OAuth clients' });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -134,62 +118,74 @@ router.get('/:id', [
     }
     
     try {
-        const rows = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT oc.*, 
-                   a.name as application_name,
-                   au.email as created_by_email
-            FROM oauth_clients oc
-            LEFT JOIN core.applications a ON oc.application_id = a.id
-            LEFT JOIN admin.admin_users au ON oc.created_by = au.id
-            WHERE oc.id = $1
-        `, req.params.id);
+        // Get client using Prisma client
+        const client = await prisma.oAuthClient.findUnique({
+            where: { id: req.params.id },
+            include: {
+                application: {
+                    select: { name: true }
+                },
+                creator: {
+                    select: { email: true }
+                }
+            }
+        });
         
-        if (rows.length === 0) {
+        if (!client) {
             return res.status(404).json({ error: 'OAuth client not found' });
         }
         
-        // Get statistics
-        const statsResult = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT 
-                (SELECT COUNT(*) FROM oauth_user_consents WHERE client_id = $1 AND revoked_at IS NULL) as active_consents,
-                (SELECT COUNT(*) FROM oauth_access_tokens WHERE client_id = $1 AND is_revoked = false AND expires_at > NOW()) as active_tokens,
-                (SELECT COUNT(*) FROM oauth_authorization_codes WHERE client_id = $1 AND used_at IS NULL AND expires_at > NOW()) as pending_codes
-        `, req.params.id);
+        // Get statistics using Prisma client
+        const [activeConsents, activeTokens, pendingCodes] = await Promise.all([
+            prisma.oAuthUserConsent.count({
+                where: { 
+                    clientId: req.params.id,
+                    revokedAt: null
+                }
+            }),
+            prisma.oAuthAccessToken.count({
+                where: { 
+                    clientId: req.params.id,
+                    isRevoked: false,
+                    expiresAt: { gt: new Date() }
+                }
+            }),
+            prisma.oAuthAuthorizationCode.count({
+                where: { 
+                    clientId: req.params.id,
+                    usedAt: null,
+                    expiresAt: { gt: new Date() }
+                }
+            })
+        ]);
         
-        const row = rows[0];
+        const stats = {
+            activeConsents,
+            activeTokens,
+            pendingCodes
+        };
         
         res.json({
-            id: row.id,
-            client_id: row.client_id,
-            client_type: row.client_type,
-            name: row.name,
-            description: row.description,
-            logo_url: row.logo_url,
-            homepage_url: row.homepage_url,
-            privacy_policy_url: row.privacy_policy_url,
-            terms_of_service_url: row.terms_of_service_url,
-            redirect_uris: row.redirect_uris,
-            grant_types: row.grant_types,
-            response_types: row.response_types,
-            allowed_scopes: row.allowed_scopes,
-            default_scopes: row.default_scopes,
-            access_token_lifetime: row.access_token_lifetime,
-            refresh_token_lifetime: row.refresh_token_lifetime,
-            id_token_lifetime: row.id_token_lifetime,
-            require_pkce: row.require_pkce,
-            require_consent: row.require_consent,
-            first_party: row.first_party,
-            is_active: row.is_active,
-            application_id: row.application_id,
-            application_name: row.application_name,
-            created_by_email: row.created_by_email,
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-            stats: {
-                active_consents: parseInt(String(statsResult[0].active_consents)),
-                active_tokens: parseInt(String(statsResult[0].active_tokens)),
-                pending_codes: parseInt(String(statsResult[0].pending_codes))
-            }
+            id: client.id,
+            client_id: client.clientId,
+            client_type: client.clientType,
+            name: client.name,
+            description: client.description,
+            logo_url: client.logoUrl,
+            homepage_url: client.homepageUrl,
+            privacy_policy_url: client.privacyPolicyUrl,
+            terms_of_service_url: client.termsOfServiceUrl,
+            redirect_uris: client.redirectUris,
+            grant_types: client.grantTypes,
+            allowed_scopes: client.allowedScopes,
+            access_token_lifetime: client.accessTokenLifetime,
+            refresh_token_lifetime: client.refreshTokenLifetime,
+            is_active: client.isActive,
+            created_at: client.createdAt,
+            updated_at: client.updatedAt,
+            application_name: client.application?.name,
+            created_by_email: client.creator?.email,
+            statistics: stats
         });
         
     } catch (error: unknown) {
@@ -247,20 +243,25 @@ router.post('/', [
         
         // Update additional fields
         if (req.body.access_token_lifetime || req.body.refresh_token_lifetime || req.body.privacy_policy_url || req.body.terms_of_service_url) {
-            await prisma.$executeRawUnsafe(`
-                UPDATE oauth_clients SET
-                    access_token_lifetime = COALESCE($1, access_token_lifetime),
-                    refresh_token_lifetime = COALESCE($2, refresh_token_lifetime),
-                    privacy_policy_url = COALESCE($3, privacy_policy_url),
-                    terms_of_service_url = COALESCE($4, terms_of_service_url)
-                WHERE id = $5
-            `, ...[
-                req.body.access_token_lifetime ?? null,
-                req.body.refresh_token_lifetime ?? null,
-                req.body.privacy_policy_url ?? null,
-                req.body.terms_of_service_url ?? null,
-                result.client.id
-            ]);
+            const updateData: any = {};
+            
+            if (req.body.access_token_lifetime !== undefined) {
+                updateData.accessTokenLifetime = req.body.access_token_lifetime;
+            }
+            if (req.body.refresh_token_lifetime !== undefined) {
+                updateData.refreshTokenLifetime = req.body.refresh_token_lifetime;
+            }
+            if (req.body.privacy_policy_url !== undefined) {
+                updateData.privacyPolicyUrl = req.body.privacy_policy_url;
+            }
+            if (req.body.terms_of_service_url !== undefined) {
+                updateData.termsOfServiceUrl = req.body.terms_of_service_url;
+            }
+
+            await prisma.oAuthClient.update({
+                where: { id: result.client.id },
+                data: updateData
+            });
         }
         
         res.status(201).json({
@@ -314,42 +315,35 @@ router.put('/:id', [
     }
     
     try {
-        // Build update query dynamically
-        const updates: string[] = [];
-        const params: any[] = [];
-        let paramIndex = 1;
+        // Build update data object
+        const updateData: any = {};
         
         const allowedFields = [
-            'name', 'description', 'logo_url', 'homepage_url', 'privacy_policy_url',
-            'terms_of_service_url', 'redirect_uris', 'allowed_scopes', 'default_scopes',
-            'access_token_lifetime', 'refresh_token_lifetime', 'id_token_lifetime',
-            'require_pkce', 'require_consent', 'first_party', 'is_active'
+            'name', 'description', 'logoUrl', 'homepageUrl', 'privacyPolicyUrl',
+            'termsOfServiceUrl', 'redirectUris', 'allowedScopes', 'defaultScopes',
+            'accessTokenLifetime', 'refreshTokenLifetime', 'idTokenLifetime',
+            'requirePkce', 'requireConsent', 'firstParty', 'isActive'
         ];
         
         for (const field of allowedFields) {
             if (req.body[field] !== undefined) {
-                const value = ['redirect_uris', 'allowed_scopes', 'default_scopes'].includes(field)
+                const value = ['redirectUris', 'allowedScopes', 'defaultScopes'].includes(field)
                     ? JSON.stringify(req.body[field])
                     : req.body[field];
-                updates.push(`${field} = $${paramIndex}`);
-                params.push(value);
-                paramIndex++;
+                updateData[field] = value;
             }
         }
         
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
         
-        updates.push('updated_at = NOW()');
-        params.push(req.params.id);
+        const updatedClient = await prisma.oAuthClient.update({
+            where: { id: req.params.id },
+            data: updateData
+        });
         
-        const rowCount = await prisma.$executeRawUnsafe(`
-            UPDATE oauth_clients SET ${updates.join(', ')}
-            WHERE id = $${paramIndex}
-        `, ...params);
-        
-        if (rowCount === 0) {
+        if (!updatedClient) {
             return res.status(404).json({ error: 'OAuth client not found' });
         }
         
@@ -374,16 +368,16 @@ router.post('/:id/regenerate-secret', [
 ], requirePermission('settings', 'manage'), async (req: AdminRequest, res: Response) => {
     try {
         // Check if client exists and is confidential
-        const rows = await prisma.$queryRawUnsafe<any[]>(
-            'SELECT client_type FROM oauth_clients WHERE id = $1',
-            req.params.id
-        );
+        const client = await prisma.oAuthClient.findUnique({
+            where: { id: req.params.id },
+            select: { clientType: true }
+        });
         
-        if (rows.length === 0) {
+        if (!client) {
             return res.status(404).json({ error: 'OAuth client not found' });
         }
         
-        if (rows[0].client_type === 'public') {
+        if (client.clientType === 'public') {
             return res.status(400).json({ error: 'Public clients do not have a secret' });
         }
         
@@ -393,10 +387,13 @@ router.post('/:id/regenerate-secret', [
         const newSecret = crypto.randomBytes(32).toString('base64url');
         const newSecretHash = await bcrypt.hash(newSecret, 12);
         
-        await prisma.$executeRawUnsafe(
-            'UPDATE oauth_clients SET client_secret_hash = $1, updated_at = NOW() WHERE id = $2',
-            newSecretHash, req.params.id
-        );
+        await prisma.oAuthClient.update({
+            where: { id: req.params.id },
+            data: { 
+                clientSecretHash: newSecretHash,
+                updatedAt: new Date()
+            }
+        });
         
         res.json({
             message: 'Client secret regenerated successfully',
@@ -422,12 +419,11 @@ router.delete('/:id', [
     param('id').isUUID()
 ], requirePermission('settings', 'manage'), async (req: AdminRequest, res: Response) => {
     try {
-        const rowCount = await prisma.$executeRawUnsafe(
-            'DELETE FROM oauth_clients WHERE id = $1',
-            req.params.id
-        );
+        const deletedClient = await prisma.oAuthClient.delete({
+            where: { id: req.params.id }
+        });
         
-        if (rowCount === 0) {
+        if (!deletedClient) {
             return res.status(404).json({ error: 'OAuth client not found' });
         }
         
@@ -454,34 +450,36 @@ router.get('/:id/consents', [
         const { page = '1', limit = '20' } = req.query;
         const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
         
-        const rows = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT uc.*, u.email, u.first_name, u.last_name
-            FROM oauth_user_consents uc
-            JOIN core.users u ON uc.user_id = u.id
-            WHERE uc.client_id = $1
-            ORDER BY uc.granted_at DESC
-            LIMIT $2 OFFSET $3
-        `, req.params.id, limit, offset);
+        const consents = await prisma.oAuthUserConsent.findMany({
+            where: { clientId: req.params.id },
+            orderBy: { createdAt: 'desc' },
+            skip: offset,
+            take: parseInt(limit as string)
+        });
         
-        const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-            'SELECT COUNT(*) FROM oauth_user_consents WHERE client_id = $1',
-            req.params.id
-        );
+        const total = await prisma.oAuthUserConsent.count({
+            where: { clientId: req.params.id }
+        });
         
         res.json({
-            data: rows.map(row => ({
-                id: row.id,
-                user_id: row.user_id,
-                user_email: row.email,
-                user_name: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
-                granted_scopes: row.granted_scopes,
-                granted_at: row.granted_at,
-                revoked_at: row.revoked_at
+            data: consents.map((consent: any) => ({
+                id: consent.id,
+                user_id: consent.userId,
+                user_email: undefined,
+                user_first_name: undefined,
+                user_last_name: undefined,
+                granted_at: consent.createdAt,
+                expires_at: consent.expiresAt,
+                revoked_at: consent.revokedAt,
+                scopes: consent.scopes,
+                ip_address: consent.ipAddress,
+                user_agent: consent.userAgent
             })),
             pagination: {
                 page: parseInt(page as string),
                 limit: parseInt(limit as string),
-                total: parseInt(String(countResult[0].count))
+                total,
+                totalPages: Math.ceil(total / parseInt(limit as string))
             }
         });
         
@@ -533,24 +531,36 @@ router.post('/:id/revoke-all-tokens', [
 ], requirePermission('settings', 'manage'), async (req: AdminRequest, res: Response) => {
     try {
         // Revoke access tokens
-        const atResult = await prisma.$executeRawUnsafe(`
-            UPDATE oauth_access_tokens 
-            SET is_revoked = true, revoked_at = NOW(), revoked_reason = 'Admin revocation'
-            WHERE client_id = $1 AND is_revoked = false
-        `, req.params.id);
+        const revokedAccessTokens = await prisma.oAuthAccessToken.updateMany({
+            where: { 
+                clientId: req.params.id,
+                isRevoked: false 
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: new Date(),
+                revokedReason: 'Admin revocation'
+            }
+        });
         
         // Revoke refresh tokens
-        const rtResult = await prisma.$executeRawUnsafe(`
-            UPDATE oauth_refresh_tokens 
-            SET is_revoked = true, revoked_at = NOW(), revoked_reason = 'Admin revocation'
-            WHERE client_id = $1 AND is_revoked = false
-        `, req.params.id);
+        const revokedRefreshTokens = await prisma.oAuthRefreshToken.updateMany({
+            where: { 
+                clientId: req.params.id,
+                isRevoked: false 
+            },
+            data: {
+                isRevoked: true,
+                revokedAt: new Date(),
+                revokedReason: 'Admin revocation'
+            }
+        });
         
         res.json({
             message: 'All tokens revoked',
             revoked: {
-                access_tokens: atResult,
-                refresh_tokens: rtResult
+                access_tokens: revokedAccessTokens.count,
+                refresh_tokens: revokedRefreshTokens.count
             }
         });
         
@@ -577,49 +587,55 @@ router.get('/audit-log', [
         const { page = '1', limit = '50', client_id, user_id, event_type } = req.query;
         const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
         
-        let whereClause = 'WHERE 1=1';
-        const params: any[] = [];
-        let paramIndex = 1;
+        // Build where conditions for Prisma
+        const whereConditions: any = {};
         
         if (client_id) {
-            whereClause += ` AND ol.client_id = $${paramIndex}`;
-            params.push(client_id);
-            paramIndex++;
+            whereConditions.clientId = client_id;
         }
         
         if (user_id) {
-            whereClause += ` AND ol.user_id = $${paramIndex}`;
-            params.push(user_id);
-            paramIndex++;
+            whereConditions.userId = user_id;
         }
         
         if (event_type) {
-            whereClause += ` AND ol.event_type = $${paramIndex}`;
-            params.push(event_type);
-            paramIndex++;
+            whereConditions.eventType = event_type;
         }
         
-        const rows = await prisma.$queryRawUnsafe<any[]>(`
-            SELECT ol.*, oc.name as client_name, u.email as user_email
-            FROM oauth_audit_log ol
-            LEFT JOIN oauth_clients oc ON ol.client_id = oc.id
-            LEFT JOIN core.users u ON ol.user_id = u.id
-            ${whereClause}
-            ORDER BY ol.created_at DESC
-            LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-        `, ...params, limit, offset);
+        const auditLogs = await prisma.oAuthAuditLog.findMany({
+            where: whereConditions,
+            include: {
+                client: {
+                    select: { name: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: offset,
+            take: parseInt(limit as string)
+        });
         
-        const countResult = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-            `SELECT COUNT(*) FROM oauth_audit_log ol ${whereClause}`,
-            ...params
-        );
+        const total = await prisma.oAuthAuditLog.count({
+            where: whereConditions
+        });
         
         res.json({
-            data: rows,
+            data: auditLogs.map((log: any) => ({
+                id: log.id,
+                client_id: log.clientId,
+                user_id: log.userId,
+                event_type: log.eventType,
+                event_data: log.eventData,
+                ip_address: log.ipAddress,
+                user_agent: log.userAgent,
+                created_at: log.createdAt,
+                client_name: log.client?.name,
+                user_email: log.user?.email
+            })),
             pagination: {
                 page: parseInt(page as string),
                 limit: parseInt(limit as string),
-                total: parseInt(String(countResult[0].count))
+                total,
+                totalPages: Math.ceil(total / parseInt(limit as string))
             }
         });
         

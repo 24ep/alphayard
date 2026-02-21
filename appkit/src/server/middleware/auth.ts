@@ -233,8 +233,30 @@ export const requireCircleMember = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // TODO: Implement circle member check when CircleMember model is available
-    // For now, allow all authenticated users
+    const { circleId } = req.params;
+    const userId = req.user?.id;
+
+    if (!circleId || !userId) {
+      res.status(400).json({ error: 'Circle ID and User ID are required' });
+      return;
+    }
+
+    const membership = await prisma.circleMember.findUnique({
+      where: {
+        circleId_userId: {
+          circleId,
+          userId
+        }
+      }
+    });
+
+    if (!membership) {
+      res.status(403).json({ error: 'Access denied', message: 'Not a member of this circle' });
+      return;
+    }
+
+    req.circleId = circleId;
+    req.circleRole = membership.role;
     next();
   } catch (error) {
     console.error('Error in requireCircleMember middleware:', error);
@@ -248,8 +270,24 @@ export const optionalCircleMember = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // TODO: Implement optional circle member check when CircleMember model is available
-    // For now, do nothing
+    const { circleId } = req.params;
+    const userId = req.user?.id;
+
+    if (circleId && userId) {
+      const membership = await prisma.circleMember.findUnique({
+        where: {
+          circleId_userId: {
+            circleId,
+            userId
+          }
+        }
+      });
+
+      if (membership) {
+        req.circleId = circleId;
+        req.circleRole = membership.role;
+      }
+    }
     next();
   } catch (error) {
     console.error('Error in optionalCircleMember middleware:', error);
@@ -263,8 +301,30 @@ export const requireCircleOwner = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // TODO: Implement circle owner check when CircleMember model is available
-    // For now, allow all authenticated users
+    const { circleId } = req.params;
+    const userId = req.user?.id;
+
+    if (!circleId || !userId) {
+      res.status(400).json({ error: 'Circle ID and User ID are required' });
+      return;
+    }
+
+    const membership = await prisma.circleMember.findUnique({
+      where: {
+        circleId_userId: {
+          circleId,
+          userId
+        }
+      }
+    });
+
+    if (!membership || membership.role !== 'owner') {
+      res.status(403).json({ error: 'Access denied', message: 'Only circle owners can perform this action' });
+      return;
+    }
+
+    req.circleId = circleId;
+    req.circleRole = membership.role;
     next();
   } catch (error) {
     console.error('Error in requireCircleOwner middleware:', error);

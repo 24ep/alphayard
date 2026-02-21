@@ -3,9 +3,21 @@ import { authenticateToken } from '../../middleware/auth';
 import { authenticateAdmin } from '../../middleware/adminAuth';
 import { requirePermission } from '../../middleware/permissionCheck';
 import { PopupController } from '../../controllers/admin/PopupController';
+import { body, validationResult } from 'express-validator';
 
 const authMiddleware = authenticateToken as any;
-const validatePopup = [] as any; // TODO: Implement validation
+const validatePopup = [
+  body('name').notEmpty().withMessage('Name is required'),
+  body('type').notEmpty().withMessage('Type is required'),
+  body('content').notEmpty().withMessage('Content is required'),
+  (req: any, res: any, next: any) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  }
+];
 
 const router = express.Router();
 const popupController = new PopupController();

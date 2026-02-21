@@ -32,18 +32,21 @@ router.get('/proxy/:fileId', async (req, res) => {
         const { fileId } = req.params;
 
         // Look up the file metadata from unified_entities table
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT id, type, data, status 
-             FROM public.unified_entities 
-             WHERE id = ${fileId}::uuid AND type = 'file' AND status = 'active'
-        `;
+        const file = await prisma.unifiedEntity.findFirst({
+            where: { 
+                id: fileId,
+                type: 'file',
+                status: 'active'
+            },
+            select: { id: true, type: true, data: true, status: true }
+        });
 
-        if (rows.length === 0) {
+        if (!file) {
             console.error('[Storage Proxy] File not found:', fileId);
             return res.status(404).json({ error: 'File not found' });
         }
 
-        const entity = rows[0];
+        const entity = file;
         const fileData = entity.data || {};
         
         // Extract file metadata from JSONB data column

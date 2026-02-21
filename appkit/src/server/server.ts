@@ -78,6 +78,7 @@ export async function createApp() {
   app.use('/api/page-builder', versionRoutes);
   app.use('/api/page-builder/publishing', publishingRoutes);
   app.use('/api/config', configRoutes);
+  app.use('/api/admin/config', configRoutes);
   app.use('/api/app-config', appConfigRoutes);
   app.use('/api/admin/applications', applicationRoutes);
   app.use('/api/admin/preferences', preferencesRoutes);

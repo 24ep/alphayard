@@ -85,28 +85,32 @@ export class ReactionsService {
   } = {}): Promise<Reaction[]> {
     const { reaction, limit = 50, offset = 0 } = options;
     
-    const conditions: Prisma.Sql[] = [
-      Prisma.sql`r.post_id = ${postId}::uuid`
-    ];
+    const whereCondition: any = {
+      postId: postId
+    };
     
     if (reaction) {
-      conditions.push(Prisma.sql`r.reaction_type = ${reaction}`);
+      whereCondition.reactionType = reaction;
     }
     
-    const whereClause = Prisma.join(conditions, ' AND ');
+    const reactions = await prisma.socialReaction.findMany({
+      where: whereCondition,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
     
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        r.*,
-        u.id as user_id, u.username, u.display_name, u.avatar_url
-      FROM bondarys.social_reactions r
-      JOIN core.users u ON r.user_id = u.id
-      WHERE ${whereClause}
-      ORDER BY r.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
-    
-    return result.map(this.mapReactionWithUser);
+    return reactions.map(this.mapReactionWithUser);
   }
 
   async getPostReactionCounts(postId: string): Promise<ReactionCounts> {
@@ -216,18 +220,23 @@ export class ReactionsService {
   }
 
   async getCommentReactions(commentId: string, limit = 50): Promise<Reaction[]> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        r.*,
-        u.id as user_id, u.username, u.display_name, u.avatar_url
-      FROM bondarys.social_reactions r
-      JOIN core.users u ON r.user_id = u.id
-      WHERE r.comment_id = ${commentId}::uuid
-      ORDER BY r.created_at DESC
-      LIMIT ${limit}
-    `;
+    const reactions = await prisma.socialReaction.findMany({
+      where: { commentId: commentId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit
+    });
     
-    return result.map(this.mapReactionWithUser);
+    return reactions.map(this.mapReactionWithUser);
   }
 
   // Get all reactions for multiple posts (for feed optimization)

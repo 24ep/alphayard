@@ -25,8 +25,10 @@ router.post('/users', requirePermission('users', 'create'), async (req: Request,
     }
     
     // Check if user exists
-    const existing = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM core.users WHERE email = $1', email.toLowerCase());
-    if (existing[0]) {
+    const existing = await prisma.user.findFirst({
+      where: { email: email.toLowerCase() }
+    });
+    if (existing) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
     
@@ -34,16 +36,20 @@ router.post('/users', requirePermission('users', 'create'), async (req: Request,
     const passwordHash = await bcrypt.hash(password, 10);
     
     // Create user
-    const result = await prisma.$queryRawUnsafe<any[]>(
-      `INSERT INTO core.users (email, password_hash, first_name, last_name, phone_number, preferences, is_active, is_verified)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, email, first_name, last_name, phone_number as phone, preferences, is_active, is_verified, created_at`,
-      email.toLowerCase(), passwordHash, firstName, lastName, phone, 
-      JSON.stringify({ role: role || 'user', status: status || 'active' }), 
-      status !== 'inactive', emailVerified || false
-    );
+    const result = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        passwordHash,
+        firstName,
+        lastName,
+        phoneNumber: phone,
+        preferences: JSON.stringify({ role: role || 'user', status: status || 'active' }),
+        isActive: status !== 'inactive',
+        isVerified: emailVerified || false
+      }
+    });
     
-    const user = result[0];
+    const newUser = result;
     
     // Log action
     await identityService.logIdentityAction({
@@ -51,32 +57,29 @@ router.post('/users', requirePermission('users', 'create'), async (req: Request,
       actorId: (req as any).admin?.id,
       actorEmail: (req as any).admin?.email,
       targetType: 'user',
-      targetId: user.id,
-      targetEmail: user.email,
+      targetId: newUser.id,
+      targetEmail: newUser.email,
       action: 'create_user',
       actionCategory: 'admin',
-      description: `Created user ${user.email}`,
-      newValue: { email: user.email, role: user.role, status: user.status },
-      ipAddress: req.ip,
+      newValue: { email: newUser.email, role: role || 'user', status: status || 'active' },
       userAgent: req.headers['user-agent'],
     });
     
     res.status(201).json({
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        role: user.role,
-        status: user.status,
-        emailVerified: user.email_verified,
-        createdAt: user.created_at,
-      },
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        phoneNumber: newUser.phoneNumber,
+        isActive: newUser.isActive,
+        isVerified: newUser.isVerified,
+        createdAt: newUser.createdAt
+      }
     });
-  } catch (error) {
-    console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Failed to create user' });
+  } catch (error: any) {
+    console.error('Create user error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -93,35 +96,43 @@ router.post('/users/bulk', requirePermission('users', 'manage'), async (req: Req
     
     switch (action) {
       case 'delete':
-        const deleteResult = await prisma.$executeRawUnsafe(
-          'DELETE FROM core.users WHERE id = ANY($1)',
-          userIds
-        );
-        affected = deleteResult || 0;
+        const deleteResult = await prisma.user.deleteMany({
+          where: { id: { in: userIds } }
+        });
+        affected = deleteResult.count;
         break;
         
       case 'suspend':
-        const suspendResult = await prisma.$executeRawUnsafe(
-          `UPDATE core.users SET is_active = false, preferences = preferences || '{"status": "suspended"}'::jsonb, updated_at = NOW() WHERE id = ANY($1)`,
-          userIds
-        );
-        affected = suspendResult || 0;
+        const suspendResult = await prisma.user.updateMany({
+          where: { id: { in: userIds } },
+          data: { 
+            isActive: false,
+            updatedAt: new Date()
+          }
+        });
+        affected = suspendResult.count;
         break;
         
       case 'activate':
-        const activateResult = await prisma.$executeRawUnsafe(
-          `UPDATE core.users SET is_active = true, preferences = preferences || '{"status": "active"}'::jsonb, updated_at = NOW() WHERE id = ANY($1)`,
-          userIds
-        );
-        affected = activateResult || 0;
+        const activateResult = await prisma.user.updateMany({
+          where: { id: { in: userIds } },
+          data: { 
+            isActive: true,
+            updatedAt: new Date()
+          }
+        });
+        affected = activateResult.count;
         break;
         
       case 'verify_email':
-        const verifyResult = await prisma.$executeRawUnsafe(
-          `UPDATE core.users SET is_verified = true, updated_at = NOW() WHERE id = ANY($1)`,
-          userIds
-        );
-        affected = verifyResult || 0;
+        const verifyResult = await prisma.user.updateMany({
+          where: { id: { in: userIds } },
+          data: { 
+            isVerified: true,
+            updatedAt: new Date()
+          }
+        });
+        affected = verifyResult.count;
         break;
         
       case 'assign_role':
@@ -129,7 +140,7 @@ router.post('/users/bulk', requirePermission('users', 'manage'), async (req: Req
           return res.status(400).json({ error: 'Role is required for assign_role action' });
         }
         const roleResult = await prisma.$executeRawUnsafe(
-          `UPDATE core.users SET preferences = preferences || jsonb_build_object('role', $2::text), updated_at = NOW() WHERE id = ANY($1)`,
+          `UPDATE public.users SET preferences = preferences || jsonb_build_object('role', $2::text), updated_at = NOW() WHERE id = ANY($1)`,
           userIds, data.role
         );
         affected = roleResult || 0;
@@ -179,32 +190,37 @@ router.get('/users/export', requirePermission('users', 'read'), async (req: Requ
                         preferences->>'role' as role, 
                         (CASE WHEN is_active THEN 'active' ELSE 'inactive' END) as status, 
                         is_verified as email_verified, created_at, last_login_at
-                 FROM core.users WHERE 1=1`;
+                 FROM public.users WHERE 1=1`;
     const params: any[] = [];
     let paramIndex = 1;
     
     if (status) {
-      query += ` AND (is_active = $${paramIndex++})`;
+      paramIndex++;
+      query += ` AND (is_active = $${paramIndex})`;
       params.push(status === 'active');
     }
     if (role) {
-      query += ` AND preferences->>'role' = $${paramIndex++}`;
+      paramIndex++;
+      query += ` AND preferences->>'role' = $${paramIndex}`;
       params.push(role);
     }
     if (startDate) {
-      query += ` AND created_at >= $${paramIndex++}`;
+      paramIndex++;
+      query += ` AND created_at >= $${paramIndex}`;
       params.push(startDate);
     }
     if (endDate) {
-      query += ` AND created_at <= $${paramIndex++}`;
+      paramIndex++;
+      query += ` AND created_at <= $${paramIndex}`;
       params.push(endDate);
     }
     
     query += ' ORDER BY created_at DESC';
     
-    const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+    const resultQuery = query;
+    const result = await prisma.$queryRawUnsafe<any[]>(resultQuery, ...params);
     
-    const users = result.map(row => ({
+    const users = result.map((row: any) => ({
       id: row.id,
       email: row.email,
       firstName: row.first_name,
@@ -219,7 +235,7 @@ router.get('/users/export', requirePermission('users', 'read'), async (req: Requ
     
     if (format === 'csv') {
       const headers = 'ID,Email,First Name,Last Name,Phone,Role,Status,Email Verified,Created At,Last Login';
-      const rows = users.map(u => 
+      const rows = users.map((u: any) => 
         `${u.id},${u.email},${u.firstName || ''},${u.lastName || ''},${u.phone || ''},${u.role},${u.status},${u.emailVerified},${u.createdAt},${u.lastLoginAt || ''}`
       );
       const csv = [headers, ...rows].join('\n');
@@ -243,17 +259,25 @@ router.post('/users/:id/role', requirePermission('users', 'manage'), async (req:
     const { roleId, roleName } = req.body;
     
     // Get current user data
-    const currentResult = await prisma.$queryRawUnsafe<any[]>('SELECT preferences->>\'role\' as role FROM core.users WHERE id = $1', id);
-    if (!currentResult[0]) {
+    const currentUser = await prisma.user.findUnique({
+      where: { id },
+      select: { preferences: true }
+    });
+    if (!currentUser) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const oldRole = currentResult[0].role;
+    const oldRole = (currentUser.preferences as any)?.role || 'user';
     
     // Update user role
-    await prisma.$executeRawUnsafe(
-      'UPDATE core.users SET preferences = preferences || jsonb_build_object(\'role\', $2::text), updated_at = NOW() WHERE id = $1',
-      id, roleName || 'user'
-    );
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        preferences: {
+          ...(currentUser.preferences as any),
+          role: roleName || 'user'
+        }
+      }
+    });
     
     // Log action
     await identityService.logIdentityAction({
@@ -869,14 +893,37 @@ router.get('/analytics', requirePermission('analytics', 'read'), async (req: Req
   try {
     const { applicationId, startDate, endDate } = req.query;
     
-    // TODO: Implement getUserAnalytics method in identityService
-    // const analytics = await identityService.getUserAnalytics({
-    //   applicationId: applicationId as string,
-    //   startDate: startDate as string,
-    //   endDate: endDate as string,
-    // });
+    const totalUsers = await prisma.user.count();
+    const activeUsers = await prisma.user.count({ where: { isActive: true } });
+    const verifiedUsers = await prisma.user.count({ where: { isVerified: true } });
     
-    res.json({ message: 'Analytics not implemented yet' });
+    // Login stats
+    const start = startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate ? new Date(endDate as string) : new Date();
+
+    const loginStats = await prisma.loginHistory.groupBy({
+      by: ['success' as any],
+      where: {
+        createdAt: { gte: start, lte: end },
+        ...(applicationId ? { applicationId: String(applicationId) } : {})
+      },
+      _count: true
+    });
+
+    const successLogins = loginStats.find((s: any) => s.success)?._count || 0;
+    const failedLogins = loginStats.find((s: any) => !s.success)?._count || 0;
+
+    res.json({
+      totalUsers,
+      activeUsers,
+      verifiedUsers,
+      logins: {
+        success: successLogins,
+        failed: failedLogins,
+        total: successLogins + failedLogins
+      },
+      period: { start, end }
+    });
   } catch (error) {
     console.error('Error getting analytics:', error);
     res.status(500).json({ error: 'Failed to get analytics' });

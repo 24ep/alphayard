@@ -52,7 +52,6 @@ interface ColumnInfo {
 // =====================================
 
 const SCHEMA_COLORS: Record<string, { bg: string; text: string; border: string; badge: string; dot: string; gradientFrom: string; gradientTo: string }> = {
-    core:     { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500', gradientFrom: 'from-blue-500', gradientTo: 'to-blue-600' },
     admin:    { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500', gradientFrom: 'from-amber-500', gradientTo: 'to-amber-600' },
     bondarys: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500', gradientFrom: 'from-purple-500', gradientTo: 'to-purple-600' },
     public:   { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400', gradientFrom: 'from-gray-400', gradientTo: 'to-gray-500' },
@@ -72,7 +71,6 @@ const getColumnIcon = (type: string) => {
 };
 
 const SCHEMA_DESCRIPTIONS: Record<string, string> = {
-    core: 'Core application tables - users, auth, sessions, settings',
     admin: 'Admin panel tables - admin users, roles, permissions, audit',
     bondarys: 'AppKit app-specific tables - circles, social, notes, etc.',
     public: 'Public/system tables',
@@ -91,7 +89,7 @@ export const DatabaseStructureTree: React.FC<DatabaseStructureTreeProps> = ({ on
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(['core', 'admin', 'bondarys']));
+    const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(['admin', 'bondarys']));
     const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
     const [hoveredColumn, setHoveredColumn] = useState<string | null>(null);
 
@@ -132,7 +130,7 @@ export const DatabaseStructureTree: React.FC<DatabaseStructureTreeProps> = ({ on
             if (!groups[table.schema]) groups[table.schema] = [];
             groups[table.schema].push(table);
         }
-        const order = ['core', 'admin', 'bondarys', 'public'];
+        const order = ['admin', 'bondarys', 'public'];
         const sorted: [string, TableInfo[]][] = [];
         for (const s of order) {
             if (groups[s]) sorted.push([s, groups[s]]);

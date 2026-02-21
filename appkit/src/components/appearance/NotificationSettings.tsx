@@ -20,7 +20,7 @@ export function NotificationSettings({ notifications, setBranding }: Notificatio
         }))
     }
 
-    const  = `const { notifications } = useConfig();\n\n// Android uses primaryColor for accents\nPushNotifications.setAccentColor(notifications.primaryColor.solid);`
+    const usageExample = `const { notifications } = useConfig();\n\n// Android uses primaryColor for accents\nPushNotifications.setAccentColor(notifications.primaryColor.solid);`
 
     return (
         <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 bg-white/80 backdrop-blur-xl">
@@ -35,16 +35,6 @@ export function NotificationSettings({ notifications, setBranding }: Notificatio
                             <CardDescription>Customize push notification appearance.</CardDescription>
                         </div>
                     </div>
-                    
-                    < 
-                        title="Notification Manager"
-                        idLabel="Consumption"
-                        idValue="Push Bundle"
-                        usageExample={}
-                        devNote="On iOS, the icon is strictly managed by the app bundle, but colors can be used in Rich Notifications."
-                        buttonVariant="labeled"
-                        buttonLabel="Mobile Guide"
-                    />
                 </div>
             </CardHeader>
             <CardBody className="p-5 space-y-6">

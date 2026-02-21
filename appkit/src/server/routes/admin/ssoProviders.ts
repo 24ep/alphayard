@@ -18,52 +18,45 @@ router.get('/', requirePermission('settings', 'view'), async (req: Request, res:
   try {
     const { enabled } = req.query;
     
-    let whereClause = '';
-    const params: any[] = [];
+    // Build where conditions for Prisma
+    const whereConditions: any = {};
     
     if (enabled !== undefined) {
-      whereClause = 'WHERE is_enabled = $1';
-      params.push(enabled === 'true');
+      whereConditions.isEnabled = enabled === 'true';
     }
     
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT 
-        id, provider_name as name, display_name, is_enabled as enabled,
-        client_id, 
-        CASE WHEN client_secret IS NOT NULL AND client_secret != '' THEN '********' ELSE NULL END as client_secret,
-        authorization_url, token_url, userinfo_url, jwks_url,
-        scopes, claims_mapping, icon_url, button_color, display_order,
-        allow_signup as auto_create_users, allowed_domains, default_role,
-        created_at, updated_at
-      FROM core.oauth_providers
-      ${whereClause}
-      ORDER BY display_order ASC, provider_name ASC
-    `, ...params);
+    const result = await prisma.oAuthProvider.findMany({
+      where: whereConditions,
+      orderBy: [
+        { displayOrder: 'asc' },
+        { providerName: 'asc' }
+      ]
+    });
     
     res.json({
       success: true,
-      providers: result.map(row => ({
+      providers: result.map((row: any) => ({
         id: row.id,
-        name: row.name,
-        displayName: row.display_name,
-        providerType: row.name, // Mapping provider_name to providerType
-        enabled: row.enabled,
-        clientId: row.client_id,
-        clientSecret: row.client_secret,
-        authorizationUrl: row.authorization_url,
-        tokenUrl: row.token_url,
-        userinfoUrl: row.userinfo_url,
-        jwksUrl: row.jwks_url,
+        name: row.providerName,
+        displayName: row.displayName,
+        providerType: row.providerName, // Mapping provider_name to providerType
+        enabled: row.isEnabled,
+        clientId: row.clientId,
+        clientSecret: row.clientSecret ? '********' : null,
+        authorizationUrl: row.authorizationUrl,
+        tokenUrl: row.tokenUrl,
+        userinfoUrl: row.userinfoUrl,
+        jwksUrl: row.jwksUrl,
         scopes: row.scopes,
-        claimsMapping: row.claims_mapping,
-        iconUrl: row.icon_url,
-        buttonColor: row.button_color,
-        displayOrder: row.display_order,
-        autoCreateUsers: row.auto_create_users,
-        allowedDomains: row.allowed_domains,
-        defaultRole: row.default_role,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        claimsMapping: row.claimsMapping,
+        iconUrl: row.iconUrl,
+        buttonColor: row.buttonColor,
+        displayOrder: row.displayOrder,
+        autoCreateUsers: row.allowSignup,
+        allowedDomains: row.allowedDomains,
+        defaultRole: row.defaultRole,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt
       }))
     });
   } catch (error) {
@@ -77,48 +70,38 @@ router.get('/:id', requirePermission('settings', 'view'), async (req: Request, r
   try {
     const { id } = req.params;
     
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT 
-        id, provider_name as name, display_name, is_enabled as enabled,
-        client_id, 
-        CASE WHEN client_secret IS NOT NULL AND client_secret != '' THEN '********' ELSE NULL END as client_secret,
-        authorization_url, token_url, userinfo_url, jwks_url,
-        scopes, claims_mapping, icon_url, button_color, display_order,
-        allow_signup as auto_create_users, allowed_domains, default_role,
-        created_at, updated_at
-      FROM core.oauth_providers
-      WHERE id = $1::uuid
-    `, id);
+    const provider = await prisma.oAuthProvider.findUnique({
+      where: { id }
+    });
     
-    if (result.length === 0) {
+    if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
-    const row = result[0];
     res.json({
       success: true,
       provider: {
-        id: row.id,
-        name: row.name,
-        displayName: row.display_name,
-        providerType: row.name,
-        enabled: row.enabled,
-        clientId: row.client_id,
-        clientSecret: row.client_secret,
-        authorizationUrl: row.authorization_url,
-        tokenUrl: row.token_url,
-        userinfoUrl: row.userinfo_url,
-        jwksUrl: row.jwks_url,
-        scopes: row.scopes,
-        claimsMapping: row.claims_mapping,
-        iconUrl: row.icon_url,
-        buttonColor: row.button_color,
-        displayOrder: row.display_order,
-        autoCreateUsers: row.auto_create_users,
-        allowedDomains: row.allowed_domains,
-        defaultRole: row.default_role,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at
+        id: provider.id,
+        name: provider.providerName,
+        displayName: provider.displayName,
+        providerType: provider.providerName,
+        enabled: provider.isEnabled,
+        clientId: provider.clientId,
+        clientSecret: provider.clientSecret ? '********' : null,
+        authorizationUrl: provider.authorizationUrl,
+        tokenUrl: provider.tokenUrl,
+        userinfoUrl: provider.userinfoUrl,
+        jwksUrl: provider.jwksUrl,
+        scopes: provider.scopes,
+        claimsMapping: provider.claimsMapping,
+        iconUrl: provider.iconUrl,
+        buttonColor: provider.buttonColor,
+        displayOrder: provider.displayOrder,
+        autoCreateUsers: provider.allowSignup,
+        allowedDomains: provider.allowedDomains,
+        defaultRole: provider.defaultRole,
+        createdAt: provider.createdAt,
+        updatedAt: provider.updatedAt
       }
     });
   } catch (error) {
@@ -167,38 +150,53 @@ router.post('/', [
     // Use providerType as provider_name if available, else name
     const providerName = providerType || name || 'custom';
 
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      INSERT INTO core.oauth_providers (
-        id, provider_name, display_name, is_enabled,
-        client_id, client_secret, authorization_url, token_url, userinfo_url, jwks_url,
-        scopes, claims_mapping, icon_url, button_color, display_order,
-        allow_signup, allowed_domains, default_role,
-        created_at, updated_at
-      ) VALUES (
-        $1::uuid, $2, $3, $4,
-        $5, $6, $7, $8, $9, $10,
-        $11::jsonb, $12::jsonb, $13, $14, $15,
-        $16, $17, $18,
-        NOW(), NOW()
-      )
-      RETURNING *
-    `,
-      id, providerName, displayName || providerName, enabled,
-      clientId || '', clientSecret || '', authorizationUrl, tokenUrl, userinfoUrl, jwksUrl,
-      JSON.stringify(scopes || []), JSON.stringify(claimsMapping || {}), iconUrl, buttonColor, displayOrder || 0,
-      autoCreateUsers, allowedDomains || [], defaultRole
-    );
+    const provider = await prisma.oAuthProvider.create({
+      data: {
+        providerName,
+        displayName: displayName || providerName,
+        isEnabled: enabled,
+        clientId: clientId || '',
+        clientSecret: clientSecret || '',
+        authorizationUrl,
+        tokenUrl,
+        userinfoUrl,
+        jwksUrl,
+        scopes: scopes || [],
+        claimsMapping: claimsMapping || {},
+        iconUrl,
+        buttonColor,
+        displayOrder: displayOrder || 0,
+        allowSignup: autoCreateUsers,
+        allowedDomains: allowedDomains || [],
+        defaultRole
+      }
+    });
     
-    const row = result[0];
     res.status(201).json({
       success: true,
       message: 'SSO provider created',
       provider: {
-        id: row.id,
-        name: row.provider_name,
-        displayName: row.display_name,
-        providerType: row.provider_name,
-        enabled: row.is_enabled
+        id: provider.id,
+        name: provider.providerName,
+        displayName: provider.displayName,
+        providerType: provider.providerName,
+        enabled: provider.isEnabled,
+        clientId: provider.clientId,
+        clientSecret: provider.clientSecret ? '********' : null,
+        authorizationUrl: provider.authorizationUrl,
+        tokenUrl: provider.tokenUrl,
+        userinfoUrl: provider.userinfoUrl,
+        jwksUrl: provider.jwksUrl,
+        scopes: provider.scopes,
+        claimsMapping: provider.claimsMapping,
+        iconUrl: provider.iconUrl,
+        buttonColor: provider.buttonColor,
+        displayOrder: provider.displayOrder,
+        autoCreateUsers: provider.allowSignup,
+        allowedDomains: provider.allowedDomains,
+        defaultRole: provider.defaultRole,
+        createdAt: provider.createdAt,
+        updatedAt: provider.updatedAt
       }
     });
   } catch (error: any) {
@@ -237,60 +235,51 @@ router.put('/:id', [
       defaultRole
     } = req.body;
     
-    // Build dynamic update query
-    const updates: string[] = [];
-    const params: any[] = [];
-    let paramIndex = 1;
+    // Build update data object
+    const updateData: any = {};
     
-    if (name !== undefined) { updates.push(`provider_name = $${paramIndex++}`); params.push(name); }
-    if (displayName !== undefined) { updates.push(`display_name = $${paramIndex++}`); params.push(displayName); }
-    if (enabled !== undefined) { updates.push(`is_enabled = $${paramIndex++}`); params.push(enabled); }
-    if (clientId !== undefined) { updates.push(`client_id = $${paramIndex++}`); params.push(clientId); }
+    if (name !== undefined) { updateData.providerName = name; }
+    if (displayName !== undefined) { updateData.displayName = displayName; }
+    if (enabled !== undefined) { updateData.isEnabled = enabled; }
+    if (clientId !== undefined) { updateData.clientId = clientId; }
     // Only update client_secret if it's not the masked value
     if (clientSecret !== undefined && clientSecret !== '********') {
-      updates.push(`client_secret = $${paramIndex++}`);
-      params.push(clientSecret);
+      updateData.clientSecret = clientSecret;
     }
-    if (authorizationUrl !== undefined) { updates.push(`authorization_url = $${paramIndex++}`); params.push(authorizationUrl); }
-    if (tokenUrl !== undefined) { updates.push(`token_url = $${paramIndex++}`); params.push(tokenUrl); }
-    if (userinfoUrl !== undefined) { updates.push(`userinfo_url = $${paramIndex++}`); params.push(userinfoUrl); }
-    if (jwksUrl !== undefined) { updates.push(`jwks_url = $${paramIndex++}`); params.push(jwksUrl); }
-    if (scopes !== undefined) { updates.push(`scopes = $${paramIndex++}::jsonb`); params.push(JSON.stringify(scopes)); }
-    if (claimsMapping !== undefined) { updates.push(`claims_mapping = $${paramIndex++}::jsonb`); params.push(JSON.stringify(claimsMapping)); }
-    if (iconUrl !== undefined) { updates.push(`icon_url = $${paramIndex++}`); params.push(iconUrl); }
-    if (buttonColor !== undefined) { updates.push(`button_color = $${paramIndex++}`); params.push(buttonColor); }
-    if (displayOrder !== undefined) { updates.push(`display_order = $${paramIndex++}`); params.push(displayOrder); }
-    if (autoCreateUsers !== undefined) { updates.push(`allow_signup = $${paramIndex++}`); params.push(autoCreateUsers); }
-    if (allowedDomains !== undefined) { updates.push(`allowed_domains = $${paramIndex++}`); params.push(allowedDomains); }
-    if (defaultRole !== undefined) { updates.push(`default_role = $${paramIndex++}`); params.push(defaultRole); }
+    if (authorizationUrl !== undefined) { updateData.authorizationUrl = authorizationUrl; }
+    if (tokenUrl !== undefined) { updateData.tokenUrl = tokenUrl; }
+    if (userinfoUrl !== undefined) { updateData.userinfoUrl = userinfoUrl; }
+    if (jwksUrl !== undefined) { updateData.jwksUrl = jwksUrl; }
+    if (scopes !== undefined) { updateData.scopes = scopes; }
+    if (claimsMapping !== undefined) { updateData.claimsMapping = claimsMapping; }
+    if (iconUrl !== undefined) { updateData.iconUrl = iconUrl; }
+    if (buttonColor !== undefined) { updateData.buttonColor = buttonColor; }
+    if (displayOrder !== undefined) { updateData.displayOrder = displayOrder; }
+    if (autoCreateUsers !== undefined) { updateData.allowSignup = autoCreateUsers; }
+    if (allowedDomains !== undefined) { updateData.allowedDomains = allowedDomains; }
+    if (defaultRole !== undefined) { updateData.defaultRole = defaultRole; }
     
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
     }
     
-    updates.push(`updated_at = NOW()`);
-    params.push(id); // ID is the last param
+    const provider = await prisma.oAuthProvider.update({
+      where: { id },
+      data: updateData
+    });
     
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      UPDATE core.oauth_providers
-      SET ${updates.join(', ')}
-      WHERE id = $${paramIndex}::uuid
-      RETURNING *
-    `, ...params);
-    
-    if (result.length === 0) {
+    if (!provider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
-    const row = result[0];
     res.json({
       success: true,
       message: 'SSO provider updated',
       provider: {
-        id: row.id,
-        name: row.provider_name,
-        displayName: row.display_name,
-        enabled: row.is_enabled
+        id: provider.id,
+        name: provider.providerName,
+        displayName: provider.displayName,
+        enabled: provider.isEnabled
       }
     });
   } catch (error) {
@@ -306,12 +295,11 @@ router.delete('/:id', [
   try {
     const { id } = req.params;
     
-    const result = await prisma.$executeRawUnsafe(`
-      DELETE FROM core.oauth_providers
-      WHERE id = $1::uuid
-    `, id);
+    const result = await prisma.oAuthProvider.delete({
+      where: { id }
+    });
     
-    if (result === 0) {
+    if (!result) {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
@@ -333,20 +321,25 @@ router.patch('/:id/toggle', [
     const { id } = req.params;
     
     // Toggle the boolean value
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-      UPDATE core.oauth_providers
-      SET is_enabled = NOT is_enabled, updated_at = NOW()
-      WHERE id = $1::uuid
-      RETURNING is_enabled
-    `, id);
+    // First get current provider to check current status
+    const currentProvider = await prisma.oAuthProvider.findUnique({
+      where: { id },
+      select: { isEnabled: true }
+    });
     
-    if (result.length === 0) {
+    if (!currentProvider) {
       return res.status(404).json({ error: 'Provider not found' });
     }
     
+    // Toggle the status
+    const provider = await prisma.oAuthProvider.update({
+      where: { id },
+      data: { isEnabled: !currentProvider.isEnabled }
+    });
+    
     res.json({
       success: true,
-      enabled: result[0].is_enabled
+      enabled: provider.isEnabled
     });
   } catch (error) {
     console.error('Error toggling SSO provider:', error);

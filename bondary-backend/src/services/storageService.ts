@@ -91,13 +91,14 @@ class StorageService {
                 } else {
                     // User doesn't exist in users table - might be an admin user
                     // Check if this is an admin_users.id
-                    const adminCheck = await prisma.$queryRaw<Array<{ id: string; email: string }>>`
-                        SELECT id, email FROM admin.admin_users WHERE id = ${userId}::uuid
-                    `;
+                    const adminCheck = await prisma.adminUser.findUnique({
+                        where: { id: userId },
+                        select: { id: true, email: true }
+                    });
                     
-                    if (adminCheck.length > 0) {
-                        // This is an admin user - we need to find or create a corresponding user in core.users
-                        const adminUser = adminCheck[0];
+                    if (adminCheck) {
+                        // This is an admin user - we need to find or create a corresponding user in public.users
+                        const adminUser = adminCheck;
                         
                         // Try to find an existing user with the same email
                         const existingUser = await prisma.user.findUnique({

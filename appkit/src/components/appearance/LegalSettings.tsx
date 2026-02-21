@@ -20,7 +20,7 @@ export function LegalSettings({ legal, setBranding }: LegalSettingsProps) {
         }))
     }
 
-    const  = `const { legal } = useConfig();\n\nconst openPrivacy = () => Linking.openURL(legal.privacyPolicyUrl);`
+    const usageExample = `const { legal } = useConfig();\n\nconst openPrivacy = () => Linking.openURL(legal.privacyPolicyUrl);`
 
     return (
         <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 bg-white/80 backdrop-blur-xl">
@@ -35,16 +35,6 @@ export function LegalSettings({ legal, setBranding }: LegalSettingsProps) {
                             <CardDescription>Manage mandatory legal documents and regulatory info.</CardDescription>
                         </div>
                     </div>
-                    
-                    < 
-                        title="Legal Manager"
-                        idLabel="Config Type"
-                        idValue="Compliance Hub"
-                        usageExample={}
-                        devNote="Legal links are typically displayed in the 'About' or 'Settings' screen of the mobile app."
-                        buttonVariant="labeled"
-                        buttonLabel="Mobile Guide"
-                    />
                 </div>
             </CardHeader>
             <CardBody className="p-5 space-y-6">

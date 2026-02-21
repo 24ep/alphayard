@@ -127,7 +127,7 @@ export class CircleService {
                u.first_name, u.last_name,
                COUNT(*) as post_count
         FROM unified_entities e
-        LEFT JOIN core.users u ON e.owner_id = u.id
+        LEFT JOIN public.users u ON e.owner_id = u.id
         WHERE e.type = 'social-posts' 
         AND e.data->>'circleId' = ${id}
         AND e.status != 'deleted'
@@ -226,7 +226,7 @@ export class CircleService {
               u.first_name as "firstName", u.last_name as "lastName",
               e.data->>'name' as "circleName", e.data->>'type' as "circleType"
        FROM bondarys.circle_invitations fi 
-       LEFT JOIN core.users u ON fi.invited_by = u.id 
+       LEFT JOIN public.users u ON fi.invited_by = u.id 
        LEFT JOIN public.unified_entities e ON fi.circle_id = e.id
        WHERE fi.email = ${email}
        AND fi.status = 'pending'
@@ -241,7 +241,7 @@ export class CircleService {
               fi.message, fi.status, fi.created_at as "createdAt", fi.expires_at as "expiresAt",
               u.first_name as "firstName", u.last_name as "lastName"
        FROM bondarys.circle_invitations fi 
-       LEFT JOIN core.users u ON fi.invited_by = u.id 
+       LEFT JOIN public.users u ON fi.invited_by = u.id 
        WHERE fi.circle_id = ${circleId}::uuid
        ORDER BY fi.created_at DESC
     `;

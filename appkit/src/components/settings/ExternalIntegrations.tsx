@@ -135,23 +135,15 @@ export function ExternalIntegrations({ appId, onSave }: ExternalIntegrationsProp
   }, [appId])
 
   const loadIntegrations = async () => {
-    // Mock data - replace with actual API call
-    const mockIntegrations: Integration[] = [
-      {
-        id: '1',
-        name: 'Production Analytics',
-        type: 'analytics',
-        provider: 'mixpanel',
-        apiKey: 'mp_prod_1234567890abcdef',
-        events: ['user.signup', 'user.login', 'page.view'],
-        active: true,
-        settings: { token: 'mixpanel_token', enableUserTracking: true },
-        createdAt: '2024-01-15T10:30:00Z',
-        lastSync: '2024-01-20T14:22:00Z',
-        status: 'active'
+    try {
+      const res = await fetch(`/api/admin/settings/integrations${appId ? `?appId=${appId}` : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        setIntegrations(data.integrations || data || []);
       }
-    ]
-    setIntegrations(mockIntegrations)
+    } catch (error) {
+      console.error('Error loading integrations:', error);
+    }
   }
 
   const handleCreateIntegration = () => {
@@ -243,15 +235,18 @@ export function ExternalIntegrations({ appId, onSave }: ExternalIntegrationsProp
     setTestResults(prev => ({ ...prev, [integration.id]: { loading: true } }))
     
     try {
-      // Mock test - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const res = await fetch(`/api/admin/settings/integrations/${integration.id}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
       
       setTestResults(prev => ({
         ...prev,
         [integration.id]: {
           loading: false,
-          success: true,
-          message: 'Integration test successful',
+          success: res.ok,
+          message: data.message || (res.ok ? 'Integration test successful' : 'Integration test failed'),
           timestamp: new Date().toISOString()
         }
       }))
@@ -261,7 +256,7 @@ export function ExternalIntegrations({ appId, onSave }: ExternalIntegrationsProp
         [integration.id]: {
           loading: false,
           success: false,
-          message: 'Integration test failed: Invalid API key',
+          message: 'Integration test failed: Connection error',
           timestamp: new Date().toISOString()
         }
       }))

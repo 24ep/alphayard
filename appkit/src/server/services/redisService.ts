@@ -1,3 +1,5 @@
+import Redis from 'ioredis';
+
 /**
  * Redis Service
  * 
@@ -6,100 +8,117 @@
  */
 
 class RedisService {
-    private cache: Map<string, any> = new Map();
-    private ttl: Map<string, number> = new Map();
+    private client: Redis | null = null;
 
     async connect(): Promise<void> {
-        // In development, we'll use in-memory cache
-        console.log('RedisService: Using in-memory cache for development');
+        if (this.client) return;
+        
+        try {
+            const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+            this.client = new Redis(redisUrl, {
+                retryStrategy: (times) => {
+                    const delay = Math.min(times * 50, 2000);
+                    return delay;
+                },
+                maxRetriesPerRequest: 3
+            });
+            
+            this.client.on('error', (err) => {
+                console.error('Redis connection error:', err);
+            });
+
+            console.log('RedisService: Connected to Redis');
+        } catch (error) {
+            console.error('RedisService: Failed to connect to Redis', error);
+            // Fallback to null/disconnected state is handled by methods checking this.client
+        }
     }
 
     async disconnect(): Promise<void> {
-        this.cache.clear();
-        this.ttl.clear();
+        if (this.client) {
+            await this.client.quit();
+            this.client = null;
+        }
     }
 
-    async getClient(): Promise<any> {
-        // Return a mock client interface for compatibility
-        return {
-            get: async (key: string) => await this.get(key),
-            set: async (key: string, value: any, options?: any) => await this.set(key, value, options?.EX),
-            del: async (key: string) => await this.del(key),
-            exists: async (key: string) => await this.exists(key),
-            incr: async (key: string) => await this.incr(key),
-            expire: async (key: string, ttl: number) => await this.expire(key, ttl)
-        };
+    async getClient(): Promise<Redis | null> {
+        if (!this.client) await this.connect();
+        return this.client;
     }
 
     async set(key: string, value: any, ttlSeconds?: number): Promise<void> {
-        this.cache.set(key, value);
+        const client = await this.getClient();
+        if (!client) return;
+        
+        const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
         if (ttlSeconds) {
-            this.ttl.set(key, Date.now() + ttlSeconds * 1000);
+            await client.setex(key, ttlSeconds, valueStr);
+        } else {
+            await client.set(key, valueStr);
         }
     }
 
     async get(key: string): Promise<any> {
-        // Check TTL
-        const expiry = this.ttl.get(key);
-        if (expiry && Date.now() > expiry) {
-            this.cache.delete(key);
-            this.ttl.delete(key);
-            return null;
+        const client = await this.getClient();
+        if (!client) return null;
+        
+        const value = await client.get(key);
+        if (!value) return null;
+        
+        try {
+            return JSON.parse(value);
+        } catch {
+            return value;
         }
-        return this.cache.get(key) || null;
     }
 
     async del(key: string): Promise<void> {
-        this.cache.delete(key);
-        this.ttl.delete(key);
+        const client = await this.getClient();
+        if (client) await client.del(key);
     }
 
     async exists(key: string): Promise<boolean> {
-        const expiry = this.ttl.get(key);
-        if (expiry && Date.now() > expiry) {
-            this.cache.delete(key);
-            this.ttl.delete(key);
-            return false;
-        }
-        return this.cache.has(key);
+        const client = await this.getClient();
+        if (!client) return false;
+        const result = await client.exists(key);
+        return result === 1;
     }
 
     async incr(key: string): Promise<number> {
-        const current = await this.get(key);
-        const newValue = (current || 0) + 1;
-        await this.set(key, newValue);
-        return newValue;
+        const client = await this.getClient();
+        if (!client) return 0;
+        return await client.incr(key);
     }
 
     async expire(key: string, ttlSeconds: number): Promise<void> {
-        if (this.cache.has(key)) {
-            this.ttl.set(key, Date.now() + ttlSeconds * 1000);
-        }
+        const client = await this.getClient();
+        if (client) await client.expire(key, ttlSeconds);
     }
 
     // Rate limiting helper
     async checkRateLimit(key: string, limit: number, windowMs: number): Promise<{ allowed: boolean; remaining: number; resetTime: number }> {
-        const current = await this.get(key) || 0;
         const now = Date.now();
-        const windowStart = now - windowMs;
+        const client = await this.getClient();
         
-        if (current >= limit) {
-            return {
-                allowed: false,
-                remaining: 0,
-                resetTime: windowStart + windowMs
-            };
+        if (!client) {
+            return { allowed: true, remaining: limit, resetTime: now + windowMs };
         }
 
-        await this.incr(key);
-        await this.expire(key, Math.ceil(windowMs / 1000));
+        const current = await this.incr(key);
+        if (current === 1) {
+            await this.expire(key, Math.ceil(windowMs / 1000));
+        }
+
+        const remaining = Math.max(0, limit - current);
+        const resetTime = now + (await client.ttl(key)) * 1000;
 
         return {
-            allowed: true,
-            remaining: limit - current,
-            resetTime: windowStart + windowMs
+            allowed: current <= limit,
+            remaining,
+            resetTime
         };
     }
 }
 
 export default new RedisService();
+export { RedisService };

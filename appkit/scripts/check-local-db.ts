@@ -12,7 +12,7 @@ async function check() {
     const r: any = await prisma.$queryRawUnsafe('SELECT version()');
     console.log('LOCAL_DB_VERSION:' + r[0].version);
     
-    const schemas: any = await prisma.$queryRawUnsafe("SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('public', 'admin', 'core', 'bondarys')");
+    const schemas: any = await prisma.$queryRawUnsafe("SELECT schema_name FROM information_schema.schemata WHERE schema_name IN ('public', 'admin', 'bondarys')");
     console.log('LOCAL_SCHEMAS:' + schemas.map((s: any) => s.schema_name).join(','));
   } catch (e: any) {
     console.log('LOCAL_DB_ERROR:' + e.message);

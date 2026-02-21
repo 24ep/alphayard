@@ -20,7 +20,7 @@ const DEFAULT_BACKGROUND: BackgroundConfig = {
     ]
 }
 
-// Mock Global State (In a real app, fetch from settingsService.getGlobalIdentity())
+// Default Global Identity Configuration (fallback values when backend data is unavailable)
 const DEFAULT_GLOBAL_IDENTITY: GlobalIdentityConfig = {
     login: { requireEmailVerification: false, allowSocialLogin: true, termsAcceptedOn: 'login', passwordPolicy: 'standard' },
     signup: { requireEmailVerification: true, allowSocialLogin: true, termsAcceptedOn: 'signup', passwordPolicy: 'standard' },

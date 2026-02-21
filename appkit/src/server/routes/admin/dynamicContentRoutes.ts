@@ -15,8 +15,8 @@ router.get('/pages', authenticateAdmin as any, requirePermission('content', 'vie
     let sql = `
       SELECT cp.*, 
              ca.views, ca.clicks, ca.conversions
-      FROM content_pages cp
-      LEFT JOIN content_analytics ca ON cp.id = ca.page_id
+      FROM public.content_pages cp
+      LEFT JOIN public.content_analytics ca ON cp.id = ca.page_id
       WHERE 1=1
     `;
     const params: any[] = [];
@@ -60,8 +60,8 @@ router.get('/pages/:id', authenticateToken as any, async (req, res) => {
     const rows = await prisma.$queryRawUnsafe<any[]>(`
       SELECT cp.*, 
              ca.views, ca.clicks, ca.conversions
-      FROM content_pages cp
-      LEFT JOIN content_analytics ca ON cp.id = ca.page_id
+      FROM public.content_pages cp
+      LEFT JOIN public.content_analytics ca ON cp.id = ca.page_id
       WHERE cp.id = $1
     `, [id]);
 
@@ -92,7 +92,7 @@ router.post('/pages', authenticateAdmin as any, requirePermission('content', 'cr
 
     try {
       const rows = await prisma.$queryRawUnsafe<any[]>(`
-        INSERT INTO content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
+        INSERT INTO public.content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         RETURNING *
       `, [
@@ -138,7 +138,7 @@ router.put('/pages/:id', authenticateToken as any, async (req, res) => {
     if (mobile_display !== undefined) { sets.push(`mobile_display = $${pIdx++}`); params.push(JSON.stringify(mobile_display)); }
 
     const rows = await prisma.$queryRawUnsafe<any[]>(
-      `UPDATE content_pages SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+      `UPDATE public.content_pages SET ${sets.join(', ')} WHERE id = $1 RETURNING *`,
       ...params
     );
 
@@ -155,7 +155,7 @@ router.put('/pages/:id', authenticateToken as any, async (req, res) => {
 router.delete('/pages/:id', authenticateAdmin as any, requirePermission('content', 'delete'), async (req, res) => {
   try {
     const { id } = req.params;
-    await prisma.$executeRawUnsafe('DELETE FROM content_pages WHERE id = $1', id);
+    await prisma.$executeRawUnsafe('DELETE FROM public.content_pages WHERE id = $1', id);
 
     res.json({ message: 'Content page deleted successfully' });
   } catch (error: any) {
@@ -169,7 +169,7 @@ router.get('/admin/content', async (req, res) => {
     const { type, status, page = 1, page_size = 20, search } = req.query;
 
     try {
-      let sql = 'SELECT * FROM content_pages WHERE 1=1';
+      let sql = 'SELECT * FROM public.content_pages WHERE 1=1';
       const params: any[] = [];
       let pIdx = 1;
 
@@ -209,7 +209,7 @@ router.get('/pages/:id/analytics', authenticateAdmin as any, requirePermission('
     const { id } = req.params;
 
     const rows = await prisma.$queryRawUnsafe<any[]>(
-      'SELECT * FROM content_analytics WHERE page_id = $1',
+      'SELECT * FROM public.content_analytics WHERE page_id = $1',
       id
     );
 
@@ -235,11 +235,11 @@ router.post('/pages/:id/view', async (req, res) => {
 
     // Upsert analytics record using native SQL
     await prisma.$executeRawUnsafe(`
-      INSERT INTO content_analytics (page_id, views, last_viewed)
+      INSERT INTO public.content_analytics (page_id, views, last_viewed)
       VALUES ($1, 1, $2)
       ON CONFLICT (page_id) 
       DO UPDATE SET 
-        views = content_analytics.views + 1,
+        views = public.content_analytics.views + 1,
         last_viewed = $2
     `, [id, timestamp || new Date().toISOString()]);
 
@@ -253,7 +253,7 @@ router.post('/pages/:id/view', async (req, res) => {
 router.get('/templates', authenticateToken as any, async (req, res) => {
   try {
     const templates = await prisma.$queryRawUnsafe<any[]>(
-      'SELECT * FROM content_templates WHERE is_active = true ORDER BY name'
+      'SELECT * FROM public.content_templates WHERE is_active = true ORDER BY name'
     );
 
     res.json({ templates: templates || [] });
@@ -269,7 +269,7 @@ router.post('/templates/:id/create', authenticateAdmin as any, requirePermission
 
     // Get template
     const templates = await prisma.$queryRawUnsafe<any[]>(
-      'SELECT * FROM content_templates WHERE id = $1',
+      'SELECT * FROM public.content_templates WHERE id = $1',
       id
     );
 
@@ -281,7 +281,7 @@ router.post('/templates/:id/create', authenticateAdmin as any, requirePermission
 
     // Create page from template
     const pages = await prisma.$queryRawUnsafe<any[]>(
-      `INSERT INTO content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
+      `INSERT INTO public.content_pages (title, slug, type, status, components, mobile_display, created_by, updated_by, created_at, updated_at)
        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $6, NOW(), NOW())
        RETURNING *`,
       title || template.name,
@@ -303,7 +303,7 @@ router.get('/by-route/:route', async (req, res) => {
   const route = req.params.route;
   try {
     const pages = await prisma.$queryRawUnsafe<any[]>(
-      'SELECT * FROM content_pages WHERE route = $1 ORDER BY updated_at DESC LIMIT 1',
+      'SELECT * FROM public.content_pages WHERE route = $1 ORDER BY updated_at DESC LIMIT 1',
       route
     );
 

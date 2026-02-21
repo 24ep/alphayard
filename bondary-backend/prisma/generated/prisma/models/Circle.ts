@@ -245,6 +245,7 @@ export type CircleWhereInput = {
   notes?: Prisma.NoteListRelationFilter
   todos?: Prisma.TodoListRelationFilter
   invitations?: Prisma.CircleInvitationListRelationFilter
+  fileTags?: Prisma.FileTagListRelationFilter
 }
 
 export type CircleOrderByWithRelationInput = {
@@ -271,6 +272,7 @@ export type CircleOrderByWithRelationInput = {
   notes?: Prisma.NoteOrderByRelationAggregateInput
   todos?: Prisma.TodoOrderByRelationAggregateInput
   invitations?: Prisma.CircleInvitationOrderByRelationAggregateInput
+  fileTags?: Prisma.FileTagOrderByRelationAggregateInput
 }
 
 export type CircleWhereUniqueInput = Prisma.AtLeast<{
@@ -300,6 +302,7 @@ export type CircleWhereUniqueInput = Prisma.AtLeast<{
   notes?: Prisma.NoteListRelationFilter
   todos?: Prisma.TodoListRelationFilter
   invitations?: Prisma.CircleInvitationListRelationFilter
+  fileTags?: Prisma.FileTagListRelationFilter
 }, "id" | "inviteCode">
 
 export type CircleOrderByWithAggregationInput = {
@@ -360,6 +363,7 @@ export type CircleCreateInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateInput = {
@@ -384,6 +388,7 @@ export type CircleUncheckedCreateInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUpdateInput = {
@@ -408,6 +413,7 @@ export type CircleUpdateInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateInput = {
@@ -432,6 +438,7 @@ export type CircleUncheckedUpdateInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateManyInput = {
@@ -764,6 +771,22 @@ export type CircleUpdateOneWithoutTodosNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CircleUpdateToOneWithWhereWithoutTodosInput, Prisma.CircleUpdateWithoutTodosInput>, Prisma.CircleUncheckedUpdateWithoutTodosInput>
 }
 
+export type CircleCreateNestedOneWithoutFileTagsInput = {
+  create?: Prisma.XOR<Prisma.CircleCreateWithoutFileTagsInput, Prisma.CircleUncheckedCreateWithoutFileTagsInput>
+  connectOrCreate?: Prisma.CircleCreateOrConnectWithoutFileTagsInput
+  connect?: Prisma.CircleWhereUniqueInput
+}
+
+export type CircleUpdateOneWithoutFileTagsNestedInput = {
+  create?: Prisma.XOR<Prisma.CircleCreateWithoutFileTagsInput, Prisma.CircleUncheckedCreateWithoutFileTagsInput>
+  connectOrCreate?: Prisma.CircleCreateOrConnectWithoutFileTagsInput
+  upsert?: Prisma.CircleUpsertWithoutFileTagsInput
+  disconnect?: Prisma.CircleWhereInput | boolean
+  delete?: Prisma.CircleWhereInput | boolean
+  connect?: Prisma.CircleWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.CircleUpdateToOneWithWhereWithoutFileTagsInput, Prisma.CircleUpdateWithoutFileTagsInput>, Prisma.CircleUncheckedUpdateWithoutFileTagsInput>
+}
+
 export type CircleCreateWithoutOwnerInput = {
   id?: string
   name: string
@@ -785,6 +808,7 @@ export type CircleCreateWithoutOwnerInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutOwnerInput = {
@@ -808,6 +832,7 @@ export type CircleUncheckedCreateWithoutOwnerInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutOwnerInput = {
@@ -875,6 +900,7 @@ export type CircleCreateWithoutCircleTypeInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutCircleTypeInput = {
@@ -898,6 +924,7 @@ export type CircleUncheckedCreateWithoutCircleTypeInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutCircleTypeInput = {
@@ -947,6 +974,7 @@ export type CircleCreateWithoutMembersInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutMembersInput = {
@@ -970,6 +998,7 @@ export type CircleUncheckedCreateWithoutMembersInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutMembersInput = {
@@ -1009,6 +1038,7 @@ export type CircleUpdateWithoutMembersInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutMembersInput = {
@@ -1032,6 +1062,7 @@ export type CircleUncheckedUpdateWithoutMembersInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutInvitationsInput = {
@@ -1055,6 +1086,7 @@ export type CircleCreateWithoutInvitationsInput = {
   locationShares?: Prisma.LocationShareCreateNestedManyWithoutSharedWithCircleInput
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutInvitationsInput = {
@@ -1078,6 +1110,7 @@ export type CircleUncheckedCreateWithoutInvitationsInput = {
   locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithCircleInput
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutInvitationsInput = {
@@ -1117,6 +1150,7 @@ export type CircleUpdateWithoutInvitationsInput = {
   locationShares?: Prisma.LocationShareUpdateManyWithoutSharedWithCircleNestedInput
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutInvitationsInput = {
@@ -1140,6 +1174,7 @@ export type CircleUncheckedUpdateWithoutInvitationsInput = {
   locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithCircleNestedInput
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutSafetyIncidentsInput = {
@@ -1163,6 +1198,7 @@ export type CircleCreateWithoutSafetyIncidentsInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutSafetyIncidentsInput = {
@@ -1186,6 +1222,7 @@ export type CircleUncheckedCreateWithoutSafetyIncidentsInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutSafetyIncidentsInput = {
@@ -1225,6 +1262,7 @@ export type CircleUpdateWithoutSafetyIncidentsInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutSafetyIncidentsInput = {
@@ -1248,6 +1286,7 @@ export type CircleUncheckedUpdateWithoutSafetyIncidentsInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutSocialPostsInput = {
@@ -1271,6 +1310,7 @@ export type CircleCreateWithoutSocialPostsInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutSocialPostsInput = {
@@ -1294,6 +1334,7 @@ export type CircleUncheckedCreateWithoutSocialPostsInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutSocialPostsInput = {
@@ -1333,6 +1374,7 @@ export type CircleUpdateWithoutSocialPostsInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutSocialPostsInput = {
@@ -1356,6 +1398,7 @@ export type CircleUncheckedUpdateWithoutSocialPostsInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutChatRoomsInput = {
@@ -1379,6 +1422,7 @@ export type CircleCreateWithoutChatRoomsInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutChatRoomsInput = {
@@ -1402,6 +1446,7 @@ export type CircleUncheckedCreateWithoutChatRoomsInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutChatRoomsInput = {
@@ -1441,6 +1486,7 @@ export type CircleUpdateWithoutChatRoomsInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutChatRoomsInput = {
@@ -1464,6 +1510,7 @@ export type CircleUncheckedUpdateWithoutChatRoomsInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutGeofencesInput = {
@@ -1487,6 +1534,7 @@ export type CircleCreateWithoutGeofencesInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutGeofencesInput = {
@@ -1510,6 +1558,7 @@ export type CircleUncheckedCreateWithoutGeofencesInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutGeofencesInput = {
@@ -1549,6 +1598,7 @@ export type CircleUpdateWithoutGeofencesInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutGeofencesInput = {
@@ -1572,6 +1622,7 @@ export type CircleUncheckedUpdateWithoutGeofencesInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutLocationSharesInput = {
@@ -1595,6 +1646,7 @@ export type CircleCreateWithoutLocationSharesInput = {
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutLocationSharesInput = {
@@ -1618,6 +1670,7 @@ export type CircleUncheckedCreateWithoutLocationSharesInput = {
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutLocationSharesInput = {
@@ -1657,6 +1710,7 @@ export type CircleUpdateWithoutLocationSharesInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutLocationSharesInput = {
@@ -1680,6 +1734,7 @@ export type CircleUncheckedUpdateWithoutLocationSharesInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutNotesInput = {
@@ -1703,6 +1758,7 @@ export type CircleCreateWithoutNotesInput = {
   locationShares?: Prisma.LocationShareCreateNestedManyWithoutSharedWithCircleInput
   todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutNotesInput = {
@@ -1726,6 +1782,7 @@ export type CircleUncheckedCreateWithoutNotesInput = {
   locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithCircleInput
   todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutNotesInput = {
@@ -1765,6 +1822,7 @@ export type CircleUpdateWithoutNotesInput = {
   locationShares?: Prisma.LocationShareUpdateManyWithoutSharedWithCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutNotesInput = {
@@ -1788,6 +1846,7 @@ export type CircleUncheckedUpdateWithoutNotesInput = {
   locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleCreateWithoutTodosInput = {
@@ -1811,6 +1870,7 @@ export type CircleCreateWithoutTodosInput = {
   locationShares?: Prisma.LocationShareCreateNestedManyWithoutSharedWithCircleInput
   notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutCircleInput
 }
 
 export type CircleUncheckedCreateWithoutTodosInput = {
@@ -1834,6 +1894,7 @@ export type CircleUncheckedCreateWithoutTodosInput = {
   locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithCircleInput
   notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
   invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutCircleInput
 }
 
 export type CircleCreateOrConnectWithoutTodosInput = {
@@ -1873,6 +1934,7 @@ export type CircleUpdateWithoutTodosInput = {
   locationShares?: Prisma.LocationShareUpdateManyWithoutSharedWithCircleNestedInput
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutTodosInput = {
@@ -1895,6 +1957,119 @@ export type CircleUncheckedUpdateWithoutTodosInput = {
   geofences?: Prisma.GeofenceUncheckedUpdateManyWithoutCircleNestedInput
   locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithCircleNestedInput
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
+  invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
+}
+
+export type CircleCreateWithoutFileTagsInput = {
+  id?: string
+  name: string
+  description?: string | null
+  avatarUrl?: string | null
+  coverUrl?: string | null
+  inviteCode?: string | null
+  settings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  owner: Prisma.UserCreateNestedOneWithoutOwnedCirclesInput
+  circleType?: Prisma.CircleTypeCreateNestedOneWithoutCirclesInput
+  members?: Prisma.CircleMemberCreateNestedManyWithoutCircleInput
+  safetyIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutCircleInput
+  socialPosts?: Prisma.SocialPostCreateNestedManyWithoutCircleInput
+  chatRooms?: Prisma.ChatRoomCreateNestedManyWithoutCircleInput
+  geofences?: Prisma.GeofenceCreateNestedManyWithoutCircleInput
+  locationShares?: Prisma.LocationShareCreateNestedManyWithoutSharedWithCircleInput
+  notes?: Prisma.NoteCreateNestedManyWithoutCircleInput
+  todos?: Prisma.TodoCreateNestedManyWithoutCircleInput
+  invitations?: Prisma.CircleInvitationCreateNestedManyWithoutCircleInput
+}
+
+export type CircleUncheckedCreateWithoutFileTagsInput = {
+  id?: string
+  ownerId: string
+  circleTypeId?: string | null
+  name: string
+  description?: string | null
+  avatarUrl?: string | null
+  coverUrl?: string | null
+  inviteCode?: string | null
+  settings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  members?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutCircleInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutCircleInput
+  socialPosts?: Prisma.SocialPostUncheckedCreateNestedManyWithoutCircleInput
+  chatRooms?: Prisma.ChatRoomUncheckedCreateNestedManyWithoutCircleInput
+  geofences?: Prisma.GeofenceUncheckedCreateNestedManyWithoutCircleInput
+  locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithCircleInput
+  notes?: Prisma.NoteUncheckedCreateNestedManyWithoutCircleInput
+  todos?: Prisma.TodoUncheckedCreateNestedManyWithoutCircleInput
+  invitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutCircleInput
+}
+
+export type CircleCreateOrConnectWithoutFileTagsInput = {
+  where: Prisma.CircleWhereUniqueInput
+  create: Prisma.XOR<Prisma.CircleCreateWithoutFileTagsInput, Prisma.CircleUncheckedCreateWithoutFileTagsInput>
+}
+
+export type CircleUpsertWithoutFileTagsInput = {
+  update: Prisma.XOR<Prisma.CircleUpdateWithoutFileTagsInput, Prisma.CircleUncheckedUpdateWithoutFileTagsInput>
+  create: Prisma.XOR<Prisma.CircleCreateWithoutFileTagsInput, Prisma.CircleUncheckedCreateWithoutFileTagsInput>
+  where?: Prisma.CircleWhereInput
+}
+
+export type CircleUpdateToOneWithWhereWithoutFileTagsInput = {
+  where?: Prisma.CircleWhereInput
+  data: Prisma.XOR<Prisma.CircleUpdateWithoutFileTagsInput, Prisma.CircleUncheckedUpdateWithoutFileTagsInput>
+}
+
+export type CircleUpdateWithoutFileTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  owner?: Prisma.UserUpdateOneRequiredWithoutOwnedCirclesNestedInput
+  circleType?: Prisma.CircleTypeUpdateOneWithoutCirclesNestedInput
+  members?: Prisma.CircleMemberUpdateManyWithoutCircleNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUpdateManyWithoutCircleNestedInput
+  socialPosts?: Prisma.SocialPostUpdateManyWithoutCircleNestedInput
+  chatRooms?: Prisma.ChatRoomUpdateManyWithoutCircleNestedInput
+  geofences?: Prisma.GeofenceUpdateManyWithoutCircleNestedInput
+  locationShares?: Prisma.LocationShareUpdateManyWithoutSharedWithCircleNestedInput
+  notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
+  todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
+  invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+}
+
+export type CircleUncheckedUpdateWithoutFileTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerId?: Prisma.StringFieldUpdateOperationsInput | string
+  circleTypeId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  coverUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  inviteCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  settings?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  members?: Prisma.CircleMemberUncheckedUpdateManyWithoutCircleNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutCircleNestedInput
+  socialPosts?: Prisma.SocialPostUncheckedUpdateManyWithoutCircleNestedInput
+  chatRooms?: Prisma.ChatRoomUncheckedUpdateManyWithoutCircleNestedInput
+  geofences?: Prisma.GeofenceUncheckedUpdateManyWithoutCircleNestedInput
+  locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithCircleNestedInput
+  notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
+  todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
 }
 
@@ -1933,6 +2108,7 @@ export type CircleUpdateWithoutOwnerInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutOwnerInput = {
@@ -1956,6 +2132,7 @@ export type CircleUncheckedUpdateWithoutOwnerInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateManyWithoutOwnerInput = {
@@ -2007,6 +2184,7 @@ export type CircleUpdateWithoutCircleTypeInput = {
   notes?: Prisma.NoteUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateWithoutCircleTypeInput = {
@@ -2030,6 +2208,7 @@ export type CircleUncheckedUpdateWithoutCircleTypeInput = {
   notes?: Prisma.NoteUncheckedUpdateManyWithoutCircleNestedInput
   todos?: Prisma.TodoUncheckedUpdateManyWithoutCircleNestedInput
   invitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutCircleNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutCircleNestedInput
 }
 
 export type CircleUncheckedUpdateManyWithoutCircleTypeInput = {
@@ -2061,6 +2240,7 @@ export type CircleCountOutputType = {
   notes: number
   todos: number
   invitations: number
+  fileTags: number
 }
 
 export type CircleCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2073,6 +2253,7 @@ export type CircleCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions
   notes?: boolean | CircleCountOutputTypeCountNotesArgs
   todos?: boolean | CircleCountOutputTypeCountTodosArgs
   invitations?: boolean | CircleCountOutputTypeCountInvitationsArgs
+  fileTags?: boolean | CircleCountOutputTypeCountFileTagsArgs
 }
 
 /**
@@ -2148,6 +2329,13 @@ export type CircleCountOutputTypeCountInvitationsArgs<ExtArgs extends runtime.Ty
   where?: Prisma.CircleInvitationWhereInput
 }
 
+/**
+ * CircleCountOutputType without action
+ */
+export type CircleCountOutputTypeCountFileTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileTagWhereInput
+}
+
 
 export type CircleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -2173,6 +2361,7 @@ export type CircleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   notes?: boolean | Prisma.Circle$notesArgs<ExtArgs>
   todos?: boolean | Prisma.Circle$todosArgs<ExtArgs>
   invitations?: boolean | Prisma.Circle$invitationsArgs<ExtArgs>
+  fileTags?: boolean | Prisma.Circle$fileTagsArgs<ExtArgs>
   _count?: boolean | Prisma.CircleCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["circle"]>
 
@@ -2238,6 +2427,7 @@ export type CircleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   notes?: boolean | Prisma.Circle$notesArgs<ExtArgs>
   todos?: boolean | Prisma.Circle$todosArgs<ExtArgs>
   invitations?: boolean | Prisma.Circle$invitationsArgs<ExtArgs>
+  fileTags?: boolean | Prisma.Circle$fileTagsArgs<ExtArgs>
   _count?: boolean | Prisma.CircleCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type CircleIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2263,6 +2453,7 @@ export type $CirclePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     notes: Prisma.$NotePayload<ExtArgs>[]
     todos: Prisma.$TodoPayload<ExtArgs>[]
     invitations: Prisma.$CircleInvitationPayload<ExtArgs>[]
+    fileTags: Prisma.$FileTagPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2682,6 +2873,7 @@ export interface Prisma__CircleClient<T, Null = never, ExtArgs extends runtime.T
   notes<T extends Prisma.Circle$notesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Circle$notesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$NotePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   todos<T extends Prisma.Circle$todosArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Circle$todosArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TodoPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   invitations<T extends Prisma.Circle$invitationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Circle$invitationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CircleInvitationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileTags<T extends Prisma.Circle$fileTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Circle$fileTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileTagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3351,6 +3543,30 @@ export type Circle$invitationsArgs<ExtArgs extends runtime.Types.Extensions.Inte
   take?: number
   skip?: number
   distinct?: Prisma.CircleInvitationScalarFieldEnum | Prisma.CircleInvitationScalarFieldEnum[]
+}
+
+/**
+ * Circle.fileTags
+ */
+export type Circle$fileTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileTag
+   */
+  select?: Prisma.FileTagSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileTag
+   */
+  omit?: Prisma.FileTagOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileTagInclude<ExtArgs> | null
+  where?: Prisma.FileTagWhereInput
+  orderBy?: Prisma.FileTagOrderByWithRelationInput | Prisma.FileTagOrderByWithRelationInput[]
+  cursor?: Prisma.FileTagWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileTagScalarFieldEnum | Prisma.FileTagScalarFieldEnum[]
 }
 
 /**

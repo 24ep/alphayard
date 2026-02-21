@@ -119,41 +119,38 @@ export class SocialMediaService {
   // REPORTS - Content moderation reports
   async getReports(postId?: string): Promise<any[]> {
     try {
-      const query = postId
-        ? Prisma.sql`
-          SELECT r.*, 
-                 u.first_name as reporter_first_name, u.last_name as reporter_last_name,
-                 e.attributes->>'content' as post_content
-          FROM bondarys.social_reports r
-          LEFT JOIN core.users u ON r.reporter_id = u.id
-          LEFT JOIN bondarys.entities e ON r.post_id = e.id::text
-          WHERE r.post_id = ${postId}
-          ORDER BY r.created_at DESC
-        `
-        : Prisma.sql`
-          SELECT r.*, 
-                 u.first_name as reporter_first_name, u.last_name as reporter_last_name,
-                 e.attributes->>'content' as post_content
-          FROM bondarys.social_reports r
-          LEFT JOIN core.users u ON r.reporter_id = u.id
-          LEFT JOIN bondarys.entities e ON r.post_id = e.id::text
-          ORDER BY r.created_at DESC
-        `;
-      
-      const result = await prisma.$queryRaw<any[]>(query);
-      return result.map(row => ({
-        id: row.id,
-        postId: row.post_id,
-        reporterId: row.reporter_id,
-        reporterName: `${row.reporter_first_name || ''} ${row.reporter_last_name || ''}`.trim(),
-        reason: row.reason,
-        description: row.description,
-        status: row.status,
-        reviewedBy: row.reviewed_by,
-        reviewedAt: row.reviewed_at,
-        postContent: row.post_content,
-        createdAt: row.created_at,
-      }));
+      // Get reports
+      const reports = await prisma.socialReport.findMany({
+        where: postId ? { postId } : undefined,
+        orderBy: { createdAt: 'desc' }
+      });
+
+      // Get post data for each report
+      const reportIds = reports.map(r => r.postId);
+      const posts = reportIds.length > 0 ? await prisma.socialPost.findMany({
+        where: { id: { in: reportIds } },
+        select: { id: true, content: true }
+      }) : [];
+
+      const postMap = new Map(posts.map(p => [p.id, p]));
+
+      return reports.map((row: any) => {
+        const post = postMap.get(row.postId);
+        return {
+          id: row.id,
+          postId: row.postId,
+          reporterId: row.reporterId,
+          reporterName: '', // Would need to fetch user data if needed
+          reason: row.reason,
+          description: row.description,
+          status: row.status,
+          reviewedBy: row.reviewedBy,
+          reviewedAt: row.reviewedAt,
+          postContent: post?.content || '',
+          createdAt: row.createdAt,
+          updatedAt: row.updatedAt
+        };
+      });
     } catch (error) {
       console.error('Error getting reports:', error);
       return [];
@@ -194,25 +191,35 @@ export class SocialMediaService {
   // ACTIVITIES - Post activity tracking (views, shares, etc.)
   async getActivities(postId: string): Promise<any[]> {
     try {
-      const result = await prisma.$queryRaw<any[]>`
-        SELECT a.*, u.first_name, u.last_name, u.avatar_url as avatar
-        FROM bondarys.social_activities a
-        LEFT JOIN core.users u ON a.user_id = u.id
-        WHERE a.post_id = ${postId}
-        ORDER BY a.created_at DESC
-        LIMIT 100
-      `;
+      // Get activities
+      const activities = await prisma.socialActivity.findMany({
+        where: { postId },
+        orderBy: { createdAt: 'desc' },
+        take: 100
+      });
+
+      // Get user data for each activity
+      const userIds = activities.map(a => a.userId).filter(Boolean);
+      const users = userIds.length > 0 ? await prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true }
+      }) : [];
+
+      const userMap = new Map(users.map(u => [u.id, u]));
       
-      return result.map(row => ({
-        id: row.id,
-        postId: row.post_id,
-        userId: row.user_id,
-        userName: `${row.first_name || ''} ${row.last_name || ''}`.trim(),
-        userAvatar: row.avatar,
-        activityType: row.activity_type,
-        metadata: row.metadata,
-        createdAt: row.created_at,
-      }));
+      return activities.map((row: any) => {
+        const user = userMap.get(row.userId);
+        return {
+          id: row.id,
+          postId: row.postId,
+          userId: row.userId,
+          userName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '',
+          userAvatar: user?.avatarUrl || null,
+          activityType: row.activityType,
+          metadata: row.metadata,
+          createdAt: row.createdAt
+        };
+      });
     } catch (error) {
       console.error('Error getting activities:', error);
       return [];

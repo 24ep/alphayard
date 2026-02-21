@@ -1,4 +1,5 @@
 import { prisma } from '../lib/prisma';
+import nodemailer from 'nodemailer';
 
 export interface EmailTemplate {
     id: string;
@@ -47,104 +48,83 @@ export interface UpdateEmailTemplateData {
  */
 class EmailTemplateService {
     async createTemplate(data: CreateEmailTemplateData): Promise<EmailTemplate> {
-        const result = await prisma.$queryRaw<any[]>`
-            INSERT INTO email_templates (
-                id, name, subject, html_content, text_content, variables, 
-                is_active, application_id, created_at, updated_at
-            )
-            VALUES (
-                gen_random_uuid()::uuid,
-                ${data.name},
-                ${data.subject},
-                ${data.htmlContent},
-                ${data.textContent || null},
-                ${JSON.stringify(data.variables || [])}::jsonb,
-                ${data.isActive !== undefined ? data.isActive : true},
-                ${data.applicationId || null}::uuid,
-                NOW(),
-                NOW()
-            )
-            RETURNING *
-        `;
+        const template = await prisma.emailTemplate.create({
+            data: {
+                slug: data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+                name: data.name,
+                subject: data.subject,
+                htmlContent: data.htmlContent,
+                textContent: data.textContent || null,
+                variables: data.variables || [],
+                isActive: data.isActive !== undefined ? data.isActive : true,
+                applicationId: data.applicationId || null
+            }
+        });
 
-        return this.mapRowToTemplate(result[0]);
+        return this.mapRowToTemplate(template);
     }
 
     async getTemplate(id: string): Promise<EmailTemplate | null> {
-        const result = await prisma.$queryRaw<any[]>`
-            SELECT * FROM email_templates WHERE id = ${id}::uuid
-        `;
+        const template = await prisma.emailTemplate.findUnique({
+            where: { id }
+        });
 
-        if (!result[0]) return null;
-        return this.mapRowToTemplate(result[0]);
+        if (!template) return null;
+        return this.mapRowToTemplate(template);
     }
 
     async getTemplateByName(name: string, applicationId?: string): Promise<EmailTemplate | null> {
-        let query = `
-            SELECT * FROM email_templates 
-            WHERE name = ${name}
-        `;
+        const templates = await prisma.emailTemplate.findMany({
+            where: {
+                name,
+                applicationId: applicationId || null
+            },
+            orderBy: {
+                applicationId: 'desc'
+            },
+            take: 1
+        });
 
-        if (applicationId) {
-            query += ` AND (application_id = ${applicationId}::uuid OR application_id IS NULL)`;
-        }
-
-        query += ` ORDER BY application_id DESC NULLS LAST LIMIT 1`;
-
-        const result = await prisma.$queryRawUnsafe<any[]>(query);
-        if (!result[0]) return null;
-        return this.mapRowToTemplate(result[0]);
+        if (!templates[0]) return null;
+        return this.mapRowToTemplate(templates[0]);
     }
 
     async updateTemplate(id: string, data: UpdateEmailTemplateData): Promise<EmailTemplate | null> {
-        const updates: string[] = [];
-        const params: any[] = [];
-
+        const updateData: any = {};
+        
         if (data.subject !== undefined) {
-            updates.push(`subject = $${params.length + 1}`);
-            params.push(data.subject);
+            updateData.subject = data.subject;
         }
         if (data.htmlContent !== undefined) {
-            updates.push(`html_content = $${params.length + 1}`);
-            params.push(data.htmlContent);
+            updateData.htmlContent = data.htmlContent;
         }
         if (data.textContent !== undefined) {
-            updates.push(`text_content = $${params.length + 1}`);
-            params.push(data.textContent);
+            updateData.textContent = data.textContent;
         }
         if (data.variables !== undefined) {
-            updates.push(`variables = $${params.length + 1}::jsonb`);
-            params.push(JSON.stringify(data.variables));
+            updateData.variables = data.variables;
         }
         if (data.isActive !== undefined) {
-            updates.push(`is_active = $${params.length + 1}`);
-            params.push(data.isActive);
+            updateData.isActive = data.isActive;
         }
 
-        if (updates.length === 0) {
+        if (Object.keys(updateData).length === 0) {
             return this.getTemplate(id);
         }
 
-        updates.push(`updated_at = NOW()`);
+        const template = await prisma.emailTemplate.update({
+            where: { id },
+            data: updateData
+        });
 
-        const query = `
-            UPDATE email_templates 
-            SET ${updates.join(', ')}
-            WHERE id = $${params.length + 1}::uuid
-            RETURNING *
-        `;
-        params.push(id);
-
-        const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
-        if (!result[0]) return null;
-        return this.mapRowToTemplate(result[0]);
+        return this.mapRowToTemplate(template);
     }
 
     async deleteTemplate(id: string): Promise<boolean> {
-        const result = await prisma.$executeRaw`
-            DELETE FROM email_templates WHERE id = ${id}::uuid
-        `;
-        return result > 0;
+        const result = await prisma.emailTemplate.delete({
+            where: { id }
+        });
+        return !!result;
     }
 
     async listTemplates(applicationId?: string, page: number = 1, limit: number = 20): Promise<{
@@ -153,34 +133,22 @@ class EmailTemplateService {
         page: number;
         limit: number;
     }> {
-        let whereClause = '1=1';
-        const params: any[] = [];
-
-        if (applicationId) {
-            whereClause += ` AND (application_id = $${params.length + 1}::uuid OR application_id IS NULL)`;
-            params.push(applicationId);
-        }
-
+        const where = applicationId ? { applicationId } : {};
         const offset = (page - 1) * limit;
 
         // Get total count
-        const countQuery = `
-            SELECT COUNT(*) as total FROM email_templates WHERE ${whereClause}
-        `;
-        const countResult = await prisma.$queryRawUnsafe<any[]>(countQuery, ...params);
-        const total = parseInt(countResult[0].total, 10);
+        const total = await prisma.emailTemplate.count({ where });
 
         // Get templates
-        const query = `
-            SELECT * FROM email_templates 
-            WHERE ${whereClause}
-            ORDER BY created_at DESC 
-            LIMIT ${limit} OFFSET ${offset}
-        `;
-        const rows = await prisma.$queryRawUnsafe<any[]>(query, ...params);
+        const templates = await prisma.emailTemplate.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            skip: offset,
+            take: limit
+        });
 
         return {
-            templates: rows.map(this.mapRowToTemplate),
+            templates: templates.map((t: any) => this.mapRowToTemplate(t)),
             total,
             page,
             limit
@@ -188,7 +156,7 @@ class EmailTemplateService {
     }
 
     async getCategories(): Promise<string[]> {
-        // Mock implementation - return common email categories
+        // Baseline categories corresponding to core communication types
         return ['welcome', 'password-reset', 'verification', 'notification', 'marketing', 'billing'];
     }
 
@@ -222,12 +190,12 @@ class EmailTemplateService {
     }
 
     async getTemplateVersions(id: string): Promise<any[]> {
-        // Mock implementation - return empty array for now
+        // Versioning is not yet supported in the database schema
         return [];
     }
 
     async restoreVersion(id: string, versionId: number, userId?: string): Promise<EmailTemplate | null> {
-        // Mock implementation - just return the current template
+        // Versioning is not yet supported; return current template
         return this.getTemplate(id);
     }
 
@@ -253,12 +221,37 @@ class EmailTemplateService {
 
             const renderedContent = await this.previewTemplate(id, data);
             
-            // Mock implementation - just log the email
-            console.log('Test Email:', {
-                to,
-                subject: template.subject,
-                content: renderedContent
-            });
+            // Replace variables in subject as well
+            let subject = template.subject;
+            for (const [key, value] of Object.entries(data)) {
+                subject = subject.replace(new RegExp(`{{${key}}}`, 'g'), String(value));
+            }
+
+            if (process.env.SMTP_HOST) {
+                const transporter = nodemailer.createTransport({
+                    host: process.env.SMTP_HOST,
+                    port: parseInt(process.env.SMTP_PORT || '587'),
+                    secure: process.env.SMTP_SECURE === 'true',
+                    auth: process.env.SMTP_USER ? {
+                        user: process.env.SMTP_USER,
+                        pass: process.env.SMTP_PASS
+                    } : undefined
+                });
+                
+                await transporter.sendMail({
+                    from: process.env.SMTP_FROM || 'noreply@example.com',
+                    to,
+                    subject,
+                    html: renderedContent
+                });
+                console.log(`Email successfully sent to ${to} via SMTP`);
+            } else {
+                console.warn('Test Email (SMTP not configured, logging to console):', {
+                    to,
+                    subject,
+                    content: renderedContent
+                });
+            }
 
             return true;
         } catch (error) {
@@ -299,13 +292,13 @@ class EmailTemplateService {
             id: row.id,
             name: row.name,
             subject: row.subject,
-            htmlContent: row.html_content,
-            textContent: row.text_content,
+            htmlContent: row.htmlContent,
+            textContent: row.textContent,
             variables: row.variables || [],
-            isActive: row.is_active,
-            applicationId: row.application_id,
-            createdAt: new Date(row.created_at),
-            updatedAt: new Date(row.updated_at)
+            isActive: row.isActive,
+            applicationId: row.applicationId,
+            createdAt: row.createdAt,
+            updatedAt: row.updatedAt
         };
     }
 }

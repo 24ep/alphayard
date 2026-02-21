@@ -148,33 +148,24 @@ export async function createClient(
         client_secret_hash = await bcrypt.hash(client_secret, 12);
     }
     
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-        INSERT INTO oauth_clients (
-            client_id, client_secret_hash, client_type, name, description,
-            logo_url, homepage_url, redirect_uris, grant_types,
-            allowed_scopes, require_pkce, require_consent, first_party,
-            application_id, created_by
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-        RETURNING *
-    `, [
-        client_id,
-        client_secret_hash,
-        client_type,
-        input.name,
-        input.description || null,
-        input.logo_url || null,
-        input.homepage_url || null,
-        JSON.stringify(input.redirect_uris),
-        JSON.stringify(input.grant_types || ['authorization_code', 'refresh_token']),
-        JSON.stringify(input.allowed_scopes || ['openid', 'profile', 'email']),
-        input.require_pkce !== false, // Default true
-        input.require_consent !== false, // Default true
-        input.first_party || false,
-        input.application_id || null,
-        input.created_by || null
-    ]);
+    const result = await prisma.oAuthProvider.create({
+        data: {
+            clientId: client_id,
+            clientSecret: client_secret || '',
+            providerName: input.name,
+            displayName: input.name,
+            isEnabled: true,
+            scopes: input.allowed_scopes || ['openid', 'profile', 'email'],
+            claimsMapping: {},
+            allowSignup: true,
+            requireEmailVerified: true,
+            autoLinkByEmail: false,
+            iconUrl: input.logo_url,
+            applicationId: input.application_id || null
+        }
+    });
     
-    const client = mapClientRow(result[0]);
+    const client = mapClientRow(result);
     
     // Log creation
     await logOAuthEvent('client_created', {
@@ -189,11 +180,13 @@ export async function createClient(
  * Get client by client_id
  */
 export async function getClientByClientId(clientId: string): Promise<OAuthClient | null> {
-    const result = await prisma.$queryRawUnsafe<any[]>(
-        'SELECT * FROM oauth_clients WHERE client_id = $1 AND is_active = true',
-        [clientId]
-    );
-    return result[0] ? mapClientRow(result[0]) : null;
+    const result = await prisma.oAuthProvider.findFirst({
+        where: { 
+            clientId,
+            isEnabled: true
+        }
+    });
+    return result ? mapClientRow(result) : null;
 }
 
 /**
@@ -214,14 +207,14 @@ export async function validateClientCredentials(
     // Confidential clients must provide valid secret
     if (!clientSecret) return null;
     
-    const result = await prisma.$queryRawUnsafe<any[]>(
-        'SELECT client_secret_hash FROM oauth_clients WHERE client_id = $1',
-        [clientId]
-    );
+    const result = await prisma.oAuthProvider.findFirst({
+        where: { clientId },
+        select: { clientSecret: true }
+    });
     
-    if (!result[0]?.client_secret_hash) return null;
+    if (!result?.clientSecret) return null;
     
-    const isValid = await bcrypt.compare(clientSecret, result[0].client_secret_hash);
+    const isValid = await bcrypt.compare(clientSecret, result.clientSecret);
     return isValid ? client : null;
 }
 
@@ -229,10 +222,13 @@ export async function validateClientCredentials(
  * Get all clients for an application
  */
 export async function getApplicationClients(applicationId: string): Promise<OAuthClient[]> {
-    const result = await prisma.$queryRawUnsafe<any[]>(
-        'SELECT * FROM oauth_clients WHERE application_id = $1 AND is_active = true ORDER BY created_at DESC',
-        [applicationId]
-    );
+    const result = await prisma.oAuthProvider.findMany({
+        where: { 
+            applicationId,
+            isEnabled: true
+        },
+        orderBy: { createdAt: 'desc' }
+    });
     return result.map(mapClientRow);
 }
 
@@ -993,13 +989,32 @@ function validatePKCE(verifier: string, challenge: string, method: string): bool
 }
 
 async function getUserForTokens(userId: string): Promise<any> {
-    const result = await prisma.$queryRawUnsafe<any[]>(`
-        SELECT id, email, email as username, first_name, last_name, 
-               (first_name || ' ' || last_name) as full_name,
-               avatar_url, is_verified as is_email_verified, updated_at
-        FROM core.users WHERE id = $1
-    `, [userId]);
-    return result[0] || null;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        isVerified: true,
+        updatedAt: true
+      }
+    });
+    
+    if (!user) return null;
+    
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      full_name: user.firstName ? (user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName) : user.lastName,
+      avatar_url: user.avatarUrl,
+      is_email_verified: user.isVerified,
+      updated_at: user.updatedAt
+    };
 }
 
 function buildIdTokenPayload(

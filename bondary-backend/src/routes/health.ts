@@ -49,7 +49,7 @@ router.get('/detailed', async (req: Request, res: Response) => {
       locationsCount: bigint;
     }>>`
       SELECT 
-        (SELECT count(*) FROM core.users) as "usersCount",
+        (SELECT count(*) FROM public.users) as "usersCount",
         (SELECT count(*) FROM unified_entities WHERE type = 'circle') as "familiesCount",
         (SELECT count(*) FROM unified_entities WHERE type = 'location_history') as "locationsCount"
     `;

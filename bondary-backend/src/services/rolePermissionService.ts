@@ -530,17 +530,16 @@ export async function userIsSuperAdmin(userId: string): Promise<boolean> {
   }
   
   // Fallback: Check if user exists in users table with admin/super_admin role
-  const userResult = await prisma.$queryRawUnsafe<any[]>(`
-    SELECT EXISTS (
-      SELECT 1
-      FROM core.users u
-      WHERE u.id = $1
-        AND u.is_active = true
-        AND u.role IN ('admin', 'super_admin')
-    ) as is_super_admin
-  `, userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isActive: true, userType: true }
+  });
   
-  return userResult[0]?.is_super_admin || false;
+  if (!user || !user.isActive) {
+    return false;
+  }
+  
+  return user.userType === 'admin' || user.userType === 'super_admin';
 }
 
 // ==========================================

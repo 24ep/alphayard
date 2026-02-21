@@ -62,72 +62,73 @@ class EntityService {
         // Ensure ownerId is valid before inserting
         if (input.ownerId) {
             console.log('[EntityService] Verifying ownerId before insert:', { ownerId: input.ownerId, typeName: input.typeName });
-            const ownerCheck = await prisma.$queryRaw<any[]>`
-                SELECT id FROM core.users WHERE id = ${input.ownerId}::uuid
-            `;
-            console.log('[EntityService] Owner check result:', { ownerId: input.ownerId, found: ownerCheck.length > 0 });
-            if (ownerCheck.length === 0) {
-                console.error('[EntityService] CRITICAL: ownerId does not exist in core.users:', input.ownerId);
-                throw new Error(`Invalid owner_id: ${input.ownerId} does not exist in core.users table`);
+            const ownerCheck = await prisma.user.findUnique({
+                where: { id: input.ownerId }
+            });
+            console.log('[EntityService] Owner check result:', { ownerId: input.ownerId, found: !!ownerCheck });
+            if (!ownerCheck) {
+                console.error('[EntityService] CRITICAL: ownerId does not exist in users table:', input.ownerId);
+                throw new Error(`Invalid owner_id: ${input.ownerId} does not exist in users table`);
             }
         } else {
             console.log('[EntityService] No ownerId provided for entity creation');
         }
 
-        const result = await prisma.$queryRaw<any[]>`
-            INSERT INTO public.unified_entities (id, type, application_id, owner_id, status, data, metadata)
-            VALUES (${id}::uuid, ${input.typeName}, ${input.applicationId || null}::uuid, 
-                    ${input.ownerId || null}::uuid, ${(input as any).status || 'active'}, 
-                    ${JSON.stringify(input.attributes || {})}::jsonb, 
-                    ${JSON.stringify(input.metadata || {})}::jsonb)
-            RETURNING *
-        `;
+        const entity = await prisma.unifiedEntity.create({
+            data: {
+                id,
+                type: input.typeName,
+                applicationId: input.applicationId,
+                ownerId: input.ownerId,
+                status: (input as any).status || 'active',
+                attributes: input.attributes || {},
+                metadata: input.metadata || {}
+            }
+        });
 
-        return this.mapRowToEntity(result[0]);
+        return this.mapRowToEntity(entity);
     }
 
     /**
      * Get entity by ID
      */
     async getEntity(id: string): Promise<Entity | null> {
-        const result = await prisma.$queryRaw<any[]>`
-            SELECT * FROM public.unified_entities WHERE id = ${id}::uuid
-        `;
+        const entity = await prisma.unifiedEntity.findUnique({
+            where: { id }
+        });
 
-        if (!result[0]) return null;
-        return this.mapRowToEntity(result[0]);
+        if (!entity) return null;
+        return this.mapRowToEntity(entity);
     }
 
     /**
      * Update entity
      */
     async updateEntity(id: string, input: UpdateEntityInput): Promise<Entity | null> {
-        const updates: string[] = ['updated_at = NOW()'];
-        const hasStatus = !!input.status;
-        const hasAttributes = !!input.attributes;
-        const hasMetadata = !!input.metadata;
+        const updateData: any = {
+            updatedAt: new Date()
+        };
 
-        if (!hasStatus && !hasAttributes && !hasMetadata) {
+        if (input.status !== undefined) {
+            updateData.status = input.status;
+        }
+        if (input.attributes !== undefined) {
+            updateData.attributes = input.attributes;
+        }
+        if (input.metadata !== undefined) {
+            updateData.metadata = input.metadata;
+        }
+
+        if (Object.keys(updateData).length === 1) {
             return this.getEntity(id);
         }
 
-        // Build dynamic update using raw query
-        let updateQuery = `UPDATE unified_entities SET updated_at = NOW()`;
-        
-        if (hasStatus) {
-            updateQuery += `, status = '${input.status}'`;
-        }
-        if (hasAttributes) {
-            updateQuery += `, data = data || '${JSON.stringify(input.attributes)}'::jsonb`;
-        }
-        if (hasMetadata) {
-            updateQuery += `, metadata = metadata || '${JSON.stringify(input.metadata)}'::jsonb`;
-        }
-        
-        updateQuery += ` WHERE id = '${id}'::uuid RETURNING *`;
+        const entity = await prisma.unifiedEntity.update({
+            where: { id },
+            data: updateData
+        });
 
-        const result = await prisma.$queryRawUnsafe<any[]>(updateQuery);
-        return result[0] ? this.mapRowToEntity(result[0]) : null;
+        return this.mapRowToEntity(entity);
     }
 
     /**
@@ -135,16 +136,19 @@ class EntityService {
      */
     async deleteEntity(id: string, hard: boolean = false): Promise<boolean> {
         if (hard) {
-            const result = await prisma.$executeRaw`
-                DELETE FROM unified_entities WHERE id = ${id}::uuid
-            `;
-            return result > 0;
+            const result = await prisma.unifiedEntity.delete({
+                where: { id }
+            });
+            return !!result;
         } else {
-            const result = await prisma.$executeRaw`
-                UPDATE unified_entities SET status = 'deleted', updated_at = NOW() 
-                WHERE id = ${id}::uuid
-            `;
-            return result > 0;
+            const result = await prisma.unifiedEntity.update({
+                where: { id },
+                data: {
+                    status: 'deleted',
+                    updatedAt: new Date()
+                }
+            });
+            return !!result;
         }
     }
 
@@ -161,44 +165,53 @@ class EntityService {
         const limit = Math.min(options.limit || 20, 100);
         const offset = (page - 1) * limit;
 
-        let whereClause = `type = '${typeName}' AND status != 'deleted'`;
+        // Build Prisma where conditions
+        const whereConditions: any = {
+            type: typeName,
+            status: { not: 'deleted' }
+        };
 
         if (options.applicationId) {
-            whereClause += ` AND application_id = '${options.applicationId}'::uuid`;
+            whereConditions.applicationId = options.applicationId;
         }
 
         if (options.ownerId) {
-            whereClause += ` AND owner_id = '${options.ownerId}'::uuid`;
+            whereConditions.ownerId = options.ownerId;
         }
 
         if ((options as any).search) {
-            whereClause += ` AND data::text ILIKE '%${(options as any).search}%'`;
+            whereConditions.data = {
+                path: [],
+                string_contains: (options as any).search
+            };
         }
 
         if (options.filters) {
             for (const [key, value] of Object.entries(options.filters)) {
                 if (value === undefined || value === null) continue;
-                whereClause += ` AND data->>'${key}' = '${value}'`;
+                whereConditions.data = {
+                    ...whereConditions.data,
+                    path: [key],
+                    equals: value
+                };
             }
         }
 
-        // Get total count
-        const countResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT COUNT(*) as total FROM unified_entities WHERE ${whereClause}`
-        );
-        const total = parseInt(countResult[0].total, 10);
-
-        // Get entities
-        const orderBy = options.orderBy || 'created_at';
-        const orderDir = options.orderDir || 'DESC';
-
-        const rows = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM unified_entities WHERE ${whereClause} 
-             ORDER BY ${orderBy} ${orderDir} LIMIT ${limit} OFFSET ${offset}`
-        );
+        // Get total count and entities in parallel
+        const [total, entities] = await Promise.all([
+            prisma.unifiedEntity.count({ where: whereConditions }),
+            prisma.unifiedEntity.findMany({
+                where: whereConditions,
+                orderBy: { 
+                    [options.orderBy || 'createdAt']: options.orderDir || 'desc'
+                },
+                skip: offset,
+                take: limit
+            })
+        ]);
 
         return {
-            entities: rows.map(this.mapRowToEntity),
+            entities: entities.map(this.mapRowToEntity),
             total,
             page,
             limit
@@ -211,17 +224,26 @@ class EntityService {
     async searchEntities(typeName: string, query: string, options: { applicationId?: string, limit?: number } = {}): Promise<Entity[]> {
         const limit = Math.min(options.limit || 20, 100);
         
-        let sql = `SELECT * FROM unified_entities 
-                   WHERE type = '${typeName}' AND status != 'deleted' AND data::text ILIKE '%${query}%'`;
+        const whereConditions: any = {
+            type: typeName,
+            status: { not: 'deleted' },
+            data: {
+                path: [],
+                string_contains: query
+            }
+        };
 
         if (options.applicationId) {
-            sql += ` AND application_id = '${options.applicationId}'::uuid`;
+            whereConditions.applicationId = options.applicationId;
         }
 
-        sql += ` ORDER BY created_at DESC LIMIT ${limit}`;
+        const entities = await prisma.unifiedEntity.findMany({
+            where: whereConditions,
+            orderBy: { createdAt: 'desc' },
+            take: limit
+        });
 
-        const rows = await prisma.$queryRawUnsafe<any[]>(sql);
-        return rows.map(this.mapRowToEntity.bind(this));
+        return entities.map(this.mapRowToEntity.bind(this));
     }
 
     /**
@@ -231,16 +253,16 @@ class EntityService {
         return {
             id: row.id,
             type: row.type,
-            applicationId: row.application_id,
-            ownerId: row.owner_id,
+            applicationId: row.applicationId,
+            ownerId: row.ownerId,
             status: row.status,
             metadata: row.metadata || {},
             attributes: row.data || {},
             data: row.data || {}, // For legacy compatibility
-            createdAt: new Date(row.created_at),
-            created_at: new Date(row.created_at), // For legacy compatibility
-            updatedAt: new Date(row.updated_at),
-            updated_at: new Date(row.updated_at) // For legacy compatibility
+            createdAt: row.createdAt,
+            created_at: row.createdAt, // For legacy compatibility
+            updatedAt: row.updatedAt,
+            updated_at: row.updatedAt // For legacy compatibility
         } as any;
     }
 
@@ -266,7 +288,7 @@ class EntityService {
                 can_create as "canCreate",
                 can_update as "canUpdate",
                 can_delete as "canDelete"
-            FROM entity_types 
+            FROM admin.entity_types 
             WHERE name NOT IN ('users', 'admin-users', 'admin_users')
         `;
         
@@ -301,7 +323,7 @@ class EntityService {
                 can_create as "canCreate",
                 can_update as "canUpdate",
                 can_delete as "canDelete"
-            FROM entity_types 
+            FROM admin.entity_types 
             WHERE name = ${typeName}
         `;
         
@@ -332,7 +354,7 @@ class EntityService {
                     can_create as "canCreate",
                     can_update as "canUpdate",
                     can_delete as "canDelete"
-                FROM entity_types 
+                FROM admin.entity_types 
                 WHERE id = ${id}::uuid
             `;
         }
@@ -356,7 +378,7 @@ class EntityService {
                     can_create as "canCreate",
                     can_update as "canUpdate",
                     can_delete as "canDelete"
-                FROM entity_types 
+                FROM admin.entity_types 
                 WHERE name = ${id}
             `;
         }
@@ -374,7 +396,7 @@ class EntityService {
         category?: string;
     }): Promise<any> {
         const rows = await prisma.$queryRaw<any[]>`
-            INSERT INTO entity_types (
+            INSERT INTO admin.entity_types (
                 name, 
                 display_name, 
                 title,
@@ -455,7 +477,7 @@ class EntityService {
         }
         
         const query = `
-            UPDATE entity_types 
+            UPDATE admin.entity_types 
             SET ${updates.join(', ')}, updated_at = NOW()
             WHERE id = '${id}'::uuid OR name = '${id}'
             RETURNING 
@@ -483,7 +505,7 @@ class EntityService {
 
     async deleteEntityType(id: string): Promise<boolean> {
         const result = await prisma.$executeRaw`
-            DELETE FROM entity_types 
+            DELETE FROM admin.entity_types 
             WHERE (id = ${id}::uuid OR name = ${id}) AND is_system = false
         `;
         

@@ -42,6 +42,94 @@ interface RecentActivity {
     status: 'success' | 'warning' | 'info'
 }
 
+const StatCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    growth, 
+    color = "blue",
+    description 
+}: {
+    title: string
+    value: string | number
+    icon: any
+    growth?: number
+    color?: 'blue' | 'green' | 'purple' | 'orange'
+    description?: string
+}) => {
+    const colorClasses = {
+        blue: 'border-blue-500/20 text-blue-400',
+        green: 'border-green-500/20 text-green-400',
+        purple: 'border-purple-500/20 text-purple-400',
+        orange: 'border-orange-500/20 text-orange-400'
+    }
+
+    return (
+        <div className={`p-4 border-l-2 ${colorClasses[color]} bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all rounded-r-lg shadow-sm border border-gray-100 dark:border-zinc-800`}>
+            <div className="flex items-center justify-between mb-2">
+                <div className={`p-2 rounded ${colorClasses[color].split(' ')[0]} bg-gray-100 dark:bg-zinc-800`}>
+                    <Icon className="w-4 h-4" />
+                </div>
+                {growth && (
+                    <div className={`flex items-center text-xs font-mono ${
+                        growth > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                    }`}>
+                        {growth > 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
+                        {Math.abs(growth)}%
+                    </div>
+                )}
+            </div>
+            <div className="space-y-1">
+                <h3 className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">{value}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase tracking-wider">{title}</p>
+                {description && (
+                    <p className="text-xs text-gray-600 dark:text-gray-500 font-mono">{description}</p>
+                )}
+            </div>
+        </div>
+    )
+}
+
+const ActivityItem = ({ activity }: { activity: RecentActivity }) => {
+    const getIcon = () => {
+        switch (activity.type) {
+            case 'user': return <Users className="w-4 h-4" />
+            case 'content': return <FileText className="w-4 h-4" />
+            case 'system': return <Settings className="w-4 h-4" />
+            case 'security': return <Shield className="w-4 h-4" />
+            default: return <Activity className="w-4 h-4" />
+        }
+    }
+
+    const getStatusColor = () => {
+        switch (activity.status) {
+            case 'success': return 'border-green-500/20 text-green-400'
+            case 'warning': return 'border-orange-500/20 text-orange-400'
+            case 'info': return 'border-blue-500/20 text-blue-400'
+            default: return 'border-gray-500/20 text-gray-400'
+        }
+    }
+
+    return (
+        <div className="flex items-start gap-3 p-3 border-l border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors rounded-r-lg">
+            <div className={`p-1.5 rounded border ${getStatusColor()} bg-gray-100 dark:bg-zinc-800`}>
+                {getIcon()}
+            </div>
+            <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-mono font-medium text-gray-900 dark:text-gray-200">{activity.title}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.description}</p>
+                <div className="flex items-center gap-2 mt-2">
+                    <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                    <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{activity.timestamp}</span>
+                </div>
+            </div>
+            <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors" aria-label="More options" title="More options">
+                <MoreHorizontal className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+            </button>
+        </div>
+    )
+}
+
 export default function DashboardPage() {
     const [stats, setStats] = useState<DashboardStats>({
         totalUsers: 0,
@@ -131,94 +219,6 @@ export default function DashboardPage() {
         setRefreshing(true)
         await fetchDashboardData()
         setRefreshing(false)
-    }
-
-    const StatCard = ({ 
-        title, 
-        value, 
-        icon: Icon, 
-        growth, 
-        color = "blue",
-        description 
-    }: {
-        title: string
-        value: string | number
-        icon: any
-        growth?: number
-        color?: 'blue' | 'green' | 'purple' | 'orange'
-        description?: string
-    }) => {
-        const colorClasses = {
-            blue: 'border-blue-500/20 text-blue-400',
-            green: 'border-green-500/20 text-green-400',
-            purple: 'border-purple-500/20 text-purple-400',
-            orange: 'border-orange-500/20 text-orange-400'
-        }
-
-        return (
-            <div className={`p-4 border-l-2 ${colorClasses[color]} bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all rounded-r-lg`}>
-                <div className="flex items-center justify-between mb-2">
-                    <div className={`p-2 rounded ${colorClasses[color].split(' ')[0]} bg-gray-100 dark:bg-zinc-800`}>
-                        <Icon className="w-4 h-4" />
-                    </div>
-                    {growth && (
-                        <div className={`flex items-center text-xs font-mono ${
-                            growth > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        }`}>
-                            {growth > 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                            {Math.abs(growth)}%
-                        </div>
-                    )}
-                </div>
-                <div className="space-y-1">
-                    <h3 className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">{value}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase tracking-wider">{title}</p>
-                    {description && (
-                        <p className="text-xs text-gray-600 dark:text-gray-500 font-mono">{description}</p>
-                    )}
-                </div>
-            </div>
-        )
-    }
-
-    const ActivityItem = ({ activity }: { activity: RecentActivity }) => {
-        const getIcon = () => {
-            switch (activity.type) {
-                case 'user': return <Users className="w-4 h-4" />
-                case 'content': return <FileText className="w-4 h-4" />
-                case 'system': return <Settings className="w-4 h-4" />
-                case 'security': return <Shield className="w-4 h-4" />
-                default: return <Activity className="w-4 h-4" />
-            }
-        }
-
-        const getStatusColor = () => {
-            switch (activity.status) {
-                case 'success': return 'border-green-500/20 text-green-400'
-                case 'warning': return 'border-orange-500/20 text-orange-400'
-                case 'info': return 'border-blue-500/20 text-blue-400'
-                default: return 'border-gray-500/20 text-gray-400'
-            }
-        }
-
-        return (
-            <div className="flex items-start gap-3 p-3 border-l border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors rounded-r-lg">
-                <div className={`p-1.5 rounded border ${getStatusColor()} bg-gray-100 dark:bg-zinc-800`}>
-                    {getIcon()}
-                </div>
-                <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-mono font-medium text-gray-900 dark:text-gray-200">{activity.title}</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.description}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                        <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                        <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{activity.timestamp}</span>
-                    </div>
-                </div>
-                <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors" aria-label="More options" title="More options">
-                    <MoreHorizontal className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                </button>
-            </div>
-        )
     }
 
     if (loading) {

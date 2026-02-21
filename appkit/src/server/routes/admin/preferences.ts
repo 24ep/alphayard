@@ -8,7 +8,7 @@ const router = Router();
 const ensurePreferencesTable = async () => {
     try {
         await prisma.$executeRawUnsafe(`
-            CREATE TABLE IF NOT EXISTS admin_user_preferences (
+            CREATE TABLE IF NOT EXISTS admin.admin_user_preferences (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id VARCHAR(255) NOT NULL,
                 preference_key VARCHAR(255) NOT NULL,
@@ -18,8 +18,8 @@ const ensurePreferencesTable = async () => {
                 UNIQUE(user_id, preference_key)
             )
         `);
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_preferences_user ON admin_user_preferences(user_id)`);
-        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_preferences_key ON admin_user_preferences(preference_key)`);
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_preferences_user ON admin.admin_user_preferences(user_id)`);
+        await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_preferences_key ON admin.admin_user_preferences(preference_key)`);
 
         // Migration: Ensure user_id is VARCHAR (handle legacy UUID columns)
         // Temporarily disabled to prevent server hanging
@@ -31,7 +31,7 @@ const ensurePreferencesTable = async () => {
                 -- Simpler approach: Try to alter, if it fails because of cast issues, we might need a more complex migration
                 -- But since we likely don't have production data yet, we can try to alter type.
                 BEGIN
-                    ALTER TABLE admin_user_preferences ALTER COLUMN user_id TYPE VARCHAR(255);
+                    ALTER TABLE admin.admin_user_preferences ALTER COLUMN user_id TYPE VARCHAR(255);
                 EXCEPTION WHEN OTHERS THEN
                     NULL; -- Ignore if already converted or compatible
                 END;
@@ -57,7 +57,7 @@ router.get('/:key', authenticateAdmin as any, async (req: AdminRequest, res: Res
         }
 
         const rows = await prisma.$queryRawUnsafe(
-            `SELECT preference_value FROM admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
+            `SELECT preference_value FROM admin.admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
             userId, key
         ) as any[];
 
@@ -84,7 +84,7 @@ router.put('/:key', authenticateAdmin as any, async (req: AdminRequest, res: Res
         }
 
         await prisma.$executeRawUnsafe(
-            `INSERT INTO admin_user_preferences (user_id, preference_key, preference_value)
+            `INSERT INTO admin.admin_user_preferences (user_id, preference_key, preference_value)
              VALUES ($1, $2, $3)
              ON CONFLICT (user_id, preference_key) 
              DO UPDATE SET preference_value = $3, updated_at = NOW()`,
@@ -109,7 +109,7 @@ router.delete('/:key', authenticateAdmin as any, async (req: AdminRequest, res: 
         }
 
         await prisma.$executeRawUnsafe(
-            `DELETE FROM admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
+            `DELETE FROM admin.admin_user_preferences WHERE user_id = $1 AND preference_key = $2`,
             userId, key
         );
 
@@ -130,7 +130,7 @@ router.get('/', authenticateAdmin as any, async (req: AdminRequest, res: Respons
         }
 
         const rows = await prisma.$queryRawUnsafe(
-            `SELECT preference_key, preference_value FROM admin_user_preferences WHERE user_id = $1`,
+            `SELECT preference_key, preference_value FROM admin.admin_user_preferences WHERE user_id = $1`,
             userId
         ) as any[];
 

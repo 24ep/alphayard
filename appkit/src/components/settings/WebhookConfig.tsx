@@ -80,24 +80,15 @@ export function WebhookConfig({ appId, onSave }: WebhookConfigProps) {
   }, [appId])
 
   const loadWebhooks = async () => {
-    // Mock data - replace with actual API call
-    const mockWebhooks: Webhook[] = [
-      {
-        id: '1',
-        name: 'User Analytics',
-        url: 'https://api.analytics.com/webhooks',
-        events: ['user.signup', 'user.login', 'user.logout'],
-        secret: 'whsec_1234567890abcdef',
-        active: true,
-        retryCount: 3,
-        timeout: 10000,
-        headers: { 'Content-Type': 'application/json' },
-        createdAt: '2024-01-15T10:30:00Z',
-        lastTriggered: '2024-01-20T14:22:00Z',
-        status: 'active'
+    try {
+      const res = await fetch(`/api/admin/settings/webhooks${appId ? `?appId=${appId}` : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        setWebhooks(data.webhooks || data || []);
       }
-    ]
-    setWebhooks(mockWebhooks)
+    } catch (error) {
+      console.error('Error loading webhooks:', error);
+    }
   }
 
   const handleCreateWebhook = () => {
@@ -170,15 +161,18 @@ export function WebhookConfig({ appId, onSave }: WebhookConfigProps) {
     setTestResults(prev => ({ ...prev, [webhook.id]: { loading: true } }))
     
     try {
-      // Mock test - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      const res = await fetch(`/api/admin/settings/webhooks/${webhook.id}/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
       
       setTestResults(prev => ({
         ...prev,
         [webhook.id]: {
           loading: false,
-          success: true,
-          message: 'Webhook test successful',
+          success: res.ok,
+          message: data.message || (res.ok ? 'Webhook test successful' : 'Webhook test failed'),
           timestamp: new Date().toISOString()
         }
       }))
@@ -188,7 +182,7 @@ export function WebhookConfig({ appId, onSave }: WebhookConfigProps) {
         [webhook.id]: {
           loading: false,
           success: false,
-          message: 'Webhook test failed: Connection timeout',
+          message: 'Webhook test failed: Connection error',
           timestamp: new Date().toISOString()
         }
       }))

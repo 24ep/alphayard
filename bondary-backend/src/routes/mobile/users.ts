@@ -13,31 +13,24 @@ router.use(authenticateToken as any);
 router.get('/', async (_req: any, res: any) => {
   try {
     // Fetch basic user info using Prisma
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        id, email, first_name, last_name, phone_number as phone, avatar_url, date_of_birth, 
-        user_type, 
-        (SELECT json_agg(target_id) FROM entity_relations WHERE source_id = users.id AND relation_type = 'member_of') as circle_ids,
-        is_onboarding_complete, 
-        preferences, preferences->>'role' as role, is_active, created_at, updated_at
-      FROM core.users
-      ORDER BY created_at DESC
-    `;
+    const result = await prisma.user.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
 
     const data = result;
 
     const users = (data || []).map((u: any) => ({
       id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
+      firstName: u.firstName,
+      lastName: u.lastName,
       email: u.email,
-      phone: u.phone || undefined,
-      avatarUrl: u.avatar_url || undefined,
-      avatar: u.avatar_url || undefined,
-      dateOfBirth: u.date_of_birth || undefined,
-      userType: (u.user_type || 'circle') as 'circle' | 'children' | 'seniors',
-      circleIds: u.circle_ids || [],
-      isOnboardingComplete: u.is_onboarding_complete || false,
+      phone: u.phoneNumber || undefined,
+      avatarUrl: u.avatarUrl || undefined,
+      avatar: u.avatarUrl || undefined,
+      dateOfBirth: u.dateOfBirth || undefined,
+      userType: (u.userType || 'circle') as 'circle' | 'children' | 'seniors',
+      circleIds: u.circleIds || [],
+      isOnboardingComplete: u.isOnboardingComplete || false,
       preferences: u.preferences || {
         notifications: true,
         locationSharing: true,
@@ -67,18 +60,9 @@ router.get('/', async (_req: any, res: any) => {
 router.get('/profile', async (req: any, res: any) => {
   try {
     // Get user profile using Prisma
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, 
-        user_type, 
-        (SELECT json_agg(target_id) FROM entity_relations WHERE source_id = users.id AND relation_type = 'member_of') as circle_ids,
-        is_onboarding_complete, 
-        preferences, preferences->>'role' as role, is_active, created_at, updated_at
-      FROM core.users
-      WHERE id = ${req.user.id}
-    `;
-
-    const user = result[0];
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -136,27 +120,19 @@ router.put('/profile', [
   try {
     const { firstName, lastName, phone, dateOfBirth } = req.body;
 
-    const fields = [];
-    const params = [req.user.id];
-    let idx = 2;
+    const updateData: any = {
+      updatedAt: new Date()
+    };
 
-    if (firstName) { fields.push(`first_name = $${idx++}`); params.push(firstName); }
-    if (lastName) { fields.push(`last_name = $${idx++}`); params.push(lastName); }
-    if (phone !== undefined) { fields.push(`phone_number = $${idx++}`); params.push(phone); }
-    if (dateOfBirth) { fields.push(`date_of_birth = $${idx++}`); params.push(dateOfBirth); }
+    if (firstName) { updateData.firstName = firstName; }
+    if (lastName) { updateData.lastName = lastName; }
+    if (phone !== undefined) { updateData.phoneNumber = phone; }
+    if (dateOfBirth) { updateData.dateOfBirth = dateOfBirth; }
 
-    fields.push(`updated_at = $${idx++}`);
-    params.push(new Date().toISOString());
-
-    const updateQuery = `
-      UPDATE core.users 
-      SET ${fields.join(', ')} 
-      WHERE id = $1 
-      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, updated_at
-    `;
-
-    const result = await prisma.$queryRawUnsafe<any[]>(updateQuery, params);
-    const user = result[0];
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData
+    });
 
     if (!user) {
       return res.status(500).json({
@@ -170,13 +146,13 @@ router.put('/profile', [
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        avatar: user.avatar_url,
-        phone: user.phone,
-        dateOfBirth: user.date_of_birth,
-        updatedAt: user.updated_at
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        avatar: user.avatarUrl,
+        phone: user.phoneNumber,
+        dateOfBirth: user.dateOfBirth,
+        updatedAt: user.updatedAt
       }
     });
 

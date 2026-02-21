@@ -223,7 +223,7 @@ export class ChatService {
         SELECT m.*, 
                u.id as sender_id, u.first_name, u.last_name, u.avatar_url
         FROM bondarys.chat_messages m
-        LEFT JOIN core.users u ON m.sender_id = u.id
+        LEFT JOIN public.users u ON m.sender_id = u.id
         WHERE m.room_id = ${chatId}::uuid
           AND m.content ILIKE ${`%${query}%`}
           AND m.deleted_at IS NULL

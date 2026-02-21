@@ -20,8 +20,20 @@ export type UserModel = runtime.Types.Result.DefaultSelection<Prisma.$UserPayloa
 
 export type AggregateUser = {
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
+}
+
+export type UserAvgAggregateOutputType = {
+  followersCount: number | null
+  followingCount: number | null
+}
+
+export type UserSumAggregateOutputType = {
+  followersCount: number | null
+  followingCount: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -35,6 +47,10 @@ export type UserMinAggregateOutputType = {
   dateOfBirth: Date | null
   gender: string | null
   bio: string | null
+  username: string | null
+  displayName: string | null
+  followersCount: number | null
+  followingCount: number | null
   userType: string | null
   isOnboardingComplete: boolean | null
   isActive: boolean | null
@@ -56,6 +72,10 @@ export type UserMaxAggregateOutputType = {
   dateOfBirth: Date | null
   gender: string | null
   bio: string | null
+  username: string | null
+  displayName: string | null
+  followersCount: number | null
+  followingCount: number | null
   userType: string | null
   isOnboardingComplete: boolean | null
   isActive: boolean | null
@@ -77,6 +97,10 @@ export type UserCountAggregateOutputType = {
   dateOfBirth: number
   gender: number
   bio: number
+  username: number
+  displayName: number
+  followersCount: number
+  followingCount: number
   userType: number
   circleIds: number
   isOnboardingComplete: number
@@ -91,6 +115,16 @@ export type UserCountAggregateOutputType = {
 }
 
 
+export type UserAvgAggregateInputType = {
+  followersCount?: true
+  followingCount?: true
+}
+
+export type UserSumAggregateInputType = {
+  followersCount?: true
+  followingCount?: true
+}
+
 export type UserMinAggregateInputType = {
   id?: true
   email?: true
@@ -102,6 +136,10 @@ export type UserMinAggregateInputType = {
   dateOfBirth?: true
   gender?: true
   bio?: true
+  username?: true
+  displayName?: true
+  followersCount?: true
+  followingCount?: true
   userType?: true
   isOnboardingComplete?: true
   isActive?: true
@@ -123,6 +161,10 @@ export type UserMaxAggregateInputType = {
   dateOfBirth?: true
   gender?: true
   bio?: true
+  username?: true
+  displayName?: true
+  followersCount?: true
+  followingCount?: true
   userType?: true
   isOnboardingComplete?: true
   isActive?: true
@@ -144,6 +186,10 @@ export type UserCountAggregateInputType = {
   dateOfBirth?: true
   gender?: true
   bio?: true
+  username?: true
+  displayName?: true
+  followersCount?: true
+  followingCount?: true
   userType?: true
   circleIds?: true
   isOnboardingComplete?: true
@@ -195,6 +241,18 @@ export type UserAggregateArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: UserAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: UserSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: UserMinAggregateInputType
@@ -225,6 +283,8 @@ export type UserGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
   take?: number
   skip?: number
   _count?: UserCountAggregateInputType | true
+  _avg?: UserAvgAggregateInputType
+  _sum?: UserSumAggregateInputType
   _min?: UserMinAggregateInputType
   _max?: UserMaxAggregateInputType
 }
@@ -240,6 +300,10 @@ export type UserGroupByOutputType = {
   dateOfBirth: Date | null
   gender: string | null
   bio: string | null
+  username: string | null
+  displayName: string | null
+  followersCount: number
+  followingCount: number
   userType: string
   circleIds: string[]
   isOnboardingComplete: boolean | null
@@ -251,6 +315,8 @@ export type UserGroupByOutputType = {
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
+  _avg: UserAvgAggregateOutputType | null
+  _sum: UserSumAggregateOutputType | null
   _min: UserMinAggregateOutputType | null
   _max: UserMaxAggregateOutputType | null
 }
@@ -284,6 +350,10 @@ export type UserWhereInput = {
   dateOfBirth?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   gender?: Prisma.StringNullableFilter<"User"> | string | null
   bio?: Prisma.StringNullableFilter<"User"> | string | null
+  username?: Prisma.StringNullableFilter<"User"> | string | null
+  displayName?: Prisma.StringNullableFilter<"User"> | string | null
+  followersCount?: Prisma.IntFilter<"User"> | number
+  followingCount?: Prisma.IntFilter<"User"> | number
   userType?: Prisma.StringFilter<"User"> | string
   circleIds?: Prisma.StringNullableListFilter<"User">
   isOnboardingComplete?: Prisma.BoolNullableFilter<"User"> | boolean | null
@@ -339,6 +409,9 @@ export type UserWhereInput = {
   socialReports?: Prisma.SocialReportListRelationFilter
   socialActivities?: Prisma.SocialActivityListRelationFilter
   entityRelations?: Prisma.EntityRelationListRelationFilter
+  fileTags?: Prisma.FileTagListRelationFilter
+  fileShares?: Prisma.FileShareListRelationFilter
+  fileRecentAccesses?: Prisma.FileRecentAccessListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -352,6 +425,10 @@ export type UserOrderByWithRelationInput = {
   dateOfBirth?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrderInput | Prisma.SortOrder
   bio?: Prisma.SortOrderInput | Prisma.SortOrder
+  username?: Prisma.SortOrderInput | Prisma.SortOrder
+  displayName?: Prisma.SortOrderInput | Prisma.SortOrder
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   circleIds?: Prisma.SortOrder
   isOnboardingComplete?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -407,6 +484,9 @@ export type UserOrderByWithRelationInput = {
   socialReports?: Prisma.SocialReportOrderByRelationAggregateInput
   socialActivities?: Prisma.SocialActivityOrderByRelationAggregateInput
   entityRelations?: Prisma.EntityRelationOrderByRelationAggregateInput
+  fileTags?: Prisma.FileTagOrderByRelationAggregateInput
+  fileShares?: Prisma.FileShareOrderByRelationAggregateInput
+  fileRecentAccesses?: Prisma.FileRecentAccessOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -423,6 +503,10 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   dateOfBirth?: Prisma.DateTimeNullableFilter<"User"> | Date | string | null
   gender?: Prisma.StringNullableFilter<"User"> | string | null
   bio?: Prisma.StringNullableFilter<"User"> | string | null
+  username?: Prisma.StringNullableFilter<"User"> | string | null
+  displayName?: Prisma.StringNullableFilter<"User"> | string | null
+  followersCount?: Prisma.IntFilter<"User"> | number
+  followingCount?: Prisma.IntFilter<"User"> | number
   userType?: Prisma.StringFilter<"User"> | string
   circleIds?: Prisma.StringNullableListFilter<"User">
   isOnboardingComplete?: Prisma.BoolNullableFilter<"User"> | boolean | null
@@ -478,6 +562,9 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   socialReports?: Prisma.SocialReportListRelationFilter
   socialActivities?: Prisma.SocialActivityListRelationFilter
   entityRelations?: Prisma.EntityRelationListRelationFilter
+  fileTags?: Prisma.FileTagListRelationFilter
+  fileShares?: Prisma.FileShareListRelationFilter
+  fileRecentAccesses?: Prisma.FileRecentAccessListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -491,6 +578,10 @@ export type UserOrderByWithAggregationInput = {
   dateOfBirth?: Prisma.SortOrderInput | Prisma.SortOrder
   gender?: Prisma.SortOrderInput | Prisma.SortOrder
   bio?: Prisma.SortOrderInput | Prisma.SortOrder
+  username?: Prisma.SortOrderInput | Prisma.SortOrder
+  displayName?: Prisma.SortOrderInput | Prisma.SortOrder
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   circleIds?: Prisma.SortOrder
   isOnboardingComplete?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -502,8 +593,10 @@ export type UserOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
+  _avg?: Prisma.UserAvgOrderByAggregateInput
   _max?: Prisma.UserMaxOrderByAggregateInput
   _min?: Prisma.UserMinOrderByAggregateInput
+  _sum?: Prisma.UserSumOrderByAggregateInput
 }
 
 export type UserScalarWhereWithAggregatesInput = {
@@ -520,6 +613,10 @@ export type UserScalarWhereWithAggregatesInput = {
   dateOfBirth?: Prisma.DateTimeNullableWithAggregatesFilter<"User"> | Date | string | null
   gender?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   bio?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  username?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  displayName?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  followersCount?: Prisma.IntWithAggregatesFilter<"User"> | number
+  followingCount?: Prisma.IntWithAggregatesFilter<"User"> | number
   userType?: Prisma.StringWithAggregatesFilter<"User"> | string
   circleIds?: Prisma.StringNullableListFilter<"User">
   isOnboardingComplete?: Prisma.BoolNullableWithAggregatesFilter<"User"> | boolean | null
@@ -543,6 +640,10 @@ export type UserCreateInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -598,6 +699,9 @@ export type UserCreateInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -611,6 +715,10 @@ export type UserUncheckedCreateInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -666,6 +774,9 @@ export type UserUncheckedCreateInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -679,6 +790,10 @@ export type UserUpdateInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -734,6 +849,9 @@ export type UserUpdateInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -747,6 +865,10 @@ export type UserUncheckedUpdateInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -802,6 +924,9 @@ export type UserUncheckedUpdateInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -815,6 +940,10 @@ export type UserCreateManyInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -838,6 +967,10 @@ export type UserUpdateManyMutationInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -861,6 +994,10 @@ export type UserUncheckedUpdateManyInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -892,6 +1029,10 @@ export type UserCountOrderByAggregateInput = {
   dateOfBirth?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   bio?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  displayName?: Prisma.SortOrder
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   circleIds?: Prisma.SortOrder
   isOnboardingComplete?: Prisma.SortOrder
@@ -902,6 +1043,11 @@ export type UserCountOrderByAggregateInput = {
   lastLoginAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserAvgOrderByAggregateInput = {
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -915,6 +1061,10 @@ export type UserMaxOrderByAggregateInput = {
   dateOfBirth?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   bio?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  displayName?: Prisma.SortOrder
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   isOnboardingComplete?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -936,6 +1086,10 @@ export type UserMinOrderByAggregateInput = {
   dateOfBirth?: Prisma.SortOrder
   gender?: Prisma.SortOrder
   bio?: Prisma.SortOrder
+  username?: Prisma.SortOrder
+  displayName?: Prisma.SortOrder
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
   userType?: Prisma.SortOrder
   isOnboardingComplete?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
@@ -944,6 +1098,11 @@ export type UserMinOrderByAggregateInput = {
   lastLoginAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type UserSumOrderByAggregateInput = {
+  followersCount?: Prisma.SortOrder
+  followingCount?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -962,6 +1121,14 @@ export type UserCreatecircleIdsInput = {
 
 export type NullableDateTimeFieldUpdateOperationsInput = {
   set?: Date | string | null
+}
+
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 export type UserUpdatecircleIdsInput = {
@@ -1615,6 +1782,48 @@ export type UserUpdateOneRequiredWithoutEntityRelationsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutEntityRelationsInput, Prisma.UserUpdateWithoutEntityRelationsInput>, Prisma.UserUncheckedUpdateWithoutEntityRelationsInput>
 }
 
+export type UserCreateNestedOneWithoutFileTagsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileTagsInput, Prisma.UserUncheckedCreateWithoutFileTagsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileTagsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutFileTagsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileTagsInput, Prisma.UserUncheckedCreateWithoutFileTagsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileTagsInput
+  upsert?: Prisma.UserUpsertWithoutFileTagsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutFileTagsInput, Prisma.UserUpdateWithoutFileTagsInput>, Prisma.UserUncheckedUpdateWithoutFileTagsInput>
+}
+
+export type UserCreateNestedOneWithoutFileSharesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileSharesInput, Prisma.UserUncheckedCreateWithoutFileSharesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileSharesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutFileSharesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileSharesInput, Prisma.UserUncheckedCreateWithoutFileSharesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileSharesInput
+  upsert?: Prisma.UserUpsertWithoutFileSharesInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutFileSharesInput, Prisma.UserUpdateWithoutFileSharesInput>, Prisma.UserUncheckedUpdateWithoutFileSharesInput>
+}
+
+export type UserCreateNestedOneWithoutFileRecentAccessesInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileRecentAccessesInput, Prisma.UserUncheckedCreateWithoutFileRecentAccessesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileRecentAccessesInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutFileRecentAccessesNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutFileRecentAccessesInput, Prisma.UserUncheckedCreateWithoutFileRecentAccessesInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutFileRecentAccessesInput
+  upsert?: Prisma.UserUpsertWithoutFileRecentAccessesInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutFileRecentAccessesInput, Prisma.UserUpdateWithoutFileRecentAccessesInput>, Prisma.UserUncheckedUpdateWithoutFileRecentAccessesInput>
+}
+
 export type UserCreateWithoutUserApplicationsInput = {
   id?: string
   email: string
@@ -1626,6 +1835,10 @@ export type UserCreateWithoutUserApplicationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -1680,6 +1893,9 @@ export type UserCreateWithoutUserApplicationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserApplicationsInput = {
@@ -1693,6 +1909,10 @@ export type UserUncheckedCreateWithoutUserApplicationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -1747,6 +1967,9 @@ export type UserUncheckedCreateWithoutUserApplicationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserApplicationsInput = {
@@ -1776,6 +1999,10 @@ export type UserUpdateWithoutUserApplicationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -1830,6 +2057,9 @@ export type UserUpdateWithoutUserApplicationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserApplicationsInput = {
@@ -1843,6 +2073,10 @@ export type UserUncheckedUpdateWithoutUserApplicationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -1897,6 +2131,9 @@ export type UserUncheckedUpdateWithoutUserApplicationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserSessionsInput = {
@@ -1910,6 +2147,10 @@ export type UserCreateWithoutUserSessionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -1964,6 +2205,9 @@ export type UserCreateWithoutUserSessionsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserSessionsInput = {
@@ -1977,6 +2221,10 @@ export type UserUncheckedCreateWithoutUserSessionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2031,6 +2279,9 @@ export type UserUncheckedCreateWithoutUserSessionsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserSessionsInput = {
@@ -2060,6 +2311,10 @@ export type UserUpdateWithoutUserSessionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2114,6 +2369,9 @@ export type UserUpdateWithoutUserSessionsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserSessionsInput = {
@@ -2127,6 +2385,10 @@ export type UserUncheckedUpdateWithoutUserSessionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2181,6 +2443,9 @@ export type UserUncheckedUpdateWithoutUserSessionsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserDevicesInput = {
@@ -2194,6 +2459,10 @@ export type UserCreateWithoutUserDevicesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2248,6 +2517,9 @@ export type UserCreateWithoutUserDevicesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserDevicesInput = {
@@ -2261,6 +2533,10 @@ export type UserUncheckedCreateWithoutUserDevicesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2315,6 +2591,9 @@ export type UserUncheckedCreateWithoutUserDevicesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserDevicesInput = {
@@ -2344,6 +2623,10 @@ export type UserUpdateWithoutUserDevicesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2398,6 +2681,9 @@ export type UserUpdateWithoutUserDevicesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserDevicesInput = {
@@ -2411,6 +2697,10 @@ export type UserUncheckedUpdateWithoutUserDevicesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2465,6 +2755,9 @@ export type UserUncheckedUpdateWithoutUserDevicesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserMFAInput = {
@@ -2478,6 +2771,10 @@ export type UserCreateWithoutUserMFAInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2532,6 +2829,9 @@ export type UserCreateWithoutUserMFAInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserMFAInput = {
@@ -2545,6 +2845,10 @@ export type UserUncheckedCreateWithoutUserMFAInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2599,6 +2903,9 @@ export type UserUncheckedCreateWithoutUserMFAInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserMFAInput = {
@@ -2628,6 +2935,10 @@ export type UserUpdateWithoutUserMFAInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2682,6 +2993,9 @@ export type UserUpdateWithoutUserMFAInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserMFAInput = {
@@ -2695,6 +3009,10 @@ export type UserUncheckedUpdateWithoutUserMFAInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2749,6 +3067,9 @@ export type UserUncheckedUpdateWithoutUserMFAInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserGroupMembersInput = {
@@ -2762,6 +3083,10 @@ export type UserCreateWithoutUserGroupMembersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2816,6 +3141,9 @@ export type UserCreateWithoutUserGroupMembersInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserGroupMembersInput = {
@@ -2829,6 +3157,10 @@ export type UserUncheckedCreateWithoutUserGroupMembersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -2883,6 +3215,9 @@ export type UserUncheckedCreateWithoutUserGroupMembersInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserGroupMembersInput = {
@@ -2912,6 +3247,10 @@ export type UserUpdateWithoutUserGroupMembersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -2966,6 +3305,9 @@ export type UserUpdateWithoutUserGroupMembersInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserGroupMembersInput = {
@@ -2979,6 +3321,10 @@ export type UserUncheckedUpdateWithoutUserGroupMembersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3033,6 +3379,9 @@ export type UserUncheckedUpdateWithoutUserGroupMembersInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutLoginHistoryInput = {
@@ -3046,6 +3395,10 @@ export type UserCreateWithoutLoginHistoryInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3100,6 +3453,9 @@ export type UserCreateWithoutLoginHistoryInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutLoginHistoryInput = {
@@ -3113,6 +3469,10 @@ export type UserUncheckedCreateWithoutLoginHistoryInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3167,6 +3527,9 @@ export type UserUncheckedCreateWithoutLoginHistoryInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutLoginHistoryInput = {
@@ -3196,6 +3559,10 @@ export type UserUpdateWithoutLoginHistoryInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3250,6 +3617,9 @@ export type UserUpdateWithoutLoginHistoryInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLoginHistoryInput = {
@@ -3263,6 +3633,10 @@ export type UserUncheckedUpdateWithoutLoginHistoryInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3317,6 +3691,9 @@ export type UserUncheckedUpdateWithoutLoginHistoryInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserSettingsInput = {
@@ -3330,6 +3707,10 @@ export type UserCreateWithoutUserSettingsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3384,6 +3765,9 @@ export type UserCreateWithoutUserSettingsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserSettingsInput = {
@@ -3397,6 +3781,10 @@ export type UserUncheckedCreateWithoutUserSettingsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3451,6 +3839,9 @@ export type UserUncheckedCreateWithoutUserSettingsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserSettingsInput = {
@@ -3480,6 +3871,10 @@ export type UserUpdateWithoutUserSettingsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3534,6 +3929,9 @@ export type UserUpdateWithoutUserSettingsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserSettingsInput = {
@@ -3547,6 +3945,10 @@ export type UserUncheckedUpdateWithoutUserSettingsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3601,6 +4003,9 @@ export type UserUncheckedUpdateWithoutUserSettingsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFilesInput = {
@@ -3614,6 +4019,10 @@ export type UserCreateWithoutFilesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3668,6 +4077,9 @@ export type UserCreateWithoutFilesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFilesInput = {
@@ -3681,6 +4093,10 @@ export type UserUncheckedCreateWithoutFilesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3735,6 +4151,9 @@ export type UserUncheckedCreateWithoutFilesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFilesInput = {
@@ -3764,6 +4183,10 @@ export type UserUpdateWithoutFilesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3818,6 +4241,9 @@ export type UserUpdateWithoutFilesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFilesInput = {
@@ -3831,6 +4257,10 @@ export type UserUncheckedUpdateWithoutFilesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -3885,6 +4315,9 @@ export type UserUncheckedUpdateWithoutFilesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFileFoldersInput = {
@@ -3898,6 +4331,10 @@ export type UserCreateWithoutFileFoldersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -3952,6 +4389,9 @@ export type UserCreateWithoutFileFoldersInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFileFoldersInput = {
@@ -3965,6 +4405,10 @@ export type UserUncheckedCreateWithoutFileFoldersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4019,6 +4463,9 @@ export type UserUncheckedCreateWithoutFileFoldersInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFileFoldersInput = {
@@ -4048,6 +4495,10 @@ export type UserUpdateWithoutFileFoldersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4102,6 +4553,9 @@ export type UserUpdateWithoutFileFoldersInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFileFoldersInput = {
@@ -4115,6 +4569,10 @@ export type UserUncheckedUpdateWithoutFileFoldersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4169,6 +4627,9 @@ export type UserUncheckedUpdateWithoutFileFoldersInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutGalleryItemsInput = {
@@ -4182,6 +4643,10 @@ export type UserCreateWithoutGalleryItemsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4236,6 +4701,9 @@ export type UserCreateWithoutGalleryItemsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutGalleryItemsInput = {
@@ -4249,6 +4717,10 @@ export type UserUncheckedCreateWithoutGalleryItemsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4303,6 +4775,9 @@ export type UserUncheckedCreateWithoutGalleryItemsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutGalleryItemsInput = {
@@ -4332,6 +4807,10 @@ export type UserUpdateWithoutGalleryItemsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4386,6 +4865,9 @@ export type UserUpdateWithoutGalleryItemsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutGalleryItemsInput = {
@@ -4399,6 +4881,10 @@ export type UserUncheckedUpdateWithoutGalleryItemsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4453,6 +4939,9 @@ export type UserUncheckedUpdateWithoutGalleryItemsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutGalleryAlbumsInput = {
@@ -4466,6 +4955,10 @@ export type UserCreateWithoutGalleryAlbumsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4520,6 +5013,9 @@ export type UserCreateWithoutGalleryAlbumsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutGalleryAlbumsInput = {
@@ -4533,6 +5029,10 @@ export type UserUncheckedCreateWithoutGalleryAlbumsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4587,6 +5087,9 @@ export type UserUncheckedCreateWithoutGalleryAlbumsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutGalleryAlbumsInput = {
@@ -4616,6 +5119,10 @@ export type UserUpdateWithoutGalleryAlbumsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4670,6 +5177,9 @@ export type UserUpdateWithoutGalleryAlbumsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutGalleryAlbumsInput = {
@@ -4683,6 +5193,10 @@ export type UserUncheckedUpdateWithoutGalleryAlbumsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4737,6 +5251,9 @@ export type UserUncheckedUpdateWithoutGalleryAlbumsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutNotificationsInput = {
@@ -4750,6 +5267,10 @@ export type UserCreateWithoutNotificationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4804,6 +5325,9 @@ export type UserCreateWithoutNotificationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutNotificationsInput = {
@@ -4817,6 +5341,10 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -4871,6 +5399,9 @@ export type UserUncheckedCreateWithoutNotificationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutNotificationsInput = {
@@ -4900,6 +5431,10 @@ export type UserUpdateWithoutNotificationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -4954,6 +5489,9 @@ export type UserUpdateWithoutNotificationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotificationsInput = {
@@ -4967,6 +5505,10 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5021,6 +5563,9 @@ export type UserUncheckedUpdateWithoutNotificationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserPushTokensInput = {
@@ -5034,6 +5579,10 @@ export type UserCreateWithoutUserPushTokensInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5088,6 +5637,9 @@ export type UserCreateWithoutUserPushTokensInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserPushTokensInput = {
@@ -5101,6 +5653,10 @@ export type UserUncheckedCreateWithoutUserPushTokensInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5155,6 +5711,9 @@ export type UserUncheckedCreateWithoutUserPushTokensInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserPushTokensInput = {
@@ -5184,6 +5743,10 @@ export type UserUpdateWithoutUserPushTokensInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5238,6 +5801,9 @@ export type UserUpdateWithoutUserPushTokensInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserPushTokensInput = {
@@ -5251,6 +5817,10 @@ export type UserUncheckedUpdateWithoutUserPushTokensInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5305,6 +5875,9 @@ export type UserUncheckedUpdateWithoutUserPushTokensInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSubscriptionsInput = {
@@ -5318,6 +5891,10 @@ export type UserCreateWithoutSubscriptionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5372,6 +5949,9 @@ export type UserCreateWithoutSubscriptionsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSubscriptionsInput = {
@@ -5385,6 +5965,10 @@ export type UserUncheckedCreateWithoutSubscriptionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5439,6 +6023,9 @@ export type UserUncheckedCreateWithoutSubscriptionsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSubscriptionsInput = {
@@ -5468,6 +6055,10 @@ export type UserUpdateWithoutSubscriptionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5522,6 +6113,9 @@ export type UserUpdateWithoutSubscriptionsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSubscriptionsInput = {
@@ -5535,6 +6129,10 @@ export type UserUncheckedUpdateWithoutSubscriptionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5589,6 +6187,9 @@ export type UserUncheckedUpdateWithoutSubscriptionsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutOwnedCirclesInput = {
@@ -5602,6 +6203,10 @@ export type UserCreateWithoutOwnedCirclesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5656,6 +6261,9 @@ export type UserCreateWithoutOwnedCirclesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutOwnedCirclesInput = {
@@ -5669,6 +6277,10 @@ export type UserUncheckedCreateWithoutOwnedCirclesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5723,6 +6335,9 @@ export type UserUncheckedCreateWithoutOwnedCirclesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutOwnedCirclesInput = {
@@ -5752,6 +6367,10 @@ export type UserUpdateWithoutOwnedCirclesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5806,6 +6425,9 @@ export type UserUpdateWithoutOwnedCirclesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutOwnedCirclesInput = {
@@ -5819,6 +6441,10 @@ export type UserUncheckedUpdateWithoutOwnedCirclesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -5873,6 +6499,9 @@ export type UserUncheckedUpdateWithoutOwnedCirclesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutCircleMembershipsInput = {
@@ -5886,6 +6515,10 @@ export type UserCreateWithoutCircleMembershipsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -5940,6 +6573,9 @@ export type UserCreateWithoutCircleMembershipsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutCircleMembershipsInput = {
@@ -5953,6 +6589,10 @@ export type UserUncheckedCreateWithoutCircleMembershipsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6007,6 +6647,9 @@ export type UserUncheckedCreateWithoutCircleMembershipsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutCircleMembershipsInput = {
@@ -6025,6 +6668,10 @@ export type UserCreateWithoutCircleInvitationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6079,6 +6726,9 @@ export type UserCreateWithoutCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutCircleInvitationsInput = {
@@ -6092,6 +6742,10 @@ export type UserUncheckedCreateWithoutCircleInvitationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6146,6 +6800,9 @@ export type UserUncheckedCreateWithoutCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutCircleInvitationsInput = {
@@ -6175,6 +6832,10 @@ export type UserUpdateWithoutCircleMembershipsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6229,6 +6890,9 @@ export type UserUpdateWithoutCircleMembershipsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCircleMembershipsInput = {
@@ -6242,6 +6906,10 @@ export type UserUncheckedUpdateWithoutCircleMembershipsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6296,6 +6964,9 @@ export type UserUncheckedUpdateWithoutCircleMembershipsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutCircleInvitationsInput = {
@@ -6320,6 +6991,10 @@ export type UserUpdateWithoutCircleInvitationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6374,6 +7049,9 @@ export type UserUpdateWithoutCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCircleInvitationsInput = {
@@ -6387,6 +7065,10 @@ export type UserUncheckedUpdateWithoutCircleInvitationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6441,6 +7123,9 @@ export type UserUncheckedUpdateWithoutCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSentCircleInvitationsInput = {
@@ -6454,6 +7139,10 @@ export type UserCreateWithoutSentCircleInvitationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6508,6 +7197,9 @@ export type UserCreateWithoutSentCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSentCircleInvitationsInput = {
@@ -6521,6 +7213,10 @@ export type UserUncheckedCreateWithoutSentCircleInvitationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6575,6 +7271,9 @@ export type UserUncheckedCreateWithoutSentCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSentCircleInvitationsInput = {
@@ -6604,6 +7303,10 @@ export type UserUpdateWithoutSentCircleInvitationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6658,6 +7361,9 @@ export type UserUpdateWithoutSentCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSentCircleInvitationsInput = {
@@ -6671,6 +7377,10 @@ export type UserUncheckedUpdateWithoutSentCircleInvitationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6725,6 +7435,9 @@ export type UserUncheckedUpdateWithoutSentCircleInvitationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutEmergencyContactsInput = {
@@ -6738,6 +7451,10 @@ export type UserCreateWithoutEmergencyContactsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6792,6 +7509,9 @@ export type UserCreateWithoutEmergencyContactsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutEmergencyContactsInput = {
@@ -6805,6 +7525,10 @@ export type UserUncheckedCreateWithoutEmergencyContactsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -6859,6 +7583,9 @@ export type UserUncheckedCreateWithoutEmergencyContactsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutEmergencyContactsInput = {
@@ -6888,6 +7615,10 @@ export type UserUpdateWithoutEmergencyContactsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -6942,6 +7673,9 @@ export type UserUpdateWithoutEmergencyContactsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutEmergencyContactsInput = {
@@ -6955,6 +7689,10 @@ export type UserUncheckedUpdateWithoutEmergencyContactsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7009,6 +7747,9 @@ export type UserUncheckedUpdateWithoutEmergencyContactsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSafetyIncidentsInput = {
@@ -7022,6 +7763,10 @@ export type UserCreateWithoutSafetyIncidentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7076,6 +7821,9 @@ export type UserCreateWithoutSafetyIncidentsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSafetyIncidentsInput = {
@@ -7089,6 +7837,10 @@ export type UserUncheckedCreateWithoutSafetyIncidentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7143,6 +7895,9 @@ export type UserUncheckedCreateWithoutSafetyIncidentsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSafetyIncidentsInput = {
@@ -7161,6 +7916,10 @@ export type UserCreateWithoutResolvedIncidentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7215,6 +7974,9 @@ export type UserCreateWithoutResolvedIncidentsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutResolvedIncidentsInput = {
@@ -7228,6 +7990,10 @@ export type UserUncheckedCreateWithoutResolvedIncidentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7282,6 +8048,9 @@ export type UserUncheckedCreateWithoutResolvedIncidentsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutResolvedIncidentsInput = {
@@ -7311,6 +8080,10 @@ export type UserUpdateWithoutSafetyIncidentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7365,6 +8138,9 @@ export type UserUpdateWithoutSafetyIncidentsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSafetyIncidentsInput = {
@@ -7378,6 +8154,10 @@ export type UserUncheckedUpdateWithoutSafetyIncidentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7432,6 +8212,9 @@ export type UserUncheckedUpdateWithoutSafetyIncidentsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutResolvedIncidentsInput = {
@@ -7456,6 +8239,10 @@ export type UserUpdateWithoutResolvedIncidentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7510,6 +8297,9 @@ export type UserUpdateWithoutResolvedIncidentsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutResolvedIncidentsInput = {
@@ -7523,6 +8313,10 @@ export type UserUncheckedUpdateWithoutResolvedIncidentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7577,6 +8371,9 @@ export type UserUncheckedUpdateWithoutResolvedIncidentsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialPostsInput = {
@@ -7590,6 +8387,10 @@ export type UserCreateWithoutSocialPostsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7644,6 +8445,9 @@ export type UserCreateWithoutSocialPostsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialPostsInput = {
@@ -7657,6 +8461,10 @@ export type UserUncheckedCreateWithoutSocialPostsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7711,6 +8519,9 @@ export type UserUncheckedCreateWithoutSocialPostsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialPostsInput = {
@@ -7740,6 +8551,10 @@ export type UserUpdateWithoutSocialPostsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7794,6 +8609,9 @@ export type UserUpdateWithoutSocialPostsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialPostsInput = {
@@ -7807,6 +8625,10 @@ export type UserUncheckedUpdateWithoutSocialPostsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -7861,6 +8683,9 @@ export type UserUncheckedUpdateWithoutSocialPostsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialCommentsInput = {
@@ -7874,6 +8699,10 @@ export type UserCreateWithoutSocialCommentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7928,6 +8757,9 @@ export type UserCreateWithoutSocialCommentsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialCommentsInput = {
@@ -7941,6 +8773,10 @@ export type UserUncheckedCreateWithoutSocialCommentsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -7995,6 +8831,9 @@ export type UserUncheckedCreateWithoutSocialCommentsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialCommentsInput = {
@@ -8024,6 +8863,10 @@ export type UserUpdateWithoutSocialCommentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8078,6 +8921,9 @@ export type UserUpdateWithoutSocialCommentsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialCommentsInput = {
@@ -8091,6 +8937,10 @@ export type UserUncheckedUpdateWithoutSocialCommentsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8145,6 +8995,9 @@ export type UserUncheckedUpdateWithoutSocialCommentsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialReactionsInput = {
@@ -8158,6 +9011,10 @@ export type UserCreateWithoutSocialReactionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8212,6 +9069,9 @@ export type UserCreateWithoutSocialReactionsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialReactionsInput = {
@@ -8225,6 +9085,10 @@ export type UserUncheckedCreateWithoutSocialReactionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8279,6 +9143,9 @@ export type UserUncheckedCreateWithoutSocialReactionsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialReactionsInput = {
@@ -8308,6 +9175,10 @@ export type UserUpdateWithoutSocialReactionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8362,6 +9233,9 @@ export type UserUpdateWithoutSocialReactionsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialReactionsInput = {
@@ -8375,6 +9249,10 @@ export type UserUncheckedUpdateWithoutSocialReactionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8429,6 +9307,9 @@ export type UserUncheckedUpdateWithoutSocialReactionsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialStoriesInput = {
@@ -8442,6 +9323,10 @@ export type UserCreateWithoutSocialStoriesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8496,6 +9381,9 @@ export type UserCreateWithoutSocialStoriesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialStoriesInput = {
@@ -8509,6 +9397,10 @@ export type UserUncheckedCreateWithoutSocialStoriesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8563,6 +9455,9 @@ export type UserUncheckedCreateWithoutSocialStoriesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialStoriesInput = {
@@ -8592,6 +9487,10 @@ export type UserUpdateWithoutSocialStoriesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8646,6 +9545,9 @@ export type UserUpdateWithoutSocialStoriesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialStoriesInput = {
@@ -8659,6 +9561,10 @@ export type UserUncheckedUpdateWithoutSocialStoriesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8713,6 +9619,9 @@ export type UserUncheckedUpdateWithoutSocialStoriesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutStoryViewsInput = {
@@ -8726,6 +9635,10 @@ export type UserCreateWithoutStoryViewsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8780,6 +9693,9 @@ export type UserCreateWithoutStoryViewsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutStoryViewsInput = {
@@ -8793,6 +9709,10 @@ export type UserUncheckedCreateWithoutStoryViewsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -8847,6 +9767,9 @@ export type UserUncheckedCreateWithoutStoryViewsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutStoryViewsInput = {
@@ -8876,6 +9799,10 @@ export type UserUpdateWithoutStoryViewsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8930,6 +9857,9 @@ export type UserUpdateWithoutStoryViewsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutStoryViewsInput = {
@@ -8943,6 +9873,10 @@ export type UserUncheckedUpdateWithoutStoryViewsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -8997,6 +9931,9 @@ export type UserUncheckedUpdateWithoutStoryViewsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutFollowingInput = {
@@ -9010,6 +9947,10 @@ export type UserCreateWithoutFollowingInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9064,6 +10005,9 @@ export type UserCreateWithoutFollowingInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFollowingInput = {
@@ -9077,6 +10021,10 @@ export type UserUncheckedCreateWithoutFollowingInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9131,6 +10079,9 @@ export type UserUncheckedCreateWithoutFollowingInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFollowingInput = {
@@ -9149,6 +10100,10 @@ export type UserCreateWithoutFollowersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9203,6 +10158,9 @@ export type UserCreateWithoutFollowersInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutFollowersInput = {
@@ -9216,6 +10174,10 @@ export type UserUncheckedCreateWithoutFollowersInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9270,6 +10232,9 @@ export type UserUncheckedCreateWithoutFollowersInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutFollowersInput = {
@@ -9299,6 +10264,10 @@ export type UserUpdateWithoutFollowingInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9353,6 +10322,9 @@ export type UserUpdateWithoutFollowingInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFollowingInput = {
@@ -9366,6 +10338,10 @@ export type UserUncheckedUpdateWithoutFollowingInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9420,6 +10396,9 @@ export type UserUncheckedUpdateWithoutFollowingInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutFollowersInput = {
@@ -9444,6 +10423,10 @@ export type UserUpdateWithoutFollowersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9498,6 +10481,9 @@ export type UserUpdateWithoutFollowersInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutFollowersInput = {
@@ -9511,6 +10497,10 @@ export type UserUncheckedUpdateWithoutFollowersInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9565,6 +10555,9 @@ export type UserUncheckedUpdateWithoutFollowersInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSentFriendRequestsInput = {
@@ -9578,6 +10571,10 @@ export type UserCreateWithoutSentFriendRequestsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9632,6 +10629,9 @@ export type UserCreateWithoutSentFriendRequestsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSentFriendRequestsInput = {
@@ -9645,6 +10645,10 @@ export type UserUncheckedCreateWithoutSentFriendRequestsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9699,6 +10703,9 @@ export type UserUncheckedCreateWithoutSentFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSentFriendRequestsInput = {
@@ -9717,6 +10724,10 @@ export type UserCreateWithoutReceivedFriendRequestsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9771,6 +10782,9 @@ export type UserCreateWithoutReceivedFriendRequestsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutReceivedFriendRequestsInput = {
@@ -9784,6 +10798,10 @@ export type UserUncheckedCreateWithoutReceivedFriendRequestsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -9838,6 +10856,9 @@ export type UserUncheckedCreateWithoutReceivedFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutReceivedFriendRequestsInput = {
@@ -9867,6 +10888,10 @@ export type UserUpdateWithoutSentFriendRequestsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9921,6 +10946,9 @@ export type UserUpdateWithoutSentFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSentFriendRequestsInput = {
@@ -9934,6 +10962,10 @@ export type UserUncheckedUpdateWithoutSentFriendRequestsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -9988,6 +11020,9 @@ export type UserUncheckedUpdateWithoutSentFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutReceivedFriendRequestsInput = {
@@ -10012,6 +11047,10 @@ export type UserUpdateWithoutReceivedFriendRequestsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10066,6 +11105,9 @@ export type UserUpdateWithoutReceivedFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutReceivedFriendRequestsInput = {
@@ -10079,6 +11121,10 @@ export type UserUncheckedUpdateWithoutReceivedFriendRequestsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10133,6 +11179,9 @@ export type UserUncheckedUpdateWithoutReceivedFriendRequestsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChatRoomsCreatedInput = {
@@ -10146,6 +11195,10 @@ export type UserCreateWithoutChatRoomsCreatedInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10200,6 +11253,9 @@ export type UserCreateWithoutChatRoomsCreatedInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChatRoomsCreatedInput = {
@@ -10213,6 +11269,10 @@ export type UserUncheckedCreateWithoutChatRoomsCreatedInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10267,6 +11327,9 @@ export type UserUncheckedCreateWithoutChatRoomsCreatedInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChatRoomsCreatedInput = {
@@ -10296,6 +11359,10 @@ export type UserUpdateWithoutChatRoomsCreatedInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10350,6 +11417,9 @@ export type UserUpdateWithoutChatRoomsCreatedInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChatRoomsCreatedInput = {
@@ -10363,6 +11433,10 @@ export type UserUncheckedUpdateWithoutChatRoomsCreatedInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10417,6 +11491,9 @@ export type UserUncheckedUpdateWithoutChatRoomsCreatedInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChatParticipationsInput = {
@@ -10430,6 +11507,10 @@ export type UserCreateWithoutChatParticipationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10484,6 +11565,9 @@ export type UserCreateWithoutChatParticipationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChatParticipationsInput = {
@@ -10497,6 +11581,10 @@ export type UserUncheckedCreateWithoutChatParticipationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10551,6 +11639,9 @@ export type UserUncheckedCreateWithoutChatParticipationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChatParticipationsInput = {
@@ -10580,6 +11671,10 @@ export type UserUpdateWithoutChatParticipationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10634,6 +11729,9 @@ export type UserUpdateWithoutChatParticipationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChatParticipationsInput = {
@@ -10647,6 +11745,10 @@ export type UserUncheckedUpdateWithoutChatParticipationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10701,6 +11803,9 @@ export type UserUncheckedUpdateWithoutChatParticipationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChatMessagesInput = {
@@ -10714,6 +11819,10 @@ export type UserCreateWithoutChatMessagesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10768,6 +11877,9 @@ export type UserCreateWithoutChatMessagesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChatMessagesInput = {
@@ -10781,6 +11893,10 @@ export type UserUncheckedCreateWithoutChatMessagesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -10835,6 +11951,9 @@ export type UserUncheckedCreateWithoutChatMessagesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChatMessagesInput = {
@@ -10864,6 +11983,10 @@ export type UserUpdateWithoutChatMessagesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10918,6 +12041,9 @@ export type UserUpdateWithoutChatMessagesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChatMessagesInput = {
@@ -10931,6 +12057,10 @@ export type UserUncheckedUpdateWithoutChatMessagesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -10985,6 +12115,9 @@ export type UserUncheckedUpdateWithoutChatMessagesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChatReadReceiptsInput = {
@@ -10998,6 +12131,10 @@ export type UserCreateWithoutChatReadReceiptsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11052,6 +12189,9 @@ export type UserCreateWithoutChatReadReceiptsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChatReadReceiptsInput = {
@@ -11065,6 +12205,10 @@ export type UserUncheckedCreateWithoutChatReadReceiptsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11119,6 +12263,9 @@ export type UserUncheckedCreateWithoutChatReadReceiptsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChatReadReceiptsInput = {
@@ -11148,6 +12295,10 @@ export type UserUpdateWithoutChatReadReceiptsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11202,6 +12353,9 @@ export type UserUpdateWithoutChatReadReceiptsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChatReadReceiptsInput = {
@@ -11215,6 +12369,10 @@ export type UserUncheckedUpdateWithoutChatReadReceiptsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11269,6 +12427,9 @@ export type UserUncheckedUpdateWithoutChatReadReceiptsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutChatReactionsInput = {
@@ -11282,6 +12443,10 @@ export type UserCreateWithoutChatReactionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11336,6 +12501,9 @@ export type UserCreateWithoutChatReactionsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutChatReactionsInput = {
@@ -11349,6 +12517,10 @@ export type UserUncheckedCreateWithoutChatReactionsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11403,6 +12575,9 @@ export type UserUncheckedCreateWithoutChatReactionsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutChatReactionsInput = {
@@ -11432,6 +12607,10 @@ export type UserUpdateWithoutChatReactionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11486,6 +12665,9 @@ export type UserUpdateWithoutChatReactionsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutChatReactionsInput = {
@@ -11499,6 +12681,10 @@ export type UserUncheckedUpdateWithoutChatReactionsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11553,6 +12739,9 @@ export type UserUncheckedUpdateWithoutChatReactionsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutUserLocationsInput = {
@@ -11566,6 +12755,10 @@ export type UserCreateWithoutUserLocationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11620,6 +12813,9 @@ export type UserCreateWithoutUserLocationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutUserLocationsInput = {
@@ -11633,6 +12829,10 @@ export type UserUncheckedCreateWithoutUserLocationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11687,6 +12887,9 @@ export type UserUncheckedCreateWithoutUserLocationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutUserLocationsInput = {
@@ -11716,6 +12919,10 @@ export type UserUpdateWithoutUserLocationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11770,6 +12977,9 @@ export type UserUpdateWithoutUserLocationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutUserLocationsInput = {
@@ -11783,6 +12993,10 @@ export type UserUncheckedUpdateWithoutUserLocationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -11837,6 +13051,9 @@ export type UserUncheckedUpdateWithoutUserLocationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutGeofencesInput = {
@@ -11850,6 +13067,10 @@ export type UserCreateWithoutGeofencesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11904,6 +13125,9 @@ export type UserCreateWithoutGeofencesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutGeofencesInput = {
@@ -11917,6 +13141,10 @@ export type UserUncheckedCreateWithoutGeofencesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -11971,6 +13199,9 @@ export type UserUncheckedCreateWithoutGeofencesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutGeofencesInput = {
@@ -12000,6 +13231,10 @@ export type UserUpdateWithoutGeofencesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12054,6 +13289,9 @@ export type UserUpdateWithoutGeofencesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutGeofencesInput = {
@@ -12067,6 +13305,10 @@ export type UserUncheckedUpdateWithoutGeofencesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12121,6 +13363,9 @@ export type UserUncheckedUpdateWithoutGeofencesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutLocationSharesInput = {
@@ -12134,6 +13379,10 @@ export type UserCreateWithoutLocationSharesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12188,6 +13437,9 @@ export type UserCreateWithoutLocationSharesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutLocationSharesInput = {
@@ -12201,6 +13453,10 @@ export type UserUncheckedCreateWithoutLocationSharesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12255,6 +13511,9 @@ export type UserUncheckedCreateWithoutLocationSharesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutLocationSharesInput = {
@@ -12273,6 +13532,10 @@ export type UserCreateWithoutSharedLocationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12327,6 +13590,9 @@ export type UserCreateWithoutSharedLocationsInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSharedLocationsInput = {
@@ -12340,6 +13606,10 @@ export type UserUncheckedCreateWithoutSharedLocationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12394,6 +13664,9 @@ export type UserUncheckedCreateWithoutSharedLocationsInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSharedLocationsInput = {
@@ -12423,6 +13696,10 @@ export type UserUpdateWithoutLocationSharesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12477,6 +13754,9 @@ export type UserUpdateWithoutLocationSharesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutLocationSharesInput = {
@@ -12490,6 +13770,10 @@ export type UserUncheckedUpdateWithoutLocationSharesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12544,6 +13828,9 @@ export type UserUncheckedUpdateWithoutLocationSharesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutSharedLocationsInput = {
@@ -12568,6 +13855,10 @@ export type UserUpdateWithoutSharedLocationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12622,6 +13913,9 @@ export type UserUpdateWithoutSharedLocationsInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSharedLocationsInput = {
@@ -12635,6 +13929,10 @@ export type UserUncheckedUpdateWithoutSharedLocationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12689,6 +13987,9 @@ export type UserUncheckedUpdateWithoutSharedLocationsInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutNotesInput = {
@@ -12702,6 +14003,10 @@ export type UserCreateWithoutNotesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12756,6 +14061,9 @@ export type UserCreateWithoutNotesInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutNotesInput = {
@@ -12769,6 +14077,10 @@ export type UserUncheckedCreateWithoutNotesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -12823,6 +14135,9 @@ export type UserUncheckedCreateWithoutNotesInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutNotesInput = {
@@ -12852,6 +14167,10 @@ export type UserUpdateWithoutNotesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12906,6 +14225,9 @@ export type UserUpdateWithoutNotesInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutNotesInput = {
@@ -12919,6 +14241,10 @@ export type UserUncheckedUpdateWithoutNotesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -12973,6 +14299,9 @@ export type UserUncheckedUpdateWithoutNotesInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTodosInput = {
@@ -12986,6 +14315,10 @@ export type UserCreateWithoutTodosInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13040,6 +14373,9 @@ export type UserCreateWithoutTodosInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTodosInput = {
@@ -13053,6 +14389,10 @@ export type UserUncheckedCreateWithoutTodosInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13107,6 +14447,9 @@ export type UserUncheckedCreateWithoutTodosInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTodosInput = {
@@ -13125,6 +14468,10 @@ export type UserCreateWithoutAssignedTodosInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13179,6 +14526,9 @@ export type UserCreateWithoutAssignedTodosInput = {
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAssignedTodosInput = {
@@ -13192,6 +14542,10 @@ export type UserUncheckedCreateWithoutAssignedTodosInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13246,6 +14600,9 @@ export type UserUncheckedCreateWithoutAssignedTodosInput = {
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAssignedTodosInput = {
@@ -13275,6 +14632,10 @@ export type UserUpdateWithoutTodosInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13329,6 +14690,9 @@ export type UserUpdateWithoutTodosInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTodosInput = {
@@ -13342,6 +14706,10 @@ export type UserUncheckedUpdateWithoutTodosInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13396,6 +14764,9 @@ export type UserUncheckedUpdateWithoutTodosInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserUpsertWithoutAssignedTodosInput = {
@@ -13420,6 +14791,10 @@ export type UserUpdateWithoutAssignedTodosInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13474,6 +14849,9 @@ export type UserUpdateWithoutAssignedTodosInput = {
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAssignedTodosInput = {
@@ -13487,6 +14865,10 @@ export type UserUncheckedUpdateWithoutAssignedTodosInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13541,6 +14923,9 @@ export type UserUncheckedUpdateWithoutAssignedTodosInput = {
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialReportsInput = {
@@ -13554,6 +14939,10 @@ export type UserCreateWithoutSocialReportsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13608,6 +14997,9 @@ export type UserCreateWithoutSocialReportsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialReportsInput = {
@@ -13621,6 +15013,10 @@ export type UserUncheckedCreateWithoutSocialReportsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13675,6 +15071,9 @@ export type UserUncheckedCreateWithoutSocialReportsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialReportsInput = {
@@ -13704,6 +15103,10 @@ export type UserUpdateWithoutSocialReportsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13758,6 +15161,9 @@ export type UserUpdateWithoutSocialReportsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialReportsInput = {
@@ -13771,6 +15177,10 @@ export type UserUncheckedUpdateWithoutSocialReportsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -13825,6 +15235,9 @@ export type UserUncheckedUpdateWithoutSocialReportsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutSocialActivitiesInput = {
@@ -13838,6 +15251,10 @@ export type UserCreateWithoutSocialActivitiesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13892,6 +15309,9 @@ export type UserCreateWithoutSocialActivitiesInput = {
   sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSocialActivitiesInput = {
@@ -13905,6 +15325,10 @@ export type UserUncheckedCreateWithoutSocialActivitiesInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -13959,6 +15383,9 @@ export type UserUncheckedCreateWithoutSocialActivitiesInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSocialActivitiesInput = {
@@ -13988,6 +15415,10 @@ export type UserUpdateWithoutSocialActivitiesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -14042,6 +15473,9 @@ export type UserUpdateWithoutSocialActivitiesInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSocialActivitiesInput = {
@@ -14055,6 +15489,10 @@ export type UserUncheckedUpdateWithoutSocialActivitiesInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -14109,6 +15547,9 @@ export type UserUncheckedUpdateWithoutSocialActivitiesInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutEntityRelationsInput = {
@@ -14122,6 +15563,10 @@ export type UserCreateWithoutEntityRelationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -14176,6 +15621,9 @@ export type UserCreateWithoutEntityRelationsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
   socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutEntityRelationsInput = {
@@ -14189,6 +15637,10 @@ export type UserUncheckedCreateWithoutEntityRelationsInput = {
   dateOfBirth?: Date | string | null
   gender?: string | null
   bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
   userType?: string
   circleIds?: Prisma.UserCreatecircleIdsInput | string[]
   isOnboardingComplete?: boolean | null
@@ -14243,6 +15695,9 @@ export type UserUncheckedCreateWithoutEntityRelationsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
   socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
   socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutEntityRelationsInput = {
@@ -14272,6 +15727,10 @@ export type UserUpdateWithoutEntityRelationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -14326,6 +15785,9 @@ export type UserUpdateWithoutEntityRelationsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
   socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutEntityRelationsInput = {
@@ -14339,6 +15801,10 @@ export type UserUncheckedUpdateWithoutEntityRelationsInput = {
   dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
   userType?: Prisma.StringFieldUpdateOperationsInput | string
   circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
   isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
@@ -14393,6 +15859,945 @@ export type UserUncheckedUpdateWithoutEntityRelationsInput = {
   sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
   socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
   socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutFileTagsInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsCreateNestedManyWithoutUserInput
+  files?: Prisma.FileCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFACreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutFileTagsInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationUncheckedCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceUncheckedCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryUncheckedCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsUncheckedCreateNestedManyWithoutUserInput
+  files?: Prisma.FileUncheckedCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderUncheckedCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemUncheckedCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFAUncheckedCreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleUncheckedCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostUncheckedCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentUncheckedCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionUncheckedCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryUncheckedCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewUncheckedCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageUncheckedCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionUncheckedCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationUncheckedCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceUncheckedCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteUncheckedCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoUncheckedCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoUncheckedCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutFileTagsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileTagsInput, Prisma.UserUncheckedCreateWithoutFileTagsInput>
+}
+
+export type UserUpsertWithoutFileTagsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutFileTagsInput, Prisma.UserUncheckedUpdateWithoutFileTagsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileTagsInput, Prisma.UserUncheckedCreateWithoutFileTagsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutFileTagsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutFileTagsInput, Prisma.UserUncheckedUpdateWithoutFileTagsInput>
+}
+
+export type UserUpdateWithoutFileTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutFileTagsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUncheckedUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUncheckedUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUncheckedUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUncheckedUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUncheckedUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUncheckedUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUncheckedUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUncheckedUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUncheckedUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUncheckedUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUncheckedUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUncheckedUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUncheckedUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUncheckedUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUncheckedUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUncheckedUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUncheckedUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUncheckedUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUncheckedUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUncheckedUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUncheckedUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUncheckedUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutFileSharesInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsCreateNestedManyWithoutUserInput
+  files?: Prisma.FileCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFACreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutFileSharesInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationUncheckedCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceUncheckedCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryUncheckedCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsUncheckedCreateNestedManyWithoutUserInput
+  files?: Prisma.FileUncheckedCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderUncheckedCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemUncheckedCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFAUncheckedCreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleUncheckedCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostUncheckedCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentUncheckedCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionUncheckedCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryUncheckedCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewUncheckedCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageUncheckedCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionUncheckedCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationUncheckedCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceUncheckedCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteUncheckedCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoUncheckedCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoUncheckedCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutFileSharesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileSharesInput, Prisma.UserUncheckedCreateWithoutFileSharesInput>
+}
+
+export type UserUpsertWithoutFileSharesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutFileSharesInput, Prisma.UserUncheckedUpdateWithoutFileSharesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileSharesInput, Prisma.UserUncheckedCreateWithoutFileSharesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutFileSharesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutFileSharesInput, Prisma.UserUncheckedUpdateWithoutFileSharesInput>
+}
+
+export type UserUpdateWithoutFileSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutFileSharesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUncheckedUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUncheckedUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUncheckedUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUncheckedUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUncheckedUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUncheckedUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUncheckedUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUncheckedUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUncheckedUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUncheckedUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUncheckedUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUncheckedUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUncheckedUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUncheckedUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUncheckedUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUncheckedUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUncheckedUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUncheckedUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUncheckedUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUncheckedUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUncheckedUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUncheckedUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileRecentAccesses?: Prisma.FileRecentAccessUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutFileRecentAccessesInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsCreateNestedManyWithoutUserInput
+  files?: Prisma.FileCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFACreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareCreateNestedManyWithoutSharedByUserInput
+}
+
+export type UserUncheckedCreateWithoutFileRecentAccessesInput = {
+  id?: string
+  email: string
+  passwordHash?: string | null
+  firstName: string
+  lastName: string
+  phoneNumber?: string | null
+  avatarUrl?: string | null
+  dateOfBirth?: Date | string | null
+  gender?: string | null
+  bio?: string | null
+  username?: string | null
+  displayName?: string | null
+  followersCount?: number
+  followingCount?: number
+  userType?: string
+  circleIds?: Prisma.UserCreatecircleIdsInput | string[]
+  isOnboardingComplete?: boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: boolean
+  isVerified?: boolean
+  verifiedAt?: Date | string | null
+  lastLoginAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  userApplications?: Prisma.UserApplicationUncheckedCreateNestedManyWithoutUserInput
+  userSessions?: Prisma.UserSessionUncheckedCreateNestedManyWithoutUserInput
+  userDevices?: Prisma.UserDeviceUncheckedCreateNestedManyWithoutUserInput
+  loginHistory?: Prisma.LoginHistoryUncheckedCreateNestedManyWithoutUserInput
+  userSettings?: Prisma.UserSettingsUncheckedCreateNestedManyWithoutUserInput
+  files?: Prisma.FileUncheckedCreateNestedManyWithoutUserInput
+  fileFolders?: Prisma.FileFolderUncheckedCreateNestedManyWithoutUserInput
+  galleryItems?: Prisma.GalleryItemUncheckedCreateNestedManyWithoutUserInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedCreateNestedManyWithoutUserInput
+  notifications?: Prisma.NotificationUncheckedCreateNestedManyWithoutUserInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedCreateNestedManyWithoutUserInput
+  subscriptions?: Prisma.SubscriptionUncheckedCreateNestedManyWithoutUserInput
+  userMFA?: Prisma.UserMFAUncheckedCreateNestedManyWithoutUserInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedCreateNestedManyWithoutUserInput
+  ownedCircles?: Prisma.CircleUncheckedCreateNestedManyWithoutOwnerInput
+  circleMemberships?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutUserInput
+  circleInvitations?: Prisma.CircleMemberUncheckedCreateNestedManyWithoutInviterInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedCreateNestedManyWithoutUserInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutUserInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedCreateNestedManyWithoutResolverInput
+  socialPosts?: Prisma.SocialPostUncheckedCreateNestedManyWithoutAuthorInput
+  socialComments?: Prisma.SocialCommentUncheckedCreateNestedManyWithoutAuthorInput
+  socialReactions?: Prisma.SocialReactionUncheckedCreateNestedManyWithoutUserInput
+  socialStories?: Prisma.SocialStoryUncheckedCreateNestedManyWithoutAuthorInput
+  storyViews?: Prisma.SocialStoryViewUncheckedCreateNestedManyWithoutViewerInput
+  followers?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowingInput
+  following?: Prisma.UserFollowUncheckedCreateNestedManyWithoutFollowerInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutSenderInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedCreateNestedManyWithoutReceiverInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedCreateNestedManyWithoutCreatorInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedCreateNestedManyWithoutUserInput
+  chatMessages?: Prisma.ChatMessageUncheckedCreateNestedManyWithoutSenderInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedCreateNestedManyWithoutUserInput
+  chatReactions?: Prisma.ChatReactionUncheckedCreateNestedManyWithoutUserInput
+  userLocations?: Prisma.UserLocationUncheckedCreateNestedManyWithoutUserInput
+  geofences?: Prisma.GeofenceUncheckedCreateNestedManyWithoutUserInput
+  locationShares?: Prisma.LocationShareUncheckedCreateNestedManyWithoutUserInput
+  sharedLocations?: Prisma.LocationShareUncheckedCreateNestedManyWithoutSharedWithUserInput
+  notes?: Prisma.NoteUncheckedCreateNestedManyWithoutUserInput
+  todos?: Prisma.TodoUncheckedCreateNestedManyWithoutUserInput
+  assignedTodos?: Prisma.TodoUncheckedCreateNestedManyWithoutAssigneeInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedCreateNestedManyWithoutInviterInput
+  socialReports?: Prisma.SocialReportUncheckedCreateNestedManyWithoutReporterInput
+  socialActivities?: Prisma.SocialActivityUncheckedCreateNestedManyWithoutUserInput
+  entityRelations?: Prisma.EntityRelationUncheckedCreateNestedManyWithoutOwnerInput
+  fileTags?: Prisma.FileTagUncheckedCreateNestedManyWithoutUserInput
+  fileShares?: Prisma.FileShareUncheckedCreateNestedManyWithoutSharedByUserInput
+}
+
+export type UserCreateOrConnectWithoutFileRecentAccessesInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileRecentAccessesInput, Prisma.UserUncheckedCreateWithoutFileRecentAccessesInput>
+}
+
+export type UserUpsertWithoutFileRecentAccessesInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutFileRecentAccessesInput, Prisma.UserUncheckedUpdateWithoutFileRecentAccessesInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutFileRecentAccessesInput, Prisma.UserUncheckedCreateWithoutFileRecentAccessesInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutFileRecentAccessesInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutFileRecentAccessesInput, Prisma.UserUncheckedUpdateWithoutFileRecentAccessesInput>
+}
+
+export type UserUpdateWithoutFileRecentAccessesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUpdateManyWithoutSharedByUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutFileRecentAccessesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  firstName?: Prisma.StringFieldUpdateOperationsInput | string
+  lastName?: Prisma.StringFieldUpdateOperationsInput | string
+  phoneNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  avatarUrl?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  dateOfBirth?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  gender?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bio?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  username?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  followersCount?: Prisma.IntFieldUpdateOperationsInput | number
+  followingCount?: Prisma.IntFieldUpdateOperationsInput | number
+  userType?: Prisma.StringFieldUpdateOperationsInput | string
+  circleIds?: Prisma.UserUpdatecircleIdsInput | string[]
+  isOnboardingComplete?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  preferences?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isVerified?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  verifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastLoginAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  userApplications?: Prisma.UserApplicationUncheckedUpdateManyWithoutUserNestedInput
+  userSessions?: Prisma.UserSessionUncheckedUpdateManyWithoutUserNestedInput
+  userDevices?: Prisma.UserDeviceUncheckedUpdateManyWithoutUserNestedInput
+  loginHistory?: Prisma.LoginHistoryUncheckedUpdateManyWithoutUserNestedInput
+  userSettings?: Prisma.UserSettingsUncheckedUpdateManyWithoutUserNestedInput
+  files?: Prisma.FileUncheckedUpdateManyWithoutUserNestedInput
+  fileFolders?: Prisma.FileFolderUncheckedUpdateManyWithoutUserNestedInput
+  galleryItems?: Prisma.GalleryItemUncheckedUpdateManyWithoutUserNestedInput
+  galleryAlbums?: Prisma.GalleryAlbumUncheckedUpdateManyWithoutUserNestedInput
+  notifications?: Prisma.NotificationUncheckedUpdateManyWithoutUserNestedInput
+  userPushTokens?: Prisma.UserPushTokenUncheckedUpdateManyWithoutUserNestedInput
+  subscriptions?: Prisma.SubscriptionUncheckedUpdateManyWithoutUserNestedInput
+  userMFA?: Prisma.UserMFAUncheckedUpdateManyWithoutUserNestedInput
+  userGroupMembers?: Prisma.UserGroupMemberUncheckedUpdateManyWithoutUserNestedInput
+  ownedCircles?: Prisma.CircleUncheckedUpdateManyWithoutOwnerNestedInput
+  circleMemberships?: Prisma.CircleMemberUncheckedUpdateManyWithoutUserNestedInput
+  circleInvitations?: Prisma.CircleMemberUncheckedUpdateManyWithoutInviterNestedInput
+  emergencyContacts?: Prisma.EmergencyContactUncheckedUpdateManyWithoutUserNestedInput
+  safetyIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutUserNestedInput
+  resolvedIncidents?: Prisma.SafetyIncidentUncheckedUpdateManyWithoutResolverNestedInput
+  socialPosts?: Prisma.SocialPostUncheckedUpdateManyWithoutAuthorNestedInput
+  socialComments?: Prisma.SocialCommentUncheckedUpdateManyWithoutAuthorNestedInput
+  socialReactions?: Prisma.SocialReactionUncheckedUpdateManyWithoutUserNestedInput
+  socialStories?: Prisma.SocialStoryUncheckedUpdateManyWithoutAuthorNestedInput
+  storyViews?: Prisma.SocialStoryViewUncheckedUpdateManyWithoutViewerNestedInput
+  followers?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowingNestedInput
+  following?: Prisma.UserFollowUncheckedUpdateManyWithoutFollowerNestedInput
+  sentFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutSenderNestedInput
+  receivedFriendRequests?: Prisma.FriendRequestUncheckedUpdateManyWithoutReceiverNestedInput
+  chatRoomsCreated?: Prisma.ChatRoomUncheckedUpdateManyWithoutCreatorNestedInput
+  chatParticipations?: Prisma.ChatParticipantUncheckedUpdateManyWithoutUserNestedInput
+  chatMessages?: Prisma.ChatMessageUncheckedUpdateManyWithoutSenderNestedInput
+  chatReadReceipts?: Prisma.ChatReadReceiptUncheckedUpdateManyWithoutUserNestedInput
+  chatReactions?: Prisma.ChatReactionUncheckedUpdateManyWithoutUserNestedInput
+  userLocations?: Prisma.UserLocationUncheckedUpdateManyWithoutUserNestedInput
+  geofences?: Prisma.GeofenceUncheckedUpdateManyWithoutUserNestedInput
+  locationShares?: Prisma.LocationShareUncheckedUpdateManyWithoutUserNestedInput
+  sharedLocations?: Prisma.LocationShareUncheckedUpdateManyWithoutSharedWithUserNestedInput
+  notes?: Prisma.NoteUncheckedUpdateManyWithoutUserNestedInput
+  todos?: Prisma.TodoUncheckedUpdateManyWithoutUserNestedInput
+  assignedTodos?: Prisma.TodoUncheckedUpdateManyWithoutAssigneeNestedInput
+  sentCircleInvitations?: Prisma.CircleInvitationUncheckedUpdateManyWithoutInviterNestedInput
+  socialReports?: Prisma.SocialReportUncheckedUpdateManyWithoutReporterNestedInput
+  socialActivities?: Prisma.SocialActivityUncheckedUpdateManyWithoutUserNestedInput
+  entityRelations?: Prisma.EntityRelationUncheckedUpdateManyWithoutOwnerNestedInput
+  fileTags?: Prisma.FileTagUncheckedUpdateManyWithoutUserNestedInput
+  fileShares?: Prisma.FileShareUncheckedUpdateManyWithoutSharedByUserNestedInput
 }
 
 
@@ -14446,6 +16851,9 @@ export type UserCountOutputType = {
   socialReports: number
   socialActivities: number
   entityRelations: number
+  fileTags: number
+  fileShares: number
+  fileRecentAccesses: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -14494,6 +16902,9 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   socialReports?: boolean | UserCountOutputTypeCountSocialReportsArgs
   socialActivities?: boolean | UserCountOutputTypeCountSocialActivitiesArgs
   entityRelations?: boolean | UserCountOutputTypeCountEntityRelationsArgs
+  fileTags?: boolean | UserCountOutputTypeCountFileTagsArgs
+  fileShares?: boolean | UserCountOutputTypeCountFileSharesArgs
+  fileRecentAccesses?: boolean | UserCountOutputTypeCountFileRecentAccessesArgs
 }
 
 /**
@@ -14821,6 +17232,27 @@ export type UserCountOutputTypeCountEntityRelationsArgs<ExtArgs extends runtime.
   where?: Prisma.EntityRelationWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountFileTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileTagWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountFileSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileShareWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountFileRecentAccessesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FileRecentAccessWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -14833,6 +17265,10 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   dateOfBirth?: boolean
   gender?: boolean
   bio?: boolean
+  username?: boolean
+  displayName?: boolean
+  followersCount?: boolean
+  followingCount?: boolean
   userType?: boolean
   circleIds?: boolean
   isOnboardingComplete?: boolean
@@ -14888,6 +17324,9 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   socialReports?: boolean | Prisma.User$socialReportsArgs<ExtArgs>
   socialActivities?: boolean | Prisma.User$socialActivitiesArgs<ExtArgs>
   entityRelations?: boolean | Prisma.User$entityRelationsArgs<ExtArgs>
+  fileTags?: boolean | Prisma.User$fileTagsArgs<ExtArgs>
+  fileShares?: boolean | Prisma.User$fileSharesArgs<ExtArgs>
+  fileRecentAccesses?: boolean | Prisma.User$fileRecentAccessesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -14902,6 +17341,10 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   dateOfBirth?: boolean
   gender?: boolean
   bio?: boolean
+  username?: boolean
+  displayName?: boolean
+  followersCount?: boolean
+  followingCount?: boolean
   userType?: boolean
   circleIds?: boolean
   isOnboardingComplete?: boolean
@@ -14925,6 +17368,10 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   dateOfBirth?: boolean
   gender?: boolean
   bio?: boolean
+  username?: boolean
+  displayName?: boolean
+  followersCount?: boolean
+  followingCount?: boolean
   userType?: boolean
   circleIds?: boolean
   isOnboardingComplete?: boolean
@@ -14948,6 +17395,10 @@ export type UserSelectScalar = {
   dateOfBirth?: boolean
   gender?: boolean
   bio?: boolean
+  username?: boolean
+  displayName?: boolean
+  followersCount?: boolean
+  followingCount?: boolean
   userType?: boolean
   circleIds?: boolean
   isOnboardingComplete?: boolean
@@ -14960,7 +17411,7 @@ export type UserSelectScalar = {
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "firstName" | "lastName" | "phoneNumber" | "avatarUrl" | "dateOfBirth" | "gender" | "bio" | "userType" | "circleIds" | "isOnboardingComplete" | "preferences" | "isActive" | "isVerified" | "verifiedAt" | "lastLoginAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "passwordHash" | "firstName" | "lastName" | "phoneNumber" | "avatarUrl" | "dateOfBirth" | "gender" | "bio" | "username" | "displayName" | "followersCount" | "followingCount" | "userType" | "circleIds" | "isOnboardingComplete" | "preferences" | "isActive" | "isVerified" | "verifiedAt" | "lastLoginAt" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   userApplications?: boolean | Prisma.User$userApplicationsArgs<ExtArgs>
   userSessions?: boolean | Prisma.User$userSessionsArgs<ExtArgs>
@@ -15007,6 +17458,9 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   socialReports?: boolean | Prisma.User$socialReportsArgs<ExtArgs>
   socialActivities?: boolean | Prisma.User$socialActivitiesArgs<ExtArgs>
   entityRelations?: boolean | Prisma.User$entityRelationsArgs<ExtArgs>
+  fileTags?: boolean | Prisma.User$fileTagsArgs<ExtArgs>
+  fileShares?: boolean | Prisma.User$fileSharesArgs<ExtArgs>
+  fileRecentAccesses?: boolean | Prisma.User$fileRecentAccessesArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -15060,6 +17514,9 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     socialReports: Prisma.$SocialReportPayload<ExtArgs>[]
     socialActivities: Prisma.$SocialActivityPayload<ExtArgs>[]
     entityRelations: Prisma.$EntityRelationPayload<ExtArgs>[]
+    fileTags: Prisma.$FileTagPayload<ExtArgs>[]
+    fileShares: Prisma.$FileSharePayload<ExtArgs>[]
+    fileRecentAccesses: Prisma.$FileRecentAccessPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -15072,6 +17529,10 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     dateOfBirth: Date | null
     gender: string | null
     bio: string | null
+    username: string | null
+    displayName: string | null
+    followersCount: number
+    followingCount: number
     userType: string
     circleIds: string[]
     isOnboardingComplete: boolean | null
@@ -15521,6 +17982,9 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   socialReports<T extends Prisma.User$socialReportsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$socialReportsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SocialReportPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   socialActivities<T extends Prisma.User$socialActivitiesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$socialActivitiesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SocialActivityPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   entityRelations<T extends Prisma.User$entityRelationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$entityRelationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EntityRelationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileTags<T extends Prisma.User$fileTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$fileTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileTagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileShares<T extends Prisma.User$fileSharesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$fileSharesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileSharePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  fileRecentAccesses<T extends Prisma.User$fileRecentAccessesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$fileRecentAccessesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FileRecentAccessPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -15560,6 +18024,10 @@ export interface UserFieldRefs {
   readonly dateOfBirth: Prisma.FieldRef<"User", 'DateTime'>
   readonly gender: Prisma.FieldRef<"User", 'String'>
   readonly bio: Prisma.FieldRef<"User", 'String'>
+  readonly username: Prisma.FieldRef<"User", 'String'>
+  readonly displayName: Prisma.FieldRef<"User", 'String'>
+  readonly followersCount: Prisma.FieldRef<"User", 'Int'>
+  readonly followingCount: Prisma.FieldRef<"User", 'Int'>
   readonly userType: Prisma.FieldRef<"User", 'String'>
   readonly circleIds: Prisma.FieldRef<"User", 'String[]'>
   readonly isOnboardingComplete: Prisma.FieldRef<"User", 'Boolean'>
@@ -17035,6 +19503,78 @@ export type User$entityRelationsArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   distinct?: Prisma.EntityRelationScalarFieldEnum | Prisma.EntityRelationScalarFieldEnum[]
+}
+
+/**
+ * User.fileTags
+ */
+export type User$fileTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileTag
+   */
+  select?: Prisma.FileTagSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileTag
+   */
+  omit?: Prisma.FileTagOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileTagInclude<ExtArgs> | null
+  where?: Prisma.FileTagWhereInput
+  orderBy?: Prisma.FileTagOrderByWithRelationInput | Prisma.FileTagOrderByWithRelationInput[]
+  cursor?: Prisma.FileTagWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileTagScalarFieldEnum | Prisma.FileTagScalarFieldEnum[]
+}
+
+/**
+ * User.fileShares
+ */
+export type User$fileSharesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileShare
+   */
+  select?: Prisma.FileShareSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileShare
+   */
+  omit?: Prisma.FileShareOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileShareInclude<ExtArgs> | null
+  where?: Prisma.FileShareWhereInput
+  orderBy?: Prisma.FileShareOrderByWithRelationInput | Prisma.FileShareOrderByWithRelationInput[]
+  cursor?: Prisma.FileShareWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileShareScalarFieldEnum | Prisma.FileShareScalarFieldEnum[]
+}
+
+/**
+ * User.fileRecentAccesses
+ */
+export type User$fileRecentAccessesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FileRecentAccess
+   */
+  select?: Prisma.FileRecentAccessSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FileRecentAccess
+   */
+  omit?: Prisma.FileRecentAccessOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FileRecentAccessInclude<ExtArgs> | null
+  where?: Prisma.FileRecentAccessWhereInput
+  orderBy?: Prisma.FileRecentAccessOrderByWithRelationInput | Prisma.FileRecentAccessOrderByWithRelationInput[]
+  cursor?: Prisma.FileRecentAccessWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FileRecentAccessScalarFieldEnum | Prisma.FileRecentAccessScalarFieldEnum[]
 }
 
 /**

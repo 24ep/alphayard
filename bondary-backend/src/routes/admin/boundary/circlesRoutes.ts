@@ -106,7 +106,7 @@ router.get('/:id', requirePermission('circles', 'view'), async (req, res) => {
                 u.data->>'lastName' as last_name,
                 u.data->>'avatar' as avatar
             FROM entity_relations er
-            JOIN core.users u ON er.source_id = u.id::text
+            JOIN public.users u ON er.source_id = u.id::text
             WHERE er.target_id = $1 AND er.relation_type = 'member'
             ORDER BY er.created_at ASC
         `, id);

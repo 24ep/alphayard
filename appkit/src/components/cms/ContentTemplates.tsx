@@ -132,252 +132,32 @@ export const ContentTemplates: React.FC<ContentTemplatesProps> = ({
       setLoading(true)
       setError(null)
       
-      // TODO: Replace with actual API calls
-      const mockCategories: TemplateCategory[] = [
-        {
-          id: 'marketing',
-          name: 'Marketing',
-          description: 'Templates for marketing campaigns and promotions',
-          icon: GlobeAltIcon,
-          color: 'blue',
-          count: 12
-        },
-        {
-          id: 'news',
-          name: 'News & Articles',
-          description: 'Templates for news articles and blog posts',
-          icon: DocumentTextIcon,
-          color: 'green',
-          count: 8
-        },
-        {
-          id: 'inspiration',
-          name: 'Inspiration',
-          description: 'Templates for inspirational and motivational content',
-          icon: PhotoIcon,
-          color: 'purple',
-          count: 6
-        },
-        {
-          id: 'popup',
-          name: 'Popups & Modals',
-          description: 'Templates for popup notifications and modals',
-          icon: ShareIcon,
-          color: 'orange',
-          count: 4
-        },
-        {
-          id: 'landing',
-          name: 'Landing Pages',
-          description: 'Templates for landing pages and conversions',
-          icon: ComputerDesktopIcon,
-          color: 'red',
-          count: 10
-        },
-        {
-          id: 'social',
-          name: 'Social Media',
-          description: 'Templates for social media posts and campaigns',
-          icon: ShareIcon,
-          color: 'pink',
-          count: 15
-        }
-      ]
+      // Fetch templates from CMS API
+      const [categoriesRes, templatesRes] = await Promise.allSettled([
+        fetch('/api/admin/cms/templates/categories'),
+        fetch('/api/admin/cms/templates')
+      ]);
       
-      const mockTemplates: EnhancedContentTemplate[] = [
-        {
-          id: 't1',
-          name: 'Hero Marketing Banner',
-          description: 'Eye-catching hero banner for marketing campaigns',
-          type: 'marketing',
-          category: 'marketing',
-          tags: ['hero', 'banner', 'marketing', 'cta'],
-          isPublic: true,
-          isFeatured: true,
-          previewImage: '/templates/hero-banner.jpg',
-          author: 'user1',
-          authorName: 'John Doe',
-          downloads: 1250,
-          rating: 4.8,
-          ratingCount: 89,
-          compatibility: {
-            web: true,
-            mobile: true,
-            tablet: true
-          },
-          requirements: {
-            minComponents: 3,
-            maxComponents: 8
-          },
-          customization: {
-            colors: ['#3B82F6', '#EF4444', '#10B981', '#F59E0B'],
-            fonts: ['Inter', 'Roboto', 'Open Sans'],
-            layouts: ['centered', 'left-aligned', 'right-aligned']
-          },
-          metadata: {
-            lastUpdated: new Date(Date.now() - 86400000 * 7).toISOString(),
-            version: '2.1.0',
-            size: 2048,
-            complexity: 'beginner',
-            estimatedTime: '5-10 minutes'
-          },
-          components: [
-            {
-              id: 'comp1',
-              type: 'heading',
-              props: {
-                content: 'Welcome to Our Platform',
-                level: 'h1',
-                fontSize: 48,
-                color: '#1F2937',
-                alignment: 'center'
-              },
-              order: 0,
-              style: {
-                marginBottom: '1rem'
-              }
-            },
-            {
-              id: 'comp2',
-              type: 'text',
-              props: {
-                content: 'Discover amazing features and transform your workflow with our powerful tools.',
-                fontSize: 18,
-                color: '#6B7280',
-                alignment: 'center'
-              },
-              order: 1,
-              style: {
-                marginBottom: '2rem'
-              }
-            },
-            {
-              id: 'comp3',
-              type: 'button',
-              props: {
-                text: 'Get Started',
-                variant: 'primary',
-                size: 'lg',
-                alignment: 'center'
-              },
-              order: 2,
-              style: {
-                marginBottom: '1rem'
-              }
-            }
-          ],
-          preview: 'Hero banner with title, description, and call-to-action button',
-          createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-          updatedAt: new Date(Date.now() - 86400000 * 7).toISOString()
-        },
-        {
-          id: 't2',
-          name: 'News Article Layout',
-          description: 'Clean and professional layout for news articles',
-          type: 'news',
-          category: 'news',
-          tags: ['article', 'news', 'blog', 'content'],
-          isPublic: true,
-          isFeatured: false,
-          previewImage: '/templates/news-article.jpg',
-          author: 'user2',
-          authorName: 'Jane Smith',
-          downloads: 890,
-          rating: 4.6,
-          ratingCount: 67,
-          compatibility: {
-            web: true,
-            mobile: true,
-            tablet: true
-          },
-          requirements: {
-            minComponents: 5,
-            maxComponents: 15
-          },
-          customization: {
-            colors: ['#1F2937', '#6B7280', '#3B82F6'],
-            fonts: ['Georgia', 'Times New Roman', 'Merriweather'],
-            layouts: ['single-column', 'two-column', 'magazine']
-          },
-          metadata: {
-            lastUpdated: new Date(Date.now() - 86400000 * 14).toISOString(),
-            version: '1.5.0',
-            size: 1536,
-            complexity: 'intermediate',
-            estimatedTime: '10-15 minutes'
-          },
-          components: [
-            {
-              id: 'comp1',
-              type: 'heading',
-              props: {
-                content: 'Article Title',
-                level: 'h1',
-                fontSize: 32,
-                color: '#1F2937',
-                alignment: 'left'
-              },
-              order: 0,
-              style: {
-                marginBottom: '1rem'
-              }
-            },
-            {
-              id: 'comp2',
-              type: 'text',
-              props: {
-                content: 'Article excerpt or summary...',
-                fontSize: 16,
-                color: '#6B7280',
-                alignment: 'left'
-              },
-              order: 1,
-              style: {
-                marginBottom: '1.5rem'
-              }
-            },
-            {
-              id: 'comp3',
-              type: 'image',
-              props: {
-                src: '/placeholder-image.jpg',
-                alt: 'Article image',
-                alignment: 'center'
-              },
-              order: 2,
-              style: {
-                marginBottom: '1.5rem'
-              }
-            },
-            {
-              id: 'comp4',
-              type: 'text',
-              props: {
-                content: 'Article content goes here...',
-                fontSize: 16,
-                color: '#374151',
-                alignment: 'left'
-              },
-              order: 3,
-              style: {
-                lineHeight: 1.6
-              }
-            }
-          ],
-          preview: 'Professional news article layout with title, excerpt, image, and content',
-          createdAt: new Date(Date.now() - 86400000 * 45).toISOString(),
-          updatedAt: new Date(Date.now() - 86400000 * 14).toISOString()
-        }
-      ]
+      if (categoriesRes.status === 'fulfilled' && categoriesRes.value.ok) {
+        const data = await categoriesRes.value.json();
+        setCategories(data.categories || data || []);
+      } else {
+        setCategories([]);
+      }
       
-      setCategories(mockCategories)
-      setTemplates(mockTemplates)
+      if (templatesRes.status === 'fulfilled' && templatesRes.value.ok) {
+        const data = await templatesRes.value.json();
+        setTemplates(data.templates || data || []);
+      } else {
+        setTemplates([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load templates')
     } finally {
       setLoading(false)
     }
   }, [])
+
 
   // Filter and sort templates
   const filteredTemplates = templates

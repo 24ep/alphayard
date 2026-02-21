@@ -6,7 +6,7 @@ async function check() {
     const schemas: any = await prisma.$queryRawUnsafe(`
       SELECT schema_name 
       FROM information_schema.schemata 
-      WHERE schema_name IN ('public', 'admin', 'core', 'bondarys')
+      WHERE schema_name IN ('public', 'admin', 'bondarys')
     `);
     console.log('SCHEMAS_FOUND:' + schemas.map((s: any) => s.schema_name).sort().join(','));
 

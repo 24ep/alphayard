@@ -1,53 +1,197 @@
 
 import { Request, Response } from 'express';
 
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
 export class PageBuilderController {
   async getPages(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.getPages stub' });
+    try {
+      const { status } = req.query;
+      const filter: any = {};
+      if (status) filter.status = String(status);
+      
+      const pages = await prisma.page.findMany({
+        where: filter,
+        orderBy: { updatedAt: 'desc' }
+      });
+      return res.json({ pages });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   async getPageById(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.getPageById stub' });
+    try {
+      const { id } = req.params;
+      const page = await prisma.page.findUnique({
+        where: { id },
+        include: { versions: true }
+      });
+      if (!page) return res.status(404).json({ error: 'Page not found' });
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   async getPageBySlug(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.getPageBySlug stub' });
+    try {
+      const { slug } = req.params;
+      const page = await prisma.page.findUnique({
+        where: { slug }
+      });
+      if (!page) return res.status(404).json({ error: 'Page not found' });
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   async createPage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.createPage stub' });
+    try {
+      const data = req.body;
+      const page = await prisma.page.create({ data });
+      return res.status(201).json({ page });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async updatePage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.updatePage stub' });
+    try {
+      const { id } = req.params;
+      const data = req.body;
+      const page = await prisma.page.update({
+        where: { id },
+        data
+      });
+      
+      // Auto-create version block
+      if (data.components) {
+        await prisma.pageVersion.create({
+          data: {
+            pageId: id,
+            versionNumber: page.versionNumber + 1,
+            components: data.components,
+            authorId: page.authorId,
+            commitMessage: 'Auto-saved version'
+          }
+        });
+        await prisma.page.update({
+          where: { id },
+          data: { versionNumber: { increment: 1 } }
+        });
+      }
+      
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async deletePage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.deletePage stub' });
+    try {
+      const { id } = req.params;
+      await prisma.page.delete({ where: { id } });
+      return res.json({ message: 'Page deleted successfully' });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async duplicatePage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.duplicatePage stub' });
+    try {
+      const { id } = req.params;
+      const original = await prisma.page.findUnique({ where: { id } });
+      if (!original) return res.status(404).json({ error: 'Page not found' });
+      
+      const data = {
+        ...original,
+        id: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+        slug: `${original.slug}-copy-${Date.now()}`,
+        title: `${original.title} (Copy)`,
+        status: 'draft',
+        versionNumber: 1
+      };
+      const newPage = await prisma.page.create({ data: data as any });
+      return res.status(201).json({ page: newPage });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async previewPage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.previewPage stub' });
+    try {
+      const { id } = req.params;
+      const page = await prisma.page.findUnique({ where: { id } });
+      if (!page) return res.status(404).json({ error: 'Page not found' });
+      return res.json({ preview: page });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 
   async publishPage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.publishPage stub' });
+    try {
+      const { id } = req.params;
+      const page = await prisma.page.update({
+        where: { id },
+        data: { status: 'published' }
+      });
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async unpublishPage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.unpublishPage stub' });
+    try {
+      const { id } = req.params;
+      const page = await prisma.page.update({
+        where: { id },
+        data: { status: 'draft' }
+      });
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async schedulePage(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.schedulePage stub' });
+    try {
+      const { id } = req.params;
+      const { scheduledTime } = req.body;
+      const page = await prisma.page.update({
+        where: { id },
+        data: { status: 'pending', scheduledTime: new Date(scheduledTime) }
+      });
+      return res.json({ page });
+    } catch (error: any) {
+      return res.status(400).json({ error: error.message });
+    }
   }
 
   async processScheduledPages(req: Request, res: Response) {
-    return res.json({ message: 'PageBuilderController.processScheduledPages stub' });
+    try {
+      const now = new Date();
+      const countData = await prisma.page.updateMany({
+        where: {
+          status: 'pending',
+          scheduledTime: { lte: now }
+        },
+        data: {
+          status: 'published',
+          scheduledTime: null
+        }
+      });
+      return res.json({ message: `Successfully published ${countData.count} scheduled pages.` });
+    } catch (error: any) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 }
 

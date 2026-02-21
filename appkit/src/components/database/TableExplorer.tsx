@@ -68,7 +68,6 @@ interface TableExplorerProps {
 // =====================================
 
 const SCHEMA_COLORS: Record<string, { bg: string; text: string; border: string; badge: string; dot: string }> = {
-    core: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', dot: 'bg-blue-500' },
     admin: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', dot: 'bg-amber-500' },
     bondarys: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700', dot: 'bg-purple-500' },
     public: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', badge: 'bg-gray-100 text-gray-600', dot: 'bg-gray-400' },
@@ -123,7 +122,7 @@ const SchemaTreeSidebar: React.FC<{
     error?: string | null;
     onRetry?: () => void;
 }> = ({ tables, selectedTable, selectedSchema, onSelectTable, loading, searchQuery, onSearchChange, error, onRetry }) => {
-    const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(['core', 'admin', 'bondarys', 'public']));
+    const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set(['admin', 'bondarys', 'public']));
 
     // Group tables by schema
     const groupedTables = useMemo(() => {
@@ -136,8 +135,7 @@ const SchemaTreeSidebar: React.FC<{
             if (!groups[table.schema]) groups[table.schema] = [];
             groups[table.schema].push(table);
         }
-        // Sort schemas: core, admin, bondarys, public, then alphabetical
-        const order = ['core', 'admin', 'bondarys', 'public'];
+        const order = ['admin', 'bondarys', 'public'];
         const sorted: [string, TableInfo[]][] = [];
         for (const s of order) {
             if (groups[s]) sorted.push([s, groups[s]]);

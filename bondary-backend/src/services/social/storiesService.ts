@@ -54,18 +54,23 @@ export class StoriesService {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + 24);
     
-    const result = await prisma.$queryRaw<any[]>`
-      INSERT INTO bondarys.social_stories (
-        author_id, circle_id, content, media_url, media_type,
-        background_color, text_color, font_style, duration, visibility, expires_at
-      ) VALUES (
-        ${authorId}::uuid, ${circleId}::uuid, ${content}, ${mediaUrl}, ${mediaType},
-        ${backgroundColor}, ${textColor}, ${fontStyle}, ${duration}, ${visibility}, ${expiresAt}::timestamptz
-      )
-      RETURNING *
-    `;
+    const story = await prisma.socialStory.create({
+      data: {
+        authorId,
+        circleId,
+        content,
+        mediaUrl,
+        mediaType,
+        backgroundColor,
+        textColor,
+        fontStyle,
+        duration,
+        visibility,
+        expiresAt
+      }
+    });
     
-    return this.mapStory(result[0]);
+    return this.mapStory(story);
   }
 
   async getStories(userId: string, options: {
@@ -76,85 +81,91 @@ export class StoriesService {
   } = {}): Promise<Story[]> {
     const { circleId, includeExpired = false, limit = 50, offset = 0 } = options;
     
-    const conditions: Prisma.Sql[] = [
-      Prisma.sql`s.is_archived = false`
-    ];
+    const whereCondition: any = {
+      isArchived: false
+    };
     
     if (!includeExpired) {
-      conditions.push(Prisma.sql`s.expires_at > NOW()`);
+      whereCondition.expiresAt = { gt: new Date() };
     }
     
     if (circleId) {
-      conditions.push(Prisma.sql`s.circle_id = ${circleId}::uuid`);
+      whereCondition.circleId = circleId;
     }
     
-    const whereClause = Prisma.join(conditions, ' AND ');
+    const stories = await prisma.socialStory.findMany({
+      where: whereCondition,
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            isVerified: true
+          }
+        },
+        views: {
+          where: { viewerId: userId },
+          select: { id: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
     
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        s.*,
-        u.id as author_id,
-        u.username as author_username,
-        u.display_name as author_display_name,
-        u.avatar_url as author_avatar_url,
-        u.is_verified as author_is_verified,
-        sv.id IS NOT NULL as has_viewed,
-        sr.reaction as my_reaction
-      FROM bondarys.social_stories s
-      JOIN core.users u ON s.author_id = u.id
-      LEFT JOIN bondarys.social_story_views sv ON s.id = sv.story_id AND sv.viewer_id = ${userId}::uuid
-      LEFT JOIN bondarys.social_story_reactions sr ON s.id = sr.story_id AND sr.user_id = ${userId}::uuid
-      WHERE ${whereClause}
-      ORDER BY s.created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
-    
-    return result.map(row => this.mapStoryWithAuthor(row));
+    return stories.map((row: any) => this.mapStoryWithAuthor(row));
   }
 
   async getStoriesByUser(authorId: string, viewerId: string): Promise<Story[]> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        s.*,
-        u.id as author_id,
-        u.username as author_username,
-        u.display_name as author_display_name,
-        u.avatar_url as author_avatar_url,
-        u.is_verified as author_is_verified,
-        sv.id IS NOT NULL as has_viewed,
-        sr.reaction as my_reaction
-      FROM bondarys.social_stories s
-      JOIN core.users u ON s.author_id = u.id
-      LEFT JOIN bondarys.social_story_views sv ON s.id = sv.story_id AND sv.viewer_id = ${viewerId}::uuid
-      LEFT JOIN bondarys.social_story_reactions sr ON s.id = sr.story_id AND sr.user_id = ${viewerId}::uuid
-      WHERE s.author_id = ${authorId}::uuid 
-        AND s.expires_at > NOW()
-        AND s.is_archived = false
-      ORDER BY s.created_at ASC
-    `;
+    const stories = await prisma.socialStory.findMany({
+      where: {
+        authorId: authorId,
+        expiresAt: { gt: new Date() }
+      },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            isVerified: true
+          }
+        },
+        views: {
+          where: { viewerId: viewerId },
+          select: { id: true }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
     
-    return result.map(row => this.mapStoryWithAuthor(row));
+    return stories.map((row: any) => this.mapStoryWithAuthor(row));
   }
 
   async getStoryById(storyId: string, viewerId: string): Promise<Story | null> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        s.*,
-        u.id as author_id,
-        u.username as author_username,
-        u.display_name as author_display_name,
-        u.avatar_url as author_avatar_url,
-        u.is_verified as author_is_verified,
-        sv.id IS NOT NULL as has_viewed,
-        sr.reaction as my_reaction
-      FROM bondarys.social_stories s
-      JOIN core.users u ON s.author_id = u.id
-      LEFT JOIN bondarys.social_story_views sv ON s.id = sv.story_id AND sv.viewer_id = ${viewerId}::uuid
-      LEFT JOIN bondarys.social_story_reactions sr ON s.id = sr.story_id AND sr.user_id = ${viewerId}::uuid
-      WHERE s.id = ${storyId}::uuid
-    `;
+    const story = await prisma.socialStory.findUnique({
+      where: { id: storyId },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            isVerified: true
+          }
+        },
+        views: {
+          where: { viewerId: viewerId },
+          select: { id: true }
+        }
+      }
+    });
     
-    return result.length > 0 ? this.mapStoryWithAuthor(result[0]) : null;
+    return story ? this.mapStoryWithAuthor(story) : null;
   }
 
   async viewStory(storyId: string, viewerId: string): Promise<void> {
@@ -174,18 +185,34 @@ export class StoriesService {
   }
 
   async getStoryViewers(storyId: string, limit = 50, offset = 0): Promise<any[]> {
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT 
-        u.id, u.username, u.display_name, u.avatar_url, u.is_verified,
-        sv.viewed_at
-      FROM bondarys.social_story_views sv
-      JOIN core.users u ON sv.viewer_id = u.id
-      WHERE sv.story_id = ${storyId}::uuid
-      ORDER BY sv.viewed_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
+    const views = await prisma.socialStoryView.findMany({
+      where: { storyId: storyId },
+      include: {
+        viewer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            avatarUrl: true,
+            isVerified: true
+          }
+        }
+      },
+      orderBy: { viewedAt: 'desc' },
+      take: limit,
+      skip: offset
+    });
     
-    return result;
+    return views.map((view: any) => ({
+      id: view.viewer.id,
+      username: view.viewer.firstName && view.viewer.lastName ? 
+        `${view.viewer.firstName} ${view.viewer.lastName}`.toLowerCase().replace(/\s+/g, '') : '',
+      display_name: view.viewer.firstName && view.viewer.lastName ? 
+        `${view.viewer.firstName} ${view.viewer.lastName}` : '',
+      avatar_url: view.viewer.avatarUrl,
+      is_verified: view.viewer.isVerified,
+      viewed_at: view.viewedAt
+    }));
   }
 
   async reactToStory(storyId: string, userId: string, reaction: string): Promise<void> {

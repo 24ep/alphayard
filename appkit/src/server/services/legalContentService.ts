@@ -108,9 +108,9 @@ class LegalContentService {
 
     async deleteDocument(id: string): Promise<boolean> {
         try {
-            // For file-based implementation, we can't actually delete the file
-            // In a real implementation, you would delete the file
-            console.log(`Delete document ${id} - not implemented for file-based storage`);
+            const filePath = join(this.documentsPath, `${id}.md`);
+            // Write an empty placeholder to indicate deletion without removing the file
+            writeFileSync(filePath, `# ${id}\n\n*This document has been removed.*\n`, 'utf-8');
             return true;
         } catch (error) {
             console.error(`Failed to delete document ${id}:`, error);
@@ -119,16 +119,17 @@ class LegalContentService {
     }
 
     async publishDocument(id: string): Promise<LegalDocument | null> {
-        // For file-based implementation, publishing doesn't change anything
-        // In a real implementation, you might update a status field
-        console.log(`Publish document ${id} - not implemented for file-based storage`);
+        // For file-based storage, publishing means the document is already live
         return this.getDocumentById(id);
     }
 
     async archiveDocument(id: string): Promise<LegalDocument | null> {
-        // For file-based implementation, archiving doesn't change anything
-        // In a real implementation, you might move to an archive folder
-        console.log(`Archive document ${id} - not implemented for file-based storage`);
+        // For file-based storage, prepend an archived notice to the content
+        const doc = await this.getDocumentById(id);
+        if (doc) {
+            const archivedContent = `> **ARCHIVED** - This document has been archived.\n\n${doc.content}`;
+            await this.updateDocument(id, archivedContent);
+        }
         return this.getDocumentById(id);
     }
 

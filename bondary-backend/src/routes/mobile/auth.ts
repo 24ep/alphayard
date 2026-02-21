@@ -140,16 +140,25 @@ router.get('/me', authenticateToken as any, (req, res) => authController.getCurr
 router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
   try {
     // Use Prisma for profile lookup
-      const userResult = await prisma.$queryRaw<any[]>`
-      SELECT 
-        u.id, u.email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, 
-        user_type, circle_ids, is_onboarding_complete, 
-        preferences, preferences->>'role' as role, is_active, created_at, updated_at
-      FROM core.users u
-      WHERE u.id = ${req.user.id}
-    `;
-
-    const user = userResult[0];
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        phoneNumber: true,
+        dateOfBirth: true,
+        userType: true,
+        circleIds: true,
+        isOnboardingComplete: true,
+        preferences: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -159,29 +168,42 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
     }
 
     // Get user's circle using Prisma
-    const circleResult = await prisma.$queryRaw<any[]>`
-      SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM public.entity_relations er
-      LEFT JOIN public.unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
-      LIMIT 1
-    `;
+    const circleMember = await prisma.entityRelation.findFirst({
+      where: {
+        ownerId: user.id,
+        relationType: 'member_of'
+      },
+      select: {
+        targetId: true,
+        metadata: true
+      }
+    });
 
-    const circleMember = circleResult[0];
+    let circleData = null;
+    if (circleMember) {
+      // Note: UnifiedEntity is in appkit schema, not available here
+      // For now, just return basic circle info
+      circleData = {
+        circle_id: circleMember.targetId,
+        role: circleMember.metadata?.role,
+        name: null,
+        type: null
+      };
+    }
 
     res.json({
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        avatar: user.avatar_url,
-        phone: user.phone,
-        dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'circle',
-        circleIds: user.circle_ids || [],
-        isOnboardingComplete: user.is_onboarding_complete || false,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        avatar: user.avatarUrl,
+        phone: user.phoneNumber,
+        dateOfBirth: user.dateOfBirth,
+        userType: user.userType || 'circle',
+        circleIds: user.circleIds || [],
+        isOnboardingComplete: user.isOnboardingComplete || false,
         preferences: user.preferences || {
           notifications: true,
           locationSharing: true,
@@ -192,14 +214,15 @@ router.get('/profile', authenticateToken as any, async (req: any, res: any) => {
             categories: ['announcement', 'promotion']
           }
         },
-        role: user.role || 'user',
-        status: user.is_active ? 'active' : 'inactive',
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-        circleId: circleMember?.circle_id || null,
-        circleName: circleMember?.name || null,
-        circleRole: circleMember?.role || null
-      }
+        role: user.preferences?.role || 'user',
+        status: user.isActive ? 'active' : 'inactive',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        circleId: circleData?.circle_id || null,
+        circleName: circleData?.name || null,
+        circleRole: circleData?.role || null
+      },
+      circle: circleData
     });
 
   } catch (error) {
@@ -222,30 +245,23 @@ router.put('/profile', [
 ], authenticateToken as any, async (req: any, res: any) => {
   try {
     const { firstName, lastName, phone, dateOfBirth, avatar, preferences } = req.body;
+    const userId = req.user.id;
 
-    const fields = [];
-    const params = [req.user.id];
-    let idx = 2;
+    // Build update data object
+    const updateData: any = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (phone !== undefined) updateData.phoneNumber = phone;
+    if (dateOfBirth !== undefined) updateData.dateOfBirth = new Date(dateOfBirth);
+    if (avatar !== undefined) updateData.avatarUrl = avatar;
+    if (preferences !== undefined) updateData.preferences = preferences;
+    updateData.updatedAt = new Date();
 
-    if (firstName) { fields.push(`first_name = $${idx++}`); params.push(firstName); }
-    if (lastName) { fields.push(`last_name = $${idx++}`); params.push(lastName); }
-    if (phone !== undefined) { fields.push(`phone_number = $${idx++}`); params.push(phone); }
-    if (dateOfBirth) { fields.push(`date_of_birth = $${idx++}`); params.push(dateOfBirth); }
-    if (avatar !== undefined) { fields.push(`avatar_url = $${idx++}`); params.push(avatar); }
-    if (preferences) { fields.push(`preferences = $${idx++}`); params.push(JSON.stringify(preferences)); }
-
-    fields.push(`updated_at = $${idx++}`);
-    params.push(new Date().toISOString());
-
-    const updateQuery = `
-      UPDATE core.users 
-      SET ${fields.join(', ')} 
-      WHERE id = $1 
-      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, user_type, circle_ids, is_onboarding_complete, preferences, updated_at
-    `;
-
-    const userResult = await prisma.$queryRawUnsafe<any[]>(updateQuery, ...params);
-    const user = userResult[0];
+    // Update user using Prisma
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: updateData
+    });
 
     if (!user) {
       return res.status(404).json({
@@ -255,30 +271,42 @@ router.put('/profile', [
     }
 
     // Get user's circle
-    const circleResult = await prisma.$queryRaw<any[]>`
-      SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM public.entity_relations er
-      LEFT JOIN public.unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
-      LIMIT 1
-    `;
+    const circleMember = await prisma.entityRelation.findFirst({
+      where: {
+        ownerId: user.id,
+        relationType: 'member_of'
+      },
+      select: {
+        targetId: true,
+        metadata: true
+      }
+    });
 
-    const circleMember = circleResult[0];
+    let circleData = null;
+    if (circleMember) {
+      // Note: UnifiedEntity is in appkit schema, not available here
+      circleData = {
+        circle_id: circleMember.targetId,
+        role: circleMember.metadata?.role,
+        name: null,
+        type: null
+      };
+    }
 
     res.json({
       message: 'Profile updated successfully',
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        avatar: user.avatar_url,
-        phone: user.phone,
-        dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'circle',
-        circleIds: user.circle_ids || [],
-        isOnboardingComplete: user.is_onboarding_complete || false,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        avatar: user.avatarUrl,
+        phone: user.phoneNumber,
+        dateOfBirth: user.dateOfBirth,
+        userType: user.userType || 'circle',
+        circleIds: user.circleIds || [],
+        isOnboardingComplete: user.isOnboardingComplete || false,
         preferences: user.preferences || {
           notifications: true,
           locationSharing: true,
@@ -289,11 +317,11 @@ router.put('/profile', [
             categories: ['announcement', 'promotion']
           }
         },
-        updatedAt: user.updated_at,
-        circleId: circleMember?.circle_id || null,
-        circleName: circleMember?.name || null,
-        circleRole: circleMember?.role || null
-      }
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+      circle: circleData
     });
 
   } catch (error) {
@@ -309,14 +337,13 @@ router.put('/profile', [
 router.post('/onboarding/complete', authenticateToken as any, async (req: any, res: any) => {
   try {
     // Update user's onboarding status using Prisma
-    const updateResult = await prisma.$queryRaw<any[]>`
-      UPDATE core.users 
-      SET is_onboarding_complete = true, updated_at = ${new Date().toISOString()}
-      WHERE id = ${req.user.id}
-      RETURNING id, email, first_name, last_name, avatar_url, phone_number as phone, date_of_birth, user_type, is_onboarding_complete, preferences, created_at, updated_at
-    `;
-
-    const user = updateResult[0];
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        isOnboardingComplete: true,
+        updatedAt: new Date()
+      }
+    });
 
     if (!user) {
       return res.status(500).json({
@@ -326,30 +353,42 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
     }
 
     // Get user's circle
-    const circleResult = await prisma.$queryRaw<any[]>`
-      SELECT er.target_id as circle_id, er.metadata->>'role' as role, e.data->>'name' as name, e.data->>'type' as type
-      FROM public.entity_relations er
-      LEFT JOIN public.unified_entities e ON er.target_id = e.id
-      WHERE er.source_id = ${user.id} AND er.relation_type = 'member_of'
-      LIMIT 1
-    `;
+    const circleMember = await prisma.entityRelation.findFirst({
+      where: {
+        ownerId: user.id,
+        relationType: 'member_of'
+      },
+      select: {
+        targetId: true,
+        metadata: true
+      }
+    });
 
-    const circleMember = circleResult[0];
+    let circleData = null;
+    if (circleMember) {
+      // Note: UnifiedEntity is in appkit schema, not available here
+      circleData = {
+        circle_id: circleMember.targetId,
+        role: circleMember.metadata?.role,
+        name: null,
+        type: null
+      };
+    }
 
     res.json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        avatar: user.avatar_url,
-        phone: user.phone_number,
-        dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'circle',
-        circleIds: circleMember?.circle_id ? [circleMember.circle_id] : [],
-        isOnboardingComplete: user.is_onboarding_complete || true,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        avatar: user.avatarUrl,
+        phone: user.phoneNumber,
+        dateOfBirth: user.dateOfBirth,
+        userType: user.userType || 'circle',
+        circleIds: user.circleIds || [],
+        isOnboardingComplete: user.isOnboardingComplete || true,
         preferences: user.preferences || {
           notifications: true,
           locationSharing: true,
@@ -360,12 +399,14 @@ router.post('/onboarding/complete', authenticateToken as any, async (req: any, r
             categories: ['announcement', 'promotion']
           }
         },
-        createdAt: user.created_at,
-        updatedAt: user.updated_at,
-        circleId: circleMember?.circle_id || null,
-        circleName: circleMember?.name || null,
-        circleRole: circleMember?.role || null
-      }
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        circleId: circleData?.circle_id || null,
+        circleName: circleData?.name || null,
+        circleRole: circleData?.role || null
+      },
+      circle: circleData
     });
 
   } catch (error) {
@@ -394,10 +435,10 @@ router.post('/forgot-password', [
     const { email } = req.body;
 
     // Find user by email using Prisma
-    const userResult = await prisma.$queryRaw<any[]>`
-      SELECT id, email, first_name, last_name FROM core.users WHERE email = ${email.toLowerCase()}
-    `;
-    const user = userResult[0];
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      select: { id: true, email: true, firstName: true, lastName: true }
+    });
 
     // Always return success to prevent email enumeration attacks
     if (!user) {
@@ -509,11 +550,13 @@ router.post('/reset-password', [
 
     // Update user password using Prisma
     try {
-      await prisma.$executeRaw`
-        UPDATE core.users 
-        SET password_hash = ${hashedPassword}, updated_at = ${new Date().toISOString()}
-        WHERE id = ${resetTokenData.user_id}::uuid
-      `;
+      await prisma.user.update({
+        where: { id: resetTokenData.user_id },
+        data: {
+          passwordHash: hashedPassword,
+          updatedAt: new Date()
+        }
+      });
     } catch (updateError) {
       console.error('Failed to update password:', updateError);
       return res.status(500).json({

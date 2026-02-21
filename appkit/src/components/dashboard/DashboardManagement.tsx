@@ -64,64 +64,14 @@ export const DashboardManagement: React.FC<DashboardManagementProps> = ({ onBack
   const loadDashboards = async () => {
     try {
       setLoading(true)
-      // Mock data for now - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockDashboards = [
-        {
-          id: '1',
-          name: 'Main Dashboard',
-          description: 'Primary dashboard for Circle management',
-          isDefault: true,
-          widgets: [
-            { id: 'w1', type: 'stats', title: 'Circle Stats', position: { x: 0, y: 0, w: 6, h: 4 }, config: {} },
-            { id: 'w2', type: 'chart', title: 'Activity Chart', position: { x: 6, y: 0, w: 6, h: 4 }, config: {} }
-          ],
-          createdAt: '2024-01-01',
-          updatedAt: '2024-01-15'
-        },
-        {
-          id: '2',
-          name: 'Analytics Dashboard',
-          description: 'Detailed analytics and reporting',
-          isDefault: false,
-          widgets: [
-            { id: 'w3', type: 'chart', title: 'User Engagement', position: { x: 0, y: 0, w: 12, h: 6 }, config: {} },
-            { id: 'w4', type: 'table', title: 'Recent Activity', position: { x: 0, y: 6, w: 12, h: 4 }, config: {} }
-          ],
-          createdAt: '2024-01-10',
-          updatedAt: '2024-01-12'
-        },
-        {
-          id: '3',
-          name: 'Content Management',
-          description: 'Manage Circle content and media',
-          isDefault: false,
-          widgets: [
-            { id: 'w5', type: 'table', title: 'Content Library', position: { x: 0, y: 0, w: 8, h: 5 }, config: {} },
-            { id: 'w6', type: 'stats', title: 'Storage Usage', position: { x: 8, y: 0, w: 4, h: 5 }, config: {} }
-          ],
-          createdAt: '2024-01-05',
-          updatedAt: '2024-01-08'
-        },
-        {
-          id: '4',
-          name: 'User Activity',
-          description: 'Monitor user engagement and activity',
-          isDefault: false,
-          widgets: [
-            { id: 'w7', type: 'chart', title: 'Daily Active Users', position: { x: 0, y: 0, w: 6, h: 4 }, config: {} },
-            { id: 'w8', type: 'stats', title: 'Session Metrics', position: { x: 6, y: 0, w: 6, h: 4 }, config: {} },
-            { id: 'w9', type: 'table', title: 'Recent Logins', position: { x: 0, y: 4, w: 12, h: 4 }, config: {} }
-          ],
-          createdAt: '2024-01-03',
-          updatedAt: '2024-01-06'
+      const res = await fetch('/api/admin/dashboard/list');
+      if (res.ok) {
+        const data = await res.json();
+        const loadedDashboards = data.dashboards || data || [];
+        setDashboards(loadedDashboards);
+        if (loadedDashboards.length > 0) {
+          setSelectedDashboard(loadedDashboards[0]);
         }
-      ]
-      
-      setDashboards(mockDashboards)
-      if (mockDashboards.length > 0) {
-        setSelectedDashboard(mockDashboards[0])
       }
     } catch (error) {
       console.error('Error loading dashboards:', error)

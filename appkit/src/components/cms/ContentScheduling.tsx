@@ -148,89 +148,32 @@ export const ContentScheduling: React.FC<ContentSchedulingProps> = ({
       setLoading(true)
       setError(null)
       
-      // TODO: Replace with actual API calls
-      const mockSchedules: ContentSchedule[] = [
-        {
-          id: 's1',
-          contentId,
-          content,
-          scheduledAt: new Date(Date.now() + 86400000).toISOString(),
-          status: 'scheduled',
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          retryCount: 0,
-          maxRetries: 3,
-          metadata: {
-            platforms: ['web', 'mobile'],
-            priority: 'high',
-            autoPromote: true,
-            socialMedia: {
-              twitter: true,
-              facebook: false,
-              linkedin: true,
-              instagram: false
-            }
-          }
-        }
-      ]
+      // Fetch schedules from CMS API
+      const [schedulesRes, workflowsRes] = await Promise.allSettled([
+        fetch(`/api/admin/cms/content/${contentId}/schedules`),
+        fetch(`/api/admin/cms/content/${contentId}/workflows`)
+      ]);
       
-      const mockWorkflows: ContentWorkflow[] = [
-        {
-          id: 'w1',
-          contentId,
-          name: 'Standard Publishing Workflow',
-          description: 'Standard workflow for content publishing',
-          status: 'active',
-          currentStepIndex: 1,
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          steps: [
-            {
-              id: 'step1',
-              name: 'Content Review',
-              description: 'Review content for accuracy and quality',
-              type: 'review',
-              assignedTo: 'user2',
-              assignedToName: 'Jane Smith',
-              status: 'completed',
-              completedAt: new Date(Date.now() - 3600000).toISOString(),
-              completedBy: 'user2',
-              completedByName: 'Jane Smith',
-              comments: 'Content looks good, ready for approval'
-            },
-            {
-              id: 'step2',
-              name: 'Editorial Approval',
-              description: 'Final editorial approval',
-              type: 'approval',
-              assignedTo: 'user3',
-              assignedToName: 'Mike Johnson',
-              status: 'in_progress',
-              dueDate: new Date(Date.now() + 86400000).toISOString()
-            },
-            {
-              id: 'step3',
-              name: 'Publish',
-              description: 'Publish content to all platforms',
-              type: 'publish',
-              status: 'pending'
-            }
-          ]
-        }
-      ]
+      if (schedulesRes.status === 'fulfilled' && schedulesRes.value.ok) {
+        const data = await schedulesRes.value.json();
+        setSchedules(data.schedules || data || []);
+      } else {
+        setSchedules([]);
+      }
       
-      setSchedules(mockSchedules)
-      setWorkflows(mockWorkflows)
+      if (workflowsRes.status === 'fulfilled' && workflowsRes.value.ok) {
+        const data = await workflowsRes.value.json();
+        setWorkflows(data.workflows || data || []);
+      } else {
+        setWorkflows([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load scheduling data')
     } finally {
       setLoading(false)
     }
   }, [contentId, content])
+
 
   // Create schedule
   const handleCreateSchedule = useCallback(async () => {

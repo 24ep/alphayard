@@ -16,7 +16,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  schemas  = ["core", "admin", "bondarys"]
+  schemas  = ["public", "admin", "bondarys"]
 }
 
 // ####################################################################################
@@ -66,7 +66,7 @@ model Application {
   userGroups            UserGroup[]
 
   @@map("applications")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -74,80 +74,87 @@ model Application {
 // ============================================================================
 
 model User {
-  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String    @unique @db.VarChar(255)
-  passwordHash String?   @map("password_hash") @db.VarChar(255)
-  firstName    String    @map("first_name") @db.VarChar(100)
-  lastName     String    @map("last_name") @db.VarChar(100)
-  phoneNumber  String?   @map("phone_number") @db.VarChar(20)
-  avatarUrl    String?   @map("avatar_url") @db.Text
-  dateOfBirth  DateTime? @map("date_of_birth") @db.Date
-  gender       String?   @db.VarChar(20)
-  bio          String?   @db.Text
-  userType     String    @default("user") @map("user_type") @db.VarChar(50)
-  circleIds    String[]  @default([]) @map("circle_ids")
-  isOnboardingComplete Boolean? @default(false) @map("is_onboarding_complete")
-  preferences  Json      @default("{}")
-  isActive     Boolean   @default(true) @map("is_active")
-  isVerified   Boolean   @default(false) @map("is_verified")
-  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz
-  lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
-  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                String    @unique @db.VarChar(255)
+  passwordHash         String?   @map("password_hash") @db.VarChar(255)
+  firstName            String    @map("first_name") @db.VarChar(100)
+  lastName             String    @map("last_name") @db.VarChar(100)
+  phoneNumber          String?   @map("phone_number") @db.VarChar(20)
+  avatarUrl            String?   @map("avatar_url") @db.Text
+  dateOfBirth          DateTime? @map("date_of_birth") @db.Date
+  gender               String?   @db.VarChar(20)
+  bio                  String?   @db.Text
+  username             String?   @db.VarChar(50)
+  displayName          String?   @map("display_name") @db.VarChar(255)
+  followersCount       Int       @default(0) @map("followers_count")
+  followingCount       Int       @default(0) @map("following_count")
+  userType             String    @default("user") @map("user_type") @db.VarChar(50)
+  circleIds            String[]  @default([]) @map("circle_ids")
+  isOnboardingComplete Boolean?  @default(false) @map("is_onboarding_complete")
+  preferences          Json      @default("{}")
+  isActive             Boolean   @default(true) @map("is_active")
+  isVerified           Boolean   @default(false) @map("is_verified")
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamptz
+  lastLoginAt          DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
-  userApplications   UserApplication[]
-  userSessions       UserSession[]
-  userDevices        UserDevice[]
-  loginHistory       LoginHistory[]
-  userSettings       UserSettings[]
-  files              File[]
-  fileFolders        FileFolder[]
-  galleryItems       GalleryItem[]
-  galleryAlbums      GalleryAlbum[]
-  notifications      Notification[]
-  userPushTokens     UserPushToken[]
-  subscriptions      Subscription[]
-  userMFA            UserMFA[]
-  userGroupMembers   UserGroupMember[]
+  userApplications       UserApplication[]
+  userSessions           UserSession[]
+  userDevices            UserDevice[]
+  loginHistory           LoginHistory[]
+  userSettings           UserSettings[]
+  files                  File[]
+  fileFolders            FileFolder[]
+  galleryItems           GalleryItem[]
+  galleryAlbums          GalleryAlbum[]
+  notifications          Notification[]
+  userPushTokens         UserPushToken[]
+  subscriptions          Subscription[]
+  userMFA                UserMFA[]
+  userGroupMembers       UserGroupMember[]
   // Bondarys relations
-  ownedCircles       Circle[]           @relation("CircleOwner")
-  circleMemberships  CircleMember[]
-  circleInvitations  CircleMember[]     @relation("CircleInviter")
-  emergencyContacts  EmergencyContact[]
-  safetyIncidents    SafetyIncident[]   @relation("IncidentUser")
-  resolvedIncidents  SafetyIncident[]   @relation("IncidentResolver")
-  socialPosts        SocialPost[]
-  socialComments     SocialComment[]
-  socialReactions    SocialReaction[]
-  socialStories      SocialStory[]
-  storyViews         SocialStoryView[]
-  followers          UserFollow[]       @relation("Following")
-  following          UserFollow[]       @relation("Follower")
-  sentFriendRequests FriendRequest[]    @relation("FriendRequestSender")
-  receivedFriendRequests FriendRequest[] @relation("FriendRequestReceiver")
-  chatRoomsCreated   ChatRoom[]
-  chatParticipations ChatParticipant[]
-  chatMessages       ChatMessage[]
-  chatReadReceipts   ChatReadReceipt[]
-  chatReactions      ChatReaction[]
-  userLocations      UserLocation[]
-  geofences          Geofence[]
-  locationShares     LocationShare[]    @relation("LocationSharer")
-  sharedLocations    LocationShare[]    @relation("LocationReceiver")
-  notes              Note[]
-  todos              Todo[]
-  assignedTodos      Todo[]             @relation("TodoAssignee")
-  sentCircleInvitations CircleInvitation[] @relation("CircleInvitationInviter")
-  socialReports      SocialReport[]     @relation("SocialReportReporter")
-  socialActivities   SocialActivity[]   @relation("SocialActivityUser")
-  entityRelations    EntityRelation[]   @relation("EntityRelationOwner")
+  ownedCircles           Circle[]           @relation("CircleOwner")
+  circleMemberships      CircleMember[]
+  circleInvitations      CircleMember[]     @relation("CircleInviter")
+  emergencyContacts      EmergencyContact[]
+  safetyIncidents        SafetyIncident[]   @relation("IncidentUser")
+  resolvedIncidents      SafetyIncident[]   @relation("IncidentResolver")
+  socialPosts            SocialPost[]
+  socialComments         SocialComment[]
+  socialReactions        SocialReaction[]
+  socialStories          SocialStory[]
+  storyViews             SocialStoryView[]
+  followers              UserFollow[]       @relation("Following")
+  following              UserFollow[]       @relation("Follower")
+  sentFriendRequests     FriendRequest[]    @relation("FriendRequestSender")
+  receivedFriendRequests FriendRequest[]    @relation("FriendRequestReceiver")
+  chatRoomsCreated       ChatRoom[]
+  chatParticipations     ChatParticipant[]
+  chatMessages           ChatMessage[]
+  chatReadReceipts       ChatReadReceipt[]
+  chatReactions          ChatReaction[]
+  userLocations          UserLocation[]
+  geofences              Geofence[]
+  locationShares         LocationShare[]    @relation("LocationSharer")
+  sharedLocations        LocationShare[]    @relation("LocationReceiver")
+  notes                  Note[]
+  todos                  Todo[]
+  assignedTodos          Todo[]             @relation("TodoAssignee")
+  sentCircleInvitations  CircleInvitation[] @relation("CircleInvitationInviter")
+  socialReports          SocialReport[]     @relation("SocialReportReporter")
+  socialActivities       SocialActivity[]   @relation("SocialActivityUser")
+  entityRelations        EntityRelation[]   @relation("EntityRelationOwner")
+  fileTags               FileTag[]
+  fileShares             FileShare[]
+  fileRecentAccesses     FileRecentAccess[]
 
   @@index([email])
   @@index([isActive])
   @@index([phoneNumber])
   @@map("users")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -173,7 +180,7 @@ model UserApplication {
   @@index([userId])
   @@index([applicationId])
   @@map("user_applications")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -191,7 +198,7 @@ model Country {
   isActive     Boolean @default(true) @map("is_active")
 
   @@map("countries")
-  @@schema("core")
+  @@schema("public")
 }
 
 model Language {
@@ -203,7 +210,7 @@ model Language {
   isActive   Boolean @default(true) @map("is_active")
 
   @@map("languages")
-  @@schema("core")
+  @@schema("public")
 }
 
 model Currency {
@@ -215,7 +222,7 @@ model Currency {
   isActive      Boolean @default(true) @map("is_active")
 
   @@map("currencies")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -228,14 +235,14 @@ model UserSession {
   applicationId  String?   @map("application_id") @db.Uuid
   sessionToken   String?   @map("session_token") @db.VarChar(255)
   refreshToken   String?   @map("refresh_token") @db.VarChar(255)
-  tokenHash      String?    @map("token_hash") @db.VarChar(255)
+  tokenHash      String?   @map("token_hash") @db.VarChar(255)
   deviceId       String?   @map("device_id") @db.Uuid
   deviceType     String?   @map("device_type") @db.VarChar(50)
   deviceName     String?   @map("device_name") @db.VarChar(255)
   browser        String?   @db.VarChar(50)
   browserVersion String?   @map("browser_version") @db.VarChar(50)
   os             String?   @db.VarChar(50)
-  osVersion     String?   @map("os_version") @db.VarChar(50)
+  osVersion      String?   @map("os_version") @db.VarChar(50)
   ipAddress      String?   @map("ip_address") @db.Inet
   country        String?   @db.VarChar(100)
   city           String?   @db.VarChar(100)
@@ -257,40 +264,40 @@ model UserSession {
   @@index([sessionToken])
   @@index([refreshToken])
   @@map("user_sessions")
-  @@schema("core")
+  @@schema("public")
 }
 
 model UserDevice {
-  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  applicationId   String?   @map("application_id") @db.Uuid
-  deviceFingerprint String? @map("device_fingerprint") @db.VarChar(255)
-  deviceName      String?   @map("device_name") @db.VarChar(255)
-  deviceType      String?   @map("device_type") @db.VarChar(50)
-  brand           String?   @db.VarChar(50)
-  model           String?   @db.VarChar(50)
-  os              String?   @db.VarChar(50)
-  osVersion       String?   @map("os_version") @db.VarChar(50)
-  browser         String?   @db.VarChar(50)
-  browserVersion  String?   @map("browser_version") @db.VarChar(50)
-  pushToken       String?   @map("push_token") @db.Text
-  pushEnabled     Boolean   @default(false) @map("push_enabled")
-  isTrusted       Boolean   @default(false) @map("is_trusted")
-  isCurrent       Boolean   @default(false) @map("is_current")
-  trustLevel      Int       @default(1) @map("trust_level")
-  firstSeenAt     DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz
-  lastSeenAt      DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
-  lastIpAddress   String?   @map("last_ip_address") @db.VarChar(50)
-  lastLocationCountry String? @map("last_location_country") @db.VarChar(100)
-  lastLocationCity    String? @map("last_location_city") @db.VarChar(100)
-  loginCount      Int       @default(0) @map("login_count")
-  failedLoginCount Int      @default(0) @map("failed_login_count")
-  isActive        Boolean   @default(true) @map("is_active")
-  isBlocked       Boolean   @default(false) @map("is_blocked")
-  blockedAt       DateTime? @map("blocked_at") @db.Timestamptz
-  blockedReason   String?   @map("blocked_reason") @db.Text
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  applicationId       String?   @map("application_id") @db.Uuid
+  deviceFingerprint   String?   @map("device_fingerprint") @db.VarChar(255)
+  deviceName          String?   @map("device_name") @db.VarChar(255)
+  deviceType          String?   @map("device_type") @db.VarChar(50)
+  brand               String?   @db.VarChar(50)
+  model               String?   @db.VarChar(50)
+  os                  String?   @db.VarChar(50)
+  osVersion           String?   @map("os_version") @db.VarChar(50)
+  browser             String?   @db.VarChar(50)
+  browserVersion      String?   @map("browser_version") @db.VarChar(50)
+  pushToken           String?   @map("push_token") @db.Text
+  pushEnabled         Boolean   @default(false) @map("push_enabled")
+  isTrusted           Boolean   @default(false) @map("is_trusted")
+  isCurrent           Boolean   @default(false) @map("is_current")
+  trustLevel          Int       @default(1) @map("trust_level")
+  firstSeenAt         DateTime  @default(now()) @map("first_seen_at") @db.Timestamptz
+  lastSeenAt          DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz
+  lastIpAddress       String?   @map("last_ip_address") @db.VarChar(50)
+  lastLocationCountry String?   @map("last_location_country") @db.VarChar(100)
+  lastLocationCity    String?   @map("last_location_city") @db.VarChar(100)
+  loginCount          Int       @default(0) @map("login_count")
+  failedLoginCount    Int       @default(0) @map("failed_login_count")
+  isActive            Boolean   @default(true) @map("is_active")
+  isBlocked           Boolean   @default(false) @map("is_blocked")
+  blockedAt           DateTime? @map("blocked_at") @db.Timestamptz
+  blockedReason       String?   @map("blocked_reason") @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
@@ -298,49 +305,49 @@ model UserDevice {
   @@index([userId])
   @@index([deviceFingerprint])
   @@map("user_devices")
-  @@schema("core")
+  @@schema("public")
 }
 
 model UserMFA {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId                  String    @map("user_id") @db.Uuid
-  mfaType                 String    @map("mfa_type") @db.VarChar(50)
-  isEnabled               Boolean   @default(false) @map("is_enabled")
-  isPrimary               Boolean   @default(false) @map("is_primary")
-  totpSecret              String?   @map("totp_secret") @db.Text
-  totpVerifiedAt          DateTime? @map("totp_verified_at") @db.Timestamptz
-  phoneNumber             String?   @map("phone_number") @db.VarChar(20)
-  email                   String?   @db.VarChar(255)
-  backupCodes             Json?     @map("backup_codes")
-  backupCodesGeneratedAt  DateTime? @map("backup_codes_generated_at") @db.Timestamptz
-  backupCodesUsed         Int       @default(0) @map("backup_codes_used")
-  lastUsedAt              DateTime? @map("last_used_at") @db.Timestamptz
-  useCount                Int       @default(0) @map("use_count")
-  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId                 String    @map("user_id") @db.Uuid
+  mfaType                String    @map("mfa_type") @db.VarChar(50)
+  isEnabled              Boolean   @default(false) @map("is_enabled")
+  isPrimary              Boolean   @default(false) @map("is_primary")
+  totpSecret             String?   @map("totp_secret") @db.Text
+  totpVerifiedAt         DateTime? @map("totp_verified_at") @db.Timestamptz
+  phoneNumber            String?   @map("phone_number") @db.VarChar(20)
+  email                  String?   @db.VarChar(255)
+  backupCodes            Json?     @map("backup_codes")
+  backupCodesGeneratedAt DateTime? @map("backup_codes_generated_at") @db.Timestamptz
+  backupCodesUsed        Int       @default(0) @map("backup_codes_used")
+  lastUsedAt             DateTime? @map("last_used_at") @db.Timestamptz
+  useCount               Int       @default(0) @map("use_count")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, mfaType])
   @@index([userId])
   @@map("user_mfa")
-  @@schema("core")
+  @@schema("public")
 }
 
 model SecurityPolicy {
-  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  applicationId           String?  @map("application_id") @db.Uuid
-  policyName              String   @map("policy_name") @db.VarChar(100)
-  policyType              String   @default("default") @map("policy_type") @db.VarChar(50)
-  isActive                Boolean  @default(true) @map("is_active")
-  priority                Int      @default(0)
-  passwordMinLength      Int      @default(8) @map("password_min_length")
-  passwordMaxLength      Int      @default(128) @map("password_max_length")
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId            String?  @map("application_id") @db.Uuid
+  policyName               String   @map("policy_name") @db.VarChar(100)
+  policyType               String   @default("default") @map("policy_type") @db.VarChar(50)
+  isActive                 Boolean  @default(true) @map("is_active")
+  priority                 Int      @default(0)
+  passwordMinLength        Int      @default(8) @map("password_min_length")
+  passwordMaxLength        Int      @default(128) @map("password_max_length")
   passwordRequireUppercase Boolean  @default(true) @map("password_require_uppercase")
   passwordRequireLowercase Boolean  @default(true) @map("password_require_lowercase")
   passwordRequireNumber    Boolean  @default(true) @map("password_require_number")
   passwordRequireSpecial   Boolean  @default(true) @map("password_require_special")
-  passwordHistoryCount    Int      @default(5) @map("password_history_count")
+  passwordHistoryCount     Int      @default(5) @map("password_history_count")
   passwordExpiryDays       Int      @default(90) @map("password_expiry_days")
   lockoutEnabled           Boolean  @default(true) @map("lockout_enabled")
   lockoutThreshold         Int      @default(5) @map("lockout_threshold")
@@ -349,45 +356,45 @@ model SecurityPolicy {
   sessionTimeoutMinutes    Int      @default(1440) @map("session_timeout_minutes")
   sessionMaxConcurrent     Int      @default(5) @map("session_max_concurrent")
   mfaRequired              Boolean  @default(false) @map("mfa_required")
-  mfaRequiredForRoles     String[] @default([]) @map("mfa_required_for_roles")
+  mfaRequiredForRoles      String[] @default([]) @map("mfa_required_for_roles")
   mfaRememberDeviceDays    Int      @default(30) @map("mfa_remember_device_days")
-  mfaAllowedTypes         String[] @default(["totp"]) @map("mfa_allowed_types")
-  ipWhitelist             String[] @default([]) @map("ip_whitelist")
-  ipBlacklist             String[] @default([]) @map("ip_blacklist")
-  ipGeoWhitelist          String[] @default([]) @map("ip_geo_whitelist")
-  ipGeoBlacklist          String[] @default([]) @map("ip_geo_blacklist")
-  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt               DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  mfaAllowedTypes          String[] @default(["totp"]) @map("mfa_allowed_types")
+  ipWhitelist              String[] @default([]) @map("ip_whitelist")
+  ipBlacklist              String[] @default([]) @map("ip_blacklist")
+  ipGeoWhitelist           String[] @default([]) @map("ip_geo_whitelist")
+  ipGeoBlacklist           String[] @default([]) @map("ip_geo_blacklist")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
 
   @@index([applicationId])
   @@map("security_policies")
-  @@schema("core")
+  @@schema("public")
 }
 
 model UserGroup {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  applicationId   String?  @map("application_id") @db.Uuid
-  name            String   @db.VarChar(100)
-  slug            String   @unique @db.VarChar(100)
-  description     String?  @db.Text
-  roleId          String?  @map("role_id") @db.Uuid
-  permissions     Json     @default("[]")
-  isSystem        Boolean  @default(false) @map("is_system")
-  isDefault       Boolean  @default(false) @map("is_default")
-  metadata        Json     @default("{}")
-  color           String?  @db.VarChar(20)
-  icon            String?  @db.VarChar(50)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId String?  @map("application_id") @db.Uuid
+  name          String   @db.VarChar(100)
+  slug          String   @unique @db.VarChar(100)
+  description   String?  @db.Text
+  roleId        String?  @map("role_id") @db.Uuid
+  permissions   Json     @default("[]")
+  isSystem      Boolean  @default(false) @map("is_system")
+  isDefault     Boolean  @default(false) @map("is_default")
+  metadata      Json     @default("{}")
+  color         String?  @db.VarChar(20)
+  icon          String?  @db.VarChar(50)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  application Application?      @relation(fields: [applicationId], references: [id], onDelete: SetNull)
   members     UserGroupMember[]
 
   @@index([applicationId])
   @@map("user_groups")
-  @@schema("core")
+  @@schema("public")
 }
 
 model UserGroupMember {
@@ -405,37 +412,37 @@ model UserGroupMember {
   @@index([groupId])
   @@index([userId])
   @@map("user_group_members")
-  @@schema("core")
+  @@schema("public")
 }
 
 model IdentityAuditLog {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  actorType       String   @map("actor_type") @db.VarChar(50)
-  actorId         String?  @map("actor_id") @db.Uuid
-  actorEmail      String?  @map("actor_email") @db.VarChar(255)
-  targetType      String   @map("target_type") @db.VarChar(50)
-  targetId        String?  @map("target_id") @db.Uuid
-  targetEmail     String?  @map("target_email") @db.VarChar(255)
-  action          String   @db.VarChar(100)
-  actionCategory  String?  @map("action_category") @db.VarChar(50)
-  description     String?  @db.Text
-  oldValue        Json?    @map("old_value")
-  newValue        Json?    @map("new_value")
-  metadata        Json?
-  ipAddress       String?  @map("ip_address") @db.VarChar(50)
-  userAgent       String?  @map("user_agent") @db.Text
-  deviceId        String?  @map("device_id") @db.Uuid
-  sessionId       String?  @map("session_id") @db.Uuid
-  status          String   @default("success") @db.VarChar(20)
-  errorMessage    String?  @map("error_message") @db.Text
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorType      String   @map("actor_type") @db.VarChar(50)
+  actorId        String?  @map("actor_id") @db.Uuid
+  actorEmail     String?  @map("actor_email") @db.VarChar(255)
+  targetType     String   @map("target_type") @db.VarChar(50)
+  targetId       String?  @map("target_id") @db.Uuid
+  targetEmail    String?  @map("target_email") @db.VarChar(255)
+  action         String   @db.VarChar(100)
+  actionCategory String?  @map("action_category") @db.VarChar(50)
+  description    String?  @db.Text
+  oldValue       Json?    @map("old_value")
+  newValue       Json?    @map("new_value")
+  metadata       Json?
+  ipAddress      String?  @map("ip_address") @db.VarChar(50)
+  userAgent      String?  @map("user_agent") @db.Text
+  deviceId       String?  @map("device_id") @db.Uuid
+  sessionId      String?  @map("session_id") @db.Uuid
+  status         String   @default("success") @db.VarChar(20)
+  errorMessage   String?  @map("error_message") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([actorId])
   @@index([targetId])
   @@index([action])
   @@index([createdAt])
   @@map("identity_audit_log")
-  @@schema("core")
+  @@schema("public")
 }
 
 model OAuthProvider {
@@ -468,33 +475,33 @@ model OAuthProvider {
 
   @@index([applicationId])
   @@map("oauth_providers")
-  @@schema("core")
+  @@schema("public")
 }
 
 model LoginHistory {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  applicationId   String?  @map("application_id") @db.Uuid
-  email           String?  @db.VarChar(255)
-  username        String?  @db.VarChar(100)
-  loginMethod     String?  @map("login_method") @db.VarChar(50)
-  socialProvider  String?  @map("social_provider") @db.VarChar(50)
-  success         Boolean  @default(true)
-  failureReason   String?  @map("failure_reason") @db.Text
-  ipAddress       String?  @map("ip_address") @db.Inet
-  userAgent       String?  @map("user_agent") @db.Text
-  deviceType      String?  @map("device_type") @db.VarChar(50)
-  deviceId        String?  @map("device_id") @db.Uuid
-  country         String?  @db.VarChar(100)
-  city            String?  @db.VarChar(100)
-  mfaRequired     Boolean  @default(false) @map("mfa_required")
-  mfaMethod       String?  @map("mfa_method") @db.VarChar(50)
-  mfaSuccess      Boolean? @map("mfa_success")
-  riskScore       Int      @default(0) @map("risk_score")
-  isSuspicious    Boolean  @default(false) @map("is_suspicious")
-  suspiciousReason String? @map("suspicious_reason") @db.Text
-  sessionId       String?  @map("session_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  applicationId    String?  @map("application_id") @db.Uuid
+  email            String?  @db.VarChar(255)
+  username         String?  @db.VarChar(100)
+  loginMethod      String?  @map("login_method") @db.VarChar(50)
+  socialProvider   String?  @map("social_provider") @db.VarChar(50)
+  success          Boolean  @default(true)
+  failureReason    String?  @map("failure_reason") @db.Text
+  ipAddress        String?  @map("ip_address") @db.Inet
+  userAgent        String?  @map("user_agent") @db.Text
+  deviceType       String?  @map("device_type") @db.VarChar(50)
+  deviceId         String?  @map("device_id") @db.Uuid
+  country          String?  @db.VarChar(100)
+  city             String?  @db.VarChar(100)
+  mfaRequired      Boolean  @default(false) @map("mfa_required")
+  mfaMethod        String?  @map("mfa_method") @db.VarChar(50)
+  mfaSuccess       Boolean? @map("mfa_success")
+  riskScore        Int      @default(0) @map("risk_score")
+  isSuspicious     Boolean  @default(false) @map("is_suspicious")
+  suspiciousReason String?  @map("suspicious_reason") @db.Text
+  sessionId        String?  @map("session_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
@@ -502,7 +509,7 @@ model LoginHistory {
   @@index([userId])
   @@index([createdAt])
   @@map("login_history")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -527,7 +534,7 @@ model UserSettings {
 
   @@unique([userId, applicationId])
   @@map("user_settings")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -535,34 +542,37 @@ model UserSettings {
 // ============================================================================
 
 model File {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  applicationId   String?  @map("application_id") @db.Uuid
-  folderId        String?  @map("folder_id") @db.Uuid
-  filename        String   @db.VarChar(255)
-  originalFilename String? @map("original_filename") @db.VarChar(255)
-  mimeType        String?  @map("mime_type") @db.VarChar(100)
-  fileSize        BigInt?  @map("file_size")
-  storagePath     String   @map("storage_path") @db.Text
-  storageProvider String   @default("local") @map("storage_provider") @db.VarChar(50)
-  url             String?  @db.Text
-  thumbnailUrl    String?  @map("thumbnail_url") @db.Text
-  metadata        Json     @default("{}")
-  isPublic        Boolean  @default(false) @map("is_public")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  applicationId    String?  @map("application_id") @db.Uuid
+  folderId         String?  @map("folder_id") @db.Uuid
+  filename         String   @db.VarChar(255)
+  originalFilename String?  @map("original_filename") @db.VarChar(255)
+  mimeType         String?  @map("mime_type") @db.VarChar(100)
+  fileSize         BigInt?  @map("file_size")
+  storagePath      String   @map("storage_path") @db.Text
+  storageProvider  String   @default("local") @map("storage_provider") @db.VarChar(50)
+  url              String?  @db.Text
+  thumbnailUrl     String?  @map("thumbnail_url") @db.Text
+  metadata         Json     @default("{}")
+  isPublic         Boolean  @default(false) @map("is_public")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  application Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  folder      FileFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  galleryItem GalleryItem?
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  application        Application?        @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  folder             FileFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  galleryItem        GalleryItem?
+  fileTagAssignments FileTagAssignment[]
+  fileShares         FileShare[]
+  fileRecentAccesses FileRecentAccess[]
 
   @@index([userId])
   @@index([applicationId])
   @@index([folderId])
   @@index([mimeType])
   @@map("files")
-  @@schema("core")
+  @@schema("public")
 }
 
 model FileFolder {
@@ -583,7 +593,7 @@ model FileFolder {
   files       File[]
 
   @@map("file_folders")
-  @@schema("core")
+  @@schema("public")
 }
 
 model GalleryItem {
@@ -608,7 +618,7 @@ model GalleryItem {
   @@index([userId])
   @@index([albumId])
   @@map("gallery_items")
-  @@schema("core")
+  @@schema("public")
 }
 
 model GalleryAlbum {
@@ -627,7 +637,7 @@ model GalleryAlbum {
   items       GalleryItem[]
 
   @@map("gallery_albums")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -656,7 +666,7 @@ model Notification {
   @@index([userId, isRead])
   @@index([createdAt])
   @@map("notifications")
-  @@schema("core")
+  @@schema("public")
 }
 
 model UserPushToken {
@@ -676,7 +686,7 @@ model UserPushToken {
   @@unique([token])
   @@index([userId])
   @@map("user_push_tokens")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -700,7 +710,7 @@ model EmailTemplate {
 
   @@unique([applicationId, slug])
   @@map("email_templates")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -725,7 +735,7 @@ model SubscriptionPlan {
   subscriptions Subscription[]
 
   @@map("subscription_plans")
-  @@schema("core")
+  @@schema("public")
 }
 
 model Subscription {
@@ -750,7 +760,7 @@ model Subscription {
   @@index([userId])
   @@index([status])
   @@map("subscriptions")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ============================================================================
@@ -765,7 +775,7 @@ model SystemConfig {
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("system_config")
-  @@schema("core")
+  @@schema("public")
 }
 
 model AppSetting {
@@ -780,7 +790,7 @@ model AppSetting {
 
   @@unique([applicationId, key])
   @@map("app_settings")
-  @@schema("core")
+  @@schema("public")
 }
 
 // ####################################################################################
@@ -868,13 +878,13 @@ model AdminRolePermission {
 // ============================================================================
 
 model AdminUserApplication {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  adminUserId String   @map("admin_user_id") @db.Uuid
-  applicationId String @map("application_id") @db.Uuid
-  role        String   @default("admin") @db.VarChar(50)
-  permissions Json     @default("[]")
-  isPrimary   Boolean  @default(false) @map("is_primary")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminUserId   String   @map("admin_user_id") @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  role          String   @default("admin") @db.VarChar(50)
+  permissions   Json     @default("[]")
+  isPrimary     Boolean  @default(false) @map("is_primary")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   adminUser   AdminUser   @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
   application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
@@ -980,8 +990,8 @@ model Circle {
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  owner           User             @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  circleType      CircleType?      @relation(fields: [circleTypeId], references: [id], onDelete: SetNull)
+  owner           User               @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  circleType      CircleType?        @relation(fields: [circleTypeId], references: [id], onDelete: SetNull)
   members         CircleMember[]
   safetyIncidents SafetyIncident[]
   socialPosts     SocialPost[]
@@ -991,6 +1001,7 @@ model Circle {
   notes           Note[]
   todos           Todo[]
   invitations     CircleInvitation[]
+  fileTags        FileTag[]
 
   @@index([ownerId])
   @@index([circleTypeId])
@@ -1031,8 +1042,8 @@ model CircleInvitation {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
-  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
-  inviter   User?    @relation("CircleInvitationInviter", fields: [invitedBy], references: [id], onDelete: SetNull)
+  circle  Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  inviter User?  @relation("CircleInvitationInviter", fields: [invitedBy], references: [id], onDelete: SetNull)
 
   @@index([circleId])
   @@index([email])
@@ -1475,16 +1486,16 @@ model Todo {
 // ============================================================================
 
 model SocialReport {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId      String   @map("post_id") @db.Uuid
-  reporterId  String   @map("reporter_id") @db.Uuid
-  reason      String   @db.VarChar(100)
-  description String?  @db.Text
-  status      String   @default("pending") @db.VarChar(50)
-  reviewedBy  String?  @map("reviewed_by") @db.Uuid
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId      String    @map("post_id") @db.Uuid
+  reporterId  String    @map("reporter_id") @db.Uuid
+  reason      String    @db.VarChar(100)
+  description String?   @db.Text
+  status      String    @default("pending") @db.VarChar(50)
+  reviewedBy  String?   @map("reviewed_by") @db.Uuid
   reviewedAt  DateTime? @map("reviewed_at") @db.Timestamptz
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   // Relations
   reporter User @relation("SocialReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
@@ -1498,12 +1509,12 @@ model SocialReport {
 }
 
 model SocialActivity {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId      String   @map("post_id") @db.Uuid
-  userId      String   @map("user_id") @db.Uuid
-  activityType String  @map("activity_type") @db.VarChar(50)
-  metadata    Json     @default("{}")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId       String   @map("post_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  activityType String   @map("activity_type") @db.VarChar(50)
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   // Relations
   user User @relation("SocialActivityUser", fields: [userId], references: [id], onDelete: Cascade)
@@ -1541,10 +1552,93 @@ model EntityRelation {
   // Relations
   owner User @relation("EntityRelationOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
+  @@unique([ownerId, targetId, relationType])
   @@index([ownerId])
   @@index([targetId])
   @@index([relationType])
-  @@unique([ownerId, targetId, relationType])
   @@map("entity_relations")
   @@schema("bondarys")
+}
+
+// ============================================================================
+// CORE: File Management Extensions
+// ============================================================================
+
+model FileTag {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @db.VarChar(100)
+  color     String   @db.VarChar(20)
+  userId    String   @map("user_id") @db.Uuid
+  circleId  String?  @map("circle_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  circle             Circle?             @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  fileTagAssignments FileTagAssignment[]
+
+  @@index([userId])
+  @@index([circleId])
+  @@map("file_tags")
+  @@schema("public")
+}
+
+model FileTagAssignment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileId     String   @map("file_id") @db.Uuid
+  tagId      String   @map("tag_id") @db.Uuid
+  assignedBy String   @map("assigned_by") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  file File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  tag  FileTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, tagId])
+  @@map("file_tag_assignments")
+  @@schema("public")
+}
+
+model FileShare {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileId             String    @map("file_id") @db.Uuid
+  sharedBy           String    @map("shared_by") @db.Uuid
+  sharedWithUserId   String?   @map("shared_with_user_id") @db.Uuid
+  sharedWithCircleId String?   @map("shared_with_circle_id") @db.Uuid
+  shareLink          String?   @map("share_link") @db.VarChar(255)
+  linkPasswordHash   String?   @map("link_password_hash") @db.VarChar(255)
+  permission         String    @db.VarChar(20)
+  expiresAt          DateTime? @map("expires_at") @db.Timestamptz
+  downloadLimit      Int?      @map("download_limit") @db.Integer
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  file         File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  sharedByUser User @relation(fields: [sharedBy], references: [id], onDelete: Cascade)
+
+  @@index([fileId])
+  @@index([sharedBy])
+  @@index([sharedWithUserId])
+  @@index([sharedWithCircleId])
+  @@index([shareLink])
+  @@map("file_shares")
+  @@schema("public")
+}
+
+model FileRecentAccess {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  fileId     String   @map("file_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  accessType String   @map("access_type") @db.VarChar(20)
+  accessedAt DateTime @default(now()) @map("accessed_at") @db.Timestamptz
+
+  file File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([fileId, userId])
+  @@index([fileId])
+  @@index([userId])
+  @@index([accessedAt])
+  @@map("file_recent_access")
+  @@schema("public")
 }

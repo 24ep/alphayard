@@ -12,36 +12,33 @@ router.use(authenticateToken as any);
 router.get('/', async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
-    const { limit = 50, offset = 0 } = req.query;
+    const { limit = 50, offset = 0 } = req.query as { limit?: number, offset?: number };
 
     if (!userId) {
       return res.json({ success: true, data: [] });
     }
 
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT id, user_id, type, title, message, data, status, 
-             action_url, sender_id, sender_name, metadata,
-             created_at as timestamp, scheduled_at
-      FROM core.notifications
-      WHERE user_id = ${userId}
-      ORDER BY created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `;
+    const result = await prisma.notification.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit
+    });
 
-    const notifications = result.map(row => ({
+    const notifications = result.map((row: any) => ({
       id: row.id,
-      userId: row.user_id,
+      userId: row.userId,
       type: row.type,
       title: row.title,
-      message: row.message,
+      message: row.body,
       data: row.data,
-      status: row.status,
-      actionUrl: row.action_url,
-      senderId: row.sender_id,
-      senderName: row.sender_name,
+      status: row.isRead,
+      actionUrl: row.actionUrl,
+      senderId: row.senderId,
+      senderName: row.senderName,
       metadata: row.metadata,
-      timestamp: row.timestamp,
-      scheduledAt: row.scheduled_at,
+      timestamp: row.createdAt,
+      scheduledAt: row.scheduledAt,
     }));
 
     res.json({ success: true, data: notifications });
@@ -60,13 +57,14 @@ router.get('/unread-count', async (req: Request, res: Response) => {
       return res.json({ success: true, data: { count: 0 } });
     }
 
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT COUNT(*) as count
-      FROM core.notifications
-      WHERE user_id = ${userId} AND status = 'unread'
-    `;
+    const count = await prisma.notification.count({
+      where: { 
+        userId,
+        isRead: false
+      }
+    });
 
-    res.json({ success: true, data: { count: parseInt(result[0]?.count || '0') } });
+    res.json({ success: true, data: { count } });
   } catch (error) {
     console.error('Error fetching unread count:', error);
     res.json({ success: true, data: { count: 0 } });
@@ -78,14 +76,15 @@ router.get('/settings/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     
-    const result = await prisma.$queryRaw<any[]>`
-      SELECT settings
-      FROM user_notification_settings
-      WHERE user_id = ${userId}
-    `;
+    const result = await prisma.userSettings.findFirst({
+      where: { 
+        userId,
+        applicationId: null
+      }
+    });
 
-    if (result.length > 0) {
-      return res.json({ success: true, data: result[0].settings });
+    if (result) {
+      return res.json({ success: true, data: result.settings });
     }
 
     // Return default settings
@@ -136,12 +135,30 @@ router.put('/settings/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
     const settings = req.body;
 
-    await prisma.$executeRaw`
-      INSERT INTO user_notification_settings (user_id, settings, updated_at)
-      VALUES (${userId}, ${JSON.stringify(settings)}::jsonb, NOW())
-      ON CONFLICT (user_id)
-      DO UPDATE SET settings = ${JSON.stringify(settings)}::jsonb, updated_at = NOW()
-    `;
+    // First try to find existing settings
+    const existing = await prisma.userSettings.findFirst({
+      where: { 
+        userId,
+        applicationId: null
+      }
+    });
+
+    if (existing) {
+      // Update existing
+      await prisma.userSettings.update({
+        where: { id: existing.id },
+        data: { settings }
+      });
+    } else {
+      // Create new
+      await prisma.userSettings.create({
+        data: {
+          userId,
+          applicationId: null,
+          settings
+        }
+      });
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -155,17 +172,22 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const { userId, type, title, message, data, actionUrl, metadata } = req.body;
     const targetUserId = userId || (req as any).user?.id;
-    const id = uuidv4();
 
-    await prisma.$executeRaw`
-      INSERT INTO core.notifications (id, user_id, type, title, message, data, status, action_url, metadata, created_at)
-      VALUES (${id}, ${targetUserId}, ${type || 'info'}, ${title}, ${message}, ${data ? JSON.stringify(data) : null}::jsonb, 'unread', ${actionUrl}, ${metadata ? JSON.stringify(metadata) : null}::jsonb, NOW())
-    `;
+    await prisma.notification.create({
+      data: {
+        userId: targetUserId,
+        type: type || 'info',
+        title,
+        body: message,
+        data: data || {},
+        actionUrl,
+        isRead: false
+      }
+    });
 
     res.json({
       success: true,
       data: {
-        id,
         userId: targetUserId,
         type: type || 'info',
         title,
@@ -188,11 +210,10 @@ router.patch('/:notificationId/read', async (req: Request, res: Response) => {
   try {
     const { notificationId } = req.params;
 
-    await prisma.$executeRaw`
-      UPDATE core.notifications
-      SET status = 'read', updated_at = NOW()
-      WHERE id = ${notificationId}
-    `;
+    await prisma.notification.update({
+      where: { id: notificationId },
+      data: { isRead: true, readAt: new Date() }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -210,11 +231,16 @@ router.patch('/read-all', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'User ID required' });
     }
 
-    await prisma.$executeRaw`
-      UPDATE core.notifications
-      SET status = 'read', updated_at = NOW()
-      WHERE user_id = ${userId}::uuid AND status = 'unread'
-    `;
+    await prisma.notification.updateMany({
+      where: { 
+        userId,
+        isRead: false
+      },
+      data: { 
+        isRead: true, 
+        readAt: new Date() 
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -228,10 +254,9 @@ router.delete('/:notificationId', async (req: Request, res: Response) => {
   try {
     const { notificationId } = req.params;
 
-    await prisma.$executeRaw`
-      DELETE FROM core.notifications
-      WHERE id = ${notificationId}
-    `;
+    await prisma.notification.delete({
+      where: { id: notificationId }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -249,10 +274,9 @@ router.delete('/all', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'User ID required' });
     }
 
-    await prisma.$executeRaw`
-      DELETE FROM core.notifications
-      WHERE user_id = ${userId}::uuid
-    `;
+    await prisma.notification.deleteMany({
+      where: { userId }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -271,10 +295,17 @@ router.delete('/old', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'User ID required' });
     }
 
-    await prisma.$executeRaw`
-      DELETE FROM core.notifications
-      WHERE user_id = ${targetUserId} AND created_at < NOW() - INTERVAL '1 day' * ${days}
-    `;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days as string));
+
+    await prisma.notification.deleteMany({
+      where: {
+        userId: targetUserId,
+        createdAt: {
+          lt: cutoffDate
+        }
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -294,12 +325,21 @@ router.post('/register-token', async (req: Request, res: Response) => {
     }
 
     // Store push token in user_push_tokens table
-    await prisma.$executeRaw`
-      INSERT INTO core.user_push_tokens (user_id, token, platform, device_info, created_at, updated_at)
-      VALUES (${userId}, ${token}, ${platform}, ${deviceInfo ? JSON.stringify(deviceInfo) : null}::jsonb, NOW(), NOW())
-      ON CONFLICT (user_id, token)
-      DO UPDATE SET platform = ${platform}, device_info = ${deviceInfo ? JSON.stringify(deviceInfo) : null}::jsonb, updated_at = NOW()
-    `;
+    await prisma.userPushToken.upsert({
+      where: { token },
+      update: { 
+        platform,
+        deviceId: deviceInfo?.deviceId || null,
+        isActive: true,
+        updatedAt: new Date()
+      },
+      create: {
+        userId,
+        token,
+        platform,
+        deviceId: deviceInfo?.deviceId || null
+      }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -319,15 +359,16 @@ router.post('/unregister-token', async (req: Request, res: Response) => {
     }
 
     if (userId) {
-      await prisma.$executeRaw`
-        DELETE FROM core.user_push_tokens
-        WHERE user_id = ${userId} AND token = ${token}
-      `;
+      await prisma.userPushToken.deleteMany({
+        where: { 
+          userId,
+          token
+        }
+      });
     } else {
-      await prisma.$executeRaw`
-        DELETE FROM core.user_push_tokens
-        WHERE token = ${token}
-      `;
+      await prisma.userPushToken.delete({
+        where: { token }
+      });
     }
 
     res.json({ success: true });
@@ -344,10 +385,17 @@ router.post('/schedule', async (req: Request, res: Response) => {
     const targetUserId = userId || (req as any).user?.id;
     const id = uuidv4();
 
-    await prisma.$executeRaw`
-      INSERT INTO core.notifications (id, user_id, type, title, message, data, status, scheduled_at, created_at)
-      VALUES (${id}, ${targetUserId}, ${type || 'info'}, ${title}, ${message}, ${data ? JSON.stringify(data) : null}::jsonb, 'scheduled', ${scheduledAt}, NOW())
-    `;
+    await prisma.notification.create({
+      data: {
+        id: uuidv4(),
+        userId: targetUserId,
+        type: type || 'info',
+        title,
+        body: message,
+        data: data || {},
+        isRead: false
+      }
+    });
 
     res.json({
       success: true,
@@ -374,10 +422,9 @@ router.delete('/schedule/:notificationId', async (req: Request, res: Response) =
   try {
     const { notificationId } = req.params;
 
-    await prisma.$executeRaw`
-      DELETE FROM core.notifications
-      WHERE id = ${notificationId} AND status = 'scheduled'
-    `;
+    await prisma.notification.delete({
+      where: { id: notificationId }
+    });
 
     res.json({ success: true });
   } catch (error) {
@@ -393,22 +440,30 @@ router.post('/circle', async (req: Request, res: Response) => {
     const senderId = (req as any).user?.id;
 
     // Get all circle members
-    const membersResult = await prisma.$queryRaw<any[]>`
-      SELECT user_id FROM boundary.circle_members WHERE circle_id = ${circleId}
-    `;
+    const members = await prisma.circleMember.findMany({
+      where: { circleId },
+      select: { userId: true }
+    });
 
     const notificationIds: string[] = [];
 
     // Create notification for each member
-    for (const member of membersResult) {
-      if (member.user_id !== senderId) {
+    for (const member of members) {
+      if (member.userId !== senderId) {
         const id = uuidv4();
         notificationIds.push(id);
         
-        await prisma.$executeRaw`
-          INSERT INTO core.notifications (id, user_id, type, title, message, data, status, sender_id, created_at)
-          VALUES (${id}, ${member.user_id}, ${type || 'Circle'}, ${title}, ${message}, ${data ? JSON.stringify(data) : null}::jsonb, 'unread', ${senderId}, NOW())
-        `;
+        await prisma.notification.create({
+          data: {
+            id,
+            userId: member.userId,
+            type: type || 'Circle',
+            title,
+            body: message,
+            data: data || {},
+            isRead: false
+          }
+        });
       }
     }
 

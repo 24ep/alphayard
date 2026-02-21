@@ -197,7 +197,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
             where: { isActive: true },
             select: { branding: true }
         });
-        const totalScreens = applications.reduce((sum, app) => {
+        const totalScreens = applications.reduce((sum: number, app: any) => {
             const branding = app.branding as any;
             const screens = branding?.screens || [];
             return sum + (Array.isArray(screens) ? screens.length : 0);
@@ -231,7 +231,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                 EXTRACT(MONTH FROM created_at)::INTEGER as month,
                 EXTRACT(DAY FROM created_at)::INTEGER as day,
                 COUNT(*)::BIGINT as count
-            FROM core.users
+            FROM public.users
             WHERE created_at >= NOW() - INTERVAL '1 day' * ${days}
             GROUP BY year, month, day
             ORDER BY year, month, day
@@ -250,7 +250,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                     subscriptionCount: Number(revenue.subscription_count || 0),
                 },
             },
-            userGrowth: userGrowth.map(row => ({
+            userGrowth: userGrowth.map((row: any) => ({
                 _id: { year: row.year, month: row.month, day: row.day },
                 count: Number(row.count)
             })),

@@ -10,7 +10,7 @@ router.use(authenticateAdmin as any);
 
 // Helper to get content type ID
 async function getContentTypeId(name: string): Promise<string | null> {
-  const rows = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM content_types WHERE name = $1', name);
+  const rows = await prisma.$queryRawUnsafe<any[]>('SELECT id FROM admin.content_types WHERE name = $1', name);
   return rows[0]?.id || null;
 }
 
@@ -23,13 +23,10 @@ router.get('/slides', requirePermission('marketing', 'view'), async (_req: Reque
     const typeId = await getContentTypeId('marketing_slide');
     if (!typeId) return res.json({ slides: getFallbackSlides() });
 
-    const data = await prisma.$queryRawUnsafe<any[]>(`
-      SELECT 
-        id, title, slug, content, status, priority, is_featured, created_at, updated_at
-      FROM marketing_content
-      WHERE content_type_id = $1
-      ORDER BY priority ASC
-    `, [typeId]);
+    const data = await prisma.marketingContent.findMany({
+      where: { contentTypeId: typeId },
+      orderBy: { priority: 'asc' }
+    });
 
     const slides = (data || []).map(item => {
       let slideData = {};
@@ -62,13 +59,18 @@ router.post('/slides', requirePermission('marketing', 'create'), async (req: Req
 
     if (!typeId) return res.status(500).json({ error: 'Marketing slide content type not found' });
 
-    const rows = await prisma.$queryRawUnsafe<any[]>(`
-      INSERT INTO marketing_content (title, slug, content, content_type_id, status, priority)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `, title, slug, JSON.stringify(slideData), typeId, status, priority);
+    const slide = await prisma.marketingContent.create({
+      data: {
+        title,
+        slug,
+        content: JSON.stringify(slideData),
+        contentTypeId: typeId,
+        status,
+        priority
+      }
+    });
 
-    res.status(201).json({ slide: rows[0] });
+    res.status(201).json({ slide });
   } catch (error) {
     console.error('Error creating marketing slide:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -84,21 +86,22 @@ router.put('/slides/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { title, slug, slideData, status, priority } = req.body;
 
-    const rows = await prisma.$queryRawUnsafe<any[]>(`
-      UPDATE marketing_content
-      SET title = COALESCE($1, title),
-          slug = COALESCE($2, slug),
-          content = COALESCE($3, content),
-          status = COALESCE($4, status),
-          priority = COALESCE($5, priority),
-          updated_at = NOW()
-      WHERE id = $6
-      RETURNING *
-    `, title, slug, slideData ? JSON.stringify(slideData) : null, status, priority, id);
+    const updateData: any = {
+      updatedAt: new Date()
+    };
 
-    if (rows.length === 0) return res.status(404).json({ error: 'Slide not found' });
+    if (title !== undefined) updateData.title = title;
+    if (slug !== undefined) updateData.slug = slug;
+    if (slideData !== undefined) updateData.content = JSON.stringify(slideData);
+    if (status !== undefined) updateData.status = status;
+    if (priority !== undefined) updateData.priority = priority;
 
-    res.json({ slide: rows[0] });
+    const slide = await prisma.marketingContent.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({ slide });
   } catch (error) {
     console.error('Error updating marketing slide:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -112,9 +115,11 @@ router.put('/slides/:id', async (req: Request, res: Response) => {
 router.delete('/slides/:id', requirePermission('marketing', 'delete'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const rowCount = await prisma.$executeRawUnsafe('DELETE FROM marketing_content WHERE id = $1', id);
+    const slide = await prisma.marketingContent.delete({
+      where: { id }
+    });
     
-    if (rowCount === 0) return res.status(404).json({ error: 'Slide not found' });
+    if (!slide) return res.status(404).json({ error: 'Slide not found' });
     
     res.json({ message: 'Slide deleted successfully' });
   } catch (error) {
@@ -131,22 +136,22 @@ router.get('/content', requirePermission('marketing', 'view'), async (req: Reque
   try {
     const { type, featured } = req.query;
 
-    let sql = `SELECT * FROM marketing_content WHERE status = 'published'`;
-    const params: any[] = [];
-    let pIdx = 1;
+    const whereConditions: any = {
+      status: 'published'
+    };
 
     if (type) {
-      sql += ` AND content_type_id = $${pIdx++}`;
-      params.push(type);
+      whereConditions.contentTypeId = type;
     }
 
     if (featured === 'true') {
-      sql += ` AND is_featured = true`;
+      whereConditions.isFeatured = true;
     }
 
-    sql += ' ORDER BY priority DESC';
-
-    const data = await prisma.$queryRawUnsafe<any[]>(sql, ...params);
+    const data = await prisma.marketingContent.findMany({
+      where: whereConditions,
+      orderBy: { priority: 'desc' }
+    });
     res.json({ content: data || [] });
   } catch (error) {
     console.error('Error in marketing content endpoint:', error);

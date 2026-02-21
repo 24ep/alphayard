@@ -102,77 +102,20 @@ export const ContentVersioning: React.FC<ContentVersioningProps> = ({
       setLoading(true)
       setError(null)
       
-      // TODO: Replace with actual API call
-      const mockVersions: ContentVersion[] = [
-        {
-          id: 'v1',
-          contentId,
-          version: 1,
-          title: 'Initial version',
-          content: currentContent,
-          createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          changeDescription: 'Initial content creation',
-          isAutoSave: false,
-          size: 1024,
-          tags: ['initial', 'draft']
-        },
-        {
-          id: 'v2',
-          contentId,
-          version: 2,
-          title: 'Added hero section',
-          content: currentContent,
-          createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          changeDescription: 'Added hero section with call-to-action',
-          isAutoSave: false,
-          size: 2048,
-          tags: ['feature', 'hero']
-        },
-        {
-          id: 'v3',
-          contentId,
-          version: 3,
-          title: 'Auto-save',
-          content: currentContent,
-          createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          changeDescription: 'Auto-save',
-          isAutoSave: true,
-          size: 2156,
-          tags: ['autosave']
-        } as any,
-        {
-          id: 'v4',
-          contentId,
-          version: 4,
-          title: 'Published version',
-          content: { ...currentContent, status: 'published' },
-          createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-          createdBy: 'user1',
-          createdByName: 'John Doe',
-          changeDescription: 'Published to production',
-          isAutoSave: false,
-          size: 2156,
-          tags: ['published', 'production'],
-          isPublished: true,
-          publishedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-          publishedBy: 'user1',
-          publishedByName: 'John Doe'
-        }
-      ]
-      
-      setVersions(mockVersions)
+      const res = await fetch(`/api/admin/cms/content/${contentId}/versions`);
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data.versions || data || []);
+      } else {
+        setVersions([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load versions')
     } finally {
       setLoading(false)
     }
   }, [contentId, currentContent])
+
 
   // Filter and sort versions
   const filteredVersions = versions

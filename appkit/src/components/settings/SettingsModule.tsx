@@ -13,10 +13,23 @@ export function SettingsModule() {
   })
 
   const handleSave = async () => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    alert('Settings saved successfully!')
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      });
+      if (res.ok) {
+        alert('Settings saved successfully!')
+      } else {
+        alert('Failed to save settings. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      alert('Failed to save settings. Please try again.')
+    }
   }
+
 
   return (
     <div className="p-6">

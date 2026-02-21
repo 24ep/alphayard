@@ -35,29 +35,38 @@ export function AnalyticsDashboard() {
   const loadAnalytics = async () => {
     try {
       setIsLoading(true)
-      // TODO: Implement proper analytics API endpoint
-      // const response = await cmsService.getContent('1')
-      // const content = response.data.content || []
-
-      // Mock analytics data for now
-      const analyticsData: AnalyticsData = {
-        totalContent: 0,
-        publishedContent: 0,
-        draftContent: 0,
-        featuredContent: 0,
-        totalViews: 0,
-        totalLikes: 0,
-        totalComments: 0,
-        contentByType: []
+      const res = await fetch('/api/admin/cms/analytics');
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data.analytics || data || {
+          totalContent: 0,
+          publishedContent: 0,
+          draftContent: 0,
+          featuredContent: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          contentByType: []
+        });
+      } else {
+        setAnalytics({
+          totalContent: 0,
+          publishedContent: 0,
+          draftContent: 0,
+          featuredContent: 0,
+          totalViews: 0,
+          totalLikes: 0,
+          totalComments: 0,
+          contentByType: []
+        });
       }
-
-      setAnalytics(analyticsData)
     } catch (error) {
       console.error('Error loading analytics:', error)
     } finally {
       setIsLoading(false)
     }
   }
+
 
   if (isLoading) {
     return <LoadingSpinner message="Loading analytics..." />

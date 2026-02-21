@@ -54,19 +54,21 @@ router.post('/', express.raw({ type: 'application/json' }), async (req: Request,
 // Webhook handlers
 async function handleSubscriptionCreated(subscription: any) {
     try {
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT id FROM core.subscriptions WHERE stripe_subscription_id = ${subscription.id}
-        `;
+        const existingSub = await prisma.subscription.findFirst({
+          where: { externalId: subscription.id },
+          select: { id: true }
+        });
 
-        if (rows.length > 0) {
-            await prisma.$executeRaw`
-                UPDATE core.subscriptions SET 
-                   status = ${subscription.status},
-                   current_period_start = ${new Date(subscription.current_period_start * 1000)},
-                   current_period_end = ${new Date(subscription.current_period_end * 1000)},
-                   updated_at = NOW()
-                 WHERE stripe_subscription_id = ${subscription.id}
-            `;
+        if (existingSub) {
+            await prisma.subscription.update({
+              where: { id: existingSub.id },
+              data: {
+                status: subscription.status,
+                currentPeriodStart: new Date(subscription.current_period_start * 1000),
+                currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+                updatedAt: new Date()
+              }
+            });
         }
     } catch (error) {
         console.error('Handle subscription created error:', error);
@@ -75,15 +77,18 @@ async function handleSubscriptionCreated(subscription: any) {
 
 async function handleSubscriptionUpdated(subscription: any) {
     try {
-        await prisma.$executeRaw`
-            UPDATE core.subscriptions SET 
-               status = ${subscription.status},
-               current_period_start = ${new Date(subscription.current_period_start * 1000)},
-               current_period_end = ${new Date(subscription.current_period_end * 1000)},
-               cancel_at_period_end = ${subscription.cancel_at_period_end},
-               updated_at = NOW()
-             WHERE stripe_subscription_id = ${subscription.id}
-        `;
+        await prisma.subscription.updateMany({
+          where: { externalId: subscription.id },
+          data: {
+            status: subscription.status,
+            currentPeriodStart: new Date(subscription.current_period_start * 1000),
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            metadata: {
+              cancelAtPeriodEnd: subscription.cancel_at_period_end
+            },
+            updatedAt: new Date()
+          }
+        });
     } catch (error) {
         console.error('Handle subscription updated error:', error);
     }
@@ -91,13 +96,14 @@ async function handleSubscriptionUpdated(subscription: any) {
 
 async function handleSubscriptionDeleted(subscription: any) {
     try {
-        await prisma.$executeRaw`
-            UPDATE core.subscriptions SET 
-               status = 'cancelled',
-               cancelled_at = NOW(),
-               updated_at = NOW()
-             WHERE stripe_subscription_id = ${subscription.id}
-        `;
+        await prisma.subscription.updateMany({
+          where: { externalId: subscription.id },
+          data: {
+            status: 'cancelled',
+            canceledAt: new Date(),
+            updatedAt: new Date()
+          }
+        });
     } catch (error) {
         console.error('Handle subscription deleted error:', error);
     }
@@ -105,21 +111,28 @@ async function handleSubscriptionDeleted(subscription: any) {
 
 async function handlePaymentSucceeded(invoice: any) {
     try {
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT s.*, u.email, u.first_name FROM core.subscriptions s JOIN core.users u ON s.user_id = u.id WHERE s.stripe_subscription_id = ${invoice.subscription}
-        `;
+        const subscription = await prisma.subscription.findFirst({
+          where: { externalId: invoice.subscription },
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true
+              }
+            }
+          }
+        });
 
-        if (rows.length > 0) {
-            const sub = rows[0];
+        if (subscription && subscription.user) {
             await emailService.sendEmail({
-                to: sub.email,
+                to: subscription.user.email,
                 subject: 'Payment Successful',
                 template: 'payment-success',
                 data: {
-                    name: sub.first_name,
+                    name: subscription.user.firstName,
                     amount: invoice.amount_paid / 100,
                     currency: invoice.currency,
-                    planName: sub.plan.name,
+                    planName: subscription.plan?.name || 'Subscription',
                 },
             });
         }
@@ -130,21 +143,28 @@ async function handlePaymentSucceeded(invoice: any) {
 
 async function handlePaymentFailed(invoice: any) {
     try {
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT s.*, u.email, u.first_name FROM core.subscriptions s JOIN core.users u ON s.user_id = u.id WHERE s.stripe_subscription_id = ${invoice.subscription}
-        `;
+        const subscription = await prisma.subscription.findFirst({
+          where: { externalId: invoice.subscription },
+          include: {
+            user: {
+              select: {
+                email: true,
+                firstName: true
+              }
+            }
+          }
+        });
 
-        if (rows.length > 0) {
-            const sub = rows[0];
+        if (subscription && subscription.user) {
             await emailService.sendEmail({
-                to: sub.email,
+                to: subscription.user.email,
                 subject: 'Payment Failed',
                 template: 'payment-failed',
                 data: {
-                    name: sub.first_name,
+                    name: subscription.user.firstName,
                     amount: invoice.amount_due / 100,
                     currency: invoice.currency,
-                    planName: sub.plan.name,
+                    planName: subscription.plan?.name || 'Subscription',
                     retryDate: new Date(invoice.next_payment_attempt * 1000),
                 },
             });

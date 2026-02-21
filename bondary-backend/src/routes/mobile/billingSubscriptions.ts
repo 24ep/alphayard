@@ -32,11 +32,17 @@ router.post('/', authenticateToken as any, validateSubscription, async (req: any
         }
 
         // Check if user already has an active subscription
-        const existingSubs = await prisma.$queryRaw<any[]>`
-            SELECT id FROM core.subscriptions WHERE user_id = ${userId} AND status IN ('active', 'trialing')
-        `;
+        const existingSub = await prisma.subscription.findFirst({
+          where: {
+            userId,
+            status: {
+              in: ['active', 'trialing']
+            }
+          },
+          select: { id: true }
+        });
 
-        if (existingSubs.length > 0) {
+        if (existingSub) {
             return res.status(400).json({ message: 'User already has an active subscription' });
         }
 
@@ -87,30 +93,31 @@ router.post('/', authenticateToken as any, validateSubscription, async (req: any
         });
 
         // Create subscription record in database
-        const subRows = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO core.subscriptions (
-                user_id, circle_id, stripe_subscription_id, stripe_customer_id, 
-                plan, status, current_period_start, current_period_end, cancel_at_period_end
-            ) VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8, $9) RETURNING *`,
+        const subscriptionRecord = await prisma.subscription.create({
+          data: {
             userId,
-            circleId || (user.circleIds && user.circleIds[0]) || null,
-            subscription.id,
-            stripeCustomerId,
-            JSON.stringify({
+            applicationId: null, // Would need to be determined
+            planId: null, // Would need to find or create plan record
+            status: subscription.status,
+            billingCycle: plan.interval,
+            currentPeriodStart: new Date(subscription.current_period_start * 1000),
+            currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+            externalId: subscription.id,
+            metadata: {
+              stripeCustomerId,
+              circleId: circleId || (user.circleIds && user.circleIds[0]) || null,
+              planDetails: {
                 id: plan.id,
                 name: plan.nickname,
                 price: plan.amount / 100,
                 currency: plan.currency,
                 interval: plan.interval,
                 intervalCount: plan.interval_count,
-            }),
-            subscription.status,
-            new Date(subscription.current_period_start * 1000),
-            new Date(subscription.current_period_end * 1000),
-            subscription.cancel_at_period_end
-        );
-
-        const subscriptionRecord = subRows[0];
+              },
+              cancelAtPeriodEnd: subscription.cancel_at_period_end
+            }
+          }
+        });
 
         res.status(201).json({
             message: 'Subscription created successfully',
@@ -136,35 +143,38 @@ router.get('/', authenticateToken as any, async (req: any, res: Response) => {
     try {
         const userId = req.user.id;
 
-        const rows = await prisma.$queryRaw<any[]>`
-            SELECT s.*, c.data->>'name' as circle_name
-             FROM core.subscriptions s
-             LEFT JOIN unified_entities c ON s.circle_id = c.id
-             WHERE s.user_id = ${userId} AND s.status IN ('active', 'trialing', 'past_due')
-             LIMIT 1
-        `;
+        const subscription = await prisma.subscription.findFirst({
+          where: {
+            userId,
+            status: {
+              in: ['active', 'trialing', 'past_due']
+            }
+          },
+          include: {
+            plan: true
+          }
+        });
 
-        if (rows.length === 0) {
+        if (!subscription) {
             return res.status(404).json({ message: 'No active subscription found' });
         }
 
-        const sub = rows[0];
+        const sub = subscription;
         res.json({ 
             subscription: {
                 id: sub.id,
-                userId: sub.user_id,
-                circleId: sub.circle_id,
-                circleName: sub.circle_name,
-                stripeSubscriptionId: sub.stripe_subscription_id,
-                stripeCustomerId: sub.stripe_customer_id,
+                userId: sub.userId,
+                planId: sub.planId,
                 plan: sub.plan,
                 status: sub.status,
-                currentPeriodStart: sub.current_period_start,
-                currentPeriodEnd: sub.current_period_end,
-                cancelAtPeriodEnd: sub.cancel_at_period_end,
-                createdAt: sub.created_at,
-                updatedAt: sub.updated_at
-            } 
+                billingCycle: sub.billingCycle,
+                currentPeriodStart: sub.currentPeriodStart,
+                currentPeriodEnd: sub.currentPeriodEnd,
+                externalId: sub.externalId,
+                metadata: sub.metadata,
+                createdAt: sub.createdAt,
+                updatedAt: sub.updatedAt
+            }
         });
     } catch (error: any) {
         console.error('Get subscription error:', error);
@@ -187,18 +197,21 @@ router.put('/:id?', authenticateToken as any, [
         const { planId, seats } = req.body;
         const userId = req.user.id;
 
-        const subRows = await prisma.$queryRaw<any[]>`
-            SELECT * FROM core.subscriptions WHERE user_id = ${userId} AND status IN ('active', 'trialing') LIMIT 1
-        `;
+        const subscription = await prisma.subscription.findFirst({
+          where: {
+            userId,
+            status: {
+              in: ['active', 'trialing']
+            }
+          }
+        });
 
-        if (subRows.length === 0) {
+        if (!subscription) {
             return res.status(404).json({ message: 'No active subscription found' });
         }
 
-        const subscription = subRows[0];
-
         // Update subscription in Stripe
-        const current = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id);
+        const current = await stripe.subscriptions.retrieve(subscription.externalId);
         const itemId = current.items.data[0]?.id;
         const updatedSubscription = await stripe.subscriptions.update(subscription.stripe_subscription_id, {
             items: [ itemId 
@@ -222,28 +235,28 @@ router.put('/:id?', authenticateToken as any, [
             intervalCount: plan.interval_count,
         };
 
-        const updatedRows = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.subscriptions SET 
-               plan = $1::jsonb,
-               current_period_start = $2,
-               current_period_end = $3,
-               updated_at = NOW()
-             WHERE id = $4 RETURNING *`,
-            JSON.stringify(planData),
-            new Date(updatedSubscription.current_period_start * 1000),
-            new Date(updatedSubscription.current_period_end * 1000),
-            subscription.id
-        );
-
-        const sub = updatedRows[0];
+        const sub = await prisma.subscription.update({
+          where: { id: subscription.id },
+          data: {
+            billingCycle: plan.interval,
+            currentPeriodStart: new Date(updatedSubscription.current_period_start * 1000),
+            currentPeriodEnd: new Date(updatedSubscription.current_period_end * 1000),
+            metadata: {
+              ...subscription.metadata,
+              planDetails: planData
+            }
+          }
+        });
         res.json({
             message: 'Subscription updated successfully',
             subscription: {
                 id: sub.id,
+                planId: sub.planId,
                 plan: sub.plan,
-                currentPeriodStart: sub.current_period_start,
-                currentPeriodEnd: sub.current_period_end,
-                status: sub.status
+                currentPeriodStart: sub.currentPeriodStart,
+                currentPeriodEnd: sub.currentPeriodEnd,
+                status: sub.status,
+                billingCycle: sub.billingCycle
             },
         });
     } catch (error: any) {
@@ -259,30 +272,37 @@ router.post('/:id/cancel', authenticateToken as any, async (req: any, res: Respo
     try {
         const userId = req.user.id;
 
-        const subRows = await prisma.$queryRaw<any[]>`
-            SELECT * FROM core.subscriptions WHERE user_id = ${userId} AND status IN ('active', 'trialing') LIMIT 1
-        `;
+        const activeSubscription = await prisma.subscription.findFirst({
+            where: {
+              userId: userId,
+              status: { in: ['active', 'trialing'] }
+            }
+          });
 
-        if (subRows.length === 0) {
+        if (!activeSubscription) {
             return res.status(404).json({ message: 'No active subscription found' });
         }
 
-        const subscription = subRows[0];
-
-        await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+        await stripe.subscriptions.update(activeSubscription.stripe_subscription_id, {
             cancel_at_period_end: true,
         });
 
-        const updatedRows = await prisma.$queryRaw<any[]>`
-            UPDATE core.subscriptions SET cancel_at_period_end = true, updated_at = NOW() WHERE id = ${subscription.id} RETURNING *
-        `;
-
-        const sub = updatedRows[0];
+        const sub = await prisma.subscription.update({
+            where: { id: activeSubscription.id },
+            data: {
+                canceledAt: new Date(),
+                metadata: {
+                    ...activeSubscription.metadata,
+                    cancelAtPeriodEnd: true
+                },
+                updatedAt: new Date()
+            }
+        });
         res.json({
             message: 'Subscription will be cancelled at the end of the current period',
             subscription: {
                 id: sub.id,
-                cancelAtPeriodEnd: sub.cancel_at_period_end,
+                cancelAtPeriodEnd: (sub.metadata as any)?.cancelAtPeriodEnd || false,
                 status: sub.status
             },
         });
@@ -300,37 +320,45 @@ router.post('/:id/reactivate', authenticateToken as any, async (req: any, res: R
         const userId = req.user.id;
         const subscriptionId = req.params.id;
 
-        let subRows: any[];
+        let cancelledSubscription: any;
         if (subscriptionId && subscriptionId !== 'current' && subscriptionId !== ':id') {
-            subRows = await prisma.$queryRaw<any[]>`
-                SELECT * FROM core.subscriptions WHERE id = ${subscriptionId} AND user_id = ${userId}
-            `;
+            cancelledSubscription = await prisma.subscription.findFirst({
+                where: { id: subscriptionId, userId: userId }
+            });
         } else {
-            subRows = await prisma.$queryRaw<any[]>`
-                SELECT * FROM core.subscriptions WHERE user_id = ${userId} AND status IN ('active', 'trialing') AND cancel_at_period_end = true LIMIT 1
-            `;
+            cancelledSubscription = await prisma.subscription.findFirst({
+                where: {
+                    userId: userId,
+                    status: { in: ['active', 'trialing'] },
+                    canceledAt: { not: null }
+                }
+            });
         }
 
-        if (subRows.length === 0) {
+        if (!cancelledSubscription) {
             return res.status(404).json({ message: 'No cancelled subscription found' });
         }
 
-        const subscription = subRows[0];
-
-        await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+        await stripe.subscriptions.update(cancelledSubscription.externalId, {
             cancel_at_period_end: false,
         });
 
-        const updatedRows = await prisma.$queryRaw<any[]>`
-            UPDATE core.subscriptions SET cancel_at_period_end = false, updated_at = NOW() WHERE id = ${subscription.id} RETURNING *
-        `;
-
-        const sub = updatedRows[0];
+        const sub = await prisma.subscription.update({
+            where: { id: cancelledSubscription.id },
+            data: {
+                canceledAt: null,
+                metadata: {
+                    ...cancelledSubscription.metadata,
+                    cancelAtPeriodEnd: false
+                },
+                updatedAt: new Date()
+            }
+        });
         res.json({
             message: 'Subscription reactivated successfully',
             subscription: {
                 id: sub.id,
-                cancelAtPeriodEnd: sub.cancel_at_period_end,
+                cancelAtPeriodEnd: (sub.metadata as any)?.cancelAtPeriodEnd || false,
                 status: sub.status
             },
         });

@@ -10,6 +10,6 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
-    schemas: ["core", "admin", "bondarys"],
+    schemas: ["public", "admin", "bondarys"],
   },
 });

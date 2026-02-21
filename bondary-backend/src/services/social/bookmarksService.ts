@@ -90,7 +90,7 @@ export class BookmarksService {
         u.is_verified as author_is_verified
       FROM bondarys.social_bookmarks b
       JOIN bondarys.entities e ON b.post_id = e.id
-      LEFT JOIN core.users u ON e.owner_id = u.id
+      LEFT JOIN public.users u ON e.owner_id = u.id
       WHERE ${whereClause}
       ORDER BY b.created_at DESC
       LIMIT ${limit} OFFSET ${offset}

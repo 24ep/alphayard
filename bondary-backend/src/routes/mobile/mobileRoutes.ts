@@ -38,25 +38,26 @@ router.get('/branding', async (req, res) => {
     let branding: any = {};
 
     // 1. Try global app_settings first (Fastest)
-    const settingsRows = await prisma.$queryRaw<any[]>`
-      SELECT value FROM public.app_settings WHERE key = 'branding' LIMIT 1
-    `;
+    const appSetting = await prisma.appSetting.findFirst({
+      where: { key: 'branding' },
+      select: { value: true }
+    });
 
-    if (settingsRows.length > 0 && settingsRows[0].value) {
-      const val = settingsRows[0].value;
-      branding = typeof val === 'string' ? JSON.parse(val) : val;
+    if (appSetting && appSetting.value) {
+      branding = typeof appSetting.value === 'string' ? JSON.parse(appSetting.value) : appSetting.value;
     }
 
     // 2. If no screens found in global settings, Fallback to active Application (Source of Truth)
     // This handles cases where Admin saved to 'applications' table but sync to 'app_settings' failed or lagged
     if (!branding.screens || branding.screens.length === 0) {
       console.log('[mobileRoutes] Global branding missing screens. Falling back to active application...');
-      const appRows = await prisma.$queryRaw<any[]>`
-        SELECT branding FROM core.applications WHERE is_active = true LIMIT 1
-      `;
+      const application = await prisma.application.findFirst({
+        where: { isActive: true },
+        select: { branding: true }
+      });
 
-      if (appRows.length > 0 && appRows[0].branding) {
-        let appBranding = appRows[0].branding;
+      if (application && application.branding) {
+        let appBranding = application.branding;
         if (typeof appBranding === 'string') {
           try { appBranding = JSON.parse(appBranding) } catch (e) { }
         }
@@ -146,13 +147,15 @@ router.post('/inventory/seed', async (req, res) => {
 
     let apps;
     if (appId) {
-      apps = await prisma.$queryRaw<any[]>`
-        SELECT id, name, branding FROM core.applications WHERE is_active = true AND id = ${appId}::uuid
-      `;
+      apps = await prisma.application.findMany({
+        where: { isActive: true, id: appId },
+        select: { id: true, name: true, branding: true }
+      });
     } else {
-      apps = await prisma.$queryRaw<any[]>`
-        SELECT id, name, branding FROM core.applications WHERE is_active = true
-      `;
+      apps = await prisma.application.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, branding: true }
+      });
     }
     let updatedAppsCount = 0;
     let totalAddedCount = 0;
@@ -200,9 +203,13 @@ router.post('/inventory/seed', async (req, res) => {
 
       if (addedInThisApp > 0 || uniqueExisting.size !== screens.length) {
         branding.screens = Array.from(uniqueExisting.values());
-        await prisma.$executeRaw`
-          UPDATE core.applications SET branding = ${JSON.stringify(branding)}::jsonb, updated_at = NOW() WHERE id = ${app.id}::uuid
-        `;
+        await prisma.application.update({
+          where: { id: app.id },
+          data: {
+            branding: branding,
+            updatedAt: new Date()
+          }
+        });
         updatedAppsCount++;
         totalAddedCount += addedInThisApp;
       }

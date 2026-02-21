@@ -78,11 +78,11 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
         // Get basic stats
         const basicsQuery = `
             SELECT 
-                (SELECT COUNT(*) FROM core.users) as total_users,
-                (SELECT COUNT(*) FROM core.users WHERE is_active = true) as active_users,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'circle' AND status != 'deleted') as total_families,
+                (SELECT COUNT(*) FROM public.users) as total_users,
+                (SELECT COUNT(*) FROM public.users WHERE is_active = true) as active_users,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'circle' AND status != 'deleted') as total_families,
                 0 as active_subscriptions,
-                (SELECT COALESCE(SUM(jsonb_array_length(COALESCE(branding->'screens', '[]'::jsonb))), 0) FROM core.applications WHERE is_active = true) as total_screens
+                (SELECT COALESCE(SUM(jsonb_array_length(COALESCE(branding->'screens', '[]'::jsonb))), 0) FROM public.applications WHERE is_active = true) as total_screens
         `;
         const basics = await prisma.$queryRawUnsafe<any[]>(basicsQuery);
         const { total_users, active_users, total_families, active_subscriptions, total_screens } = basics[0];
@@ -90,9 +90,9 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
         // Get recent activity counts
         const recentQuery = `
             SELECT 
-                (SELECT COUNT(*) FROM core.users WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_users,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'circle' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_families,
-                (SELECT COUNT(*) FROM unified_entities WHERE type = 'safety_alert' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_alerts,
+                (SELECT COUNT(*) FROM public.users WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_users,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'circle' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_families,
+                (SELECT COUNT(*) FROM public.unified_entities WHERE type = 'safety_alert' AND created_at >= NOW() - INTERVAL '1 day' * $1) as recent_alerts,
                 (SELECT COUNT(*) FROM appkit.chat_messages WHERE created_at >= NOW() - INTERVAL '1 day' * $1) as recent_messages
         `;
         const recent = await prisma.$queryRawUnsafe<Array<{
@@ -117,7 +117,7 @@ router.get('/dashboard', authenticateAdmin as any, requirePermission('dashboard'
                 EXTRACT(MONTH FROM created_at) as month,
                 EXTRACT(DAY FROM created_at) as day,
                 COUNT(*) as count
-            FROM core.users
+            FROM public.users
             WHERE created_at >= NOW() - INTERVAL '1 day' * $1
             GROUP BY year, month, day
             ORDER BY year, month, day
@@ -199,14 +199,14 @@ router.get('/alerts', authenticateAdmin as any, async (req: Request, res: Respon
             SELECT sa.id, sa.data, sa.metadata, sa.created_at, sa.status,
                    u.email as user_email,
                    u.first_name || ' ' || u.last_name as user_name
-            FROM unified_entities sa
-            JOIN core.users u ON sa.owner_id = u.id
+            FROM public.unified_entities sa
+            JOIN public.users u ON sa.owner_id = u.id
             ${whereClause} AND sa.type = 'safety_alert'
             ORDER BY sa.${sortField} ${direction}
             LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
         `;
 
-        const countQuery = `SELECT COUNT(*) FROM unified_entities sa ${whereClause} AND sa.type = 'safety_alert'`;
+        const countQuery = `SELECT COUNT(*) FROM public.unified_entities sa ${whereClause} AND sa.type = 'safety_alert'`;
 
         const [alertsRes, countRes] = await Promise.all([
             prisma.$queryRawUnsafe<any[]>(alertsQuery, ...params, parseInt(limit as string), offset),
@@ -285,11 +285,11 @@ router.post('/broadcast', authenticateAdmin as any, [
 
         const { title, message, type, target = 'all' } = req.body;
 
-        let userQuery = 'SELECT id, email, first_name as "firstName" FROM core.users WHERE is_active = true';
+        let userQuery = 'SELECT id, email, first_name as "firstName" FROM public.users WHERE is_active = true';
         if (target === 'premium') {
             // Premium targeting not available - subscription tables removed
             // Fall back to all active users
-            userQuery = 'SELECT id, email, first_name as "firstName" FROM core.users WHERE is_active = true';
+            userQuery = 'SELECT id, email, first_name as "firstName" FROM public.users WHERE is_active = true';
         }
 
         const users = await prisma.$queryRawUnsafe<any[]>(userQuery);
@@ -344,9 +344,9 @@ router.get('/social-posts', authenticateAdmin as any, requirePermission('social'
             SELECT sp.id, sp.data, sp.metadata, sp.created_at as "createdAt",
                    u.first_name as "firstName", u.last_name as "lastName", u.email as "userEmail",
                    f.data->>'name' as "circleName"
-            FROM unified_entities sp
-            LEFT JOIN core.users u ON sp.owner_id = u.id
-            LEFT JOIN unified_entities f ON (sp.data->>'circle_id')::uuid = f.id
+            FROM public.unified_entities sp
+            LEFT JOIN public.users u ON sp.owner_id = u.id
+            LEFT JOIN public.unified_entities f ON (sp.data->>'circle_id')::uuid = f.id
             WHERE sp.type = 'post' AND sp.status != 'deleted'
             ORDER BY sp.created_at DESC
         `);
@@ -378,7 +378,16 @@ router.get('/social-posts', authenticateAdmin as any, requirePermission('social'
 router.delete('/social-posts/:id', authenticateAdmin as any, async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        await prisma.$executeRawUnsafe("UPDATE unified_entities SET status = 'deleted' WHERE id = $1 AND type = 'post'", id);
+        await prisma.unifiedEntity.updateMany({
+            where: { 
+              id: id,
+              type: 'post'
+            },
+            data: { 
+              status: 'deleted',
+              updatedAt: new Date()
+            }
+        });
         res.json({ success: true, message: 'Post deleted successfully' });
     } catch (error) {
         console.error('Delete admin social post error:', error);
@@ -403,9 +412,9 @@ router.post('/application-settings', authenticateAdmin as any, requirePermission
 
         const valueStr = typeof setting_value === 'object' ? JSON.stringify(setting_value) : setting_value;
 
-        // Write to public.app_settings (simple key-value, no application_id required)
+        // Write to admin.app_settings (simple key-value, no application_id required)
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO public.app_settings (key, value)
+            `INSERT INTO admin.app_settings (key, value)
              VALUES ($1, $2)
              ON CONFLICT (key) DO UPDATE SET
                value = EXCLUDED.value,
@@ -414,29 +423,29 @@ router.post('/application-settings', authenticateAdmin as any, requirePermission
             setting_key, valueStr
         );
 
-        // Sync 'branding' key to BOTH core.applications and public.applications
+        // Sync 'branding' key to BOTH public.applications and public.applications
         if (setting_key === 'branding') {
             try {
                 const brandingObj = typeof setting_value === 'object' ? setting_value : JSON.parse(valueStr);
                 const brandingJson = JSON.stringify(brandingObj);
                 
-                // Update core.applications (Prisma reads from here)
+                // Update public.applications (Prisma reads from here)
                 await prisma.$executeRawUnsafe(
-                    `UPDATE core.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`,
+                    `UPDATE public.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`,
                     brandingJson
                 );
                 
-                // Also update public.applications for backward compatibility
+                // Also update admin.applications for backward compatibility (if exists)
                 try {
                     await prisma.$executeRawUnsafe(
-                        `UPDATE public.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`,
+                        `UPDATE admin.applications SET branding = $1::jsonb, updated_at = NOW() WHERE is_active = true`,
                         brandingJson
                     );
                 } catch (e) {
-                    // public.applications might not exist, that's ok
+                    // admin.applications might not exist, that's ok
                 }
                 
-                console.log('[ApplicationSettings] Synced branding to core.applications');
+                console.log('[ApplicationSettings] Synced branding to public.applications');
             } catch (syncError: any) {
                 console.error('[ApplicationSettings] Failed to sync branding:', syncError.message);
             }

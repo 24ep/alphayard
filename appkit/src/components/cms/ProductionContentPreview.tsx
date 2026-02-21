@@ -60,25 +60,28 @@ export const ProductionContentPreview: React.FC<ProductionContentPreviewProps> =
 
     setLoading(true)
     try {
-      // TODO: Implement analytics loading
-      // const analyticsData = await productionCmsService.getContentAnalytics(page.id)
-      // setAnalytics(analyticsData)
-      
-      // Mock data for now
-      setAnalytics({
-        views: 1234,
-        uniqueViews: 987,
-        avgTimeOnPage: 145,
-        bounceRate: 0.23,
-        conversionRate: 0.05,
-        lastViewed: new Date().toISOString()
-      })
+      const res = await fetch(`/api/admin/cms/content/${page.id}/analytics`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data.analytics || data || null);
+      } else {
+        // Fallback: show empty analytics
+        setAnalytics({
+          views: 0,
+          uniqueViews: 0,
+          avgTimeOnPage: 0,
+          bounceRate: 0,
+          conversionRate: 0,
+          lastViewed: null
+        })
+      }
     } catch (error) {
       console.error('Failed to load analytics:', error)
     } finally {
       setLoading(false)
     }
   }, [page.id])
+
 
   useEffect(() => {
     if (showAnalytics) {

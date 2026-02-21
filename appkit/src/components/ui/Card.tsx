@@ -15,16 +15,15 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'frosted', hoverable = false, children, ...props }, ref) => {
+  ({ className, variant = 'default', hoverable = false, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
         className={cn(
-          'rounded-2xl transition-all duration-300',
-          variant === 'frosted' && 'frosted-glass',
-          variant === 'elevated' && 'macos-card',
-          variant === 'default' && 'bg-white/90 border border-gray-200/50',
-          hoverable && 'hover:scale-[1.02] hover:shadow-macos-lg cursor-pointer',
+          'rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-300',
+          variant === 'frosted' && 'backdrop-blur-md bg-white/50 dark:bg-zinc-900/50',
+          variant === 'elevated' && 'shadow-md',
+          hoverable && 'hover:shadow-md cursor-pointer',
           className
         )}
         {...props}

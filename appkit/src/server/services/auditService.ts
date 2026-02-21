@@ -44,7 +44,7 @@ class AuditService {
     async log(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): Promise<void> {
         try {
             await prisma.$queryRaw<any[]>`
-                INSERT INTO audit_logs (
+                INSERT INTO admin.audit_logs (
                     id, user_id, action, category, resource, resource_id, 
                     details, ip_address, user_agent, created_at
                 )
@@ -200,7 +200,7 @@ class AuditService {
             SELECT 
                 id, user_id as "userId", action, category, resource, resource_id as "resourceId",
                 details, ip_address as "ipAddress", user_agent as "userAgent", created_at as "timestamp"
-            FROM audit_logs 
+            FROM admin.audit_logs 
             WHERE ${whereClause}
             ORDER BY created_at DESC 
             LIMIT ${limit} OFFSET ${offset}
@@ -274,7 +274,7 @@ class AuditService {
                     action,
                     COUNT(*) as count,
                     DATE_TRUNC('day', created_at) as date
-                FROM audit_logs 
+                FROM admin.audit_logs 
                 WHERE ${whereClause}
                 GROUP BY category, action, DATE_TRUNC('day', created_at)
                 ORDER BY date DESC, count DESC

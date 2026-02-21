@@ -38,8 +38,8 @@ router.get('/dashboard', authenticateAdmin, requirePermission('dashboard', 'view
         // Get Boundary-specific stats
         const basicsQuery = `
             SELECT 
-                (SELECT COUNT(*) FROM core.users) as total_users,
-                (SELECT COUNT(*) FROM core.users WHERE is_active = true) as active_users,
+                (SELECT COUNT(*) FROM public.users) as total_users,
+                (SELECT COUNT(*) FROM public.users WHERE is_active = true) as active_users,
                 (SELECT COUNT(*) FROM unified_entities WHERE type = 'circle' AND status != 'deleted') as total_families,
                 0 as active_subscriptions,
                 (SELECT COUNT(*) FROM unified_entities WHERE type = 'post' AND status != 'deleted') as total_posts,
@@ -55,7 +55,7 @@ router.get('/dashboard', authenticateAdmin, requirePermission('dashboard', 'view
             SELECT 
                 date_trunc('day', created_at) as date,
                 COUNT(*) as new_users
-            FROM core.users 
+            FROM public.users 
             WHERE created_at >= NOW() - INTERVAL '${days} days'
             GROUP BY date_trunc('day', created_at)
             ORDER BY date DESC

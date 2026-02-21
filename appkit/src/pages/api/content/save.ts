@@ -1,9 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { ContentPage } from '../../../services/productionCmsService'
 
-// Mock database - replace with actual database
-let contentDatabase: ContentPage[] = []
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -23,36 +20,35 @@ export default async function handler(
       })
     }
 
-    // Generate ID if not provided (new content)
-    if (!content.id) {
-      content.id = `content_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-      content.createdAt = new Date().toISOString()
+    // Forward to the backend CMS API for persistence
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001'
+    const response = await fetch(`${backendUrl}/api/admin/cms/content`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(req.headers.authorization ? { 'Authorization': req.headers.authorization as string } : {}),
+        ...(req.headers.cookie ? { 'Cookie': req.headers.cookie } : {}),
+      },
+      body: JSON.stringify({
+        ...content,
+        status: 'draft',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      return res.status(response.status).json({
+        success: false,
+        message: errorData.error || 'Failed to save content',
+      })
     }
 
-    // Update timestamp
-    content.updatedAt = new Date().toISOString()
-
-    // Ensure status is draft for save operation
-    content.status = 'draft'
-
-    // Find existing content or add new
-    const existingIndex = contentDatabase.findIndex(c => c.id === content.id)
-    
-    if (existingIndex >= 0) {
-      // Update existing content
-      contentDatabase[existingIndex] = content
-    } else {
-      // Add new content
-      contentDatabase.push(content)
-    }
-
-    // In a real application, you would save to a database here
-    // await database.save(content)
+    const savedContent = await response.json()
 
     res.status(200).json({
       success: true,
       message: 'Content saved successfully',
-      data: content
+      data: savedContent.content || savedContent
     })
 
   } catch (error) {

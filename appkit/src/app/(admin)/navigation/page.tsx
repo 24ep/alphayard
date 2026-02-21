@@ -77,28 +77,42 @@ export default function NavigationPage() {
     }
 
     const handleBrandingUpload = async (field: keyof BrandingConfig, file: File, screenId?: string) => {
-        // Implementation similar to AppearanceManager handleBrandingUpload
-        // For now, mocking the logic as in the manager
         try {
-            await new Promise(resolve => setTimeout(resolve, 1500))
-            const appId = (currentApp as any)._id || 'unknown';
-            const fakeUrl = `https://cdn.bondary.com/apps/${appId}/${field}/${file.name}`
+            const formDataUpload = new FormData()
+            formDataUpload.append('file', file)
+            formDataUpload.append('isShared', 'true')
+
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+            const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : ''
+
+            const res = await fetch(`${apiBase}/api/v1/storage/upload`, {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formDataUpload
+            })
+
+            if (!res.ok) throw new Error('Upload failed')
+            const json = await res.json()
+            const uploadedUrl = json.file?.public_url || json.file?.url || json.data?.url || ''
             
-            if (screenId && field === 'screens') {
-                setBranding(prev => {
-                    if (!prev) return null
-                    return {
-                        ...prev,
-                        screens: prev.screens.map(s => s.id === screenId ? { ...s, background: fakeUrl } : s)
-                    }
-                })
-            } else {
-                setBranding(prev => prev ? { ...prev, [field]: fakeUrl as any } : null)
+            if (uploadedUrl) {
+                if (screenId && field === 'screens') {
+                    setBranding(prev => {
+                        if (!prev) return null
+                        return {
+                            ...prev,
+                            screens: prev.screens.map(s => s.id === screenId ? { ...s, background: uploadedUrl } : s)
+                        }
+                    })
+                } else {
+                    setBranding(prev => prev ? { ...prev, [field]: uploadedUrl as any } : null)
+                }
             }
         } catch (err) {
             toast({ title: "Upload Failed", variant: "destructive" })
         }
     }
+
 
     if (appLoading) {
         return (

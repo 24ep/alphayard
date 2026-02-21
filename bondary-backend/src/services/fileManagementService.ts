@@ -95,49 +95,40 @@ class FileManagementService {
         color?: string;
         icon?: string;
     }): Promise<FileFolder> {
-        const result = await prisma.$queryRaw<any[]>`
-            INSERT INTO core.file_folders (name, description, parent_id, user_id, circle_id, color, icon)
-            VALUES (${data.name}, ${data.description}, ${data.parentId}, ${data.ownerId}, ${data.circleId}, ${data.color}, ${data.icon})
-            RETURNING *
-        `;
-        return this.mapFolder(result[0]);
+        const result = await prisma.fileFolder.create({
+            data: {
+                name: data.name,
+                parentId: data.parentId,
+                userId: data.ownerId,
+                color: data.color,
+                icon: data.icon
+            }
+        });
+        return this.mapFolder(result);
     }
 
     async getFolders(userId: string, circleId?: string, parentId?: string): Promise<FileFolder[]> {
-        let query = `
-            SELECT * FROM core.file_folders 
-            WHERE user_id = $1
-        `;
-        const params: any[] = [userId];
-        let paramIndex = 2;
+        const whereClause: any = {
+            userId: userId,
+            parentId: parentId || null
+        };
 
-        if (circleId) {
-            query += ` AND circle_id = $${paramIndex++}`;
-            params.push(circleId);
-        } else {
-            query += ` AND circle_id IS NULL`;
-        }
+        const result = await prisma.fileFolder.findMany({
+            where: whereClause,
+            orderBy: [
+                { name: 'asc' }
+            ]
+        });
 
-        if (parentId) {
-            query += ` AND parent_id = $${paramIndex++}`;
-            params.push(parentId);
-        } else {
-            query += ` AND parent_id IS NULL`;
-        }
-
-        query += ` ORDER BY is_pinned DESC, sort_order, name`;
-
-        const result = await prisma.$queryRawUnsafe<any[]>(query, ...params);
         return result.map((row: any) => this.mapFolder(row));
     }
 
     async getFolder(folderId: string): Promise<FileFolder | null> {
-        const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM core.file_folders WHERE id = $1`,
-            folderId
-        );
-        if (result.length === 0) return null;
-        return this.mapFolder(result[0]);
+        const result = await prisma.fileFolder.findUnique({
+            where: { id: folderId }
+        });
+        if (!result) return null;
+        return this.mapFolder(result);
     }
 
     async updateFolder(folderId: string, data: Partial<{
@@ -169,7 +160,7 @@ class FileManagementService {
         values.push(folderId);
 
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.file_folders SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+            `UPDATE public.file_folders SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
             ...values
         );
 
@@ -178,19 +169,22 @@ class FileManagementService {
     }
 
     async deleteFolder(folderId: string): Promise<boolean> {
-        const result = await prisma.$queryRawUnsafe<any[]>(
-            `DELETE FROM core.file_folders WHERE id = $1 RETURNING id`,
-            folderId
-        );
-        return (result.length ?? 0) > 0;
+        try {
+            await prisma.fileFolder.delete({
+                where: { id: folderId }
+            });
+            return true;
+        } catch (error) {
+            return false;
+        }
     }
 
     async getFolderPath(folderId: string): Promise<FileFolder[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
             `WITH RECURSIVE folder_path AS (
-                SELECT * FROM core.file_folders WHERE id = $1
+                SELECT * FROM public.file_folders WHERE id = $1
                 UNION ALL
-                SELECT f.* FROM core.file_folders f
+                SELECT f.* FROM public.file_folders f
                 INNER JOIN folder_path fp ON f.id = fp.parent_id
             )
             SELECT * FROM folder_path ORDER BY (
@@ -222,11 +216,11 @@ class FileManagementService {
             SELECT f.*, 
                    COALESCE(
                        (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-                        FROM file_tag_assignments ta
-                        JOIN file_tags t ON t.id = ta.tag_id
+                        FROM public.file_tag_assignments ta
+                        JOIN public.file_tags t ON t.id = ta.tag_id
                         WHERE ta.file_id = f.id), '[]'
                    ) as tags
-            FROM core.files f
+            FROM public.files f
             WHERE f.user_id = $1 AND f.status = $2
         `;
         const params: any[] = [userId, options.status || 'active'];
@@ -298,11 +292,11 @@ class FileManagementService {
             `SELECT f.*, 
                    COALESCE(
                        (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-                        FROM file_tag_assignments ta
-                        JOIN file_tags t ON t.id = ta.tag_id
+                        FROM public.file_tag_assignments ta
+                        JOIN public.file_tags t ON t.id = ta.tag_id
                         WHERE ta.file_id = f.id), '[]'
                    ) as tags
-            FROM core.files f
+            FROM public.files f
             WHERE f.id = $1`,
             fileId
         );
@@ -335,7 +329,7 @@ class FileManagementService {
         values.push(fileId);
 
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+            `UPDATE public.files SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
             ...values
         );
 
@@ -349,7 +343,7 @@ class FileManagementService {
 
     async moveFiles(fileIds: string[], targetFolderId: string | null): Promise<number> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET folder_id = $1, updated_at = NOW() WHERE id = ANY($2) RETURNING id`,
+            `UPDATE public.files SET folder_id = $1, updated_at = NOW() WHERE id = ANY($2) RETURNING id`,
             targetFolderId,
             fileIds
         );
@@ -362,11 +356,11 @@ class FileManagementService {
 
         // Create a copy in the database
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO core.files (original_name, file_name, mime_type, size, url, thumbnail_url, 
+            `INSERT INTO public.files (original_name, file_name, mime_type, size, url, thumbnail_url, 
                                folder_id, user_id, circle_id, description, file_type, metadata)
              SELECT original_name || ' (copy)', file_name, mime_type, size, url, thumbnail_url,
                     $1, $2, circle_id, description, file_type, metadata
-             FROM core.files WHERE id = $3
+             FROM public.files WHERE id = $3
              RETURNING *`,
             targetFolderId,
             userId,
@@ -380,7 +374,7 @@ class FileManagementService {
     async deleteFile(fileId: string, userId: string): Promise<boolean> {
         // Soft delete - mark as deleted
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET status = 'deleted', updated_at = NOW() 
+            `UPDATE public.files SET status = 'deleted', updated_at = NOW() 
              WHERE id = $1 AND user_id = $2 RETURNING id`,
             fileId,
             userId
@@ -394,7 +388,7 @@ class FileManagementService {
         if (!deleted) {
             // If entity deletion fails, try direct database delete
             const result = await prisma.$queryRawUnsafe<any[]>(
-                `DELETE FROM core.files WHERE id = $1 AND user_id = $2 RETURNING id`,
+                `DELETE FROM public.files WHERE id = $1 AND user_id = $2 RETURNING id`,
                 fileId,
                 userId
             );
@@ -405,13 +399,13 @@ class FileManagementService {
 
     async incrementViewCount(fileId: string, userId: string): Promise<void> {
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET view_count = view_count + 1, last_accessed_at = NOW() WHERE id = $1`,
+            `UPDATE public.files SET view_count = view_count + 1, last_accessed_at = NOW() WHERE id = $1`,
             fileId
         );
 
         // Update recent access
         await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_recent_access (file_id, user_id, access_type)
+            `INSERT INTO public.file_recent_access (file_id, user_id, access_type)
              VALUES ($1, $2, 'view')
              ON CONFLICT (file_id, user_id) DO UPDATE SET accessed_at = NOW(), access_type = 'view'`,
             fileId,
@@ -421,12 +415,12 @@ class FileManagementService {
 
     async incrementDownloadCount(fileId: string, userId: string): Promise<void> {
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET download_count = download_count + 1, last_accessed_at = NOW() WHERE id = $1`,
+            `UPDATE public.files SET download_count = download_count + 1, last_accessed_at = NOW() WHERE id = $1`,
             fileId
         );
 
         await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_recent_access (file_id, user_id, access_type)
+            `INSERT INTO public.file_recent_access (file_id, user_id, access_type)
              VALUES ($1, $2, 'download')
              ON CONFLICT (file_id, user_id) DO UPDATE SET accessed_at = NOW(), access_type = 'download'`,
             fileId,
@@ -451,12 +445,12 @@ class FileManagementService {
             SELECT f.*, CONCAT(u.first_name, ' ', u.last_name) as uploader_name,
                    COALESCE(
                        (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-                        FROM file_tag_assignments ta
-                        JOIN file_tags t ON t.id = ta.tag_id
+                        FROM public.file_tag_assignments ta
+                        JOIN public.file_tags t ON t.id = ta.tag_id
                         WHERE ta.file_id = f.id), '[]'
                    ) as tags
-            FROM core.files f
-            LEFT JOIN core.users u ON u.id = f.user_id
+            FROM public.files f
+            LEFT JOIN public.users u ON u.id = f.user_id
             WHERE f.circle_id = $1 AND f.status = 'active'
         `;
         const params: any[] = [circleId];
@@ -510,7 +504,7 @@ class FileManagementService {
 
     async getCircleFolders(circleId: string, parentId?: string): Promise<FileFolder[]> {
         let query = `
-            SELECT * FROM core.file_folders 
+            SELECT * FROM public.file_folders 
             WHERE circle_id = $1
         `;
         const params: any[] = [circleId];
@@ -533,7 +527,7 @@ class FileManagementService {
     // =====================================
 
     async getTags(userId: string, circleId?: string): Promise<FileTag[]> {
-        let query = `SELECT * FROM file_tags WHERE user_id = $1`;
+        let query = `SELECT * FROM public.file_tags WHERE user_id = $1`;
         const params: any[] = [userId];
 
         if (circleId) {
@@ -552,7 +546,7 @@ class FileManagementService {
 
     async createTag(name: string, color: string, userId: string, circleId?: string): Promise<FileTag> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_tags (name, color, user_id, circle_id)
+            `INSERT INTO public.file_tags (name, color, user_id, circle_id)
              VALUES ($1, $2, $3, $4)
              RETURNING *`,
             name,
@@ -569,7 +563,7 @@ class FileManagementService {
 
     async assignTag(fileId: string, tagId: string, userId: string): Promise<void> {
         await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_tag_assignments (file_id, tag_id, assigned_by)
+            `INSERT INTO public.file_tag_assignments (file_id, tag_id, assigned_by)
              VALUES ($1, $2, $3)
              ON CONFLICT (file_id, tag_id) DO NOTHING`,
             fileId,
@@ -580,7 +574,7 @@ class FileManagementService {
 
     async removeTag(fileId: string, tagId: string): Promise<void> {
         await prisma.$queryRawUnsafe<any[]>(
-            `DELETE FROM file_tag_assignments WHERE file_id = $1 AND tag_id = $2`,
+            `DELETE FROM public.file_tag_assignments WHERE file_id = $1 AND tag_id = $2`,
             fileId,
             tagId
         );
@@ -598,7 +592,7 @@ class FileManagementService {
         downloadLimit?: number;
     }): Promise<FileShare> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_shares (file_id, shared_by, shared_with_user_id, shared_with_circle_id, permission, expires_at, download_limit)
+            `INSERT INTO public.file_shares (file_id, shared_by, shared_with_user_id, shared_with_circle_id, permission, expires_at, download_limit)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
             fileId,
@@ -620,7 +614,7 @@ class FileManagementService {
     }): Promise<FileShare> {
         const shareLink = uuidv4();
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_shares (file_id, shared_by, share_link, permission, expires_at, download_limit, link_password_hash)
+            `INSERT INTO public.file_shares (file_id, shared_by, share_link, permission, expires_at, download_limit, link_password_hash)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
              RETURNING *`,
             fileId,
@@ -636,7 +630,7 @@ class FileManagementService {
 
     async getFileShares(fileId: string): Promise<FileShare[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM file_shares WHERE file_id = $1 AND is_active = TRUE ORDER BY created_at DESC`,
+            `SELECT * FROM public.file_shares WHERE file_id = $1 AND is_active = TRUE ORDER BY created_at DESC`,
             fileId
         );
         return result.map((row: any) => this.mapShare(row));
@@ -644,8 +638,8 @@ class FileManagementService {
 
     async getSharedWithMe(userId: string): Promise<FileItem[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT f.* FROM core.files f
-             INNER JOIN file_shares s ON s.file_id = f.id
+            `SELECT f.* FROM public.files f
+             INNER JOIN public.file_shares s ON s.file_id = f.id
              WHERE s.shared_with_user_id = $1 AND s.is_active = TRUE
              AND (s.expires_at IS NULL OR s.expires_at > NOW())
              ORDER BY s.created_at DESC`,
@@ -656,7 +650,7 @@ class FileManagementService {
 
     async removeShare(shareId: string): Promise<boolean> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE file_shares SET is_active = FALSE WHERE id = $1 RETURNING id`,
+            `UPDATE public.file_shares SET is_active = FALSE WHERE id = $1 RETURNING id`,
             shareId
         );
         return (result.length ?? 0) > 0;
@@ -668,8 +662,8 @@ class FileManagementService {
 
     async getRecentFiles(userId: string, limit: number = 20): Promise<FileItem[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT f.* FROM core.files f
-             INNER JOIN file_recent_access r ON r.file_id = f.id
+            `SELECT f.* FROM public.files f
+             INNER JOIN public.file_recent_access r ON r.file_id = f.id
              WHERE r.user_id = $1 AND f.status = 'active'
              ORDER BY r.accessed_at DESC
              LIMIT $2`,
@@ -681,7 +675,7 @@ class FileManagementService {
 
     async getFavoriteFiles(userId: string): Promise<FileItem[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM core.files 
+            `SELECT * FROM public.files 
              WHERE user_id = $1 AND is_favorite = TRUE AND status = 'active'
              ORDER BY updated_at DESC`,
             userId
@@ -691,7 +685,7 @@ class FileManagementService {
 
     async getFavoriteFolders(userId: string): Promise<FileFolder[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM core.file_folders 
+            `SELECT * FROM public.file_folders 
              WHERE user_id = $1 AND is_favorite = TRUE
              ORDER BY name`,
             userId
@@ -705,14 +699,14 @@ class FileManagementService {
 
     async getStorageQuota(userId: string): Promise<StorageQuota> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM storage_quota WHERE user_id = $1`,
+            `SELECT * FROM public.storage_quota WHERE user_id = $1`,
             userId
         );
 
         if (result.length === 0) {
             // Initialize quota
             await prisma.$queryRawUnsafe<any[]>(
-                `INSERT INTO storage_quota (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+                `INSERT INTO public.storage_quota (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
                 userId
             );
             return {
@@ -736,7 +730,7 @@ class FileManagementService {
 
     async getCircleStorageQuota(circleId: string): Promise<StorageQuota> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM storage_quota WHERE circle_id = $1`,
+            `SELECT * FROM public.storage_quota WHERE circle_id = $1`,
             circleId
         );
 
@@ -744,7 +738,7 @@ class FileManagementService {
             // Calculate from files
             const usageResult = await prisma.$queryRawUnsafe<any[]>(
                 `SELECT COALESCE(SUM(size), 0) as used_bytes, COUNT(*) as file_count
-                 FROM core.files WHERE circle_id = $1 AND status = 'active'`,
+                 FROM public.files WHERE circle_id = $1 AND status = 'active'`,
                 circleId
             );
             
@@ -779,7 +773,7 @@ class FileManagementService {
         details?: any;
     }): Promise<void> {
         await prisma.$queryRawUnsafe<any[]>(
-            `INSERT INTO file_activity_log (file_id, folder_id, user_id, action, details)
+            `INSERT INTO public.file_activity_log (file_id, folder_id, user_id, action, details)
              VALUES ($1, $2, $3, $4, $5)`,
             data.fileId,
             data.folderId,
@@ -792,8 +786,8 @@ class FileManagementService {
     async getFileActivity(fileId: string, limit: number = 50): Promise<any[]> {
         const result = await prisma.$queryRawUnsafe<any[]>(
             `SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) as user_name
-             FROM file_activity_log a
-             LEFT JOIN core.users u ON u.id = a.user_id
+             FROM public.file_activity_log a
+             LEFT JOIN public.users u ON u.id = a.user_id
              WHERE a.file_id = $1
              ORDER BY a.created_at DESC
              LIMIT $2`,
@@ -879,14 +873,14 @@ class FileManagementService {
         offset?: number;
     } = {}): Promise<{ files: FileItem[]; total: number }> {
         const query = `
-            SELECT f.* FROM core.files f
+            SELECT f.* FROM public.files f
             WHERE f.user_id = $1 AND f.status = 'deleted'
             ORDER BY f.updated_at DESC
         `;
         const params: any[] = [userId];
 
         const countResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT COUNT(*) FROM core.files WHERE user_id = $1 AND status = 'deleted'`,
+            `SELECT COUNT(*) FROM public.files WHERE user_id = $1 AND status = 'deleted'`,
             userId
         );
         const total = parseInt(countResult[0].count, 10);
@@ -910,7 +904,7 @@ class FileManagementService {
 
     async restoreFile(fileId: string, userId: string): Promise<FileItem | null> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET status = 'active', updated_at = NOW() 
+            `UPDATE public.files SET status = 'active', updated_at = NOW() 
              WHERE id = $1 AND user_id = $2 AND status = 'deleted'
              RETURNING *`,
             fileId,
@@ -923,7 +917,7 @@ class FileManagementService {
     async emptyTrash(userId: string): Promise<number> {
         // Get files to delete from storage
         const filesToDelete = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT id, file_name FROM core.files WHERE user_id = $1 AND status = 'deleted'`,
+            `SELECT id, file_name FROM public.files WHERE user_id = $1 AND status = 'deleted'`,
             userId
         );
 
@@ -938,7 +932,7 @@ class FileManagementService {
 
         // Delete from database
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `DELETE FROM core.files WHERE user_id = $1 AND status = 'deleted'`,
+            `DELETE FROM public.files WHERE user_id = $1 AND status = 'deleted'`,
             userId
         );
         return result.length ?? 0;
@@ -946,7 +940,7 @@ class FileManagementService {
 
     async batchRestoreFiles(fileIds: string[], userId: string): Promise<number> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET status = 'active', updated_at = NOW() 
+            `UPDATE public.files SET status = 'active', updated_at = NOW() 
              WHERE id = ANY($1) AND user_id = $2 AND status = 'deleted'
              RETURNING id`,
             fileIds,
@@ -976,11 +970,11 @@ class FileManagementService {
             SELECT f.*, 
                    COALESCE(
                        (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-                        FROM file_tag_assignments ta
-                        JOIN file_tags t ON t.id = ta.tag_id
+                        FROM public.file_tag_assignments ta
+                        JOIN public.file_tags t ON t.id = ta.tag_id
                         WHERE ta.file_id = f.id), '[]'
                    ) as tags
-            FROM core.files f
+            FROM public.files f
             WHERE f.user_id = $1 AND f.status = 'active'
             AND (f.original_name ILIKE $2 OR f.description ILIKE $2)
         `;
@@ -1012,7 +1006,7 @@ class FileManagementService {
 
         // Search folders
         const folderQuery = `
-            SELECT * FROM core.file_folders
+            SELECT * FROM public.file_folders
             WHERE user_id = $1 AND (name ILIKE $2 OR description ILIKE $2)
             ORDER BY name
         `;
@@ -1051,7 +1045,7 @@ class FileManagementService {
         } else {
             // Soft delete
             const result = await prisma.$queryRawUnsafe<any[]>(
-                `UPDATE core.files SET status = 'deleted', updated_at = NOW() 
+                `UPDATE public.files SET status = 'deleted', updated_at = NOW() 
                  WHERE id = ANY($1) AND user_id = $2 AND status = 'active'
                  RETURNING id`,
                 fileIds,
@@ -1063,7 +1057,7 @@ class FileManagementService {
 
     async batchToggleFavorite(fileIds: string[], userId: string, isFavorite: boolean): Promise<number> {
         const result = await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET is_favorite = $1, updated_at = NOW() 
+            `UPDATE public.files SET is_favorite = $1, updated_at = NOW() 
              WHERE id = ANY($2) AND user_id = $3
              RETURNING id`,
             isFavorite,
@@ -1076,7 +1070,7 @@ class FileManagementService {
     async batchTagFiles(fileIds: string[], tagId: string, userId: string, remove: boolean = false): Promise<number> {
         if (remove) {
             const result = await prisma.$queryRawUnsafe<any[]>(
-                `DELETE FROM file_tag_assignments WHERE file_id = ANY($1) AND tag_id = $2`,
+                `DELETE FROM public.file_tag_assignments WHERE file_id = ANY($1) AND tag_id = $2`,
                 fileIds,
                 tagId
             );
@@ -1086,7 +1080,7 @@ class FileManagementService {
             for (const fileId of fileIds) {
                 try {
                     await prisma.$queryRawUnsafe<any[]>(
-                        `INSERT INTO file_tag_assignments (file_id, tag_id, assigned_by)
+                        `INSERT INTO public.file_tag_assignments (file_id, tag_id, assigned_by)
                          VALUES ($1, $2, $3)
                          ON CONFLICT (file_id, tag_id) DO NOTHING`,
                         fileId,
@@ -1117,14 +1111,14 @@ class FileManagementService {
         // Get totals
         const totalsResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT COALESCE(SUM(size), 0) as total_size, COUNT(*) as total_files
-             FROM core.files WHERE user_id = $1 AND status = 'active'`,
+             FROM public.files WHERE user_id = $1 AND status = 'active'`,
             userId
         );
 
         // Get breakdown by file type
         const byTypeResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT file_type, COALESCE(SUM(size), 0) as size, COUNT(*) as count
-             FROM core.files WHERE user_id = $1 AND status = 'active'
+             FROM public.files WHERE user_id = $1 AND status = 'active'
              GROUP BY file_type ORDER BY size DESC`,
             userId
         );
@@ -1133,7 +1127,7 @@ class FileManagementService {
         const byMonthResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT TO_CHAR(created_at, 'YYYY-MM') as month,
                     COALESCE(SUM(size), 0) as size, COUNT(*) as count
-             FROM core.files WHERE user_id = $1 AND status = 'active'
+             FROM public.files WHERE user_id = $1 AND status = 'active'
              AND created_at >= NOW() - INTERVAL '12 months'
              GROUP BY TO_CHAR(created_at, 'YYYY-MM')
              ORDER BY month DESC`,
@@ -1142,14 +1136,14 @@ class FileManagementService {
 
         // Get largest files
         const largestResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM core.files WHERE user_id = $1 AND status = 'active'
+            `SELECT * FROM public.files WHERE user_id = $1 AND status = 'active'
              ORDER BY size DESC LIMIT 10`,
             userId
         );
 
         // Get recent uploads (last 7 days)
         const recentResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT COUNT(*) FROM core.files 
+            `SELECT COUNT(*) FROM public.files 
              WHERE user_id = $1 AND status = 'active'
              AND created_at >= NOW() - INTERVAL '7 days'`,
             userId
@@ -1183,14 +1177,14 @@ class FileManagementService {
         // Get totals
         const totalsResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT COALESCE(SUM(size), 0) as total_size, COUNT(*) as total_files
-             FROM core.files WHERE circle_id = $1 AND status = 'active'`,
+             FROM public.files WHERE circle_id = $1 AND status = 'active'`,
             circleId
         );
 
         // Get breakdown by file type
         const byTypeResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT file_type, COALESCE(SUM(size), 0) as size, COUNT(*) as count
-             FROM core.files WHERE circle_id = $1 AND status = 'active'
+             FROM public.files WHERE circle_id = $1 AND status = 'active'
              GROUP BY file_type ORDER BY size DESC`,
             circleId
         );
@@ -1199,8 +1193,8 @@ class FileManagementService {
         const byMemberResult = await prisma.$queryRawUnsafe<any[]>(
             `SELECT f.user_id as user_id, CONCAT(u.first_name, ' ', u.last_name) as user_name,
                     COALESCE(SUM(f.size), 0) as size, COUNT(*) as count
-             FROM core.files f
-             LEFT JOIN core.users u ON u.id = f.user_id
+             FROM public.files f
+             LEFT JOIN public.users u ON u.id = f.user_id
              WHERE f.circle_id = $1 AND f.status = 'active'
              GROUP BY f.user_id, u.first_name, u.last_name
              ORDER BY size DESC`,
@@ -1209,8 +1203,8 @@ class FileManagementService {
 
         // Get largest files
         const largestResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT f.*, CONCAT(u.first_name, ' ', u.last_name) as uploader_name FROM core.files f
-             LEFT JOIN core.users u ON u.id = f.user_id
+            `SELECT f.*, CONCAT(u.first_name, ' ', u.last_name) as uploader_name FROM public.files f
+             LEFT JOIN public.users u ON u.id = f.user_id
              WHERE f.circle_id = $1 AND f.status = 'active'
              ORDER BY f.size DESC LIMIT 10`,
             circleId
@@ -1250,7 +1244,7 @@ class FileManagementService {
     }> {
         // Find share by link
         const shareResult = await prisma.$queryRawUnsafe<any[]>(
-            `SELECT * FROM file_shares WHERE share_link = $1 AND is_active = TRUE`,
+            `SELECT * FROM public.file_shares WHERE share_link = $1 AND is_active = TRUE`,
             shareLink
         );
 
@@ -1312,7 +1306,7 @@ class FileManagementService {
 
         // Increment download count
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE file_shares SET download_count = download_count + 1 WHERE share_link = $1`,
+            `UPDATE public.file_shares SET download_count = download_count + 1 WHERE share_link = $1`,
             shareLink
         );
 
@@ -1345,12 +1339,12 @@ class FileManagementService {
             SELECT f.*, CONCAT(u.first_name, ' ', u.last_name) as uploader_name,
                    COALESCE(
                        (SELECT json_agg(json_build_object('id', t.id, 'name', t.name, 'color', t.color))
-                        FROM file_tag_assignments ta
-                        JOIN file_tags t ON t.id = ta.tag_id
+                        FROM public.file_tag_assignments ta
+                        JOIN public.file_tags t ON t.id = ta.tag_id
                         WHERE ta.file_id = f.id), '[]'
                    ) as tags
-            FROM core.files f
-            LEFT JOIN core.users u ON u.id = f.uploaded_by
+            FROM public.files f
+            LEFT JOIN public.users u ON u.id = f.uploaded_by
             WHERE f.status = 'active'
             AND f.file_type = ANY($1)
         `;
@@ -1423,18 +1417,18 @@ class FileManagementService {
     async getGalleryAlbums(userId?: string, circleId?: string, parentId?: string): Promise<FileFolder[]> {
         let query = `
             SELECT ff.*,
-                   (SELECT f.url FROM core.files f 
+                   (SELECT f.url FROM public.files f 
                     WHERE f.folder_id = ff.id 
                     AND f.file_type IN ('image', 'video') 
                     AND f.status = 'active'
                     ORDER BY f.is_pinned DESC, f.created_at DESC LIMIT 1
                    ) as cover_photo_url,
-                   (SELECT COUNT(*) FROM core.files f 
+                   (SELECT COUNT(*) FROM public.files f 
                     WHERE f.folder_id = ff.id 
                     AND f.file_type IN ('image', 'video') 
                     AND f.status = 'active'
                    ) as media_count
-            FROM core.file_folders ff
+            FROM public.file_folders ff
             WHERE 1=1
         `;
         const params: any[] = [];
@@ -1471,7 +1465,7 @@ class FileManagementService {
         // Store cover photo ID in folder metadata or a separate field
         // For now, we'll use a custom approach with folder metadata
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.file_folders 
+            `UPDATE public.file_folders 
              SET updated_at = NOW() 
              WHERE id = $1`,
             folderId
@@ -1481,11 +1475,11 @@ class FileManagementService {
         // This could be stored in metadata or a dedicated column
         // For simplicity, we're pinning the photo so it appears first
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET is_pinned = FALSE WHERE folder_id = $1`,
+            `UPDATE public.files SET is_pinned = FALSE WHERE folder_id = $1`,
             folderId
         );
         await prisma.$queryRawUnsafe<any[]>(
-            `UPDATE core.files SET is_pinned = TRUE WHERE id = $1`,
+            `UPDATE public.files SET is_pinned = TRUE WHERE id = $1`,
             photoId
         );
     }
@@ -1517,7 +1511,7 @@ class FileManagementService {
                 COALESCE(SUM(size), 0) as total_size,
                 COUNT(*) FILTER (WHERE is_favorite = TRUE) as favorite_count,
                 COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as recent_count
-            FROM core.files f
+            FROM public.files f
             ${whereClause}
             AND f.file_type IN ('image', 'video')
         `, ...params);
@@ -1532,7 +1526,7 @@ class FileManagementService {
 
         const albumResult = await prisma.$queryRawUnsafe<any[]>(`
             SELECT COUNT(*) as album_count
-            FROM core.file_folders
+            FROM public.file_folders
             ${albumWhereClause}
         `, ...params);
 

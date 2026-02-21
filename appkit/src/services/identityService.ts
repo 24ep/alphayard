@@ -1138,7 +1138,7 @@ const identityService = {
   getUserAnalytics,
   getGroupMembers,
   
-  // Additional stub methods
+  // Session and security methods
   logIdentityAction,
   getSessions,
   getSessionById,

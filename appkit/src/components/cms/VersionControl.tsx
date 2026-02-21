@@ -57,57 +57,11 @@ export const VersionControl: React.FC<VersionControlProps> = ({
   const loadVersions = async () => {
     setLoading(true)
     try {
-      // Mock data - replace with actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockVersions: ContentVersion[] = [
-        {
-          id: 'v1',
-          version: 1,
-          title: 'Initial Version',
-          content: { components: [] },
-          createdAt: '2024-01-15T10:30:00Z',
-          createdBy: 'John Doe',
-          changeDescription: 'Initial content creation',
-          isAutoSave: false,
-          size: 1024
-        },
-        {
-          id: 'v2',
-          version: 2,
-          title: 'Added Hero Section',
-          content: { components: [{ type: 'hero', props: {} }] },
-          createdAt: '2024-01-15T11:45:00Z',
-          createdBy: 'John Doe',
-          changeDescription: 'Added hero section with CTA',
-          isAutoSave: false,
-          size: 2048
-        },
-        {
-          id: 'v3',
-          version: 3,
-          title: 'Auto Save',
-          content: { components: [{ type: 'hero', props: {} }, { type: 'text', props: {} }] },
-          createdAt: '2024-01-15T12:15:00Z',
-          createdBy: 'System',
-          changeDescription: 'Auto-saved changes',
-          isAutoSave: true,
-          size: 3072
-        },
-        {
-          id: 'v4',
-          version: 4,
-          title: 'Updated Content',
-          content: currentContent,
-          createdAt: '2024-01-15T13:20:00Z',
-          createdBy: 'John Doe',
-          changeDescription: 'Updated text content and styling',
-          isAutoSave: false,
-          size: 4096
-        }
-      ]
-      
-      setVersions(mockVersions)
+      const res = await fetch(`/api/admin/cms/versions${currentContent?.id ? `?contentId=${currentContent.id}` : ''}`);
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data.versions || data || []);
+      }
     } catch (error) {
       console.error('Error loading versions:', error)
     } finally {
@@ -129,22 +83,34 @@ export const VersionControl: React.FC<VersionControlProps> = ({
     }
 
     try {
-      // Mock API call - replace with actual implementation
-      await new Promise(resolve => setTimeout(resolve, 500))
+      const res = await fetch('/api/admin/cms/versions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: currentContent,
+          description: newVersionDescription,
+        }),
+      });
       
-      const newVersion: ContentVersion = {
-        id: `v${versions.length + 1}`,
-        version: versions.length + 1,
-        title: newVersionDescription,
-        content: currentContent,
-        createdAt: new Date().toISOString(),
-        createdBy: 'Current User',
-        changeDescription: newVersionDescription,
-        isAutoSave: false,
-        size: JSON.stringify(currentContent).length
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(prev => [data.version || data, ...prev]);
+      } else {
+        // Fallback: create version locally
+        const newVersion: ContentVersion = {
+          id: `v${versions.length + 1}`,
+          version: versions.length + 1,
+          title: newVersionDescription,
+          content: currentContent,
+          createdAt: new Date().toISOString(),
+          createdBy: 'Current User',
+          changeDescription: newVersionDescription,
+          isAutoSave: false,
+          size: JSON.stringify(currentContent).length
+        }
+        setVersions(prev => [newVersion, ...prev]);
       }
       
-      setVersions(prev => [newVersion, ...prev])
       setNewVersionDescription('')
       setShowSaveDialog(false)
       onSaveVersion(newVersionDescription)
@@ -153,6 +119,7 @@ export const VersionControl: React.FC<VersionControlProps> = ({
       alert('Error saving version')
     }
   }
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
