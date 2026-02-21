@@ -92,6 +92,9 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
         if (hub.id === 'identity') {
             return pathname.startsWith('/identity')
         }
+        if (hub.id === 'settings') {
+            return pathname.startsWith('/settings') || pathname.startsWith('/legal')
+        }
         if (hub.id === 'database') {
             return pathname.startsWith('/database')
         }
@@ -99,14 +102,6 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
     }) || filteredNavigationHubs[0]
 
     const getModuleTitle = () => {
-        // Handle settings pages specially since we removed the Settings hub
-        if (pathname.startsWith('/settings')) {
-            if (pathname.includes('/applications')) return 'Applications'
-            if (pathname.includes('/team')) return 'Team'
-            if (pathname.includes('/legal')) return 'Legal'
-            return 'Settings'
-        }
-        
         if (!activeHub) return 'Dashboard'
         const item = activeHub.items.find(i => pathname.startsWith(i.href))
         return item?.label || activeHub.label
