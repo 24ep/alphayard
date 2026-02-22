@@ -565,7 +565,7 @@ const CanvasComponent: React.FC<{
               ...getResponsiveStyle()
             }}
           >
-            <p>"{component.props.content || 'This is a quote'}"</p>
+            <p>&quot;{component.props.content || 'This is a quote'}&quot;</p>
             {component.props.author && (
               <cite style={{ fontSize: '14px', color: '#9ca3af' }}>
                 — {component.props.author}
@@ -801,7 +801,7 @@ const CanvasComponent: React.FC<{
       case 'testimonial':
         return (
           <div className="bg-gray-50 p-6 rounded-lg text-center">
-            <div className="text-2xl text-gray-400 mb-4">"</div>
+            <div className="text-2xl text-gray-400 mb-4">&quot;</div>
             <p className="text-lg italic mb-4">{component.props.quote || 'Great product!'}</p>
             <div className="flex items-center justify-center">
               {component.props.avatar && (

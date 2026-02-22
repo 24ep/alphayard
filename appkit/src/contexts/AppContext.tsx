@@ -85,8 +85,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setError(null)
         
         try {
-            const response = await adminService.getApplications()
-            const apps = response.applications || []
+            const apps = await adminService.getApplications()
             setApplications(apps)
             
             // Try to restore current app from localStorage or pick default

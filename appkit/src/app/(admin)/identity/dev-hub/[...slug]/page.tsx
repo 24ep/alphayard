@@ -25,10 +25,10 @@ type DocContent = {
 }
 
 export default function DocPage() {
+  const [copied, setCopied] = React.useState<string | null>(null)
   const params = useParams()
   if (!params) return null
   const slug = Array.isArray(params.slug) ? params.slug.join('/') : params.slug
-  const [copied, setCopied] = React.useState<string | null>(null)
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)

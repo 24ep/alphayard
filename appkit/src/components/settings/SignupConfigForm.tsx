@@ -377,7 +377,7 @@ export function SignupConfigForm({ config, updateConfig }: SignupConfigFormProps
             <div className="flex items-center justify-between mb-4">
               <div className="space-y-1">
                 <Label htmlFor="signup-showSSO">Show SSO Button</Label>
-                <p className="text-sm text-gray-500">Enable or disable the "Continue with SSO" option</p>
+                <p className="text-sm text-gray-500">Enable or disable the &quot;Continue with SSO&quot; option</p>
               </div>
               <Switch
                 id="signup-showSSO"

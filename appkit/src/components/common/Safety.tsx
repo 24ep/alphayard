@@ -1,8 +1,6 @@
-'use client'
-
-import { CircleSafetyIncidents } from '../circles/CircleSafetyIncidents'
+// import { CircleSafetyIncidents } from '../circles/CircleSafetyIncidents'
 
 export function Safety() {
-  return <CircleSafetyIncidents />
+  return null // <CircleSafetyIncidents />
 }
 

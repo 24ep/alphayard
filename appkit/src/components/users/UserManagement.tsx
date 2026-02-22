@@ -21,8 +21,8 @@ import {
   CreditCardIcon,
   BanknotesIcon
 } from '@heroicons/react/24/outline'
-import { userService, GlobalUser as User, UserAttribute } from '../../services/userService'
-import { adminService, Circle } from '../../services/adminService'
+import { userService, GlobalUser as User, UserAttribute, Circle } from '../../services/userService'
+import { adminService } from '../../services/adminService'
 import { FilterSystem, FilterConfig, SortableHeader } from '../common/FilterSystem'
 import { billingService, BillingPlan, PaymentMethodSummary, InvoiceSummary } from '../../services/billingService'
 import { Modal } from '../../components/ui/Modal'
@@ -385,8 +385,8 @@ export function UserManagement() {
     .filter(user => {
       const searchTerm = activeFilters.search || ''
       const matchesSearch = !searchTerm ||
-        user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.firstName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.lastName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
 
       const matchesRole = !activeFilters.role || activeFilters.role === 'all' || user.role === activeFilters.role
@@ -483,8 +483,8 @@ export function UserManagement() {
   const handleEdit = (user: User) => {
     setEditingUser(user)
     setFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
       email: user.email,
       phone: user.phone || '',
       dateOfBirth: user.dateOfBirth || '',
@@ -505,7 +505,7 @@ export function UserManagement() {
       role: user.role as any,
       status: user.status,
       circleId: user.circleId || '',
-      permissions: user.permissions
+      permissions: user.permissions || []
     })
     setShowForm(true)
   }
@@ -995,10 +995,10 @@ export function UserManagement() {
                           <EnvelopeIcon className="h-4 w-4 text-gray-400" />
                           <span className="text-gray-900">{user.email}</span>
                         </div>
-                        {user.phone && (
+                        {(user as any).phone && (
                           <div className="flex items-center gap-2 text-sm text-gray-500">
                             <PhoneIcon className="h-4 w-4 text-gray-400" />
-                            {user.phone}
+                            {(user as any).phone}
                           </div>
                         )}
                         {user.dateOfBirth && (
@@ -1076,7 +1076,7 @@ export function UserManagement() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            adminService.impersonateUser(user.id)
+                            userService.impersonateUser(user.id)
                               .then(() => alert('Impersonation started'))
                               .catch(() => alert('Failed to impersonate'))
                           }}

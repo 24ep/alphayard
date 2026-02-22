@@ -59,9 +59,9 @@ const getProviderGuide = (providerName: string) => {
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener" className="underline">Google Cloud Console</a></li>
                     <li>Create a new project or select existing one</li>
-                    <li>Enable "Google+ API" and "OAuth2 API"</li>
-                    <li>Go to "Credentials" → "Create Credentials" → "OAuth client ID"</li>
-                    <li>Select "Web application" type</li>
+                    <li>Enable &quot;Google+ API&quot; and &quot;OAuth2 API&quot;</li>
+                    <li>Go to &quot;Credentials&quot; → &quot;Create Credentials&quot; → &quot;OAuth client ID&quot;</li>
+                    <li>Select &quot;Web application&quot; type</li>
                     <li>Add authorized redirect URI: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/google</code></li>
                 </ol>
                 <p className="font-medium mt-3 mb-2">2. Configure Settings</p>
@@ -77,8 +77,8 @@ const getProviderGuide = (providerName: string) => {
                 <p className="font-medium mb-2">1. Create Facebook App</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://developers.facebook.com/" target="_blank" rel="noopener" className="underline">Facebook Developers</a></li>
-                    <li>Create new app → "Business" or "App for Everything Else"</li>
-                    <li>Add "Facebook Login" product</li>
+                    <li>Create new app → &quot;Business&quot; or &quot;App for Everything Else&quot;</li>
+                    <li>Add &quot;Facebook Login&quot; product</li>
                     <li>Configure Web OAuth settings</li>
                     <li>Add redirect URI: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/facebook</code></li>
                 </ol>
@@ -86,7 +86,7 @@ const getProviderGuide = (providerName: string) => {
                 <ul className="list-disc list-inside space-y-1 text-xs">
                     <li>Submit app for review if using beyond testing</li>
                     <li>Add test users in App Dashboard during development</li>
-                    <li>Ensure "email" and "public_profile" permissions are approved</li>
+                    <li>Ensure &quot;email&quot; and &quot;public_profile&quot; permissions are approved</li>
                 </ul>
             </div>
         ),
@@ -95,15 +95,15 @@ const getProviderGuide = (providerName: string) => {
                 <p className="font-medium mb-2">1. Register Azure AD App</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://portal.azure.com/" target="_blank" rel="noopener" className="underline">Azure Portal</a></li>
-                    <li>Navigate to "Azure Active Directory" → "App registrations"</li>
-                    <li>Click "New registration"</li>
-                    <li>Select "Accounts in any organizational directory"</li>
+                    <li>Navigate to &quot;Azure Active Directory&quot; → &quot;App registrations&quot;</li>
+                    <li>Click &quot;New registration&quot;</li>
+                    <li>Select &quot;Accounts in any organizational directory&quot;</li>
                     <li>Add redirect URI: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/microsoft</code></li>
                 </ol>
                 <p className="font-medium mt-3 mb-2">2. API Permissions</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                    <li>Add "Microsoft Graph" permissions</li>
-                    <li>Include "email", "profile", "User.Read" scopes</li>
+                    <li>Add &quot;Microsoft Graph&quot; permissions</li>
+                    <li>Include &quot;email&quot;, &quot;profile&quot;, &quot;User.Read&quot; scopes</li>
                     <li>Grant admin consent for your organization</li>
                 </ul>
             </div>
@@ -113,8 +113,8 @@ const getProviderGuide = (providerName: string) => {
                 <p className="font-medium mb-2">1. Configure Apple Sign In</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://developer.apple.com/" target="_blank" rel="noopener" className="underline">Apple Developer Portal</a></li>
-                    <li>Create new App ID with "Sign In with Apple" capability</li>
-                    <li>Go to "Services" → "Sign In with Apple"</li>
+                    <li>Create new App ID with &quot;Sign In with Apple&quot; capability</li>
+                    <li>Go to &quot;Services&quot; → &quot;Sign In with Apple&quot;</li>
                     <li>Configure your website redirect URLs</li>
                     <li>Add Service ID and download private key</li>
                 </ol>
@@ -133,7 +133,7 @@ const getProviderGuide = (providerName: string) => {
                     <li>Go to <a href="https://github.com/settings/applications/new" target="_blank" rel="noopener" className="underline">GitHub Settings</a></li>
                     <li>Fill in application name and homepage URL</li>
                     <li>Set callback URL: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/github</code></li>
-                    <li>Uncheck "Enable Device Flow" for web applications</li>
+                    <li>Uncheck &quot;Enable Device Flow&quot; for web applications</li>
                 </ol>
                 <p className="font-medium mt-3 mb-2">2. Permissions</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
@@ -149,9 +149,9 @@ const getProviderGuide = (providerName: string) => {
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://developer.twitter.com/" target="_blank" rel="noopener" className="underline">Twitter Developer Portal</a></li>
                     <li>Create new project and app</li>
-                    <li>Select "OAuth 2.0" authentication type</li>
+                    <li>Select &quot;OAuth 2.0&quot; authentication type</li>
                     <li>Add callback URL: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/twitter</code></li>
-                    <li>Set app permissions to "Read" for basic profile access</li>
+                    <li>Set app permissions to &quot;Read&quot; for basic profile access</li>
                 </ol>
                 <p className="font-medium mt-3 mb-2">2. API Access</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
@@ -167,13 +167,13 @@ const getProviderGuide = (providerName: string) => {
                 <ol className="list-decimal list-inside space-y-1 text-xs">
                     <li>Go to <a href="https://www.linkedin.com/developers/apps/new" target="_blank" rel="noopener" className="underline">LinkedIn Developer Portal</a></li>
                     <li>Create new app with company page</li>
-                    <li>Add "Sign In with LinkedIn" product</li>
+                    <li>Add &quot;Sign In with LinkedIn&quot; product</li>
                     <li>Configure OAuth 2.0 redirect URLs</li>
                     <li>Add: <code className="bg-blue-100 px-1 rounded">https://your-domain.com/auth/callback/linkedin</code></li>
                 </ol>
                 <p className="font-medium mt-3 mb-2">2. Permissions</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
-                    <li>Request "r_liteprofile" and "r_emailaddress"</li>
+                    <li>Request &quot;r_liteprofile&quot; and &quot;r_emailaddress&quot;</li>
                     <li>LinkedIn requires business verification for some features</li>
                     <li>Professional users prefer LinkedIn authentication</li>
                 </ul>

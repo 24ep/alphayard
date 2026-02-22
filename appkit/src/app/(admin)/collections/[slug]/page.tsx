@@ -63,16 +63,16 @@ export default function DynamicCollectionPage() {
             const data = await adminService.getEntities(activeConfig.apiEndpoint)
             
             // Handle different API response structures using responseKey
-            let items = []
-            if (activeConfig.responseKey && data && data[activeConfig.responseKey]) {
-                items = data[activeConfig.responseKey]
+            let items: any[] = []
+            if (activeConfig.responseKey && data && (data as any)[activeConfig.responseKey]) {
+                items = (data as any)[activeConfig.responseKey]
             } else if (Array.isArray(data)) {
                 items = data
-            } else if (Array.isArray(data?.data)) {
-                items = data.data
+            } else if (Array.isArray((data as any)?.data)) {
+                items = (data as any).data
             } else if (data && typeof data === 'object') {
-                const key = Object.keys(data).find(k => Array.isArray(data[k]))
-                if (key) items = data[key]
+                const key = Object.keys(data).find(k => Array.isArray((data as any)[k]))
+                if (key) items = (data as any)[key]
             }
 
             // Flatten entity structure - unwrap attributes/data to top level for easier access
@@ -230,7 +230,7 @@ export default function DynamicCollectionPage() {
         return (
             <div className="p-8 text-center text-gray-500">
                 <h1 className="text-xl font-bold text-gray-900 mb-2">Collection Not Found</h1>
-                <p>The collection "{slug}" is not configured.</p>
+                <p>The collection &quot;{slug}&quot; is not configured.</p>
                 <button 
                     onClick={() => router.push('/collections')}
                     className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

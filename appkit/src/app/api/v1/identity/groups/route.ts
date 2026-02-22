@@ -1,0 +1,38 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { authenticate, hasPermission } from '@/lib/auth';
+import * as identityService from '@/services/identityService';
+
+export async function GET(req: NextRequest) {
+  const auth = await authenticate(req);
+  if (auth.error || !auth.admin) return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 });
+
+  if (!hasPermission(auth.admin, 'users:read')) {
+    return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const applicationId = searchParams.get('applicationId');
+    const groups = await identityService.getUserGroups(applicationId || undefined);
+    return NextResponse.json({ groups });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const auth = await authenticate(req);
+  if (auth.error || !auth.admin) return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 });
+
+  if (!hasPermission(auth.admin, 'users:manage')) {
+    return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+  }
+
+  try {
+    const body = await req.json();
+    const group = await identityService.createUserGroup(body);
+    return NextResponse.json({ group }, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

@@ -61,7 +61,7 @@ function LoginPageContent() {
 
         if (settings?.loginBackground) {
           const bg = settings.loginBackground
-          let style: React.CSSProperties = {}
+          const style: React.CSSProperties = {}
           let videoUrl: string | undefined
   
           if (bg.type === 'solid' && bg.value) {

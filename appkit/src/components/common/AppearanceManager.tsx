@@ -24,7 +24,7 @@ import { FeatureToggles } from '../appearance/FeatureToggles'
 import { NotificationSettings } from '../appearance/NotificationSettings'
 import { VisualTokenSettings } from '../appearance/VisualTokenSettings'
 import { UxSettings } from '../appearance/UxSettings'
-import { MobileComponentsDemo } from '../ui/MobileComponentsDemo'
+// import { MobileComponentsDemo } from '../ui/MobileComponentsDemo'
 import { AnnouncementSettings } from '../appearance/AnnouncementSettings'
 import { AppUpdateSettings } from '../appearance/AppUpdateSettings'
 import { LocalizationSettings } from '../appearance/LocalizationSettings'
@@ -175,7 +175,7 @@ export function AppearanceManager() {
         setBranding(safeBranding)
         
         // Build categories from database if available
-        let dynamicCategories = [...DEFAULT_CATEGORIES];
+        const dynamicCategories = [...DEFAULT_CATEGORIES];
         
         // Load UI components from database (branding.uiComponents)
         if (sourceBranding.uiComponents && Object.keys(sourceBranding.uiComponents).length > 0) {
@@ -749,7 +749,7 @@ export function AppearanceManager() {
                                     formData.append('componentId', componentId)
                                     
                                     try {
-                                        const response = await adminService.uploadBrandingAsset(currentApp.id, formData)
+                                        const response = await adminService.uploadBrandingAsset(currentApp?.id || '', formData)
                                         return response.url || ''
                                     } catch (error) {
                                         console.error('Icon upload failed:', error)

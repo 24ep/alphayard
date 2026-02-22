@@ -32,7 +32,7 @@ const { appName, logoUrl } = useTheme();
                         </div>
                         <div>
                             <CardTitle className="text-lg">App Identity</CardTitle>
-                            <CardDescription>Configure your app's name and logo.</CardDescription>
+                            <CardDescription>Configure your app&apos;s name and logo.</CardDescription>
                         </div>
                     </div>
                 </div>

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import redisService from '../services/redisService';
 import { auditService, AuditCategory, AuditAction } from '../services/auditService';
+import fs from 'fs/promises';
 
 interface HealthCheckResult {
   status: 'healthy' | 'unhealthy' | 'degraded';
@@ -253,7 +254,6 @@ class HealthCheckService {
     const startTime = Date.now();
     
     try {
-      const fs = require('fs/promises');
       const stats = await fs.statfs(process.cwd());
       
       const totalSpace = stats.blocks * stats.bsize;

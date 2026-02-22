@@ -541,9 +541,7 @@ export function ColorPickerPopover({ value, onChange, label, open, onOpenChange 
                       setUploading(true)
                       try {
                         const res = await adminService.uploadFile(file)
-                        console.log('Upload response:', res)
-                        // Handle response structure: { file: { id, url, mime_type, file_name } }
-                        const fileData = res?.file || res
+                        const fileData = res?.file
                         const imageUrl = fileData?.url
                         
                         if (imageUrl) {

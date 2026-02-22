@@ -168,7 +168,7 @@ export function SupportSettings({ support, setBranding }: SupportSettingsProps) 
                                     onChange={(e) => updateSupport('supportEmail', e.target.value)}
                                     placeholder="support@bondary.com"
                                 />
-                                <p className="text-[10px] text-gray-400">All bug reports will be CC'd to this address automatically.</p>
+                                <p className="text-[10px] text-gray-400">All bug reports will be CC&apos;d to this address automatically.</p>
                             </div>
                             <div className="space-y-1.5">
                                 <label className="text-xs font-bold text-gray-700">Help Desk / FAQ URL</label>

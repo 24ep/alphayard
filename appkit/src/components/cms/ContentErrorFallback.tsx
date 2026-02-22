@@ -22,7 +22,7 @@ export const ContentErrorFallback: React.FC<ContentErrorFallbackProps> = ({ erro
         </h2>
         
         <p className="text-sm text-gray-600 text-center mb-6">
-          We couldn't load your content pages. Please try again.
+          We couldn&apos;t load your content pages. Please try again.
         </p>
         
         <div className="bg-gray-100 rounded-lg p-3 mb-4">

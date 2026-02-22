@@ -50,7 +50,7 @@ export default function AdminUsersPage() {
                 adminService.getAdminUsers(),
                 adminService.getRoles()
             ])
-            setAdmins(usersData || [])
+            setAdmins(usersData.users || [])
             setRoles(rolesData || [])
         } catch (err: any) {
             setError(err.message)

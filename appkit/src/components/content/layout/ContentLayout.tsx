@@ -12,7 +12,7 @@ interface ContentLayoutProps {
  * Handles the overall structure and responsive design
  */
 export const ContentLayout: React.FC<ContentLayoutProps> = ({ children }) => {
-  const { state } = useContentContext()
+  const { state, actions } = useContentContext()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -35,13 +35,13 @@ export const ContentLayout: React.FC<ContentLayoutProps> = ({ children }) => {
             </p>
             <div className="flex space-x-3 justify-end">
               <button
-                onClick={() => useContentContext().actions.setShowDeleteConfirm(null)}
+                onClick={() => actions.setShowDeleteConfirm(null)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={() => useContentContext().actions.handleDelete(state.showDeleteConfirm!)}
+                onClick={() => actions.handleDelete(state.showDeleteConfirm!)}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
               >
                 Delete
@@ -62,7 +62,7 @@ export const ContentLayout: React.FC<ContentLayoutProps> = ({ children }) => {
             <div className="flex items-center space-x-2">
               <span className="font-medium">{state.notification.message}</span>
               <button
-                onClick={useContentContext().actions.clearNotification}
+                onClick={actions.clearNotification}
                 className="ml-2 text-white hover:text-gray-200"
               >
                 ×

@@ -46,7 +46,7 @@ export function CoreIdentityTab({ app, onSave }: CoreIdentityTabProps) {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-2xl font-black text-gray-900 tracking-tight">App Identity</h2>
-                    <p className="text-gray-500 font-medium">Define your application's public profile and technical slug.</p>
+                    <p className="text-gray-500 font-medium">Define your application&apos;s public profile and technical slug.</p>
                 </div>
                 <div className="p-3 bg-blue-50 rounded-2xl">
                     <IdentificationIcon className="w-6 h-6 text-blue-600" />

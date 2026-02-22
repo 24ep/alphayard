@@ -8,8 +8,9 @@ export interface UserAttribute {
 export interface User {
     id: string;
     email: string;
-    firstName?: string;
-    lastName?: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
     avatarUrl?: string;
     status: 'active' | 'inactive' | 'pending' | 'suspended' | 'banned';
     role: string;
@@ -20,7 +21,7 @@ export interface User {
     dateOfBirth?: string;
     lastLogin?: string;
     preferences?: any;
-    permissions?: string[];
+    permissions: string[];
     tags?: string[];
     attributes?: Record<string, string>;
     apps?: {
@@ -39,7 +40,19 @@ export interface Application {
     logoUrl?: string;
 }
 
-export interface GlobalUser extends User {}
+export interface Circle {
+    id: string;
+    name: string;
+    description?: string;
+    memberCount?: number;
+}
+
+export interface GlobalUser extends User {
+    circleId?: string;
+    circleIds?: string[];
+    circles?: Circle[];
+    subscriptionTier?: string;
+}
 
 class UserService {
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -80,6 +93,7 @@ class UserService {
             email: u.email,
             firstName: u.firstName || '',
             lastName: u.lastName || '',
+            phone: u.phone || u.metadata?.phone || '',
             avatarUrl: u.avatarUrl,
             status: u.status || (u.isActive ? 'active' : 'inactive'),
             role: u.metadata?.role || 'user',
@@ -153,9 +167,19 @@ class UserService {
         return response.applications || []
     }
 
-    async getGlobalUsers(): Promise<GlobalUser[]> {
-        const response = await this.getUsers({ limit: 1000 })
-        return response.users || []
+    async getCircles(): Promise<Circle[]> {
+        const response = await this.request<{ circles: Circle[] }>('/api/v1/admin/circles')
+        return response.circles || []
+    }
+
+    async impersonateUser(userId: string): Promise<{ token: string }> {
+        return this.request<{ token: string }>(`/api/v1/admin/users/${userId}/impersonate`, {
+            method: 'POST'
+        })
+    }
+
+    async getGlobalUsers(params: any = {}): Promise<{ users: GlobalUser[], total: number, totalPages: number, currentPage: number }> {
+        return this.getUsers(params);
     }
 }
 

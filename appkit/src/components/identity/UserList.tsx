@@ -139,7 +139,7 @@ export const UserList: React.FC<UserListProps> = ({
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-right text-gray-400 text-xs">
-                                        {new Date(user.createdAt).toLocaleDateString()}
+                                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                                     </td>
                                 </tr>
                             ))

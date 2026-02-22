@@ -107,6 +107,32 @@ export class AdminUserController {
   }
 
   /**
+   * Admin Logout
+   */
+  async logout(req: AdminRequest, res: Response) {
+    try {
+      const adminId = req.admin?.adminId;
+      
+      if (adminId) {
+        // Audit logout
+        await auditService.logAuthEvent(
+          adminId,
+          AuditAction.LOGOUT,
+          'AdminUser',
+          {},
+          req.ip,
+          req.get('User-Agent')
+        );
+      }
+
+      return res.json({ success: true, message: 'Logged out successfully' });
+    } catch (error) {
+      console.error('Admin logout error:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  }
+
+  /**
    * Get Current User
    */
   async getCurrentUser(req: AdminRequest, res: Response) {

@@ -5,11 +5,11 @@
 export * from './auth';
 export * from './analytics';
 export * from './dashboard';
-export * from './circles';
+// export * from './circles';
 export * from './settings';
 export * from './users';
 export * from './layout';
-export * from './social';
+// export * from './social';
 
 // Common exports (avoid re-exporting duplicates from UI)
 export {

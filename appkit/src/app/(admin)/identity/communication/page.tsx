@@ -84,8 +84,7 @@ export default function CommunicationPage() {
         setting_value: config,
         setting_type: 'json',
         category: 'system',
-        description: 'External integration configurations (SMTP, SMS, etc.)',
-        is_public: false
+        description: 'External integration configurations (SMTP, SMS, etc.)'
       });
 
       toast({

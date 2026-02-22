@@ -122,5 +122,6 @@ const List: React.FC<{ content: any[] }> = memo(({ content }) => {
     </div>
   )
 })
+List.displayName = 'List'
 
 ContentListView.displayName = 'ContentListView'

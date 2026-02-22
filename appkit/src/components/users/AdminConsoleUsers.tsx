@@ -19,7 +19,8 @@ import {
   PlusIcon,
   LockClosedIcon
 } from '@heroicons/react/24/outline'
-import { adminService, AdminUser, Role, Permission, UserGroup } from '../../services/adminService'
+import { adminService, AdminUser, Role, Permission } from '../../services/adminService'
+import { UserGroup } from '../../services/identityService'
 import { Card, CardBody } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
@@ -68,10 +69,10 @@ export function AdminConsoleUsers() {
         adminService.getUserGroups()
       ])
 
-      setUsers(usersData)
+      setUsers(usersData.users)
       setRoles(rolesData)
       setPermissions(permissionsData)
-      setUserGroups(userGroupsData)
+      setUserGroups(userGroupsData.groups)
     } catch (error) {
       console.error('Error loading admin console data:', error)
       // Show error message to user

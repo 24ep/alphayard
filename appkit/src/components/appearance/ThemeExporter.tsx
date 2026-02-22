@@ -77,7 +77,7 @@ export function ThemeExporter({ branding, categories }: ThemeExporterProps) {
                 <div>
                     <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Theme Exporter</h3>
                     <p className="text-gray-500 font-medium leading-relaxed">
-                        Export your custom design system as a structured JSON file. Your mobile developers can use this file to instantly synchronize the app's appearance with your admin configurations.
+                        Export your custom design system as a structured JSON file. Your mobile developers can use this file to instantly synchronize the app&apos;s appearance with your admin configurations.
                     </p>
                 </div>
 

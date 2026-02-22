@@ -10,14 +10,11 @@ import { authenticateAdmin, AdminRequest } from '../../middleware/adminAuth';
 import { requirePermission } from '../../middleware/permissionCheck';
 import { oauthServiceWrapper, ServiceError } from '../../services/serviceWrapper';
 import { prisma } from '../../lib/prisma';
+import SSOProvider from '../../services/SSOProviderService';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
-// Conditional import for SSOProvider
-let SSOProvider: any = null;
-try {
-  SSOProvider = require('../../services/SSOProviderService').default;
-} catch (error: unknown) {
-  console.warn('SSOProvider service not available:', error);
-}
+// SSOProvider service is now imported at top level
 
 const router = Router();
 
@@ -382,8 +379,6 @@ router.post('/:id/regenerate-secret', [
         }
         
         // Generate new secret
-        const crypto = require('crypto');
-        const bcrypt = require('bcryptjs');
         const newSecret = crypto.randomBytes(32).toString('base64url');
         const newSecretHash = await bcrypt.hash(newSecret, 12);
         

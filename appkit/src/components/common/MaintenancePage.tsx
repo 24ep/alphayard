@@ -33,7 +33,7 @@ export function MaintenancePage({ onRetry }: MaintenancePageProps) {
             Server Unavailable
           </h1>
           <p className="text-lg text-gray-600">
-            We're unable to connect to the backend server.
+            We&apos;re unable to connect to the backend server.
           </p>
           <p className="text-sm text-gray-500">
             The server might be temporarily down for maintenance or experiencing connectivity issues. Please try again in a few moments.

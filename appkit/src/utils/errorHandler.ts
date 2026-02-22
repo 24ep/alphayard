@@ -3,14 +3,14 @@
  * Provides consistent error handling across the admin application
  */
 
-export interface AppError {
+export interface IAppError {
   message: string
   code?: string
   statusCode?: number
   details?: any
 }
 
-export class AppError extends Error {
+export class AppError extends Error implements IAppError {
   constructor(
     message: string,
     public code?: string,

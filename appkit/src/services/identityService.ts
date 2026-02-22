@@ -128,6 +128,7 @@ export interface LoginHistoryEntry {
   riskScore: number;
   isSuspicious: boolean;
   suspiciousReason?: string;
+  socialProvider?: string;
   createdAt: string;
 }
 
@@ -228,6 +229,7 @@ export interface UserAnalytics {
     suspended: number;
     inactive: number;
   };
+  topLocations?: { city: string; country: string; count: number }[];
 }
 
 const getAuthHeaders = () => {

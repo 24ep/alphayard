@@ -34,7 +34,8 @@ import preferencesRoutes from './routes/admin/preferences';
 import entityRoutes from './routes/admin/entityRoutes';
 
 // Import new extended routes
-import contentRoutes from './routes/admin/contentRoutes';
+import { prisma } from './config/database';
+import contentRoutes from './routes/admin/oauthClientsRoutes';
 import extendedIdentityRoutes from './routes/admin/extendedIdentityRoutes';
 import extendedSettingsRoutes from './routes/admin/extendedSettingsRoutes';
 import databaseRoutes from './routes/admin/databaseRoutes';
@@ -115,7 +116,6 @@ export async function createApp() {
 
   // Database Connection
   try {
-    const { prisma } = require('./config/database');
     await prisma.$queryRaw`SELECT 1`;
     console.log('✅ Database connection successful');
   } catch (err: any) {

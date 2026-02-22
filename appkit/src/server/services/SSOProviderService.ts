@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '../lib/prisma';
+import crypto from 'crypto';
 
 export interface OAuthClient {
   id: string;
@@ -48,7 +49,7 @@ export interface CreateClientData {
 }
 
 class SSOProviderService {
-  async createClient(data: CreateClientData): Promise<{ client: OAuthClient }> {
+  async createClient(data: CreateClientData): Promise<{ client: OAuthClient; client_secret: string }> {
     try {
       // Generate client ID and secret
       const client_id = this.generateClientId();
@@ -75,8 +76,7 @@ class SSOProviderService {
       `;
 
       const client = result[0];
-
-      return { client: { ...client, client_secret } };
+      return { client, client_secret };
     } catch (error) {
       console.error('Error creating OAuth client:', error);
       throw new Error('Failed to create OAuth client');
@@ -120,7 +120,6 @@ class SSOProviderService {
   private async hashSecret(secret: string): Promise<string> {
     // In a real implementation, you would use a proper hashing algorithm like bcrypt
     // For now, we'll use a simple hash (in production, use bcrypt or similar)
-    const crypto = require('crypto');
     return crypto.createHash('sha256').update(secret).digest('hex');
   }
 }

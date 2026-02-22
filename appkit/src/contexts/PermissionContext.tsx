@@ -166,7 +166,7 @@ export function withPermission<P extends object>(
                 <div className="p-8 text-center">
                     <div className="text-gray-400 text-4xl mb-4">🔒</div>
                     <h2 className="text-xl font-semibold text-gray-700 mb-2">Access Denied</h2>
-                    <p className="text-gray-500">You don't have permission to view this content.</p>
+                    <p className="text-gray-500">You don&apos;t have permission to view this content.</p>
                 </div>
             )
         }

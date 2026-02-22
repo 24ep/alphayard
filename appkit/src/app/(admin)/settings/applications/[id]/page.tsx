@@ -32,11 +32,11 @@ export default function ApplicationDetail() {
         try {
             const appId = params.id as string
             const appData = await adminService.getApplications()
-            const foundApp = appData.applications.find((a: Application) => a.id === appId)
+            const foundApp = appData.find((a: Application) => a.id === appId)
             if (foundApp) setApp(foundApp)
 
             const verData = await adminService.getApplicationVersions(appId)
-            setVersions(verData.versions)
+            setVersions(verData)
         } catch (error) {
             console.error('Failed to fetch app details', error)
         } finally {

@@ -768,7 +768,7 @@ export function Localization() {
               </h3>
               <div className="mt-2 text-sm text-yellow-700">
                 <p>
-                  The backend server is not available. You're viewing demo localization data. 
+                  The backend server is not available. You&apos;re viewing demo localization data. 
                   To use real data, ensure the backend server is running and properly configured.
                 </p>
               </div>

@@ -98,7 +98,7 @@ export const ContentStudio: React.FC<ContentStudioProps> = ({
 
   // Memoized filtered and sorted content
   const processedContent = useMemo(() => {
-    let filtered = contentPages.filter(page => {
+    const filtered = contentPages.filter(page => {
       const matchesSearch = page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            page.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (page.components && JSON.stringify(page.components).toLowerCase().includes(searchTerm.toLowerCase()))

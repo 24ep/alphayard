@@ -436,7 +436,7 @@ export const ChatBubblePreview = ({ styles, baseStyle }: { styles: any, baseStyl
                     }}
                 >
                     <p className="text-sm" style={{ color: styles?.textColor?.solid || '#FFFFFF' }}>
-                        I'm doing great, thanks!
+                        I&apos;m doing great, thanks!
                     </p>
                     <span className="text-[10px] opacity-70 mt-1 block" style={{ color: styles?.textColor?.solid || '#FFFFFF' }}>
                         10:31 AM

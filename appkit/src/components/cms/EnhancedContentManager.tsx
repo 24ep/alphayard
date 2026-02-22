@@ -342,7 +342,7 @@ export const EnhancedContentManager: React.FC = () => {
 
   // Filtered and sorted content
   const filteredContent = useMemo(() => {
-    let filtered = content.filter(page => {
+    const filtered = content.filter(page => {
       const matchesSearch = page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            page.slug.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesType = filterType === 'all' || page.type === filterType

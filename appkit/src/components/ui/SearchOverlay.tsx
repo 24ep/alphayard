@@ -122,7 +122,7 @@ export const SearchOverlay = ({
                 {query && (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <p className="text-slate-500">
-                      Press <span className="font-bold">Enter</span> to search for "{query}"
+                      Press <span className="font-bold">Enter</span> to search for &quot;{query}&quot;
                     </p>
                   </div>
                 )}

@@ -27,10 +27,10 @@ type DocContent = {
 }
 
 export default function DocPage() {
+  const [copied, setCopied] = React.useState<string | null>(null)
   const params = useParams()
   if (!params) return null
   const slug = Array.isArray(params.slug) ? params.slug.join('/') : params.slug
-  const [copied, setCopied] = React.useState<string | null>(null)
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -310,7 +310,7 @@ window.location.href = url;`}
         <div className="space-y-8">
           <h2 className="text-2xl font-bold">Retrieving User Profile</h2>
           <p className="text-slate-600 leading-relaxed">
-            Once authenticated, you can fetch the user's standardized profile data.
+            Once authenticated, you can fetch the user&apos;s standardized profile data.
           </p>
           <CodeBlock 
             id="get-user"
@@ -322,7 +322,7 @@ console.log(user.email); // 'john@example.com'`}
 
           <h2 className="text-2xl font-bold mt-12 mb-4">Custom Attributes</h2>
           <p className="text-slate-600 leading-relaxed">
-            Store and retrieve application-specific metadata as part of the user's identity.
+            Store and retrieve application-specific metadata as part of the user&apos;s identity.
           </p>
           <CodeBlock 
             id="custom-attr"
@@ -344,7 +344,7 @@ await client.updateAttributes({
       content: (
         <div className="space-y-8">
           <p className="text-slate-600 leading-relaxed text-lg">
-            AppKit uses "Circles" as the primary unit for organizational grouping and data isolation.
+            AppKit uses &quot;Circles&quot; as the primary unit for organizational grouping and data isolation.
           </p>
 
           <h2 className="text-2xl font-bold mt-12 mb-4">Understanding Circles</h2>

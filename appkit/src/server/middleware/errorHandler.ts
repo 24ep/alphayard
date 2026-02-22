@@ -73,7 +73,7 @@ export const errorHandler = async (
   res.status(apiError.statusCode).json(response);
 };
 
-export const asyncHandler = (fn: Function) => {
+export const asyncHandler = (fn: (...args: any[]) => any) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };

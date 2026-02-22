@@ -560,7 +560,7 @@ export const ContentRenderer: React.FC<ContentRendererProps> = ({ component, isS
         <div className="w-full h-full p-4 bg-gray-50 border border-gray-300 rounded">
           <div className="text-center">
             <div className="text-sm text-gray-600 mb-3 italic">
-              "{props.quote || 'Great service!'}"
+              &quot;{props.quote || 'Great service!'}&quot;
             </div>
             <div className="text-xs font-medium text-gray-900">
               {props.author || 'John Doe'}

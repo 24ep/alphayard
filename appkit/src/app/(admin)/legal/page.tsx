@@ -975,7 +975,7 @@ function PreviewModal({
   const renderMarkdown = (content: string) => {
     if (!content) return '';
     
-    let html = content
+    const html = content
       // Headers
       .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
       .replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>')
@@ -983,7 +983,7 @@ function PreviewModal({
       // Bold
       .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
       // Italic
-      .replace(/\*(.*)\*/gim, '<em>$1</em>')
+      .replace(/\*(.*)\*\//gim, '<em>$1</em>')
       // Code blocks
       .replace(/```(\w+)?\n([\s\S]*?)```/gim, '<pre class="bg-gray-100 p-4 rounded-lg overflow-x-auto my-4"><code>$2</code></pre>')
       // Inline code

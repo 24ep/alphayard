@@ -550,7 +550,7 @@ export function ScreenManager({
                         <DevicePhoneMobileIcon className="w-6 h-6 text-purple-600" />
                         Screen Studio
                     </h2>
-                    <p className="text-gray-500">Manage your app's screens and their visual appearance.</p>
+                    <p className="text-gray-500">Manage your app&apos;s screens and their visual appearance.</p>
                 </div>
                 <div className="flex gap-2">
                     {/* Selection Toggle */}

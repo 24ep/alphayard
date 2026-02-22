@@ -121,7 +121,7 @@ function AdminLayoutInner({ children }: AdminLayoutProps) {
             <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-zinc-950">
                 <div className="text-center">
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Access Restricted</h2>
-                    <p className="text-gray-500 dark:text-gray-400 mb-6">You don't have permission to access any modules.</p>
+                    <p className="text-gray-500 dark:text-gray-400 mb-6">You don&apos;t have permission to access any modules.</p>
                     <button
                         onClick={handleLogout}
                         className="inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors"

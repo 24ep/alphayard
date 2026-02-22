@@ -182,7 +182,7 @@ export function OnboardingSettings({ onboarding, setBranding }: OnboardingSettin
                         </div>
                         <div>
                             <CardTitle className="text-lg">Onboarding Flow</CardTitle>
-                            <CardDescription>Configure the app's first-launch experience.</CardDescription>
+                            <CardDescription>Configure the app&apos;s first-launch experience.</CardDescription>
                         </div>
                     </div>
                 </div>

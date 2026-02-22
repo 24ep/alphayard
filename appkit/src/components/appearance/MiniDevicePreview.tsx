@@ -22,6 +22,16 @@ const TYPE_COLORS: Record<string, string> = {
     generic: 'bg-gray-500',
 }
 
+function ReactNativeComponentBadge({ component }: { component: ComponentConfig }) {
+    if (!component.mobileConfig) return null
+    return (
+        <div className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-100 text-[9px] font-bold">
+            <span className="w-1 h-1 rounded-full bg-green-500" />
+            RN: {component.mobileConfig.componentName}
+        </div>
+    )
+}
+
 export function MiniDevicePreview({ component, onClick }: MiniDevicePreviewProps) {
     const styles = component.styles
     const typeColor = TYPE_COLORS[component.type] || TYPE_COLORS.generic

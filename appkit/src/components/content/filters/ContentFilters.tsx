@@ -133,7 +133,7 @@ export const ContentFilters: React.FC = () => {
             <span className="text-sm text-gray-600 font-medium">Active filters:</span>
             {state.searchTerm && (
               <Badge variant="info" size="sm" className="gap-1.5">
-                Search: "{state.searchTerm}"
+                Search: &quot;{state.searchTerm}&quot;
                 <button
                   onClick={() => actions.setSearchTerm('')}
                   className="ml-1 hover:opacity-70 transition-opacity"

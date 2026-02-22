@@ -13,6 +13,9 @@ router.post('/login', adminUserController.login.bind(adminUserController));
 // SSO Login (public route)
 router.post('/sso/:provider', adminSSOController.ssoLogin.bind(adminSSOController));
 
+// Logout (requires authentication)
+router.post('/logout', authenticateAdmin as any, adminUserController.logout.bind(adminUserController));
+
 // Get current user (requires authentication)
 router.get('/me', authenticateAdmin as any, adminUserController.getCurrentUser.bind(adminUserController));
 

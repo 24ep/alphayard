@@ -148,15 +148,15 @@ export default function UserGroupsPage() {
         
         setSearchLoading(true)
         try {
-            const users = await userService.getGlobalUsers()
-            const filtered = users.filter(u => 
+            const usersData = await userService.getGlobalUsers()
+            const filtered = usersData.users.filter((u: GlobalUser) => 
                 u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (u.firstName && u.firstName.toLowerCase().includes(searchQuery.toLowerCase())) ||
                 (u.lastName && u.lastName.toLowerCase().includes(searchQuery.toLowerCase()))
             )
             // Filter out existing members
             const memberIds = groupMembers.map(m => m.id)
-            setSearchResults(filtered.filter(u => !memberIds.includes(u.id)))
+            setSearchResults(filtered.filter((u: GlobalUser) => !memberIds.includes(u.id)))
         } catch (error) {
             console.error('Error searching users:', error)
         } finally {
@@ -590,7 +590,7 @@ export default function UserGroupsPage() {
                                 </div>
                             ) : searchQuery && !searchLoading ? (
                                 <div className="text-center py-8 text-gray-500">
-                                    No users found matching "{searchQuery}"
+                                    No users found matching &quot;{searchQuery}&quot;
                                 </div>
                             ) : (
                                 <div className="text-center py-8 text-gray-500">

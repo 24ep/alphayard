@@ -33,6 +33,7 @@ class ServiceWrapperImpl implements ServiceWrapper {
   private checkServiceAvailability() {
     // Check for SSOProvider service
     try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       require('./SSOProviderService');
       this.availableServices.add('SSOProvider');
     } catch (error) {

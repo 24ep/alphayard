@@ -16,7 +16,7 @@ export function AppearanceHeader({ appName, onReset, onSave, isSaving }: Appeara
             <div>
                 <h1 className="text-3xl font-bold text-gray-900 tracking-tight">App Configuration</h1>
                 <p className="text-gray-500 mt-2 text-lg">
-                    Manage the functional and visual "Brain" of <span className="font-semibold text-gray-900">{appName || 'your app'}</span>
+                    Manage the functional and visual &quot;Brain&quot; of <span className="font-semibold text-gray-900">{appName || 'your app'}</span>
                 </p>
             </div>
             <div className="flex gap-3">

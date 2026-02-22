@@ -500,7 +500,7 @@ function ImageUploadField({
         setUploading(true)
         try {
             const res = await adminService.uploadFile(file)
-            const imageUrl = res?.url
+            const imageUrl = res?.file?.url
             
             if (imageUrl) {
                 let finalUrl = imageUrl
