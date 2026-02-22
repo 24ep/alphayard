@@ -16,29 +16,7 @@ import os from 'os';
 // Import Admin Routes
 import v1AdminRouter from './routes/v1/admin';
 import healthRoutes from './routes/health';
-import cmsRoutes from './routes/admin/cmsRoutes';
-import marketingRoutes from './routes/admin/marketingRoutes';
-import localizationRoutes from './routes/admin/localizationRoutes';
-import dynamicContentRoutes from './routes/admin/dynamicContentRoutes';
-import versionControlRoutes from './routes/admin/versionControlRoutes';
-import pageBuilderRoutes from './routes/admin/pageBuilderRoutes';
-import componentRoutes from './routes/admin/componentRoutes';
-import componentStudioRoutes from './routes/admin/componentStudio';
-import templateRoutes from './routes/admin/templateRoutes';
-import versionRoutes from './routes/admin/versionRoutes';
-import publishingRoutes from './routes/admin/publishingRoutes';
-import configRoutes from './routes/admin/config';
-import appConfigRoutes from './routes/admin/appConfigRoutes';
-import applicationRoutes from './routes/admin/applicationRoutes';
-import preferencesRoutes from './routes/admin/preferences';
-import entityRoutes from './routes/admin/entityRoutes';
-
-// Import new extended routes
 import { prisma } from './config/database';
-import contentRoutes from './routes/admin/oauthClientsRoutes';
-import extendedIdentityRoutes from './routes/admin/extendedIdentityRoutes';
-import extendedSettingsRoutes from './routes/admin/extendedSettingsRoutes';
-import databaseRoutes from './routes/admin/databaseRoutes';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -74,44 +52,6 @@ export async function createApp() {
   
   // Health check
   app.use('/health', healthRoutes);
-
-  // Legacy / Direct API mounts (Fallback/Compatibility)
-  app.use('/api/config', configRoutes);
-  app.use('/api/admin/config', configRoutes);
-  app.use('/api/app-config', appConfigRoutes);
-  app.use('/api/admin/applications', applicationRoutes);
-  app.use('/api/admin/preferences', preferencesRoutes);
-  app.use('/api/admin/entities', entityRoutes);
-  app.use('/api/page-builder', pageBuilderRoutes);
-  app.use('/api/component-studio', componentStudioRoutes);
-
-  // CMS Routes
-  app.use('/cms', cmsRoutes);
-  app.use('/cms/marketing', marketingRoutes);
-  app.use('/cms/localization', localizationRoutes);
-  app.use('/cms/content', dynamicContentRoutes);
-  app.use('/cms/versions', versionControlRoutes);
-
-  // New extended routes for sidebar menu
-  app.use('/collections', contentRoutes);
-  app.use('/navigation', contentRoutes);
-  app.use('/pages', contentRoutes);
-  app.use('/flows', contentRoutes);
-  app.use('/engagement', contentRoutes);
-  app.use('/styles', contentRoutes);
-  app.use('/billing', contentRoutes);
-  
-  app.use('/identity/groups', extendedIdentityRoutes);
-  app.use('/identity/communication', extendedIdentityRoutes);
-  
-  app.use('/localization', extendedSettingsRoutes);
-  app.use('/legal', extendedSettingsRoutes);
-  app.use('/settings/secrets', extendedSettingsRoutes);
-  app.use('/settings/webhooks', extendedSettingsRoutes);
-  app.use('/settings/services', extendedSettingsRoutes);
-  app.use('/settings/developers', extendedSettingsRoutes);
-  
-  app.use('/database', databaseRoutes);
 
   app.use(errorHandler);
 

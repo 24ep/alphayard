@@ -86,14 +86,26 @@ router.post('/', [
         const application = await ApplicationService.createApplication(req.body);
         
         // Auto-assign the creating admin to the new application
-        if (application && req.admin?.adminId) {
+        const adminId = req.admin?.adminId || req.admin?.id;
+        if (application && adminId) {
             await ApplicationService.assignAdminToApplication({
-                adminUserId: req.admin.adminId,
+                adminUserId: adminId,
                 applicationId: application.id,
                 role: 'super_admin',
                 isPrimary: false,
-                grantedBy: req.admin.adminId
+                grantedBy: adminId
             });
+
+            // Create initial version for the new application
+            try {
+                await ApplicationModel.createVersion(application.id, {
+                    branding: application.branding,
+                    settings: application.settings,
+                    status: 'published'
+                });
+            } catch (versionError) {
+                console.warn('[ApplicationRoutes] Could not create initial version:', versionError);
+            }
         }
         
         res.status(201).json({ application });

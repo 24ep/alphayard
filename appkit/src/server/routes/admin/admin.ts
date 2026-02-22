@@ -8,7 +8,6 @@ import { auditAdminRequests } from '../../middleware/audit';
 
 // Sub-routers
 import adminUsersRoutes from './adminUsersRoutes';
-import adminApplicationsRoutes from './adminApplicationsRoutes';
 import databaseExplorerRoutes from './databaseExplorer';
 import identityRoutes from './identityRoutes';
 import oauthClientsRoutes from './oauthClientsRoutes';
@@ -21,7 +20,6 @@ router.use(auditAdminRequests());
 
 // Mount sub-routers
 router.use('/users', adminUsersRoutes);
-router.use('/applications', adminApplicationsRoutes);
 router.use('/database', databaseExplorerRoutes);
 router.use('/identity', identityRoutes); // Identity management (sessions, devices, MFA, security policies, etc.)
 router.use('/oauth-clients', oauthClientsRoutes); // OAuth 2.0 / SSO client management
