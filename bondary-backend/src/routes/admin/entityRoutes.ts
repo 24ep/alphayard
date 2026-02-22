@@ -234,7 +234,6 @@ router.get('/application-settings',
           value: true,
           description: true,
           applicationId: true,
-          createdAt: true,
           updatedAt: true
         },
         orderBy: {

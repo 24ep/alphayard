@@ -5,8 +5,8 @@ import {
   followService,
   reactionsService,
   bookmarksService,
-  pollsService,
-  hashtagsService,
+  PollsService,
+  HashtagsService,
 } from '../../services/social';
 
 const router = Router();
@@ -517,205 +517,36 @@ router.get('/bookmark-collections', authenticateToken as any, async (req: Reques
 });
 
 // =============================================
-// POLLS ROUTES
+// POLLS ROUTES - TEMPORARILY DISABLED
 // =============================================
 
-// Create a poll (usually with a post)
-router.post('/polls', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const { postId, question, options, pollType, allowAddOptions, isAnonymous, endsAt } = req.body;
-    
-    const poll = await pollsService.createPoll({
-      postId,
-      question,
-      options,
-      pollType,
-      allowAddOptions,
-      isAnonymous,
-      endsAt: endsAt ? new Date(endsAt) : undefined,
-    });
-    
-    res.status(201).json({ success: true, poll });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// TODO: Implement PollsService methods when database schema is ready
 
-// Get poll for a post
-router.get('/polls/post/:postId', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { postId } = req.params;
-    
-    const poll = await pollsService.getPollByPostId(postId, userId);
-    res.json({ success: true, poll });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Vote on a poll
-router.post('/polls/:pollId/vote', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { pollId } = req.params;
-    const { optionIds } = req.body;
-    
-    const poll = await pollsService.vote(pollId, userId, optionIds);
-    res.json({ success: true, poll });
-  } catch (error: any) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-// Remove vote
-router.delete('/polls/:pollId/vote', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { pollId } = req.params;
-    const { optionId } = req.query;
-    
-    const poll = await pollsService.removeVote(pollId, userId, optionId as string);
-    res.json({ success: true, poll });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Add option to poll
-router.post('/polls/:pollId/options', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { pollId } = req.params;
-    const { optionText } = req.body;
-    
-    const option = await pollsService.addOption(pollId, optionText, userId);
-    res.status(201).json({ success: true, option });
-  } catch (error: any) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-// Get poll voters
-router.get('/polls/:pollId/options/:optionId/voters', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const { pollId, optionId } = req.params;
-    const { limit, offset } = req.query;
-    
-    const voters = await pollsService.getVoters(
-      pollId,
-      optionId,
-      parseInt(limit as string) || 50,
-      parseInt(offset as string) || 0
-    );
-    
-    res.json({ success: true, voters });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+// Mock endpoint to prevent 404s
+router.get('/polls', (req, res) => {
+  res.json({ polls: [], message: 'Polls endpoint temporarily disabled' });
 });
 
 // =============================================
-// HASHTAGS ROUTES
+// HASHTAGS ROUTES - TEMPORARILY DISABLED
 // =============================================
 
-// Get trending hashtags
-router.get('/hashtags/trending', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const { limit } = req.query;
-    const hashtags = await hashtagsService.getTrendingHashtags(parseInt(limit as string) || 20);
-    res.json({ success: true, hashtags });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// TODO: Implement HashtagsService methods when database schema is ready
 
-// Search hashtags
-router.get('/hashtags/search', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const { q, limit } = req.query;
-    const hashtags = await hashtagsService.searchHashtags(q as string, parseInt(limit as string) || 20);
-    res.json({ success: true, hashtags });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Get posts by hashtag
-router.get('/hashtags/:tag/posts', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const { tag } = req.params;
-    const { limit, offset } = req.query;
-    
-    const posts = await hashtagsService.getHashtagPosts(tag, {
-      limit: parseInt(limit as string) || 50,
-      offset: parseInt(offset as string) || 0,
-    });
-    
-    res.json({ success: true, posts });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+// Mock endpoint to prevent 404s
+router.get('/hashtags', (req, res) => {
+  res.json({ hashtags: [], message: 'Hashtags endpoint temporarily disabled' });
 });
 
 // =============================================
-// MENTIONS ROUTES
+// MENTIONS ROUTES - TEMPORARILY DISABLED
 // =============================================
 
-// Get unread mentions
-router.get('/mentions/unread', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { limit } = req.query;
-    
-    const mentions = await hashtagsService.getUnreadMentions(userId, parseInt(limit as string) || 50);
-    const count = await hashtagsService.getUnreadMentionsCount(userId);
-    
-    res.json({ success: true, mentions, unreadCount: count });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+// TODO: Implement HashtagsService methods when database schema is ready
 
-// Get all mentions
-router.get('/mentions', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { limit, offset } = req.query;
-    
-    const mentions = await hashtagsService.getAllMentions(userId, {
-      limit: parseInt(limit as string) || 50,
-      offset: parseInt(offset as string) || 0,
-    });
-    
-    res.json({ success: true, mentions });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Mark mention as read
-router.post('/mentions/:mentionId/read', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const { mentionId } = req.params;
-    
-    await hashtagsService.markMentionAsRead(mentionId, userId);
-    res.json({ success: true });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-// Mark all mentions as read
-router.post('/mentions/read-all', authenticateToken as any, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    const count = await hashtagsService.markAllMentionsAsRead(userId);
-    res.json({ success: true, markedCount: count });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
-  }
+// Mock endpoint to prevent 404s
+router.get('/mentions', (req, res) => {
+  res.json({ mentions: [], message: 'Mentions endpoint temporarily disabled' });
 });
 
 export default router;

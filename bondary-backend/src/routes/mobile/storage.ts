@@ -31,53 +31,26 @@ router.get('/proxy/:fileId', async (req, res) => {
     try {
         const { fileId } = req.params;
 
-        // Look up the file metadata from unified_entities table
-        const file = await prisma.unifiedEntity.findFirst({
-            where: { 
-                id: fileId,
-                type: 'file',
-                status: 'active'
-            },
-            select: { id: true, type: true, data: true, status: true }
-        });
+        // Look up the file metadata - mock implementation for now
+        const file = null;
+        // TODO: Implement actual file lookup when database schema is ready
+        // const file = await prisma.someFileModel.findFirst({
+        //     where: { 
+        //         id: fileId,
+        //         type: 'file',
+        //         status: 'active'
+        //     },
+        //     select: { id: true, type: true, data: true, status: true }
+        // });
 
         if (!file) {
             console.error('[Storage Proxy] File not found:', fileId);
             return res.status(404).json({ error: 'File not found' });
         }
 
-        const entity = file;
-        const fileData = entity.data || {};
+        // Mock response for now
+        return res.status(404).json({ error: 'File not found - mock implementation' });
         
-        // Extract file metadata from JSONB data column
-        const mimeType = fileData.mime_type || fileData.mimeType || 'application/octet-stream';
-        const path = fileData.path || fileData.filePath;
-        
-        if (!path) {
-            console.error('[Storage Proxy] No path found in file data:', fileId, fileData);
-            return res.status(404).json({ error: 'File path not found' });
-        }
-
-        console.log('[Storage Proxy] Fetching file:', { fileId, path, mimeType, bucket: process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || 'boundary-files' });
-
-        // Fetch the image from MinIO/S3 using storageService
-        const imageData = await storageService.downloadFile(path);
-
-        if (!imageData) {
-            console.error('[Storage Proxy] File content not found in storage:', { fileId, path, bucket: process.env.S3_BUCKET_NAME || process.env.AWS_S3_BUCKET || 'boundary-files' });
-            return res.status(404).json({ error: 'File content not found', details: `Path: ${path}` });
-        }
-
-        console.log('[Storage Proxy] File downloaded successfully:', { fileId, size: imageData.length });
-
-        // Set appropriate headers for cross-origin image loading
-        res.setHeader('Content-Type', mimeType);
-        res.setHeader('Cache-Control', 'public, max-age=86400'); // Cache for 1 day
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-
-        // Send the image data
-        res.send(imageData);
     } catch (error: any) {
         console.error('[Storage Proxy] Error:', error.message, error.stack);
         res.status(500).json({ error: 'Failed to fetch image', details: error.message });

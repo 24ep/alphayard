@@ -62,7 +62,7 @@ router.get('/branding', async (req, res) => {
           try { appBranding = JSON.parse(appBranding) } catch (e) { }
         }
         // Merge or overwrite
-        branding = { ...branding, ...appBranding };
+        branding = { ...branding, ...(typeof appBranding === 'object' && appBranding !== null ? appBranding : {}) };
       }
     }
 
@@ -165,7 +165,7 @@ router.post('/inventory/seed', async (req, res) => {
       if (typeof branding === 'string') branding = JSON.parse(branding);
       
       // Initialize or sanitize screens array
-      let screens = branding.screens || [];
+      let screens = (typeof branding === 'object' && branding !== null && 'screens' in branding) ? (branding.screens as any[]) || [] : [];
       
       // 1. Remove any existing duplicates in the database first
       const uniqueExisting = new Map();
@@ -202,7 +202,7 @@ router.post('/inventory/seed', async (req, res) => {
       });
 
       if (addedInThisApp > 0 || uniqueExisting.size !== screens.length) {
-        branding.screens = Array.from(uniqueExisting.values());
+        (branding as any).screens = Array.from(uniqueExisting.values());
         await prisma.application.update({
           where: { id: app.id },
           data: {

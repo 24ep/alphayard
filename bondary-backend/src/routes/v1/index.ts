@@ -35,12 +35,13 @@ import marketRoutes from '../mobile/marketRoutes';
 import appRoutes from '../mobile/appRoutes';
 import helpRoutes from '../mobile/helpRoutes';
 import feedbackRoutes from '../mobile/feedbackRoutes';
+import miscRoutes from '../mobile/misc';
+import settingsRoutes from '../mobile/settings';
+import notificationRoutes from '../mobile/notifications';
+import shoppingRoutes from '../mobile/shopping';
 
 // Page Builder Routes
 import pageBuilderRoutes from '../pageBuilderRoutes';
-
-import circleTypeRoutes from '../mobile/circleTypeRoutes';
-import galleryRoutes from '../mobile/galleryRoutes';
 import expensesRoutes from '../mobile/expensesRoutes';
 
 // App Configuration Routes
@@ -104,7 +105,6 @@ router.use('/page-builder', pageBuilderRoutes); // CMS page builder
 // App Configuration Routes
 router.use('/app-config', appConfigRoutes); // Mobile app configuration
 router.use('/admin/config', workingConfigRoutes); // Working admin config routes
-router.use('/config', configRoutes); // Admin configuration
 router.use('/admin/config', simpleConfigRoutes); // Use simplified config routes to avoid auth issues
 
 // Public branding endpoint (no authentication required - used for login page branding)

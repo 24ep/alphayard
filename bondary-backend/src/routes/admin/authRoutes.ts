@@ -83,15 +83,6 @@ router.post('/login', [
       where: { 
         email: email.toLowerCase(),
         isActive: true 
-      },
-      include: {
-        adminUserApplications: {
-          include: {
-            application: {
-              select: { name: true, slug: true }
-            }
-          }
-        }
       }
     });
 
@@ -111,12 +102,12 @@ router.post('/login', [
         id: adminUser.id,
         adminId: adminUser.id,
         email: adminUser.email,
-        firstName: adminUser.firstName,
-        lastName: adminUser.lastName,
-        role: adminUser.role,
-        permissions: adminUser.permissions || [],
+        firstName: adminUser.name || '',
+        lastName: '',
+        role: adminUser.roleId || 'admin',
+        permissions: [],
         type: 'admin',
-        isSuperAdmin: adminUser.isSuperAdmin
+        isSuperAdmin: adminUser.isSuperAdmin || false
       },
       config.JWT_SECRET,
       { expiresIn: '24h' }
@@ -128,13 +119,13 @@ router.post('/login', [
       data: { lastLoginAt: new Date() }
     });
 
-    const userResponse: AdminUser = {
+    const userResponse = {
       id: adminUser.id,
       email: adminUser.email,
-      firstName: adminUser.firstName || undefined,
-      lastName: adminUser.lastName || undefined,
-      role: adminUser.role || 'admin',
-      permissions: adminUser.permissions || [],
+      firstName: adminUser.name || undefined,
+      lastName: undefined,
+      role: adminUser.roleId || 'admin',
+      permissions: [],
       isSuperAdmin: adminUser.isSuperAdmin || false
     };
 
@@ -175,10 +166,8 @@ router.get('/me', authenticateAdmin, async (req: Request, res: Response) => {
       select: {
         id: true,
         email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        permissions: true,
+        name: true,
+        roleId: true,
         isSuperAdmin: true,
         isActive: true,
         createdAt: true,
@@ -229,7 +218,6 @@ router.get('/applications/:id',
           updatedAt: true,
           _count: {
             select: {
-              users: true,
               appSettings: true
             }
           }

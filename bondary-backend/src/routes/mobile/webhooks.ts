@@ -296,7 +296,7 @@ async function handleStripePaymentSucceeded(invoice: any) {
           name: subscription.user.firstName,
           amount: invoice.amount_paid / 100,
           currency: invoice.currency,
-          planName: subscription.plan.name,
+          planName: subscription.plan?.name || 'Unknown',
         },
       });
     }
@@ -328,7 +328,7 @@ async function handleStripePaymentFailed(invoice: any) {
           name: subscription.user.firstName,
           amount: invoice.amount_due / 100,
           currency: invoice.currency,
-          planName: subscription.plan.name,
+          planName: subscription.plan?.name || 'Unknown',
           retryDate: new Date(invoice.next_payment_attempt * 1000),
         },
       });

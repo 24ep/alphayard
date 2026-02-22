@@ -108,13 +108,13 @@ router.get('/config', async (req: Request, res: Response) => {
         name: 'Login Screen',
         type: 'login',
         config: {
-          background: branding.loginBackgroundImage || {
+          background: (branding as any).loginBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.7
           },
-          logoUrl: branding.logoUrl,
-          appName: branding.appName || 'Boundary App'
+          logoUrl: (branding as any).logoUrl,
+          appName: (branding as any).appName || 'Boundary App'
         },
         version: 1
       },
@@ -122,7 +122,7 @@ router.get('/config', async (req: Request, res: Response) => {
         name: 'Home Screen',
         type: 'home',
         config: {
-          background: branding.homeBackgroundImage || {
+          background: (branding as any).homeBackgroundImage || {
             type: 'gradient',
             gradient: ['#FFFFFF', '#F5F5F5'],
             overlayOpacity: 0.3
@@ -134,13 +134,13 @@ router.get('/config', async (req: Request, res: Response) => {
         name: 'Splash Screen',
         type: 'splash',
         config: {
-          background: branding.splashBackgroundImage || {
+          background: (branding as any).splashBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.8
           },
-          logoUrl: branding.logoUrl,
-          appName: branding.appName || 'Boundary App'
+          logoUrl: (branding as any).logoUrl,
+          appName: (branding as any).appName || 'Boundary App'
         },
         version: 1
       }
@@ -152,16 +152,16 @@ router.get('/config', async (req: Request, res: Response) => {
       name: 'Default Theme',
       config: {
         colors: {
-          primary: branding.primaryColor || '#FA7272',
-          secondary: branding.secondaryColor || '#FFD700',
-          accent: branding.accentColor || '#FF6B6B',
+          primary: (branding as any).primaryColor || '#FA7272',
+          secondary: (branding as any).secondaryColor || '#FFD700',
+          accent: (branding as any).accentColor || '#FF6B6B',
           background: '#FFFFFF',
           text: '#333333',
           border: '#E0E0E0'
         },
         fonts: {
-          primary: branding.fontFamily || 'System',
-          secondary: branding.fontFamily || 'System'
+          primary: (branding as any).fontFamily || 'System',
+          secondary: (branding as any).fontFamily || 'System'
         },
         spacing: {
           xs: 4,
@@ -205,13 +205,13 @@ router.get('/config', async (req: Request, res: Response) => {
         {
           key: 'logo_primary',
           name: 'Primary Logo',
-          url: branding.logoUrl || '/assets/logo.png',
+          url: (branding as any).logoUrl || '/assets/logo.png',
           metadata: { type: 'logo', usage: 'primary' }
         },
         {
           key: 'logo_white',
           name: 'White Logo',
-          url: branding.logoUrl ? branding.logoUrl.replace('.png', '-white.png') : '/assets/logo-white.png',
+          url: (branding as any).logoUrl ? (branding as any).logoUrl.replace('.png', '-white.png') : '/assets/logo-white.png',
           metadata: { type: 'logo', usage: 'white' }
         }
       ],
@@ -288,13 +288,13 @@ router.get('/screens', async (req: Request, res: Response) => {
         name: 'Login Screen',
         type: 'login',
         config: {
-          background: branding.loginBackgroundImage || {
+          background: (branding as any).loginBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.7
           },
-          logoUrl: branding.logoUrl,
-          appName: branding.appName || 'Boundary App'
+          logoUrl: (branding as any).logoUrl,
+          appName: (branding as any).appName || 'Boundary App'
         },
         version: 1
       },
@@ -302,7 +302,7 @@ router.get('/screens', async (req: Request, res: Response) => {
         name: 'Welcome Screen',
         type: 'onboarding',
         config: {
-          background: branding.welcomeBackgroundImage || {
+          background: (branding as any).welcomeBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.6
@@ -316,7 +316,7 @@ router.get('/screens', async (req: Request, res: Response) => {
         name: 'Home Screen',
         type: 'home',
         config: {
-          background: branding.homeBackgroundImage || {
+          background: (branding as any).homeBackgroundImage || {
             type: 'gradient',
             gradient: ['#FFFFFF', '#F5F5F5'],
             overlayOpacity: 0.3
@@ -328,7 +328,7 @@ router.get('/screens', async (req: Request, res: Response) => {
         name: 'Circles Screen',
         type: 'custom',
         config: {
-          background: branding.circleBackgroundImage || {
+          background: (branding as any).circleBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.4
@@ -340,7 +340,7 @@ router.get('/screens', async (req: Request, res: Response) => {
         name: 'Social Screen',
         type: 'custom',
         config: {
-          background: branding.socialBackgroundImage || {
+          background: (branding as any).socialBackgroundImage || {
             type: 'gradient',
             gradient: ['#FA7272', '#FFBBB4'],
             overlayOpacity: 0.4
@@ -384,9 +384,9 @@ router.get('/theme', async (req: Request, res: Response) => {
       name: 'Default Theme',
       config: {
         colors: {
-          primary: branding.primaryColor || '#FA7272',
-          secondary: branding.secondaryColor || '#FFD700',
-          accent: branding.accentColor || '#FF6B6B',
+          primary: (branding as any).primaryColor || '#FA7272',
+          secondary: (branding as any).secondaryColor || '#FFD700',
+          accent: (branding as any).accentColor || '#FF6B6B',
           background: '#FFFFFF',
           text: '#333333',
           textSecondary: '#666666',
@@ -396,8 +396,8 @@ router.get('/theme', async (req: Request, res: Response) => {
           warning: '#FF9800'
         },
         fonts: {
-          primary: branding.fontFamily || 'System',
-          secondary: branding.fontFamily || 'System',
+          primary: (branding as any).fontFamily || 'System',
+          secondary: (branding as any).fontFamily || 'System',
           mono: 'Courier New'
         },
         spacing: {
@@ -450,13 +450,13 @@ router.get('/assets', async (req: Request, res: Response) => {
         {
           key: 'logo_primary',
           name: 'Primary Logo',
-          url: branding.logoUrl || '/assets/logo.png',
+          url: (branding as any).logoUrl || '/assets/logo.png',
           metadata: { type: 'logo', usage: 'primary' }
         },
         {
           key: 'logo_white',
           name: 'White Logo',
-          url: branding.logoUrl ? branding.logoUrl.replace('.png', '-white.png') : '/assets/logo-white.png',
+          url: (branding as any).logoUrl ? (branding as any).logoUrl.replace('.png', '-white.png') : '/assets/logo-white.png',
           metadata: { type: 'logo', usage: 'white' }
         },
         {

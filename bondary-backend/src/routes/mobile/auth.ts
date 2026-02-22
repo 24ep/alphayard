@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
-import { authenticateToken } from '../../middleware/auth';
+import { authenticateToken, AuthenticatedRequest } from '../../middleware/auth';
 import { config } from '../../config/env';
 
 const router = Router();
@@ -12,13 +12,13 @@ const router = Router();
 const generateTokens = (userId: string) => {
   const accessToken = jwt.sign(
     { userId, type: 'access' },
-    config.jwtSecret,
+    config.JWT_SECRET,
     { expiresIn: '15m' }
   );
   
   const refreshToken = jwt.sign(
     { userId, type: 'refresh' },
-    config.jwtSecret,
+    config.JWT_SECRET,
     { expiresIn: '7d' }
   );
   
@@ -153,7 +153,7 @@ router.post('/refresh', [
     const { refreshToken } = req.body;
 
     // Verify refresh token
-    const decoded = jwt.verify(refreshToken, config.jwtSecret) as any;
+    const decoded = jwt.verify(refreshToken, config.JWT_SECRET) as any;
     if (decoded.type !== 'refresh') {
       return res.status(401).json({ error: 'Invalid token type' });
     }
@@ -182,7 +182,7 @@ router.post('/refresh', [
 });
 
 // POST /mobile-auth/logout
-router.post('/logout', authenticateToken, async (req: Request, res: Response) => {
+router.post('/logout', authenticateToken as any, async (req: Request, res: Response) => {
   try {
     // In a real app, you'd invalidate the token here
     res.json({ success: true, message: 'Logged out successfully' });

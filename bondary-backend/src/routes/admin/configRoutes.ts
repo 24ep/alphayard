@@ -289,7 +289,6 @@ class AdminConfigService {
           updatedAt: true,
           _count: {
             select: {
-              users: true,
               appSettings: true
             }
           }
@@ -335,7 +334,7 @@ class AdminConfigService {
         slug: data.slug,
         description: data.description,
         logoUrl: data.logoUrl,
-        branding: data.branding || {},
+        branding: data.branding as any || {},
         settings: data.settings || {},
         isActive: true
       }

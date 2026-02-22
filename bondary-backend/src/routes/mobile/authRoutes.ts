@@ -115,6 +115,9 @@ router.post('/login', [
     }
 
     // Check password
+    if (!user.passwordHash) {
+      return sendResponse(res, 401, false, undefined, undefined, 'No password set');
+    }
     const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       return sendResponse(res, 401, false, undefined, undefined, 'Invalid credentials');
@@ -169,7 +172,7 @@ router.post('/register', [
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('firstName').trim().isLength({ min: 1, max: 50 }).withMessage('First name is required'),
   body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name is required'),
-  body('phone').optional().isMobilePhone().withMessage('Invalid phone number format'),
+  body('phone').optional().isMobilePhone('any').withMessage('Invalid phone number format'),
   body('dateOfBirth').optional().isISO8601().withMessage('Invalid date format (YYYY-MM-DD)'),
   body('deviceInfo').optional().isObject().withMessage('Device info must be an object'),
   body('deviceInfo.platform').optional().isIn(['ios', 'android', 'web']).withMessage('Invalid platform'),
@@ -318,7 +321,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
         firstName: user.firstName,
         lastName: user.lastName,
         type: 'user',
-        circleId: user.circleMember?.circle?.id || null
+        circleId: null
       };
 
       const newAccessToken = jwt.sign(payload, config.JWT_SECRET, { expiresIn: '24h' });

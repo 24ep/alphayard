@@ -75,15 +75,15 @@ router.get('/profile', async (req: any, res: any) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.first_name,
-        lastName: user.last_name,
-        avatarUrl: user.avatar_url,
-        avatar: user.avatar_url,
-        phone: user.phone,
-        dateOfBirth: user.date_of_birth,
-        userType: user.user_type || 'circle',
-        circleIds: user.circle_ids || [],
-        isOnboardingComplete: user.is_onboarding_complete || false,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        avatar: user.avatarUrl,
+        phone: user.phoneNumber,
+        dateOfBirth: user.dateOfBirth,
+        userType: user.userType || 'circle',
+        circleIds: user.circleIds || [],
+        isOnboardingComplete: user.isOnboardingComplete || false,
         preferences: user.preferences || {
           notifications: true,
           locationSharing: true,
@@ -94,10 +94,9 @@ router.get('/profile', async (req: any, res: any) => {
             categories: ['announcement', 'promotion']
           }
         },
-        role: user.role || 'user',
-        status: user.is_active ? 'active' : 'inactive',
-        createdAt: user.created_at,
-        updatedAt: user.updated_at
+        status: user.isActive ? 'active' : 'inactive',
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       }
     });
 

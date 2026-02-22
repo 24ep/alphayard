@@ -57,15 +57,10 @@ export class StoriesService {
     const story = await prisma.socialStory.create({
       data: {
         authorId,
-        circleId,
-        content,
-        mediaUrl,
-        mediaType,
-        backgroundColor,
-        textColor,
-        fontStyle,
-        duration,
-        visibility,
+        mediaUrl: mediaUrl || '',
+        mediaType: mediaType || 'image',
+        caption: content || null,
+        backgroundColor: backgroundColor || null,
         expiresAt
       }
     });

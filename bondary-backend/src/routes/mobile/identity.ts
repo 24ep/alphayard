@@ -330,6 +330,10 @@ router.post('/mfa/disable', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'User not found' });
         }
         
+        if (!user.passwordHash) {
+            return res.status(401).json({ error: 'No password set' });
+        }
+        
         const passwordValid = await bcrypt.compare(password, user.passwordHash);
         if (!passwordValid) {
             return res.status(401).json({ error: 'Invalid password' });
@@ -371,6 +375,10 @@ router.post('/mfa/backup-codes', async (req: Request, res: Response) => {
         });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+        
+        if (!user.passwordHash) {
+            return res.status(401).json({ error: 'No password set' });
         }
         
         const passwordValid = await bcrypt.compare(password, user.passwordHash);
@@ -494,14 +502,14 @@ router.get('/security', async (req: Request, res: Response) => {
             }),
             prisma.user.findUnique({
               where: { id: userId },
-              select: { passwordChangedAt: true }
+              select: { updatedAt: true }
             })
         ]);
         
         const mfaMethods = mfaRecords.map((r: any) => r.mfaType);
         
         res.json({
-            passwordLastChanged: user?.passwordChangedAt,
+            passwordLastChanged: user?.updatedAt,
             mfaEnabled: mfaMethods.length > 0,
             mfaMethods,
             trustedDevicesCount: devicesCount,
@@ -543,6 +551,10 @@ router.post('/security/change-password', async (req: Request, res: Response) => 
         });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+        
+        if (!user.passwordHash) {
+            return res.status(401).json({ error: 'No password set' });
         }
         
         const passwordValid = await bcrypt.compare(currentPassword, user.passwordHash);
@@ -592,6 +604,10 @@ router.post('/account/delete-request', async (req: Request, res: Response) => {
         });
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+        
+        if (!user.passwordHash) {
+            return res.status(401).json({ error: 'No password set' });
         }
         
         const passwordValid = await bcrypt.compare(password, user.passwordHash);

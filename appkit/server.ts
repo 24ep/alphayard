@@ -1,14 +1,17 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Load environment variables immediately
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../.env') }); 
 
 import express from 'express';
 import next from 'next';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import { createApp } from './src/server/server';
+import { createApp } from './dist/src/server/server.js';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = process.env.HOSTNAME || '0.0.0.0';

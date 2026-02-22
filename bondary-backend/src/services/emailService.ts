@@ -84,7 +84,7 @@ class EmailService {
 
     try {
       // Try to get from system_configs table first (used by SystemConfigModel)
-      let integrations = await SystemConfigModel.get('integrations');
+      let integrations = await SystemConfigModel.findByKey('integrations');
       
       // If not in system_configs, try app_settings table (admin UI saves here)
       if (!integrations) {
@@ -106,7 +106,8 @@ class EmailService {
       }
 
       if (integrations) {
-        const dbConfig = integrations[smtpKey];
+        const integrationsValue = integrations.value || integrations;
+        const dbConfig = integrationsValue[smtpKey];
         
         if (dbConfig && dbConfig.host && dbConfig.user && dbConfig.pass) {
           const config: SMTPConfig = {
@@ -255,10 +256,10 @@ class EmailService {
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
     // Check System Config for OTP provider override
-    const otpConfig = await SystemConfigModel.get('otp_config');
+    const otpConfig = await SystemConfigModel.findByKey('otp_config');
     // Default to 'mock' if no config found OR explicitly set to mock
     // This answers "which mock otp": It defaults to Mock if not configured!
-    const isMock = otpConfig?.emailProvider === 'mock' || !otpConfig;
+    const isMock = otpConfig?.value?.emailProvider === 'mock' || !otpConfig;
 
     if (isMock) {
       console.log('\n================== [MOCK OTP EMAIL] ==================');
@@ -640,8 +641,8 @@ class EmailService {
     // Determine source
     let source: 'database' | 'environment' | 'none' = 'none';
     try {
-      const integrations = await SystemConfigModel.get('integrations');
-      if (integrations?.smtpMobile?.host || integrations?.smtpAdmin?.host) {
+      const integrations = await SystemConfigModel.findByKey('integrations');
+      if (integrations?.value?.smtpMobile?.host || integrations?.value?.smtpAdmin?.host) {
         source = 'database';
       } else if (EMAIL_ENABLED) {
         source = 'environment';

@@ -112,14 +112,15 @@ export class FollowService {
       id: follow.follower.id,
       username: follow.follower.firstName && follow.follower.lastName ? 
         `${follow.follower.firstName} ${follow.follower.lastName}`.toLowerCase().replace(/\s+/g, '') : '',
-      display_name: follow.follower.firstName && follow.follower.lastName ? 
+      displayName: follow.follower.firstName && follow.follower.lastName ? 
         `${follow.follower.firstName} ${follow.follower.lastName}` : '',
-      avatar_url: follow.follower.avatarUrl,
-      is_verified: follow.follower.isVerified,
-      followers_count: 0, // Default since field doesn't exist
-      following_count: 0, // Default since field doesn't exist
-      is_close_friend: follow.isCloseFriend || false,
-      viewer_is_following: viewerId ? false : false // Simplified for now
+      avatarUrl: follow.follower.avatarUrl,
+      isVerified: follow.follower.isVerified || false,
+      followersCount: 0, // Default since field doesn't exist
+      followingCount: 0, // Default since field doesn't exist
+      isFollowing: follow.viewer_is_following || false,
+      isFollowedBy: false,
+      isCloseFriend: follow.isCloseFriend || false
     }));
   }
 
@@ -158,14 +159,15 @@ export class FollowService {
       id: follow.following.id,
       username: follow.following.firstName && follow.following.lastName ? 
         `${follow.following.firstName} ${follow.following.lastName}`.toLowerCase().replace(/\s+/g, '') : '',
-      display_name: follow.following.firstName && follow.following.lastName ? 
+      displayName: follow.following.firstName && follow.following.lastName ? 
         `${follow.following.firstName} ${follow.following.lastName}` : '',
-      avatar_url: follow.following.avatarUrl,
-      is_verified: follow.following.isVerified,
-      followers_count: 0, // Default since field doesn't exist
-      following_count: 0, // Default since field doesn't exist
-      is_close_friend: follow.isCloseFriend || false,
-      viewer_is_following: viewerId ? false : false // Simplified for now
+      avatarUrl: follow.following.avatarUrl,
+      isVerified: follow.following.isVerified || false,
+      followersCount: 0, // Default since field doesn't exist
+      followingCount: 0, // Default since field doesn't exist
+      isFollowing: follow.viewer_is_following || false,
+      isFollowedBy: false,
+      isCloseFriend: follow.isCloseFriend || false
     }));
   }
 
