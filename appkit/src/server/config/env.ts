@@ -25,7 +25,12 @@ const envSchema = z.object({
 
 
   // JWT
-  JWT_SECRET: z.string().min(32).default('placeholder-jwt-secret-at-least-32-characters-long'),
+  JWT_SECRET: z.string().min(32).refine(val => {
+    if (process.env.NODE_ENV === 'production') {
+      return val !== 'placeholder-jwt-secret-at-least-32-characters-long'
+    }
+    return true
+  }, 'JWT_SECRET must be set to a real secret in production'),
   JWT_REFRESH_SECRET: z.string().min(32).optional().default('appkit-refresh-dev-secret-key-32chars'),
   JWT_EXPIRES_IN: z.string().default('7d'),
 
