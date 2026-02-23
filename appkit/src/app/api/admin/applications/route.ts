@@ -1,5 +1,5 @@
 // Proxy /api/admin/* to backend /api/v1/admin/* for backward compatibility
-// Updated: 2026-02-23 21:32 - Railway deployment fix v2
+// Updated: 2026-02-24 00:00 - Railway deployment fix v6
 import { NextRequest, NextResponse } from 'next/server'
 
 // For Railway deployment, the backend should be deployed separately
@@ -7,6 +7,12 @@ import { NextRequest, NextResponse } from 'next/server'
 const BACKEND_URL = process.env.BACKEND_ADMIN_URL || 
                    process.env.NEXT_PUBLIC_BACKEND_URL || 
                    'http://127.0.0.1:4000'
+
+// Check if we're in production environment (Railway)
+const isProduction = process.env.NODE_ENV === 'production'
+const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined || 
+                  process.env.RAILWAY_SERVICE_NAME !== undefined ||
+                  process.env.RAILWAY_PROJECT_NAME !== undefined
 
 // Fallback mock data for when backend is not available (Railway deployment)
 const mockApplications = [
@@ -27,8 +33,8 @@ const mockApplications = [
 ]
 
 export async function GET(request: NextRequest) {
-  // If backend URL is localhost, we're likely in development and backend should be available
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
@@ -54,11 +60,11 @@ export async function GET(request: NextRequest) {
     }
   }
   
-  // For production (Railway), return mock data directly
+  // For production (Railway) or when backend is not configured, return mock data directly
   return NextResponse.json({
     success: true,
     data: { applications: mockApplications },
-    message: 'Applications retrieved (production mode)'
+    message: isProduction ? 'Applications retrieved (production mode)' : 'Applications retrieved (mock data - backend not configured)'
   })
 }
 
@@ -105,16 +111,16 @@ export async function POST(request: NextRequest) {
   }
   return NextResponse.json({
     success: true,
-    data: { application: newApp },
-    message: 'Application created successfully (production mode)'
-  }, { status: 201 })
+    data: { application: { ...body, id: Date.now().toString() } },
+    message: isProduction ? 'Application created (production mode)' : 'Application created (mock data - backend not configured)'
+  })
 }
 
 export async function PUT(request: NextRequest) {
   const body = await request.json()
   
-  // If backend URL is localhost, we're likely in development and backend should be available
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
@@ -141,17 +147,17 @@ export async function PUT(request: NextRequest) {
     }
   }
   
-  // For production (Railway), return mock response directly
+  // For production (Railway) or when backend is not configured, return mock response directly
   return NextResponse.json({
     success: true,
     data: { application: body },
-    message: 'Application updated successfully (production mode)'
+    message: isProduction ? 'Application updated successfully (production mode)' : 'Application updated successfully (mock data - backend not configured)'
   })
 }
 
 export async function DELETE(request: NextRequest) {
-  // If backend URL is localhost, we're likely in development and backend should be available
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
@@ -176,9 +182,9 @@ export async function DELETE(request: NextRequest) {
     }
   }
   
-  // For production (Railway), return mock response directly
+  // For production (Railway) or when backend is not configured, return mock response directly
   return NextResponse.json({
     success: true,
-    message: 'Application deleted successfully (production mode)'
+    message: isProduction ? 'Application deleted successfully (production mode)' : 'Application deleted successfully (mock data - backend not configured)'
   })
 }

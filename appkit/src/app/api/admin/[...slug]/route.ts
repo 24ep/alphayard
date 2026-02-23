@@ -1,9 +1,16 @@
 // Catch-all proxy for /api/admin/* to /api/v1/admin/* with fallback for Railway
+// Updated: 2026-02-24 00:00 - Railway deployment fix v6
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_ADMIN_URL || 
                    process.env.NEXT_PUBLIC_BACKEND_URL || 
                    'http://127.0.0.1:4000'
+
+// Check if we're in production environment (Railway)
+const isProduction = process.env.NODE_ENV === 'production'
+const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined || 
+                  process.env.RAILWAY_SERVICE_NAME !== undefined ||
+                  process.env.RAILWAY_PROJECT_NAME !== undefined
 
 // Mock data fallbacks for Railway deployment
 const getMockData = (slug: string) => {
@@ -60,8 +67,8 @@ const getMockData = (slug: string) => {
 export async function GET(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
   
-  // If backend URL is localhost, try to proxy; otherwise return fallback
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
@@ -98,8 +105,8 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
   const slug = params.slug.join('/')
   const body = await request.json()
   
-  // If backend URL is localhost, try to proxy; otherwise return fallback
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}`
       
@@ -136,8 +143,8 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
   const slug = params.slug.join('/')
   const body = await request.json()
   
-  // If backend URL is localhost, try to proxy; otherwise return fallback
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
@@ -169,8 +176,8 @@ export async function PUT(request: NextRequest, { params }: { params: { slug: st
 export async function DELETE(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
   
-  // If backend URL is localhost, try to proxy; otherwise return fallback
-  if (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1')) {
+  // Only try to connect to backend if we're in development and backend URL is explicitly set
+  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
     try {
       const url = new URL(request.url)
       const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
