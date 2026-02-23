@@ -2,10 +2,10 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY bondary-backend/package*.json ./
+COPY package*.json ./
 RUN npm install
 
-COPY bondary-backend/ .
+COPY . .
 
 RUN npx prisma generate
 
