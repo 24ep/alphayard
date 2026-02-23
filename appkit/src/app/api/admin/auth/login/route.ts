@@ -40,6 +40,22 @@ export async function POST(request: NextRequest) {
     // Find user in database
     console.log('🔍 Looking up user in database...')
     
+    // Debug: Check what schema we're actually using
+    console.log('🔍 Database schema debug...')
+    try {
+      const schemaCheck = await prisma.$queryRaw`SELECT current_schema()`
+      console.log('📊 Current schema:', schemaCheck)
+      
+      const tableCheck = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
+      console.log('📋 Tables in public schema:', tableCheck)
+      
+      const userTableCheck = await prisma.$queryRaw`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_name = 'User' AND table_schema = 'public'`
+      console.log('👤 User table exists:', userTableCheck)
+      
+    } catch (schemaError) {
+      console.error('❌ Schema debug failed:', schemaError)
+    }
+
     // Debug: Check what users exist in database
     try {
       const allUsers = await prisma.user.findMany({

@@ -6,6 +6,27 @@ const prisma = new PrismaClient()
 
 async function main() {
   console.log('Start seeding...')
+  
+  // Debug: Check database schema
+  console.log('🔍 Seed script - Database schema debug...')
+  try {
+    const schemaCheck = await prisma.$queryRaw`SELECT current_schema()`
+    console.log('📊 Seed - Current schema:', schemaCheck)
+    
+    const userTableCheck = await prisma.$queryRaw`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_name = 'User' AND table_schema = 'public'`
+    console.log('👤 Seed - User table exists:', userTableCheck)
+    
+    const existingUsers = await prisma.user.findMany({
+      select: { id: true, email: true, isActive: true },
+      take: 5
+    })
+    console.log('👥 Seed - Existing users:', existingUsers.length)
+    existingUsers.forEach(user => {
+      console.log(`  - ${user.email} (active: ${user.isActive})`)
+    })
+  } catch (schemaError) {
+    console.error('❌ Seed schema debug failed:', schemaError)
+  }
 
   // Create default application
   const app = await prisma.application.upsert({
