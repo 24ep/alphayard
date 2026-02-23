@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({
       success: true,
-      data: mockSettings,
+      settings: mockSettings,
       message: 'Application settings retrieved successfully'
     })
   } catch (error) {
@@ -56,7 +56,7 @@ export async function PUT(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      data: updatedSettings,
+      settings: updatedSettings,
       message: 'Application settings updated successfully'
     })
   } catch (error) {

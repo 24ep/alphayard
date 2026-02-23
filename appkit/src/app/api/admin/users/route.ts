@@ -62,14 +62,12 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      data: {
-        users: paginatedUsers,
-        pagination: {
-          page,
-          limit,
-          total: filteredUsers.length,
-          totalPages: Math.ceil(filteredUsers.length / limit)
-        }
+      users: paginatedUsers,
+      pagination: {
+        page,
+        limit,
+        total: filteredUsers.length,
+        totalPages: Math.ceil(filteredUsers.length / limit)
       },
       message: 'Users retrieved successfully'
     })
@@ -101,7 +99,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      data: { user: newUser },
+      user: newUser,
       message: 'User created successfully'
     }, { status: 201 })
   } catch (error) {

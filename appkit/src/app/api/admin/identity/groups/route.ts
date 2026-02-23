@@ -48,9 +48,7 @@ export async function GET(request: NextRequest) {
   try {
     return NextResponse.json({
       success: true,
-      data: {
-        groups: mockGroups
-      },
+      groups: mockGroups,
       message: 'User groups retrieved successfully'
     })
   } catch (error) {
@@ -83,7 +81,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      data: { group: newGroup },
+      group: newGroup,
       message: 'User group created successfully'
     }, { status: 201 })
   } catch (error) {
