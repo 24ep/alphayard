@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticate, hasPermission } from '@/lib/auth';
-import { appConfigController } from '@/server/controllers/admin/AppConfigController';
+import { prisma } from '@/server/lib/prisma';
 
 export async function PUT(req: NextRequest, { params }: { params: { screenKey: string } }) {
   const auth = await authenticate(req);
@@ -9,16 +9,23 @@ export async function PUT(req: NextRequest, { params }: { params: { screenKey: s
     return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
   }
 
-  let responseData: any = null;
-  const res: any = {
-    json: (data: any) => { responseData = data; return res; },
-    status: (code: number) => { return res; }
-  };
+  try {
+    const body = await req.json();
+    const { screenKey } = params;
+    const { appId, config } = body;
 
-  const body = await req.json();
-  const { screenKey } = params;
+    if (!appId || !config) {
+      return NextResponse.json({ error: 'appId and config are required' }, { status: 400 });
+    }
 
-  await appConfigController.updateScreenConfig({ body, params: { screenKey } } as any, res as any);
-  
-  return NextResponse.json(responseData);
+    const setting = await prisma.appSetting.upsert({
+      where: { applicationId_key: { applicationId: appId, key: `screen_${screenKey}` } },
+      update: { value: config },
+      create: { applicationId: appId, key: `screen_${screenKey}`, value: config }
+    });
+
+    return NextResponse.json({ setting });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 }
