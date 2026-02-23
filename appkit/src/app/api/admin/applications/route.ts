@@ -1,4 +1,5 @@
 // Proxy /api/admin/* to backend /api/v1/admin/* for backward compatibility
+// Updated: 2026-02-23 21:31 - Railway deployment fix
 import { NextRequest, NextResponse } from 'next/server'
 
 // For Railway deployment, the backend should be deployed separately
