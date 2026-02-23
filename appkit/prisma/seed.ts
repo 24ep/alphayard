@@ -8,17 +8,18 @@ async function main() {
   console.log('Start seeding...')
   
   // Debug: Check database schema
-  console.log('🔍 Seed script - Database schema debug...')
+  console.log('🔍 Seed script - Database schema debug (PUBLIC ONLY)...')
   try {
     const schemaCheck = await prisma.$queryRaw`SELECT current_schema()`
     console.log('📊 Seed - Current schema:', schemaCheck)
     
+    // Check users table in public schema only
     const userTableCheck = await prisma.$queryRaw`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_name = 'users' AND table_schema = 'public'`
-    console.log('👤 Seed - User table exists (users):', userTableCheck)
+    console.log('👤 Seed - User table in public schema:', userTableCheck)
     
-    // Also check for any user-related tables
-    const userRelatedTables = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%user%'`
-    console.log('👥 Seed - User-related tables:', userRelatedTables)
+    // Check all tables in public schema
+    const publicTables = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`
+    console.log('� Seed - All tables in public schema:', publicTables)
     
     const existingUsers = await prisma.user.findMany({
       select: { id: true, email: true, isActive: true },

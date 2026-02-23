@@ -41,20 +41,18 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Looking up user in database...')
     
     // Debug: Check what schema we're actually using
-    console.log('🔍 Database schema debug...')
+    console.log('🔍 Database schema debug (PUBLIC ONLY)...')
     try {
       const schemaCheck = await prisma.$queryRaw`SELECT current_schema()`
       console.log('📊 Current schema:', schemaCheck)
       
-      const tableCheck = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`
-      console.log('📋 Tables in public schema:', tableCheck)
-      
+      // Check users table in public schema only
       const userTableCheck = await prisma.$queryRaw`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_name = 'users' AND table_schema = 'public'`
-      console.log('👤 User table exists (users):', userTableCheck)
+      console.log('👤 User table in public schema:', userTableCheck)
       
-      // Also check for any user-related tables
-      const userRelatedTables = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name LIKE '%user%'`
-      console.log('👥 User-related tables:', userRelatedTables)
+      // Check all tables in public schema
+      const publicTables = await prisma.$queryRaw`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name`
+      console.log('� All tables in public schema:', publicTables)
       
     } catch (schemaError) {
       console.error('❌ Schema debug failed:', schemaError)
