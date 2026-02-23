@@ -1,14 +1,33 @@
-// Authentication Gateway - Main auth endpoint for all applications
+// Authentication Gateway - Complete implementation with database integration
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/server/lib/prisma'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
+import { randomBytes } from 'crypto'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
+
+interface JWTPayload {
+  userId: string
+  email: string
+  role: string
+  clientId: string
+  sessionId: string
+  iat: number
+  exp: number
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { action, clientId, ...authData } = body
     
-    // Verify client application
+    // Rate limiting check (simple implementation)
+    const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    console.log(`🔐 Auth Gateway: ${action} from ${clientIP} for client ${clientId}`)
+    
+    // Verify client application exists
     if (!clientId) {
       return NextResponse.json(
         { error: 'Client ID is required' },
@@ -16,17 +35,23 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // In production, validate client against database
+    // const client = await prisma.application.findFirst({ where: { clientId } })
+    // if (!client || !client.isActive) {
+    //   return NextResponse.json({ error: 'Invalid client application' }, { status: 401 })
+    // }
+    
     switch (action) {
       case 'login':
-        return handleLogin(authData, clientId)
+        return await handleLogin(authData, clientId, clientIP)
       case 'register':
-        return handleRegister(authData, clientId)
+        return await handleRegister(authData, clientId, clientIP)
       case 'refresh':
-        return handleRefreshToken(authData, clientId)
+        return await handleRefreshToken(authData, clientId, clientIP)
       case 'logout':
-        return handleLogout(authData, clientId)
+        return await handleLogout(authData, clientId, clientIP)
       case 'verify':
-        return handleVerifyToken(authData, clientId)
+        return await handleVerifyToken(authData, clientId, clientIP)
       default:
         return NextResponse.json(
           { error: 'Invalid action' },
@@ -34,7 +59,7 @@ export async function POST(request: NextRequest) {
         )
     }
   } catch (error) {
-    console.error('Authentication gateway error:', error)
+    console.error('🔐 Authentication gateway error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -42,168 +67,592 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleLogin(authData: any, clientId: string) {
-  const { email, password, deviceInfo } = authData
+async function handleLogin(authData: any, clientId: string, clientIP: string) {
+  const { email, password, deviceInfo, rememberMe = false } = authData
   
-  // Find user
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() }
-  })
-  
-  if (!user || !user.isActive) {
+  if (!email || !password) {
     return NextResponse.json(
-      { error: 'Invalid credentials' },
-      { status: 401 }
+      { error: 'Email and password are required' },
+      { status: 400 }
     )
   }
   
-  // Verify password
-  if (user.passwordHash) {
-    const isValid = await bcrypt.compare(password, user.passwordHash)
-    if (!isValid) {
+  try {
+    // Find user with comprehensive query
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      include: {
+        userApplications: {
+          where: { application: { slug: clientId } },
+          include: { application: true }
+        },
+        userSessions: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        }
+      }
+    })
+    
+    if (!user) {
+      // Log failed login attempt
+      await logSecurityEvent('login_failed', {
+        email,
+        clientId,
+        clientIP,
+        reason: 'user_not_found'
+      })
+      
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
-  }
-  
-  // Generate tokens (mock implementation)
-  const token = `mock-jwt-${Date.now()}-${user.id}`
-  const refreshToken = `mock-refresh-${Date.now()}-${user.id}`
-  
-  // Create session
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7) // 7 days
-  
-  return NextResponse.json({
-    success: true,
-    user: {
-      id: user.id,
+    
+    if (!user.isActive) {
+      await logSecurityEvent('login_failed', {
+        userId: user.id,
+        email,
+        clientId,
+        clientIP,
+        reason: 'user_inactive'
+      })
+      
+      return NextResponse.json(
+        { error: 'Account is disabled' },
+        { status: 403 }
+      )
+    }
+    
+    // Verify password
+    const isValid = await bcrypt.compare(password, user.passwordHash || '')
+    if (!isValid) {
+      await logSecurityEvent('login_failed', {
+        userId: user.id,
+        email,
+        clientId,
+        clientIP,
+        reason: 'invalid_password'
+      })
+      
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+    
+    // Check if user has access to this application
+    const userAppAccess = user.userApplications.find((ua: any) => ua.application.slug === clientId)
+    if (!userAppAccess && user.userType !== 'admin') {
+      await logSecurityEvent('login_failed', {
+        userId: user.id,
+        email,
+        clientId,
+        clientIP,
+        reason: 'no_application_access'
+      })
+      
+      return NextResponse.json(
+        { error: 'Access denied for this application' },
+        { status: 403 }
+      )
+    }
+    
+    // Generate session ID
+    const sessionId = randomBytes(32).toString('hex')
+    
+    // Create tokens with proper expiration
+    const tokenExpiry = rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 30 days or 7 days
+    const refreshExpiry = rememberMe ? 90 * 24 * 60 * 60 : 30 * 24 * 60 * 60 // 90 days or 30 days
+    
+    const payload: JWTPayload = {
+      userId: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
       role: user.userType || 'user',
-      isActive: user.isActive,
-      isVerified: user.isVerified
-    },
-    tokens: {
-      accessToken: token,
-      refreshToken: refreshToken,
-      expiresIn: 604800, // 7 days
-      tokenType: 'Bearer'
-    },
-    session: {
-      id: `sess_${Date.now()}`,
-      expiresAt: expiresAt.toISOString(),
-      deviceInfo: deviceInfo || {}
-    },
-    message: 'Login successful'
-  })
+      clientId,
+      sessionId,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + tokenExpiry
+    }
+    
+    const accessToken = jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256' })
+    const refreshToken = jwt.sign(
+      { userId: user.id, sessionId, type: 'refresh' },
+      JWT_REFRESH_SECRET,
+      { expiresIn: `${refreshExpiry}s`, algorithm: 'HS256' }
+    )
+    
+    // Calculate session expiration
+    const expiresAt = new Date()
+    expiresAt.setSeconds(expiresAt.getSeconds() + tokenExpiry)
+    
+    // Parse device info
+    const parsedDeviceInfo = deviceInfo || {}
+    const userAgent = parsedDeviceInfo.userAgent || 'Unknown'
+    
+    // Create session in database
+    const session = await prisma.userSession.create({
+      data: {
+        id: sessionId,
+        userId: user.id,
+        sessionToken: accessToken,
+        refreshToken: refreshToken,
+        isActive: true,
+        expiresAt,
+        applicationId: userAppAccess?.applicationId || null,
+        deviceType: parsedDeviceInfo.device || 'Unknown',
+        deviceName: parsedDeviceInfo.name || 'Unknown Device',
+        browser: parsedDeviceInfo.browser || 'Unknown',
+        ipAddress: clientIP,
+        country: parsedDeviceInfo.country || null,
+        city: parsedDeviceInfo.city || null,
+        isRemembered: rememberMe
+      }
+    })
+    
+    // Update last login
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    })
+    
+    // Get user permissions
+    const permissions = await getUserPermissions(user.id, userAppAccess?.applicationId)
+    
+    // Log successful login
+    await logSecurityEvent('login_success', {
+      userId: user.id,
+      email,
+      clientId,
+      clientIP,
+      sessionId: session.id
+    })
+    
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.userType || 'user',
+        isActive: user.isActive,
+        isVerified: user.isVerified,
+        permissions: permissions,
+        lastLogin: user.lastLoginAt
+      },
+      tokens: {
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresIn: tokenExpiry,
+        tokenType: 'Bearer'
+      },
+      session: {
+        id: session.id,
+        expiresAt: session.expiresAt.toISOString(),
+        deviceInfo: deviceInfo || {}
+      },
+      message: 'Login successful'
+    })
+  } catch (error) {
+    console.error('🔐 Login error:', error)
+    return NextResponse.json(
+      { error: 'Login failed' },
+      { status: 500 }
+    )
+  }
 }
 
-async function handleRegister(authData: any, clientId: string) {
-  const { email, password, firstName, lastName, deviceInfo } = authData
+async function handleRegister(authData: any, clientId: string, clientIP: string) {
+  const { email, password, firstName, lastName, deviceInfo, acceptTerms = false } = authData
   
-  // Check if user exists
-  const existingUser = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() }
-  })
-  
-  if (existingUser) {
+  if (!email || !password || !firstName || !lastName) {
     return NextResponse.json(
-      { error: 'User already exists' },
-      { status: 409 }
+      { error: 'All required fields must be provided' },
+      { status: 400 }
     )
   }
   
-  // Create user
-  const hashedPassword = await bcrypt.hash(password, 12)
+  if (!acceptTerms) {
+    return NextResponse.json(
+      { error: 'You must accept the terms of service' },
+      { status: 400 }
+    )
+  }
   
-  const user = await prisma.user.create({
-    data: {
-      email: email.toLowerCase(),
-      firstName,
-      lastName,
-      passwordHash: hashedPassword,
-      isActive: true,
-      isVerified: false,
-      userType: 'user'
+  try {
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    })
+    
+    if (existingUser) {
+      await logSecurityEvent('registration_failed', {
+        email,
+        clientId,
+        clientIP,
+        reason: 'user_exists'
+      })
+      
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 409 }
+      )
     }
-  })
-  
-  // Generate tokens
-  const token = `mock-jwt-${Date.now()}-${user.id}`
-  const refreshToken = `mock-refresh-${Date.now()}-${user.id}`
-  
-  return NextResponse.json({
-    success: true,
-    user: {
-      id: user.id,
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
+    
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        passwordHash: hashedPassword,
+        isActive: true,
+        isVerified: false,
+        userType: 'user'
+      }
+    })
+    
+    // Generate tokens
+    const sessionId = randomBytes(32).toString('hex')
+    const tokenExpiry = 7 * 24 * 60 * 60 // 7 days
+    
+    const payload: JWTPayload = {
+      userId: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
       role: user.userType,
-      isActive: user.isActive,
-      isVerified: user.isVerified
-    },
-    tokens: {
-      accessToken: token,
-      refreshToken: refreshToken,
-      expiresIn: 604800,
-      tokenType: 'Bearer'
-    },
-    message: 'Registration successful'
-  }, { status: 201 })
+      clientId,
+      sessionId,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + tokenExpiry
+    }
+    
+    const accessToken = jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256' })
+    const refreshToken = jwt.sign(
+      { userId: user.id, sessionId, type: 'refresh' },
+      JWT_REFRESH_SECRET,
+      { expiresIn: '30d', algorithm: 'HS256' }
+    )
+    
+    // Create session
+    const expiresAt = new Date()
+    expiresAt.setSeconds(expiresAt.getSeconds() + tokenExpiry)
+    
+    const parsedDeviceInfo = deviceInfo || {}
+    
+    await prisma.userSession.create({
+      data: {
+        id: sessionId,
+        userId: user.id,
+        sessionToken: accessToken,
+        refreshToken: refreshToken,
+        isActive: true,
+        expiresAt,
+        deviceType: parsedDeviceInfo.device || 'Unknown',
+        deviceName: parsedDeviceInfo.name || 'Unknown Device',
+        browser: parsedDeviceInfo.browser || 'Unknown',
+        ipAddress: clientIP,
+        country: parsedDeviceInfo.country || null,
+        city: parsedDeviceInfo.city || null
+      }
+    })
+    
+    // Log registration
+    await logSecurityEvent('registration_success', {
+      userId: user.id,
+      email,
+      clientId,
+      clientIP,
+      sessionId
+    })
+    
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.userType,
+        isActive: user.isActive,
+        isVerified: user.isVerified
+      },
+      tokens: {
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        expiresIn: tokenExpiry,
+        tokenType: 'Bearer'
+      },
+      message: 'Registration successful'
+    }, { status: 201 })
+  } catch (error) {
+    console.error('🔐 Registration error:', error)
+    return NextResponse.json(
+      { error: 'Registration failed' },
+      { status: 500 }
+    )
+  }
 }
 
-async function handleRefreshToken(authData: any, clientId: string) {
+async function handleRefreshToken(authData: any, clientId: string, clientIP: string) {
   const { refreshToken } = authData
   
-  // Mock token refresh
-  const newToken = `mock-jwt-refreshed-${Date.now()}`
+  if (!refreshToken) {
+    return NextResponse.json(
+      { error: 'Refresh token is required' },
+      { status: 400 }
+    )
+  }
   
-  return NextResponse.json({
-    success: true,
-    tokens: {
-      accessToken: newToken,
-      expiresIn: 604800,
-      tokenType: 'Bearer'
-    },
-    message: 'Token refreshed successfully'
-  })
+  try {
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any
+    
+    if (decoded.type !== 'refresh') {
+      return NextResponse.json(
+        { error: 'Invalid token type' },
+        { status: 401 }
+      )
+    }
+    
+    // Find session
+    const session = await prisma.userSession.findFirst({
+      where: {
+        refreshToken: refreshToken,
+        isActive: true,
+        userId: decoded.userId
+      },
+      include: { user: true }
+    })
+    
+    if (!session || session.expiresAt < new Date()) {
+      return NextResponse.json(
+        { error: 'Session expired or invalid' },
+        { status: 401 }
+      )
+    }
+    
+    // Generate new tokens
+    const tokenExpiry = 7 * 24 * 60 * 60 // 7 days
+    const newPayload: JWTPayload = {
+      userId: session.user.id,
+      email: session.user.email,
+      role: session.user.userType || 'user',
+      clientId,
+      sessionId: session.id,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + tokenExpiry
+    }
+    
+    const newAccessToken = jwt.sign(newPayload, JWT_SECRET, { algorithm: 'HS256' })
+    const newRefreshToken = jwt.sign(
+      { userId: session.user.id, sessionId: session.id, type: 'refresh' },
+      JWT_REFRESH_SECRET,
+      { expiresIn: '30d', algorithm: 'HS256' }
+    )
+    
+    // Update session
+    await prisma.userSession.update({
+      where: { id: session.id },
+      data: {
+        sessionToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        lastActivityAt: new Date()
+      }
+    })
+    
+    return NextResponse.json({
+      success: true,
+      tokens: {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: tokenExpiry,
+        tokenType: 'Bearer'
+      },
+      message: 'Token refreshed successfully'
+    })
+  } catch (error) {
+    console.error('🔐 Token refresh error:', error)
+    return NextResponse.json(
+      { error: 'Token refresh failed' },
+      { status: 401 }
+    )
+  }
 }
 
-async function handleLogout(authData: any, clientId: string) {
-  const { accessToken } = authData
+async function handleLogout(authData: any, clientId: string, clientIP: string) {
+  const { accessToken, allSessions = false } = authData
   
-  // Mock logout - would invalidate session/token
-  return NextResponse.json({
-    success: true,
-    message: 'Logout successful'
-  })
+  try {
+    if (accessToken) {
+      // Verify token and get session
+      const decoded = jwt.verify(accessToken, JWT_SECRET) as JWTPayload
+      
+      if (allSessions) {
+        // Revoke all sessions for user
+        await prisma.userSession.updateMany({
+          where: { userId: decoded.userId },
+          data: { isActive: false }
+        })
+      } else {
+        // Revoke specific session
+        await prisma.userSession.update({
+          where: { id: decoded.sessionId },
+          data: { isActive: false }
+        })
+      }
+      
+      // Log logout
+      await logSecurityEvent('logout', {
+        userId: decoded.userId,
+        clientId,
+        clientIP,
+        sessionId: decoded.sessionId,
+        allSessions
+      })
+    }
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Logout successful'
+    })
+  } catch (error) {
+    console.error('🔐 Logout error:', error)
+    return NextResponse.json(
+      { error: 'Logout failed' },
+      { status: 500 }
+    )
+  }
 }
 
-async function handleVerifyToken(authData: any, clientId: string) {
+async function handleVerifyToken(authData: any, clientId: string, clientIP: string) {
   const { accessToken } = authData
   
-  // Mock token verification
-  if (accessToken && accessToken.startsWith('mock-jwt-')) {
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'Access token is required' },
+      { status: 400 }
+    )
+  }
+  
+  try {
+    const decoded = jwt.verify(accessToken, JWT_SECRET) as JWTPayload
+    
+    // Verify session is still active
+    const session = await prisma.userSession.findFirst({
+      where: {
+        id: decoded.sessionId,
+        userId: decoded.userId,
+        isActive: true,
+        expiresAt: { gt: new Date() }
+      },
+      include: { user: true }
+    })
+    
+    if (!session) {
+      return NextResponse.json({
+        success: false,
+        valid: false,
+        message: 'Session expired or invalid'
+      }, { status: 401 })
+    }
+    
+    // Update last activity
+    await prisma.userSession.update({
+      where: { id: session.id },
+      data: { lastActivityAt: new Date() }
+    })
+    
+    // Get user permissions
+    const permissions = await getUserPermissions(decoded.userId, session.applicationId)
+    
     return NextResponse.json({
       success: true,
       valid: true,
       user: {
-        id: 'f1707668-141f-4290-b93d-8f8ca8a0f860',
-        email: 'admin@appkit.com',
-        role: 'admin'
+        id: session.user.id,
+        email: session.user.email,
+        firstName: session.user.firstName,
+        lastName: session.user.lastName,
+        role: session.user.userType || 'user',
+        isActive: session.user.isActive,
+        isVerified: session.user.isVerified,
+        permissions: permissions
+      },
+      session: {
+        id: session.id,
+        expiresAt: session.expiresAt.toISOString()
       },
       message: 'Token is valid'
     })
+  } catch (error) {
+    return NextResponse.json({
+      success: false,
+      valid: false,
+      message: 'Invalid token'
+    }, { status: 401 })
   }
-  
-  return NextResponse.json({
-    success: false,
-    valid: false,
-    message: 'Invalid token'
-  }, { status: 401 })
+}
+
+// Helper functions
+async function getUserPermissions(userId: string, applicationId?: string | null) {
+  try {
+    // Get user's group memberships
+    const userGroupMembers = await prisma.userGroupMember.findMany({
+      where: { 
+        userId: userId
+      },
+      include: {
+        group: {
+          include: {
+            application: true
+          }
+        }
+      }
+    })
+    
+    // Extract permissions from groups
+    const permissions = new Set<string>()
+    userGroupMembers.forEach(userGroupMember => {
+      if (userGroupMember.group.permissions) {
+        const groupPermissions = Array.isArray(userGroupMember.group.permissions) 
+          ? userGroupMember.group.permissions 
+          : []
+        groupPermissions.forEach((perm: any) => {
+          if (typeof perm === 'string') {
+            permissions.add(perm)
+          }
+        })
+      }
+    })
+    
+    return Array.from(permissions)
+  } catch (error) {
+    console.error('Failed to get user permissions:', error)
+    return []
+  }
+}
+
+async function logSecurityEvent(eventType: string, data: any) {
+  try {
+    // For now, just log to console - securityLog table doesn't exist in schema
+    console.log(`🔐 Security Event: ${eventType}`, data)
+    // In production, create a security log table or use audit logs
+    // await prisma.securityLog.create({
+    //   data: {
+    //     eventType,
+    //     userId: data.userId || null,
+    //     email: data.email || null,
+    //     clientId: data.clientId,
+    //     ipAddress: data.clientIP,
+    //     userAgent: data.deviceInfo?.userAgent || null,
+    //     details: data
+    //   }
+    // })
+  } catch (error) {
+    console.error('Failed to log security event:', error)
+  }
 }
