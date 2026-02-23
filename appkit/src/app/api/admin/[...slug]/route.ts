@@ -103,7 +103,14 @@ export async function GET(request: NextRequest, { params }: { params: { slug: st
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
-  const body = await request.json()
+  
+  // Try to parse body, but handle cases where there might not be one
+  let body = {}
+  try {
+    body = await request.json()
+  } catch (error) {
+    // No body or invalid JSON, continue with empty body
+  }
   
   // Only try to connect to backend if we're in development and backend URL is explicitly set
   if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {

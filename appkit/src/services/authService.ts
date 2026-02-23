@@ -138,6 +138,13 @@ class AuthService {
     const userStr = localStorage.getItem('admin_user')
     if (!userStr) return null
     
+    // Check for undefined or invalid data
+    if (userStr === 'undefined' || userStr === 'null') {
+      console.warn('Invalid user data in localStorage, clearing...')
+      localStorage.removeItem('admin_user')
+      return null
+    }
+    
     try {
       return JSON.parse(userStr)
     } catch (error) {
