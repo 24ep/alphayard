@@ -7,7 +7,7 @@ const localPort = process.env.PORT || '3002';
 const getBaseUrl = () => {
   if (typeof window !== 'undefined') {
     // Browser: always use relative URL for Next.js API routes
-    return '/api/v1';
+    return '/api';
   }
   
   // Server-side rendering
