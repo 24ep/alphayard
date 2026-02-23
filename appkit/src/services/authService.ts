@@ -61,7 +61,18 @@ class AuthService {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       
-      return await response.json()
+      // Handle empty responses or invalid JSON
+      const text = await response.text();
+      if (!text) {
+        return {} as T; // Return empty object for empty responses
+      }
+      
+      try {
+        return JSON.parse(text);
+      } catch (error) {
+        console.error('Invalid JSON response:', text);
+        throw new Error('Invalid JSON response from server');
+      }
     } catch (error: any) {
       console.error('API request failed:', error)
       if (error.message.includes('Failed to fetch')) {
@@ -125,7 +136,16 @@ class AuthService {
 
   getUser(): AuthUser | null {
     const userStr = localStorage.getItem('admin_user')
-    return userStr ? JSON.parse(userStr) : null
+    if (!userStr) return null
+    
+    try {
+      return JSON.parse(userStr)
+    } catch (error) {
+      console.error('Invalid user data in localStorage:', userStr)
+      // Clear corrupted data
+      localStorage.removeItem('admin_user')
+      return null
+    }
   }
 
   isAuthenticated(): boolean {
