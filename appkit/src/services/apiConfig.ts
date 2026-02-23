@@ -1,7 +1,7 @@
 // Shared API base URL configuration for the admin console
 // In the browser, use relative URL so requests go through Next.js API routes
 // On the server (SSR), call the backend directly
-// Updated: 2026-02-23 23:36 - Railway fix v3
+// Updated: 2026-02-23 23:43 - Force Railway fix v5
 const localPort = process.env.PORT || '3002';
 
 // For Railway deployment, use the Railway URL
@@ -26,7 +26,8 @@ const getBaseUrl = () => {
   return process.env.BACKEND_ADMIN_URL || `http://127.0.0.1:${localPort}`;
 };
 
-const finalUrl = process.env.NEXT_PUBLIC_API_URL || getBaseUrl();
-console.log('Final API_BASE_URL:', finalUrl, 'NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+// Ignore NEXT_PUBLIC_API_URL as it's causing issues on Railway
+const finalUrl = getBaseUrl();
+console.log('Final API_BASE_URL:', finalUrl, 'NEXT_PUBLIC_API_URL (ignored):', process.env.NEXT_PUBLIC_API_URL);
 
 export const API_BASE_URL: string = finalUrl;
