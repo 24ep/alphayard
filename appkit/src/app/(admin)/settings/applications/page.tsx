@@ -109,7 +109,10 @@ export default function ApplicationsPage() {
                         </button>
                     )}
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => {
+                            console.log('Add Application button clicked')
+                            setIsModalOpen(true)
+                        }}
                         className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                     >
                         Add Application
@@ -136,7 +139,10 @@ export default function ApplicationsPage() {
                                 {isSaving ? 'Creating...' : 'Create Sample Apps'}
                             </button>
                             <button
-                                onClick={() => setIsModalOpen(true)}
+                                onClick={() => {
+                                    console.log('Add Application button clicked (empty state)')
+                                    setIsModalOpen(true)
+                                }}
                                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                             >
                                 Add Application
@@ -186,86 +192,97 @@ export default function ApplicationsPage() {
             </div>
 
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-                            <h3 className="text-lg font-bold">Add Application</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                        <form onSubmit={handleSave} className="p-6 space-y-4">
-                            {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g. My App"
-                                />
+                <>
+                    {console.log('Modal is rendering, isModalOpen:', isModalOpen)}
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+                        <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
+                            <div className="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+                                <h3 className="text-lg font-bold">Add Application</h3>
+                                <button 
+                                    onClick={() => {
+                                        console.log('Close button clicked')
+                                        setIsModalOpen(false)
+                                    }} 
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    ✕
+                                </button>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.slug}
-                                    onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder="e.g. my-app"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    rows={3}
-                                    placeholder="Brief description..."
-                                />
-                            </div>
-                            
-                            <div className="pt-2 border-t mt-4">
-                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Integrations</h4>
+                            <form onSubmit={handleSave} className="p-6 space-y-4">
+                                {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Google Analytics ID</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
                                     <input
                                         type="text"
-                                        value={formData.settings?.google_analytics_id || ''}
-                                        onChange={(e) => setFormData({
-                                            ...formData,
-                                            settings: { ...formData.settings, google_analytics_id: e.target.value }
-                                        })}
+                                        required
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                        placeholder="G-XXXXXXXXXX"
+                                        placeholder="e.g. My App"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Enter your GA4 Measurement ID to enable tracking for this application.
-                                    </p>
                                 </div>
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Slug</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.slug}
+                                        onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        placeholder="e.g. my-app"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                    <textarea
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        rows={3}
+                                        placeholder="Brief description..."
+                                    />
+                                </div>
+                                
+                                <div className="pt-2 border-t mt-4">
+                                    <h4 className="text-sm font-semibold text-gray-900 mb-3">Integrations</h4>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Google Analytics ID</label>
+                                        <input
+                                            type="text"
+                                            value={formData.settings?.google_analytics_id || ''}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                settings: { ...formData.settings, google_analytics_id: e.target.value }
+                                            })}
+                                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                            placeholder="G-XXXXXXXXXX"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter your GA4 Measurement ID to enable tracking for this application.
+                                        </p>
+                                    </div>
+                                </div>
 
-                            <div className="flex justify-end space-x-3 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(false)}
-                                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSaving}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-                                >
-                                    {isSaving ? 'Saving...' : 'Save Application'}
-                                </button>
-                            </div>
-                        </form>
+                                <div className="flex justify-end space-x-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsModalOpen(false)}
+                                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={isSaving}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                    >
+                                        {isSaving ? 'Saving...' : 'Save Application'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                </>
             )}
         </div>
     )
