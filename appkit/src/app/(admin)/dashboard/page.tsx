@@ -1,416 +1,429 @@
-"use client";
+'use client'
 
 import React, { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { 
-    Users, 
-    FileText, 
-    TrendingUp, 
-    Smartphone,
-    Activity,
-    RefreshCw,
-    Plus,
-    Settings,
-    Shield,
-    Database,
-    Clock,
-    ArrowUp,
-    ArrowDown,
-    MoreHorizontal,
-    Terminal,
-    Cpu,
-    HardDrive,
-    Zap
+  ServerIcon,
+  UsersIcon,
+  ChartBarIcon,
+  ShieldCheckIcon,
+  ActivityIcon,
+  CogIcon,
+  GlobeIcon,
+  CreditCardIcon,
+  ArrowUpIcon,
+  TrendingUpIcon,
+  TrendingDownIcon
 } from 'lucide-react'
 
-interface DashboardStats {
-    totalUsers: number
-    totalContent: number
-    totalViews: number
-    activeUsers: number
-    totalScreens: number
-    userGrowth: number
-    contentGrowth: number
-    engagementGrowth: number
+interface SystemStats {
+  totalApplications: number
+  activeApplications: number
+  totalUsers: number
+  activeUsers: number
+  totalRevenue: number
+  monthlyRevenue: number
+  systemHealth: 'excellent' | 'good' | 'warning' | 'critical'
+  uptime: number
+  apiCalls: number
+  storageUsed: number
+  bandwidthUsed: number
 }
 
 interface RecentActivity {
-    id: string
-    type: 'user' | 'content' | 'system' | 'security'
-    title: string
-    description: string
-    timestamp: string
-    status: 'success' | 'warning' | 'info'
+  id: string
+  type: 'application_created' | 'user_registered' | 'payment_received' | 'system_alert'
+  title: string
+  description: string
+  timestamp: string
+  status: 'success' | 'warning' | 'error' | 'info'
 }
 
-const StatCard = ({ 
-    title, 
-    value, 
-    icon: Icon, 
-    growth, 
-    color = "blue",
-    description 
-}: {
-    title: string
-    value: string | number
-    icon: any
-    growth?: number
-    color?: 'blue' | 'green' | 'purple' | 'orange'
-    description?: string
-}) => {
-    const colorClasses = {
-        blue: 'border-blue-500/20 text-blue-400',
-        green: 'border-green-500/20 text-green-400',
-        purple: 'border-purple-500/20 text-purple-400',
-        orange: 'border-orange-500/20 text-orange-400'
-    }
-
-    return (
-        <div className={`p-4 border-l-2 ${colorClasses[color]} bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all rounded-r-lg shadow-sm border border-gray-100 dark:border-zinc-800`}>
-            <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded ${colorClasses[color].split(' ')[0]} bg-gray-100 dark:bg-zinc-800`}>
-                    <Icon className="w-4 h-4" />
-                </div>
-                {growth && (
-                    <div className={`flex items-center text-xs font-mono ${
-                        growth > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
-                        {growth > 0 ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
-                        {Math.abs(growth)}%
-                    </div>
-                )}
-            </div>
-            <div className="space-y-1">
-                <h3 className="text-xl font-mono font-bold text-gray-900 dark:text-gray-100">{value}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono uppercase tracking-wider">{title}</p>
-                {description && (
-                    <p className="text-xs text-gray-600 dark:text-gray-500 font-mono">{description}</p>
-                )}
-            </div>
-        </div>
-    )
-}
-
-const ActivityItem = ({ activity }: { activity: RecentActivity }) => {
-    const getIcon = () => {
-        switch (activity.type) {
-            case 'user': return <Users className="w-4 h-4" />
-            case 'content': return <FileText className="w-4 h-4" />
-            case 'system': return <Settings className="w-4 h-4" />
-            case 'security': return <Shield className="w-4 h-4" />
-            default: return <Activity className="w-4 h-4" />
-        }
-    }
-
-    const getStatusColor = () => {
-        switch (activity.status) {
-            case 'success': return 'border-green-500/20 text-green-400'
-            case 'warning': return 'border-orange-500/20 text-orange-400'
-            case 'info': return 'border-blue-500/20 text-blue-400'
-            default: return 'border-gray-500/20 text-gray-400'
-        }
-    }
-
-    return (
-        <div className="flex items-start gap-3 p-3 border-l border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors rounded-r-lg">
-            <div className={`p-1.5 rounded border ${getStatusColor()} bg-gray-100 dark:bg-zinc-800`}>
-                {getIcon()}
-            </div>
-            <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-mono font-medium text-gray-900 dark:text-gray-200">{activity.title}</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{activity.description}</p>
-                <div className="flex items-center gap-2 mt-2">
-                    <Clock className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-                    <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">{activity.timestamp}</span>
-                </div>
-            </div>
-            <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors" aria-label="More options" title="More options">
-                <MoreHorizontal className="w-3 h-3 text-gray-400 dark:text-gray-500" />
-            </button>
-        </div>
-    )
+interface TopApplication {
+  id: string
+  name: string
+  users: number
+  revenue: number
+  growth: number
+  status: 'active' | 'inactive'
 }
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState<DashboardStats>({
-        totalUsers: 0,
-        totalContent: 0,
-        totalViews: 0,
-        activeUsers: 0,
-        totalScreens: 0,
-        userGrowth: 0,
-        contentGrowth: 0,
-        engagementGrowth: 0
-    })
-    const [activities, setActivities] = useState<RecentActivity[]>([])
-    const [loading, setLoading] = useState(true)
-    const [refreshing, setRefreshing] = useState(false)
+  const [stats, setStats] = useState<SystemStats | null>(null)
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+  const [topApplications, setTopApplications] = useState<TopApplication[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-    const fetchDashboardData = async () => {
-        try {
-            setLoading(true)
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000))
-            
-            setStats({
-                totalUsers: 1248,
-                totalContent: 342,
-                totalViews: 45678,
-                activeUsers: 892,
-                totalScreens: 24,
-                userGrowth: 12.5,
-                contentGrowth: 8.3,
-                engagementGrowth: 23.7
-            })
-
-            setActivities([
-                {
-                    id: '1',
-                    type: 'user',
-                    title: 'New User Registration',
-                    description: 'john.doe@example.com joined the platform',
-                    timestamp: '2 minutes ago',
-                    status: 'success'
-                },
-                {
-                    id: '2',
-                    type: 'content',
-                    title: 'Blog Post Published',
-                    description: 'New article "Getting Started" was published',
-                    timestamp: '15 minutes ago',
-                    status: 'info'
-                },
-                {
-                    id: '3',
-                    type: 'system',
-                    title: 'Database Backup Completed',
-                    description: 'Automated backup completed successfully',
-                    timestamp: '1 hour ago',
-                    status: 'success'
-                },
-                {
-                    id: '4',
-                    type: 'security',
-                    title: 'Security Scan',
-                    description: 'Weekly security scan completed',
-                    timestamp: '2 hours ago',
-                    status: 'warning'
-                },
-                {
-                    id: '5',
-                    type: 'user',
-                    title: 'Admin Login',
-                    description: 'Admin user logged in from new device',
-                    timestamp: '3 hours ago',
-                    status: 'info'
-                }
-            ])
-        } catch (error) {
-            console.error('Failed to fetch dashboard data:', error)
-        } finally {
-            setLoading(false)
-        }
+  useEffect(() => {
+    // Mock data - replace with real API calls
+    const mockStats: SystemStats = {
+      totalApplications: 24,
+      activeApplications: 18,
+      totalUsers: 15420,
+      activeUsers: 8750,
+      totalRevenue: 48500,
+      monthlyRevenue: 12500,
+      systemHealth: 'excellent',
+      uptime: 99.9,
+      apiCalls: 2500000,
+      storageUsed: 750,
+      bandwidthUsed: 2500
     }
 
-    useEffect(() => {
-        fetchDashboardData()
-    }, [])
+    const mockRecentActivity: RecentActivity[] = [
+      {
+        id: '1',
+        type: 'application_created',
+        title: 'New Application Created',
+        description: 'Mobile App Backend was created by John Doe',
+        timestamp: '2024-02-22T10:30:00Z',
+        status: 'success'
+      },
+      {
+        id: '2',
+        type: 'user_registered',
+        title: 'New User Registration',
+        description: '125 new users registered in the last 24 hours',
+        timestamp: '2024-02-22T09:15:00Z',
+        status: 'info'
+      },
+      {
+        id: '3',
+        type: 'payment_received',
+        title: 'Payment Received',
+        description: '$2,500 payment received from Acme Corporation',
+        timestamp: '2024-02-22T08:45:00Z',
+        status: 'success'
+      },
+      {
+        id: '4',
+        type: 'system_alert',
+        title: 'High API Usage',
+        description: 'API usage approaching limit for E-Commerce Platform',
+        timestamp: '2024-02-22T07:30:00Z',
+        status: 'warning'
+      }
+    ]
 
-    const handleRefresh = async () => {
-        setRefreshing(true)
-        await fetchDashboardData()
-        setRefreshing(false)
+    const mockTopApplications: TopApplication[] = [
+      {
+        id: '1',
+        name: 'E-Commerce Platform',
+        users: 5250,
+        revenue: 18500,
+        growth: 15.2,
+        status: 'active'
+      },
+      {
+        id: '2',
+        name: 'Customer Portal',
+        users: 3200,
+        revenue: 12500,
+        growth: 8.7,
+        status: 'active'
+      },
+      {
+        id: '3',
+        name: 'Analytics Dashboard',
+        users: 2100,
+        revenue: 6500,
+        growth: -2.3,
+        status: 'active'
+      },
+      {
+        id: '4',
+        name: 'Mobile App Backend',
+        users: 850,
+        revenue: 3200,
+        growth: 45.8,
+        status: 'active'
+      }
+    ]
+
+    setTimeout(() => {
+      setStats(mockStats)
+      setRecentActivity(mockRecentActivity)
+      setTopApplications(mockTopApplications)
+      setIsLoading(false)
+    }, 1000)
+  }, [])
+
+  const getHealthColor = (health: string) => {
+    switch (health) {
+      case 'excellent': return 'bg-green-100 text-green-800'
+      case 'good': return 'bg-blue-100 text-blue-800'
+      case 'warning': return 'bg-yellow-100 text-yellow-800'
+      case 'critical': return 'bg-red-100 text-red-800'
+      default: return 'bg-gray-100 text-gray-800'
     }
+  }
 
-    if (loading) {
-        return (
-            <div className="space-y-4 p-4 bg-gray-50 dark:bg-zinc-950 min-h-screen">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="p-4 border-l-2 border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900 rounded-r-lg">
-                            <div className="animate-pulse">
-                                <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
-                                <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-                                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'application_created': return <ServerIcon className="w-4 h-4" />
+      case 'user_registered': return <UsersIcon className="w-4 h-4" />
+      case 'payment_received': return <CreditCardIcon className="w-4 h-4" />
+      case 'system_alert': return <ShieldCheckIcon className="w-4 h-4" />
+      default: return <ActivityIcon className="w-4 h-4" />
     }
+  }
 
+  const getActivityColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'text-green-600 bg-green-100'
+      case 'warning': return 'text-yellow-600 bg-yellow-100'
+      case 'error': return 'text-red-600 bg-red-100'
+      case 'info': return 'text-blue-600 bg-blue-100'
+      default: return 'text-gray-600 bg-gray-100'
+    }
+  }
+
+  if (isLoading) {
     return (
-        <div className="bg-gray-50 dark:bg-zinc-950 min-h-screen text-gray-900 dark:text-gray-100">
-            {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4">
-                    <div>
-                        <div className="flex items-center gap-3 mb-2">
-                            <Terminal className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                            <h1 className="text-2xl font-mono font-bold text-gray-900 dark:text-gray-100">SYSTEM_DASHBOARD</h1>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">status: operational | uptime: 99.9% | last_sync: 2m ago</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleRefresh}
-                            disabled={refreshing}
-                            className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors text-xs font-mono rounded-lg"
-                        >
-                            <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-                            {refreshing ? 'SYNCING...' : 'SYNC'}
-                        </button>
-                        <button className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 dark:bg-blue-600/30 border border-blue-500/30 dark:border-blue-400/30 hover:bg-blue-600/30 dark:hover:bg-blue-600/40 transition-colors text-xs font-mono text-blue-600 dark:text-blue-400 rounded-lg">
-                            <Plus className="w-3 h-3" />
-                            NEW_PROCESS
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="p-4 space-y-6">
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard
-                        title="USERS"
-                        value={stats.totalUsers.toLocaleString()}
-                        icon={Users}
-                        growth={stats.userGrowth}
-                        color="blue"
-                        description="active_sessions"
-                    />
-                    <StatCard
-                        title="ENTITIES"
-                        value={stats.totalContent.toLocaleString()}
-                        icon={FileText}
-                        growth={stats.contentGrowth}
-                        color="green"
-                        description="stored_objects"
-                    />
-                    <StatCard
-                        title="REQUESTS"
-                        value={stats.totalViews.toLocaleString()}
-                        icon={TrendingUp}
-                        growth={stats.engagementGrowth}
-                        color="purple"
-                        description="total_api_calls"
-                    />
-                    <StatCard
-                        title="SCREENS"
-                        value={stats.totalScreens}
-                        icon={Smartphone}
-                        color="orange"
-                        description="extracted_ui"
-                    />
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* System Log */}
-                    <div className="lg:col-span-2">
-                        <div className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900 rounded-lg">
-                            <div className="border-b border-gray-200 dark:border-gray-800 p-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Terminal className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                        <h2 className="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">SYSTEM_LOG</h2>
-                                    </div>
-                                    <button className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors font-mono">
-                                        VIEW_ALL
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="divide-y divide-gray-200 dark:divide-gray-800">
-                                {activities.map((activity) => (
-                                    <ActivityItem key={activity.id} activity={activity} />
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* System Controls */}
-                    <div className="space-y-4">
-                        <div className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900 rounded-lg">
-                            <div className="border-b border-gray-200 dark:border-gray-800 p-4">
-                                <div className="flex items-center gap-2">
-                                    <Cpu className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    <h2 className="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">QUICK_CMDS</h2>
-                                </div>
-                            </div>
-                            <div className="p-4 space-y-2">
-                                <button className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-left rounded-lg">
-                                    <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                    <div>
-                                        <div className="text-xs font-mono font-medium text-gray-900 dark:text-gray-200">user:add</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">create_new_user</div>
-                                    </div>
-                                </button>
-                                <button className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-left rounded-lg">
-                                    <FileText className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    <div>
-                                        <div className="text-xs font-mono font-medium text-gray-900 dark:text-gray-200">content:create</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">new_entity</div>
-                                    </div>
-                                </button>
-                                <button className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-left rounded-lg">
-                                    <Settings className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                                    <div>
-                                        <div className="text-xs font-mono font-medium text-gray-900 dark:text-gray-200">system:config</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">modify_settings</div>
-                                    </div>
-                                </button>
-                                <button className="w-full flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors text-left rounded-lg">
-                                    <Database className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                                    <div>
-                                        <div className="text-xs font-mono font-medium text-gray-900 dark:text-gray-200">db:manage</div>
-                                        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">database_ops</div>
-                                    </div>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* System Status */}
-                        <div className="border border-gray-200 dark:border-gray-800 bg-white dark:bg-zinc-900 rounded-lg">
-                            <div className="border-b border-gray-200 dark:border-gray-800 p-4">
-                                <div className="flex items-center gap-2">
-                                    <HardDrive className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                                    <h2 className="text-sm font-mono font-bold text-gray-900 dark:text-gray-100">SYSTEM_STATUS</h2>
-                                </div>
-                            </div>
-                            <div className="p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">api.status</span>
-                                    </div>
-                                    <span className="text-xs text-green-600 dark:text-green-400 font-mono">ONLINE</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">db.status</span>
-                                    </div>
-                                    <span className="text-xs text-green-600 dark:text-green-400 font-mono">HEALTHY</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">storage.usage</span>
-                                    </div>
-                                    <span className="text-xs text-yellow-600 dark:text-yellow-400 font-mono">78%</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">cdn.status</span>
-                                    </div>
-                                    <span className="text-xs text-green-600 dark:text-green-400 font-mono">ACTIVE</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-32 bg-gray-200 rounded"></div>
+          ))}
+        </div>
+      </div>
     )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <p className="text-gray-600 mt-1">Overview of your AppKit system performance and metrics</p>
+      </div>
+
+      {/* System Health */}
+      <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+        <div className="flex items-center space-x-3">
+          <ShieldCheckIcon className="w-6 h-6 text-green-600" />
+          <div>
+            <h3 className="font-medium text-green-900">System Health: Excellent</h3>
+            <p className="text-sm text-green-700">All systems operational • {stats?.uptime || 0}% uptime</p>
+          </div>
+        </div>
+        <Badge className={getHealthColor(stats?.systemHealth || 'excellent')}>
+          {stats?.systemHealth?.toUpperCase()}
+        </Badge>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Applications</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.totalApplications}</p>
+                <p className="text-sm text-green-600 flex items-center mt-1">
+                  <ArrowUpIcon className="w-3 h-3 mr-1" />
+                  {stats?.activeApplications} active
+                </p>
+              </div>
+              <ServerIcon className="w-8 h-8 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers.toLocaleString()}</p>
+                <p className="text-sm text-green-600 flex items-center mt-1">
+                  <ArrowUpIcon className="w-3 h-3 mr-1" />
+                  {stats?.activeUsers.toLocaleString()} active
+                </p>
+              </div>
+              <UsersIcon className="w-8 h-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
+                <p className="text-2xl font-bold text-gray-900">${stats?.monthlyRevenue.toLocaleString()}</p>
+                <p className="text-sm text-green-600 flex items-center mt-1">
+                  <TrendingUpIcon className="w-3 h-3 mr-1" />
+                  +12.5% from last month
+                </p>
+              </div>
+              <CreditCardIcon className="w-8 h-8 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">API Calls</p>
+                <p className="text-2xl font-bold text-gray-900">{stats && (stats.apiCalls / 1000000).toFixed(1)}M</p>
+                <p className="text-sm text-blue-600 flex items-center mt-1">
+                  <ActivityIcon className="w-3 h-3 mr-1" />
+                  This month
+                </p>
+              </div>
+              <ChartBarIcon className="w-8 h-8 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts and Tables */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Top Applications */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Top Applications</CardTitle>
+                <Button variant="outline" size="sm">
+                  View All
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {topApplications.map((app, index) => (
+                  <div key={app.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm font-medium text-gray-600">{index + 1}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{app.name}</p>
+                        <p className="text-sm text-gray-600">{app.users.toLocaleString()} users</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="font-medium text-gray-900">${app.revenue.toLocaleString()}</p>
+                        <p className={`text-sm flex items-center ${
+                          app.growth > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {app.growth > 0 ? <TrendingUpIcon className="w-3 h-3 mr-1" /> : <TrendingDownIcon className="w-3 h-3 mr-1" />}
+                          {Math.abs(app.growth)}%
+                        </p>
+                      </div>
+                      <Badge className={app.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        {app.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Activity */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentActivity.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3">
+                    <div className={`p-2 rounded-full ${getActivityColor(activity.status)}`}>
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{activity.title}</p>
+                      <p className="text-sm text-gray-600 truncate">{activity.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {new Date(activity.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* System Resources */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Storage Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Used</span>
+                <span className="text-gray-900">{stats?.storageUsed} GB / 1000 GB</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-2 rounded-full" 
+                  style={{ width: `${stats ? ((stats.storageUsed / 1000) * 100) : 0}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">75% of storage used</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Bandwidth Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Used</span>
+                <span className="text-gray-900">{stats && (stats.bandwidthUsed / 1000).toFixed(1)} TB / 10 TB</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full" 
+                  style={{ width: `${stats ? ((stats.bandwidthUsed / 10000) * 100) : 0}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">25% of bandwidth used</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button className="w-full" variant="outline">
+              <ServerIcon className="w-4 h-4 mr-2" />
+              Create Application
+            </Button>
+            <Button className="w-full" variant="outline">
+              <UsersIcon className="w-4 h-4 mr-2" />
+              Manage Users
+            </Button>
+            <Button className="w-full" variant="outline">
+              <CogIcon className="w-4 h-4 mr-2" />
+              System Settings
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
 }

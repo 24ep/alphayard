@@ -65,73 +65,41 @@ export const Icon = ({ name, className = 'w-5 h-5' }: { name: string; className?
 
 export const navigationHubs: NavHub[] = [
     {
-        id: 'overview',
-        label: 'App Overview',
+        id: 'dashboard',
+        label: 'Dashboard',
         icon: 'chart-bar',
         href: '/dashboard',
         permissions: [['dashboard', 'view']],
         items: [
-            { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'chart-bar', permissions: [['dashboard', 'view']] }
+            { id: 'dashboard', label: 'System Overview', href: '/dashboard', icon: 'chart-bar', permissions: [['dashboard', 'view']] }
         ]
     },
     {
-        id: 'content',
-        label: 'App Content',
-        icon: 'layout',
-        href: '/appearance',
+        id: 'applications',
+        label: 'Applications',
+        icon: 'server',
+        href: '/applications',
+        permissions: [['applications', 'view']],
         items: [
-            { id: 'config', label: 'App Config', href: '/appearance', icon: 'paint', group: 'Configuration', permissions: [['settings', 'view']] },
-            { id: 'collections', label: 'Collections Config', href: '/collections', icon: 'collection', group: 'Configuration', permissions: [['content', 'view']] },
-            { id: 'navigation', label: 'Navigation', href: '/navigation', icon: 'menu', group: 'Configuration', permissions: [['settings', 'edit']] },
-            { id: 'pages', label: 'App Pages', href: '/pages', icon: 'document', group: 'Content', permissions: [['content', 'view']] },
-            { id: 'flows', label: 'User Flows', href: '/flows', icon: 'flow', group: 'Content', permissions: [['content', 'view']] },
-            { id: 'engagement', label: 'Engagement', href: '/engagement', icon: 'bell', group: 'Content', permissions: [['content', 'view']] },
-            { id: 'localization', label: 'Localization', href: '/localization', icon: 'translate', group: 'Content', permissions: [['content', 'edit']] },
-            { id: 'styles', label: 'Component Styles', href: '/styles', icon: 'swatch', group: 'Design', permissions: [['components', 'view']] },
-            { id: 'marketing', label: 'Marketing Page', href: '/marketing', icon: 'megaphone', group: 'Design', permissions: [['marketing', 'view']] }
+            { id: 'applications-list', label: 'All Applications', href: '/applications', icon: 'server', permissions: [['applications', 'view']] }
         ]
     },
     {
-        id: 'identity',
-        label: 'Identity',
-        icon: 'users',
-        href: '/identity',
-        permissions: [['users', 'view']],
-        items: [
-            { id: 'identity-users', label: 'Users', href: '/identity', icon: 'users', permissions: [['users', 'view']] },
-            { id: 'global-scope', label: 'Global IdentityScope', href: '/identity/global-scope', icon: 'globe-alt', permissions: [['auth', 'manage']] },
-            { id: 'billing', label: 'Billing & Plans', href: '/identity/billing', icon: 'payment', permissions: [['billing', 'view']] },
-            { id: 'auth', label: 'Authentication', href: '/identity/auth', icon: 'shield', permissions: [['auth', 'manage']] },
-            { id: 'mfa', label: 'Security & MFA', href: '/identity/mfa', icon: 'lock-closed', permissions: [['auth', 'manage']] },
-            { id: 'communication', label: 'Communication', href: '/identity/communication', icon: 'chat', permissions: [['settings', 'edit']] }
-        ]
-    },
-    {
-        id: 'settings',
-        label: 'Settings',
+        id: 'system',
+        label: 'System Settings',
         icon: 'cog',
-        href: '/settings',
+        href: '/system',
+        permissions: [['system', 'view']],
         items: [
-            { id: 'applications', label: 'Applications', href: '/settings/applications', icon: 'server', permissions: [['applications', 'view']] },
-            { id: 'general', label: 'General', href: '/settings', icon: 'cog', permissions: [['settings', 'view']] },
-            { id: 'team', label: 'Team', href: '/settings/team', icon: 'users', permissions: [['users', 'view']] },
-            { id: 'groups', label: 'Groups & Circles', href: '/settings/groups', icon: 'user-group', permissions: [['groups', 'view']] },
-            { id: 'docs', label: 'Documentation', href: '/docs', icon: 'book-open', permissions: [['settings', 'view']] },
-            { id: 'legal', label: 'Legal Terms', href: '/legal', icon: 'scale', permissions: [['settings', 'edit']] },
-            { id: 'secrets', label: 'Secrets', href: '/settings/secrets', icon: 'key', permissions: [['settings', 'edit']] },
-            { id: 'webhooks', label: 'Webhooks', href: '/settings/webhooks', icon: 'code', permissions: [['settings', 'edit']] },
-            { id: 'services', label: 'Connected Services', href: '/settings/services', icon: 'link', permissions: [['settings', 'edit']] },
-            { id: 'developers', label: 'Developers', href: '/settings/developers', icon: 'terminal', permissions: [['settings', 'edit']] }
-        ]
-    },
-    {
-        id: 'database',
-        label: 'Database',
-        icon: 'database',
-        href: '/database',
-        permissions: [['database', 'view']],
-        items: [
-            { id: 'database', label: 'Database Explorer', href: '/database', icon: 'database', permissions: [['database', 'view']] }
+            { id: 'system-general', label: 'General Settings', href: '/system', icon: 'cog', permissions: [['system', 'view']] },
+            { id: 'system-team', label: 'Team Management', href: '/system/team', icon: 'users', permissions: [['system', 'view']] },
+            { id: 'system-groups', label: 'Groups & Circles', href: '/system/groups', icon: 'user-group', permissions: [['system', 'view']] },
+            { id: 'system-docs', label: 'Documentation', href: '/system/docs', icon: 'book-open', permissions: [['system', 'view']] },
+            { id: 'system-legal', label: 'Legal Terms', href: '/system/legal', icon: 'scale', permissions: [['system', 'edit']] },
+            { id: 'system-secrets', label: 'Secrets', href: '/system/secrets', icon: 'key', permissions: [['system', 'edit']] },
+            { id: 'system-webhooks', label: 'Webhooks', href: '/system/webhooks', icon: 'code', permissions: [['system', 'edit']] },
+            { id: 'system-services', label: 'Connected Services', href: '/system/services', icon: 'link', permissions: [['system', 'edit']] },
+            { id: 'system-developers', label: 'Developers', href: '/system/developers', icon: 'terminal', permissions: [['system', 'edit']] }
         ]
     }
 ]
