@@ -56,7 +56,8 @@ export const Icon = ({ name, className = 'w-5 h-5' }: { name: string; className?
         'scale': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>,
         'code': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
         'link': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>,
-        'terminal': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        'terminal': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+        'book-open': <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0 13H9m7 10V2H9m7 10-2h.01M9.002 5.5a1.1 1.1 0 01.99.9 1.1h.01M15 9.09V4.255H9" /></svg>,
     }
     return icons[name] || <span className={className}>•</span>
 }
@@ -113,6 +114,7 @@ export const navigationHubs: NavHub[] = [
             { id: 'general', label: 'General', href: '/settings', icon: 'cog', permissions: [['settings', 'view']] },
             { id: 'team', label: 'Team', href: '/settings/team', icon: 'users', permissions: [['users', 'view']] },
             { id: 'localization', label: 'Localization', href: '/localization', icon: 'translate', permissions: [['content', 'edit']] },
+            { id: 'docs', label: 'Documentation', href: '/docs', icon: 'book-open', permissions: [['settings', 'view']] },
             { id: 'legal', label: 'Legal Terms', href: '/legal', icon: 'scale', permissions: [['settings', 'edit']] },
             { id: 'secrets', label: 'Secrets', href: '/settings/secrets', icon: 'key', permissions: [['settings', 'edit']] },
             { id: 'webhooks', label: 'Webhooks', href: '/settings/webhooks', icon: 'code', permissions: [['settings', 'edit']] },
