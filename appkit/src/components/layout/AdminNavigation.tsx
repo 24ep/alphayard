@@ -97,7 +97,6 @@ export const navigationHubs: NavHub[] = [
         permissions: [['users', 'view']],
         items: [
             { id: 'identity-users', label: 'Users', href: '/identity', icon: 'users', permissions: [['users', 'view']] },
-            { id: 'organizations', label: 'Organizations', href: '/identity/organizations', icon: 'building', permissions: [['organizations', 'view']] },
             { id: 'groups', label: 'Groups & Circles', href: '/identity/groups', icon: 'user-group', permissions: [['groups', 'view']] },
             { id: 'auth', label: 'Authentication', href: '/identity/auth', icon: 'shield', permissions: [['auth', 'manage']] },
             { id: 'mfa', label: 'Security & MFA', href: '/identity/mfa', icon: 'lock-closed', permissions: [['auth', 'manage']] },
