@@ -1,7 +1,6 @@
 'use client'
 
 import React from 'react'
-import { AppSwitcher } from './AppSwitcher'
 import { type NavHub, type NavItem } from './AdminNavigation'
 
 interface AdminSidebarMenuProps {
@@ -29,16 +28,9 @@ export function AdminSidebarMenu({
 
     return (
         <aside className="hidden lg:flex flex-col w-[260px] bg-white dark:bg-zinc-950 border-r border-gray-200/80 dark:border-zinc-800/80 z-30 flex-shrink-0">
-            {/* Hub Header */}
-            <div className="h-16 flex items-center px-5 border-b border-gray-100 dark:border-zinc-800/80">
-                <div className="w-full">
-                    <AppSwitcher />
-                </div>
-            </div>
-
             {/* Hub Label */}
-            <div className="px-5 pt-5 pb-2">
-                <h2 className="text-[11px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.08em]">
+            <div className="px-5 pt-8 pb-3">
+                <h2 className="text-[11px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-[0.12em] opacity-80">
                     {activeHub.label}
                 </h2>
             </div>

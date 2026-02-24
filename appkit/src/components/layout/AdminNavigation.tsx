@@ -81,7 +81,10 @@ export const navigationHubs: NavHub[] = [
         href: '/applications',
         permissions: [['applications', 'view']],
         items: [
-            { id: 'applications-list', label: 'All Applications', href: '/applications', icon: 'server', permissions: [['applications', 'view']] }
+            { id: 'applications-list', label: 'All Applications', href: '/applications', icon: 'server', group: 'Management', permissions: [['applications', 'view']] },
+            { id: 'auth-methods', label: 'Authentication Methods', href: '/applications/auth-methods', icon: 'lock', group: 'Configuration', permissions: [['applications', 'edit']] },
+            { id: 'communication-settings', label: 'Communication Settings', href: '/applications/communication', icon: 'mail', group: 'Configuration', permissions: [['applications', 'edit']] },
+            { id: 'legal-compliance', label: 'Legal & Compliance', href: '/applications/legal', icon: 'scale', group: 'Configuration', permissions: [['applications', 'edit']] },
         ]
     },
     {

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import UserDetailDrawer from '@/components/users/UserDetailDrawer'
+import AuthMethodsDrawer from '@/components/applications/AuthMethodsDrawer'
+import CommunicationDrawer from '@/components/applications/CommunicationDrawer'
+import LegalComplianceDrawer from '@/components/applications/LegalComplianceDrawer'
 import { adminService } from '@/services/adminService'
 import { 
   ServerIcon, 
@@ -15,6 +18,9 @@ import {
   ShieldCheckIcon,
   LockIcon,
   MessageSquareIcon,
+  ScaleIcon, // Added
+  FileTextIcon, // Added
+  ShieldIcon, // Added
   CogIcon,
   ArrowLeftIcon,
   PlusIcon,
@@ -69,6 +75,9 @@ export default function ApplicationConfigPage() {
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [isAuthDrawerOpen, setIsAuthDrawerOpen] = useState(false)
+  const [isCommDrawerOpen, setIsCommDrawerOpen] = useState(false)
+  const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false)
 
   useEffect(() => {
     const loadAppData = async () => {
@@ -179,6 +188,7 @@ export default function ApplicationConfigPage() {
     { value: 'auth', icon: <ShieldCheckIcon className="w-4 h-4" />, label: 'Auth Methods' },
     { value: 'security', icon: <LockIcon className="w-4 h-4" />, label: 'Security & MFA' },
     { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
+    { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
     { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
   ]
 
@@ -583,8 +593,19 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB 4: Authentication Methods ==================== */}
         <TabsContent value="auth" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Authentication Methods</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Configure SSO providers, OAuth, and other authentication methods for this application.</p>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Authentication Methods</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure SSO providers, OAuth, and other authentication methods for this application.</p>
+              </div>
+              <Button 
+                onClick={() => setIsAuthDrawerOpen(true)}
+                className="bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20"
+              >
+                <LockIcon className="w-4 h-4 mr-2" />
+                Configure Auth Methods
+              </Button>
+            </div>
 
             <div className="space-y-4">
               {[
@@ -722,8 +743,19 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB 6: Communication ==================== */}
         <TabsContent value="communication" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Communication Settings</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Configure email templates, notifications, and messaging for this application.</p>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Communication Settings</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure email templates, notifications, and messaging for this application.</p>
+              </div>
+              <Button 
+                onClick={() => setIsCommDrawerOpen(true)}
+                className="bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30 hover:bg-violet-100 dark:hover:bg-violet-500/20"
+              >
+                <MessageSquareIcon className="w-4 h-4 mr-2" />
+                Configure Communication
+              </Button>
+            </div>
 
             <div className="space-y-6">
               {/* Email Templates */}
@@ -814,7 +846,70 @@ export default function ApplicationConfigPage() {
           </div>
         </TabsContent>
 
-        {/* ==================== TAB 7: Login Sandbox ==================== */}
+        {/* ==================== TAB 7: Legal & Compliance ==================== */}
+        <TabsContent value="legal" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Legal & Compliance</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Manage terms of service, privacy policy, and compliance standards for this application.</p>
+              </div>
+              <Button 
+                onClick={() => setIsLegalDrawerOpen(true)}
+                className="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20"
+              >
+                <ScaleIcon className="w-4 h-4 mr-2" />
+                Configure Legal Settings
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-800/20">
+                <div className="flex items-center space-x-3 mb-4">
+                  <FileTextIcon className="w-5 h-5 text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Legal Documents</h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Terms of Service</span>
+                    <span className="text-blue-500 truncate max-w-[150px]">example.com/terms</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Privacy Policy</span>
+                    <span className="text-blue-500 truncate max-w-[150px]">example.com/privacy</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Cookie Policy</span>
+                    <span className="text-blue-500 truncate max-w-[150px]">example.com/cookies</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-800/20">
+                <div className="flex items-center space-x-3 mb-4">
+                  <ShieldIcon className="w-5 h-5 text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Compliance Status</h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Platform Standard</span>
+                    <span className="font-medium text-gray-700 dark:text-zinc-300">GDPR</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Data Residency</span>
+                    <span className="font-medium text-gray-700 dark:text-zinc-300">US (Oregon)</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-gray-500">Consent Requirement</span>
+                    <span className="text-emerald-500 font-medium">Enabled</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ==================== TAB 8: Login Sandbox ==================== */}
         <TabsContent value="sandbox" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Login Sandbox</h3>
@@ -912,6 +1007,36 @@ export default function ApplicationConfigPage() {
           }}
           userId={selectedUserId}
           applicationId={appId}
+        />
+      )}
+
+      {/* Auth Methods Drawer */}
+      {application && (
+        <AuthMethodsDrawer
+          isOpen={isAuthDrawerOpen}
+          onClose={() => setIsAuthDrawerOpen(false)}
+          applicationId={appId}
+          applicationName={application.name}
+        />
+      )}
+
+      {/* Communication Drawer */}
+      {application && (
+        <CommunicationDrawer
+          isOpen={isCommDrawerOpen}
+          onClose={() => setIsCommDrawerOpen(false)}
+          applicationId={appId}
+          applicationName={application.name}
+        />
+      )}
+
+      {/* Legal & Compliance Drawer */}
+      {application && (
+        <LegalComplianceDrawer
+          isOpen={isLegalDrawerOpen}
+          onClose={() => setIsLegalDrawerOpen(false)}
+          applicationId={appId}
+          applicationName={application.name}
         />
       )}
     </div>
