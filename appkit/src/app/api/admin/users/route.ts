@@ -1,80 +1,108 @@
-// Users management endpoint
+// Users management endpoint - Real database implementation
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock users data
-const mockUsers = [
-  {
-    id: 'f1707668-141f-4290-b93d-8f8ca8a0f860',
-    email: 'admin@appkit.com',
-    firstName: 'Admin',
-    lastName: 'User',
-    role: 'admin',
-    isActive: true,
-    isVerified: true,
-    createdAt: '2024-01-01T00:00:00Z',
-    lastLogin: new Date().toISOString()
-  },
-  {
-    id: '2',
-    email: 'user@example.com',
-    firstName: 'Regular',
-    lastName: 'User',
-    role: 'user',
-    isActive: true,
-    isVerified: true,
-    createdAt: '2024-01-02T00:00:00Z',
-    lastLogin: '2024-01-15T10:30:00Z'
-  },
-  {
-    id: '3',
-    email: 'test@example.com',
-    firstName: 'Test',
-    lastName: 'User',
-    role: 'user',
-    isActive: false,
-    isVerified: false,
-    createdAt: '2024-01-03T00:00:00Z',
-    lastLogin: null
-  }
-]
+import { prisma } from '@/server/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
     const search = searchParams.get('search') || ''
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const offset = (page - 1) * limit
     
-    // Filter users based on search
-    let filteredUsers = mockUsers
+    // Build where clause for search
+    let whereClause: any = {}
+    
     if (search) {
-      filteredUsers = mockUsers.filter(user => 
-        user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.firstName.toLowerCase().includes(search.toLowerCase()) ||
-        user.lastName.toLowerCase().includes(search.toLowerCase())
-      )
+      whereClause.OR = [
+        { email: { contains: search.toLowerCase(), mode: 'insensitive' } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } }
+      ]
     }
     
-    // Pagination
-    const startIndex = (page - 1) * limit
-    const endIndex = startIndex + limit
-    const paginatedUsers = filteredUsers.slice(startIndex, endIndex)
+    // Get users from database with pagination
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: whereClause,
+        include: {
+          userApplications: {
+            include: {
+              application: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          },
+          userSessions: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'desc' },
+            take: 5
+          },
+          userGroupMembers: {
+            include: {
+              group: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      prisma.user.count({ where: whereClause })
+    ])
+    
+    // Format user data
+    const formattedUsers = users.map(user => ({
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      isActive: user.isActive,
+      isVerified: user.isVerified,
+      userType: user.userType,
+      avatarUrl: user.avatarUrl,
+      lastLoginAt: user.lastLoginAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      applications: user.userApplications.map((ua: any) => ({
+        id: ua.application.id,
+        name: ua.application.name,
+        slug: ua.application.slug
+      })),
+      sessions: user.userSessions.length,
+      groups: user.userGroupMembers.map((ugm: any) => ({
+        id: ugm.group.id,
+        name: ugm.group.name,
+        slug: ugm.group.slug
+      })),
+      permissions: [] // Will be populated from group memberships
+    }))
     
     return NextResponse.json({
       success: true,
-      users: paginatedUsers,
+      users: formattedUsers,
       pagination: {
         page,
         limit,
-        total: filteredUsers.length,
-        totalPages: Math.ceil(filteredUsers.length / limit)
-      },
-      message: 'Users retrieved successfully'
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
     })
-  } catch (error) {
-    console.error('Failed to get users:', error)
+  } catch (error: any) {
+    console.error('Failed to fetch users:', error)
     return NextResponse.json(
-      { error: 'Failed to get users' },
+      { error: 'Failed to fetch users', details: error.message },
       { status: 500 }
     )
   }
@@ -83,29 +111,196 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const { 
+      email, 
+      firstName, 
+      lastName, 
+      password, 
+      userType = 'user',
+      isActive = true,
+      isVerified = false,
+      avatarUrl = null 
+    } = body
     
-    // Create a new user
-    const newUser = {
-      id: Date.now().toString(),
-      email: body.email,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      role: body.role || 'user',
-      isActive: body.isActive !== undefined ? body.isActive : true,
-      isVerified: body.isVerified || false,
-      createdAt: new Date().toISOString(),
-      lastLogin: null
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email and password are required' },
+        { status: 400 }
+      )
     }
+    
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() }
+    })
+    
+    if (existingUser) {
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 409 }
+      )
+    }
+    
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12)
+    
+    // Create new user
+    const newUser = await prisma.user.create({
+      data: {
+        email: email.toLowerCase(),
+        firstName: firstName || '',
+        lastName: lastName || '',
+        passwordHash: hashedPassword,
+        userType,
+        isActive,
+        isVerified,
+        avatarUrl,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    })
+    
+    // Log security event
+    console.log(`👤 User Created: ${newUser.email} - ID: ${newUser.id}`)
     
     return NextResponse.json({
       success: true,
-      user: newUser,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        userType: newUser.userType,
+        isActive: newUser.isActive,
+        isVerified: newUser.isVerified,
+        avatarUrl: newUser.avatarUrl,
+        createdAt: newUser.createdAt,
+        updatedAt: newUser.updatedAt
+      },
       message: 'User created successfully'
     }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to create user:', error)
     return NextResponse.json(
-      { error: 'Failed to create user' },
+      { error: 'Failed to create user', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, firstName, lastName, userType, isActive } = body
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+    
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    })
+    
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(firstName && { firstName }),
+        ...(lastName && { lastName }),
+        ...(userType && { userType }),
+        ...(isActive !== undefined && { isActive }),
+        updatedAt: new Date()
+      }
+    })
+    
+    // Log security event
+    console.log(`👤 User Updated: ${updatedUser.email} - ID: ${updatedUser.id}`)
+    
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        userType: updatedUser.userType,
+        isActive: updatedUser.isActive,
+        isVerified: updatedUser.isVerified,
+        avatarUrl: updatedUser.avatarUrl,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt
+      },
+      message: 'User updated successfully'
+    })
+  } catch (error: any) {
+    console.error('Failed to update user:', error)
+    return NextResponse.json(
+      { error: 'Failed to update user', details: error.message },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
+    
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    })
+    
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Revoke all user sessions
+    await prisma.userSession.updateMany({
+      where: { userId: id },
+      data: {
+        isActive: false,
+        revokedAt: new Date()
+      }
+    })
+    
+    // Delete user
+    await prisma.user.delete({
+      where: { id }
+    })
+    
+    // Log security event
+    console.log(`🗑️ User Deleted: ${existingUser.email} - ID: ${existingUser.id}`)
+    
+    return NextResponse.json({
+      success: true,
+      message: 'User deleted successfully'
+    })
+  } catch (error: any) {
+    console.error('Failed to delete user:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete user', details: error.message },
       { status: 500 }
     )
   }

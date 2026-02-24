@@ -1,191 +1,295 @@
-// Proxy /api/admin/* to backend /api/v1/admin/* for backward compatibility
-// Updated: 2026-02-24 00:00 - Railway deployment fix v6
+// Applications management endpoint - Real database implementation
 import { NextRequest, NextResponse } from 'next/server'
-
-// For Railway deployment, the backend should be deployed separately
-// For local development, use localhost:4000
-const BACKEND_URL = process.env.BACKEND_ADMIN_URL || 
-                   process.env.NEXT_PUBLIC_BACKEND_URL || 
-                   'http://127.0.0.1:4000'
-
-// Check if we're in production environment (Railway)
-const isProduction = process.env.NODE_ENV === 'production'
-const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined || 
-                  process.env.RAILWAY_SERVICE_NAME !== undefined ||
-                  process.env.RAILWAY_PROJECT_NAME !== undefined
-
-// Fallback mock data for when backend is not available (Railway deployment)
-const mockApplications = [
-  {
-    id: '1',
-    name: 'Boundary Mobile',
-    slug: 'boundary-mobile',
-    description: 'Mobile application for boundary management',
-    is_active: true
-  },
-  {
-    id: '2', 
-    name: 'Boundary Admin',
-    slug: 'boundary-admin',
-    description: 'Admin panel for boundary management',
-    is_active: true
-  }
-]
+import { prisma } from '@/server/lib/prisma'
 
 export async function GET(request: NextRequest) {
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-      // Return mock data as fallback for development
-      return NextResponse.json({
-        success: true,
-        data: { applications: mockApplications },
-        message: 'Applications retrieved (mock data - backend unavailable)'
-      })
+  try {
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const search = searchParams.get('search') || ''
+    const offset = (page - 1) * limit
+    
+    // Build where clause for search
+    let whereClause: any = {}
+    
+    if (search) {
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { slug: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ]
     }
+    
+    // Get applications from database with pagination
+    const [applications, total] = await Promise.all([
+      prisma.application.findMany({
+        where: whereClause,
+        include: {
+          userApplications: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  email: true,
+                  firstName: true,
+                  lastName: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: offset,
+        take: limit
+      }),
+      prisma.application.count({ where: whereClause })
+    ])
+    
+    // Format application data
+    const formattedApplications = applications.map(app => ({
+      id: app.id,
+      name: app.name,
+      slug: app.slug,
+      description: app.description,
+      isActive: app.isActive,
+      createdAt: app.createdAt,
+      updatedAt: app.updatedAt,
+      userCount: app.userApplications.length,
+      users: app.userApplications.map(ua => ({
+        id: ua.user.id,
+        email: ua.user.email,
+        firstName: ua.user.firstName,
+        lastName: ua.user.lastName
+      }))
+    }))
+    
+    return NextResponse.json({
+      success: true,
+      applications: formattedApplications,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    })
+  } catch (error: any) {
+    console.error('Failed to fetch applications:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch applications', details: error.message },
+      { status: 500 }
+    )
   }
-  
-  // For production (Railway) or when backend is not configured, return mock data directly
-  return NextResponse.json({
-    success: true,
-    data: { applications: mockApplications },
-    message: isProduction ? 'Applications retrieved (production mode)' : 'Applications retrieved (mock data - backend not configured)'
-  })
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json()
-  
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  // AND we're NOT in Railway environment
-  if (!isProduction && !isRailway && (BACKEND_URL.includes('localhost') || BACKEND_URL.includes('127.0.0.1'))) {
-    try {
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/applications`
-      
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-      // Return mock response as fallback for development
-      const newApp = {
-        id: Date.now().toString(),
-        ...body,
-        is_active: true
-      }
-      return NextResponse.json({
-        success: true,
-        data: { application: newApp },
-        message: 'Application created successfully (mock data - backend unavailable)'
-      }, { status: 201 })
+  try {
+    const body = await request.json()
+    const { name, slug, description, isActive = true, settings = {} } = body
+    
+    if (!name) {
+      return NextResponse.json(
+        { error: 'Application name is required' },
+        { status: 400 }
+      )
     }
+    
+    // Generate slug if not provided
+    const appSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+    
+    // Check if application already exists
+    const existingApp = await prisma.application.findFirst({
+      where: {
+        OR: [
+          { name },
+          { slug: appSlug }
+        ]
+      }
+    })
+    
+    if (existingApp) {
+      return NextResponse.json(
+        { error: 'Application with this name or slug already exists' },
+        { status: 409 }
+      )
+    }
+    
+    // Create new application
+    const newApp = await prisma.application.create({
+      data: {
+        name,
+        slug: appSlug,
+        description: description || '',
+        isActive,
+        settings,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    })
+    
+    console.log(`📱 Application Created: ${newApp.name} - ID: ${newApp.id}`)
+    
+    return NextResponse.json({
+      success: true,
+      application: {
+        id: newApp.id,
+        name: newApp.name,
+        slug: newApp.slug,
+        description: newApp.description,
+        isActive: newApp.isActive,
+        settings: newApp.settings,
+        createdAt: newApp.createdAt,
+        updatedAt: newApp.updatedAt
+      },
+      message: 'Application created successfully'
+    }, { status: 201 })
+  } catch (error: any) {
+    console.error('Failed to create application:', error)
+    return NextResponse.json(
+      { error: 'Failed to create application', details: error.message },
+      { status: 500 }
+    )
   }
-  
-  // For production (Railway) or when backend is not configured, return mock response directly
-  const newApp = {
-    id: Date.now().toString(),
-    ...body,
-    is_active: true
-  }
-  return NextResponse.json({
-    success: true,
-    data: { application: { ...body, id: Date.now().toString() } },
-    message: isProduction ? 'Application created (production mode)' : 'Application created (mock data - backend not configured)'
-  })
 }
 
 export async function PUT(request: NextRequest) {
-  const body = await request.json()
-  
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-      // Return mock response as fallback for development
-      return NextResponse.json({
-        success: true,
-        data: { application: body },
-        message: 'Application updated successfully (mock data - backend unavailable)'
-      })
+  try {
+    const body = await request.json()
+    const { id, name, slug, description, isActive, settings } = body
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Application ID is required' },
+        { status: 400 }
+      )
     }
+    
+    // Check if application exists
+    const existingApp = await prisma.application.findUnique({
+      where: { id }
+    })
+    
+    if (!existingApp) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check for duplicate name/slug if changing
+    if (name || slug) {
+      const duplicateCheck = await prisma.application.findFirst({
+        where: {
+          AND: [
+            { id: { not: id } },
+            {
+              OR: [
+                ...(name ? [{ name }] : []),
+                ...(slug ? [{ slug }] : [])
+              ]
+            }
+          ]
+        }
+      })
+      
+      if (duplicateCheck) {
+        return NextResponse.json(
+          { error: 'Application with this name or slug already exists' },
+          { status: 409 }
+        )
+      }
+    }
+    
+    // Update application
+    const updatedApp = await prisma.application.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(slug && { slug }),
+        ...(description !== undefined && { description }),
+        ...(isActive !== undefined && { isActive }),
+        ...(settings && { settings }),
+        updatedAt: new Date()
+      }
+    })
+    
+    console.log(`📱 Application Updated: ${updatedApp.name} - ID: ${updatedApp.id}`)
+    
+    return NextResponse.json({
+      success: true,
+      application: {
+        id: updatedApp.id,
+        name: updatedApp.name,
+        slug: updatedApp.slug,
+        description: updatedApp.description,
+        isActive: updatedApp.isActive,
+        settings: updatedApp.settings,
+        createdAt: updatedApp.createdAt,
+        updatedAt: updatedApp.updatedAt
+      },
+      message: 'Application updated successfully'
+    })
+  } catch (error: any) {
+    console.error('Failed to update application:', error)
+    return NextResponse.json(
+      { error: 'Failed to update application', details: error.message },
+      { status: 500 }
+    )
   }
-  
-  // For production (Railway) or when backend is not configured, return mock response directly
-  return NextResponse.json({
-    success: true,
-    data: { application: body },
-    message: isProduction ? 'Application updated successfully (production mode)' : 'Application updated successfully (mock data - backend not configured)'
-  })
 }
 
 export async function DELETE(request: NextRequest) {
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/applications${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-      // Return mock response as fallback for development
-      return NextResponse.json({
-        success: true,
-        message: 'Application deleted successfully (mock data - backend unavailable)'
-      })
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Application ID is required' },
+        { status: 400 }
+      )
     }
+    
+    // Check if application exists
+    const existingApp = await prisma.application.findUnique({
+      where: { id },
+      include: {
+        userApplications: true
+      }
+    })
+    
+    if (!existingApp) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      )
+    }
+    
+    // Check if application has users
+    if (existingApp.userApplications.length > 0) {
+      return NextResponse.json(
+        { error: 'Cannot delete application with associated users' },
+        { status: 400 }
+      )
+    }
+    
+    // Delete application
+    await prisma.application.delete({
+      where: { id }
+    })
+    
+    console.log(`🗑️ Application Deleted: ${existingApp.name} - ID: ${existingApp.id}`)
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Application deleted successfully'
+    })
+  } catch (error: any) {
+    console.error('Failed to delete application:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete application', details: error.message },
+      { status: 500 }
+    )
   }
-  
-  // For production (Railway) or when backend is not configured, return mock response directly
-  return NextResponse.json({
-    success: true,
-    message: isProduction ? 'Application deleted successfully (production mode)' : 'Application deleted successfully (mock data - backend not configured)'
-  })
 }
