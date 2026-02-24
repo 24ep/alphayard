@@ -17,6 +17,7 @@
     "test:coverage": "jest --coverage",
     "postinstall": "prisma generate",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:sso": "tsx prisma/seed-sso-providers.ts",
     "db:reset": "prisma migrate reset --force && npm run db:seed"
   },
   "dependencies": {
