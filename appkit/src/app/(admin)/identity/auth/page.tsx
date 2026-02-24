@@ -501,7 +501,7 @@ export default function AuthPage() {
                                   : 'bg-gray-200 text-gray-700'
                               }`}
                               role="switch"
-                              aria-checked={provider.allowSignup}
+                              aria-checked={provider.allowSignup ? 'true' : 'false'}
                               aria-label="Allow Signup"
                             >
                               <span
@@ -533,7 +533,7 @@ export default function AuthPage() {
                                   : 'bg-gray-200 text-gray-700'
                               }`}
                               role="switch"
-                              aria-checked={provider.requireEmailVerified}
+                              aria-checked={provider.requireEmailVerified ? 'true' : 'false'}
                               aria-label="Require Email Verified"
                             >
                               <span
@@ -565,7 +565,7 @@ export default function AuthPage() {
                                   : 'bg-gray-200 text-gray-700'
                               }`}
                               role="switch"
-                              aria-checked={provider.autoLinkByEmail}
+                              aria-checked={provider.autoLinkByEmail ? 'true' : 'false'}
                               aria-label="Auto Link by Email"
                             >
                               <span
