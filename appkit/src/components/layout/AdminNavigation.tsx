@@ -88,8 +88,7 @@ export const navigationHubs: NavHub[] = [
             { id: 'engagement', label: 'Engagement', href: '/engagement', icon: 'bell', group: 'Content', permissions: [['content', 'view']] },
             { id: 'localization', label: 'Localization', href: '/localization', icon: 'translate', group: 'Content', permissions: [['content', 'edit']] },
             { id: 'styles', label: 'Component Styles', href: '/styles', icon: 'swatch', group: 'Design', permissions: [['components', 'view']] },
-            { id: 'marketing', label: 'Marketing Page', href: '/marketing', icon: 'megaphone', group: 'Design', permissions: [['marketing', 'view']] },
-            { id: 'billing', label: 'Billing & Plans', href: '/billing', icon: 'payment', group: 'Business', permissions: [['subscriptions', 'view']] }
+            { id: 'marketing', label: 'Marketing Page', href: '/marketing', icon: 'megaphone', group: 'Design', permissions: [['marketing', 'view']] }
         ]
     },
     {
@@ -102,6 +101,7 @@ export const navigationHubs: NavHub[] = [
             { id: 'identity-users', label: 'Users', href: '/identity', icon: 'users', permissions: [['users', 'view']] },
             { id: 'groups', label: 'Groups & Circles', href: '/identity/groups', icon: 'user-group', permissions: [['groups', 'view']] },
             { id: 'global-scope', label: 'Global IdentityScope', href: '/identity/global-scope', icon: 'globe-alt', permissions: [['auth', 'manage']] },
+            { id: 'billing', label: 'Billing & Plans', href: '/identity/billing', icon: 'payment', permissions: [['billing', 'view']] },
             { id: 'auth', label: 'Authentication', href: '/identity/auth', icon: 'shield', permissions: [['auth', 'manage']] },
             { id: 'mfa', label: 'Security & MFA', href: '/identity/mfa', icon: 'lock-closed', permissions: [['auth', 'manage']] },
             { id: 'communication', label: 'Communication', href: '/identity/communication', icon: 'chat', permissions: [['settings', 'edit']] }
