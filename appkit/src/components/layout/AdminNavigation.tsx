@@ -99,7 +99,6 @@ export const navigationHubs: NavHub[] = [
         permissions: [['users', 'view']],
         items: [
             { id: 'identity-users', label: 'Users', href: '/identity', icon: 'users', permissions: [['users', 'view']] },
-            { id: 'groups', label: 'Groups & Circles', href: '/identity/groups', icon: 'user-group', permissions: [['groups', 'view']] },
             { id: 'global-scope', label: 'Global IdentityScope', href: '/identity/global-scope', icon: 'globe-alt', permissions: [['auth', 'manage']] },
             { id: 'billing', label: 'Billing & Plans', href: '/identity/billing', icon: 'payment', permissions: [['billing', 'view']] },
             { id: 'auth', label: 'Authentication', href: '/identity/auth', icon: 'shield', permissions: [['auth', 'manage']] },
@@ -116,6 +115,7 @@ export const navigationHubs: NavHub[] = [
             { id: 'applications', label: 'Applications', href: '/settings/applications', icon: 'server', permissions: [['applications', 'view']] },
             { id: 'general', label: 'General', href: '/settings', icon: 'cog', permissions: [['settings', 'view']] },
             { id: 'team', label: 'Team', href: '/settings/team', icon: 'users', permissions: [['users', 'view']] },
+            { id: 'groups', label: 'Groups & Circles', href: '/settings/groups', icon: 'user-group', permissions: [['groups', 'view']] },
             { id: 'docs', label: 'Documentation', href: '/docs', icon: 'book-open', permissions: [['settings', 'view']] },
             { id: 'legal', label: 'Legal Terms', href: '/legal', icon: 'scale', permissions: [['settings', 'edit']] },
             { id: 'secrets', label: 'Secrets', href: '/settings/secrets', icon: 'key', permissions: [['settings', 'edit']] },
