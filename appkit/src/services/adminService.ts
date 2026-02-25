@@ -144,61 +144,61 @@ class AdminService {
 
   // Authentication
   async login(credentials: { email: string; password: string }): Promise<{ user: AdminUser; token: string }> {
-    return this.request<{ user: AdminUser; token: string }>('/admin/auth/login', {
+    return this.request<{ user: AdminUser; token: string }>('/v1/admin/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
   }
 
   async logout(): Promise<void> {
-    return this.request<void>('/admin/auth/logout', {
+    return this.request<void>('/v1/admin/auth/logout', {
       method: 'POST',
     });
   }
 
   async getCurrentUser(): Promise<AdminUser> {
-    return this.request<AdminUser>('/admin/auth/me');
+    return this.request<AdminUser>('/v1/admin/auth/me');
   }
 
   // Admin Users
   async getAdminUsers(params: any = {}): Promise<{ users: AdminUser[], pagination: any }> {
     const query = new URLSearchParams(params).toString();
-    return this.request<{ users: AdminUser[], pagination: any }>(`/admin/admin-users?${query}`);
+    return this.request<{ users: AdminUser[], pagination: any }>(`/v1/admin/admin-users?${query}`);
   }
 
   async getAdminUser(id: string): Promise<AdminUser> {
-    return this.request<AdminUser>(`/admin/admin-users/${id}`);
+    return this.request<AdminUser>(`/v1/admin/admin-users/${id}`);
   }
 
   async createAdminUser(data: any): Promise<AdminUser> {
-    return this.request<AdminUser>('/admin/admin-users', {
+    return this.request<AdminUser>('/v1/admin/admin-users', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateAdminUser(id: string, data: any): Promise<AdminUser> {
-    return this.request<AdminUser>(`/admin/admin-users/${id}`, {
+    return this.request<AdminUser>(`/v1/admin/admin-users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async updateAdminUserStatus(id: string, status: string): Promise<AdminUser> {
-    return this.request<AdminUser>(`/admin/admin-users/${id}`, {
+    return this.request<AdminUser>(`/v1/admin/admin-users/${id}`, {
       method: 'PUT',
       body: JSON.stringify({ status }),
     });
   }
 
   async deleteAdminUser(id: string): Promise<void> {
-    return this.request<void>(`/admin/admin-users/${id}`, {
+    return this.request<void>(`/v1/admin/admin-users/${id}`, {
       method: 'DELETE',
     });
   }
 
   async assignRoleToUser(userId: string, roleId: string): Promise<void> {
-    return this.request<void>(`/admin/admin-users/${userId}/role`, {
+    return this.request<void>(`/v1/admin/admin-users/${userId}/role`, {
       method: 'POST',
       body: JSON.stringify({ roleId }),
     });
@@ -206,108 +206,108 @@ class AdminService {
 
   // Applications
   async getApplications(): Promise<Application[]> {
-    const response = await this.request<{ applications: Application[] }>('/admin/applications');
+    const response = await this.request<{ applications: Application[] }>('/v1/admin/applications');
     return response.applications || [];
   }
 
   async getApplication(id: string): Promise<Application> {
-    return this.request<Application>(`/admin/applications/${id}`);
+    return this.request<Application>(`/v1/admin/applications/${id}`);
   }
 
   async createApplication(data: Partial<Application>): Promise<Application> {
-    return this.request<Application>('/admin/applications', {
+    return this.request<Application>('/v1/admin/applications', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateApplication(id: string, data: Partial<Application>): Promise<Application> {
-    return this.request<Application>(`/admin/applications/${id}`, {
+    return this.request<Application>(`/v1/admin/applications/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteApplication(id: string): Promise<void> {
-    return this.request<void>(`/admin/applications/${id}`, {
+    return this.request<void>(`/v1/admin/applications/${id}`, {
       method: 'DELETE',
     });
   }
 
   async getApplicationVersions(appId: string): Promise<any[]> {
-    const response = await this.request<{ versions: any[] }>(`/admin/applications/${appId}/versions`);
+    const response = await this.request<{ versions: any[] }>(`/v1/admin/applications/${appId}/versions`);
     return response.versions || [];
   }
 
   async createApplicationVersion(appId: string, data: any = {}): Promise<any> {
-    return this.request<any>(`/admin/applications/${appId}/versions`, {
+    return this.request<any>(`/v1/admin/applications/${appId}/versions`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async publishApplicationVersion(appId: string, versionId: string): Promise<any> {
-    return this.request<any>(`/admin/applications/${appId}/versions/${versionId}/publish`, {
+    return this.request<any>(`/v1/admin/applications/${appId}/versions/${versionId}/publish`, {
       method: 'POST',
     });
   }
 
   // Dashboard
   async getDashboardStats(): Promise<DashboardStats> {
-    return this.request<DashboardStats>('/admin/dashboard/stats');
+    return this.request<DashboardStats>('/v1/admin/dashboard/stats');
   }
 
   // Roles & Permissions
   async getRoles(): Promise<Role[]> {
-    return this.request<Role[]>('/admin/roles');
+    return this.request<Role[]>('/v1/admin/roles');
   }
 
   async getRole(id: string): Promise<RoleWithPermissions> {
-    return this.request<RoleWithPermissions>(`/admin/roles/${id}`);
+    return this.request<RoleWithPermissions>(`/v1/admin/roles/${id}`);
   }
 
   async createRole(data: any): Promise<Role> {
-    return this.request<Role>('/admin/roles', {
+    return this.request<Role>('/v1/admin/roles', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateRole(id: string, data: any): Promise<Role> {
-    return this.request<Role>(`/admin/roles/${id}`, {
+    return this.request<Role>(`/v1/admin/roles/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteRole(id: string): Promise<void> {
-    return this.request<void>(`/admin/roles/${id}`, {
+    return this.request<void>(`/v1/admin/roles/${id}`, {
       method: 'DELETE',
     });
   }
 
   async getPermissions(): Promise<Permission[]> {
-    return this.request<Permission[]>('/admin/permissions');
+    return this.request<Permission[]>('/v1/admin/permissions');
   }
 
   async getPermissionsGrouped(): Promise<PermissionsByModule> {
-    return this.request<PermissionsByModule>('/admin/permissions/grouped');
+    return this.request<PermissionsByModule>('/v1/admin/permissions/grouped');
   }
 
   // Audit Logs
   async getAuditLogs(params: any = {}): Promise<{ logs: any[], total: number }> {
     const query = new URLSearchParams(params).toString();
-    return this.request<{ logs: any[], total: number }>(`/admin/audit/logs?${query}`);
+    return this.request<{ logs: any[], total: number }>(`/v1/admin/audit/logs?${query}`);
   }
 
   async getAuditStats(params: any = {}): Promise<any[]> {
     const query = new URLSearchParams(params).toString();
-    return this.request<any[]>(`/admin/audit/stats?${query}`);
+    return this.request<any[]>(`/v1/admin/audit/stats?${query}`);
   }
 
   async exportAuditLogs(params: any = {}): Promise<Blob> {
     const query = new URLSearchParams(params).toString();
-    const url = `${API_BASE_URL}/admin/audit/export?${query}`;
+    const url = `${API_BASE_URL}/v1/admin/audit/export?${query}`;
     const token = localStorage.getItem('admin_token');
     
     const response = await fetch(url, {
@@ -323,59 +323,59 @@ class AdminService {
   // Identity Groups
   async getUserGroups(applicationId?: string): Promise<{ groups: any[] }> {
     const params = applicationId ? `?applicationId=${applicationId}` : '';
-    return this.request<{ groups: any[] }>(`/identity/groups${params}`);
+    return this.request<{ groups: any[] }>(`/v1/admin/identity/groups${params}`);
   }
 
   async getUserGroup(id: string): Promise<{ group: any, members: any[] }> {
-    return this.request<{ group: any, members: any[] }>(`/identity/groups/${id}`);
+    return this.request<{ group: any, members: any[] }>(`/v1/admin/identity/groups/${id}`);
   }
 
   async createUserGroup(data: any): Promise<{ group: any }> {
-    return this.request<{ group: any }>('/identity/groups', {
+    return this.request<{ group: any }>('/v1/admin/identity/groups', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
   async updateUserGroup(id: string, data: any): Promise<{ group: any }> {
-    return this.request<{ group: any }>(`/identity/groups/${id}`, {
+    return this.request<{ group: any }>(`/v1/admin/identity/groups/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
   async deleteUserGroup(id: string): Promise<{ success: true }> {
-    return this.request<{ success: true }>(`/identity/groups/${id}`, {
+    return this.request<{ success: true }>(`/v1/admin/identity/groups/${id}`, {
       method: 'DELETE',
     });
   }
 
   async addUserToGroup(groupId: string, userId: string, role: string = 'member'): Promise<{ success: true }> {
-    return this.request<{ success: true }>(`/identity/groups/${groupId}/members`, {
+    return this.request<{ success: true }>(`/v1/admin/identity/groups/${groupId}/members`, {
       method: 'POST',
       body: JSON.stringify({ userId, role }),
     });
   }
 
   async removeUserFromGroup(groupId: string, userId: string): Promise<{ success: true }> {
-    return this.request<{ success: true }>(`/identity/groups/${groupId}/members/${userId}`, {
+    return this.request<{ success: true }>(`/v1/admin/identity/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
     });
   }
 
   async getUserGroupMemberships(userId: string): Promise<{ groups: any[] }> {
-    return this.request<{ groups: any[] }>(`/identity/users/${userId}/groups`);
+    return this.request<{ groups: any[] }>(`/v1/admin/identity/users/${userId}/groups`);
   }
 
   // Identity Audit & Analytics
   async getIdentityAuditLog(params: any = {}): Promise<{ entries: any[], total: number }> {
     const query = new URLSearchParams(params).toString();
-    return this.request<{ entries: any[], total: number }>(`/identity/audit-log?${query}`);
+    return this.request<{ entries: any[], total: number }>(`/v1/admin/identity/audit-log?${query}`);
   }
 
   async getIdentityAnalytics(params: any = {}): Promise<any> {
     const query = new URLSearchParams(params).toString();
-    return this.request<any>(`/identity/analytics?${query}`);
+    return this.request<any>(`/v1/admin/identity/analytics?${query}`);
   }
 
   // App Configuration
@@ -753,8 +753,8 @@ class AdminService {
   }
 
   async saveDefaultUserAttributes(attributes: any[]): Promise<any> {
-    return this.request<any>('/admin/config/user-attributes', {
-      method: 'PUT',
+    return this.request<any>('/v1/admin/config/user-attributes', {
+      method: 'POST',
       body: JSON.stringify({ attributes }),
     });
   }
@@ -765,7 +765,7 @@ class AdminService {
   }
 
   async saveDefaultCommConfig(config: any): Promise<any> {
-    return this.request<any>('/admin/config/communication', {
+    return this.request<any>('/v1/admin/config/communication', {
       method: 'PUT',
       body: JSON.stringify({ config }),
     });
@@ -777,7 +777,7 @@ class AdminService {
   }
 
   async saveDefaultLegalConfig(config: any): Promise<any> {
-    return this.request<any>('/admin/config/legal', {
+    return this.request<any>('/v1/admin/config/legal', {
       method: 'PUT',
       body: JSON.stringify({ config }),
     });

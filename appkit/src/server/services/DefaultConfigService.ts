@@ -77,6 +77,17 @@ export interface LegalConfig {
   }
 }
 
+export interface BillingConfig {
+  enabled: boolean
+  provider: 'stripe'
+  mode: 'test' | 'live'
+  publicKey: string
+  secretKey: string
+  webhookSecret: string
+  currency: string
+  settings?: Record<string, any>
+}
+
 /* ------------------------------------------------------------------ */
 /*  Config keys                                                        */
 /* ------------------------------------------------------------------ */
@@ -85,6 +96,7 @@ const CONFIG_KEYS = {
   COMM: 'default_comm_config',
   LEGAL: 'default_legal_config',
   USER_ATTR: 'default_user_attributes',
+  BILLING: 'default_billing_config',
 } as const
 
 /* ------------------------------------------------------------------ */
@@ -358,6 +370,17 @@ class DefaultConfigService {
         break
       case 'user-attributes':
         defaultConfig = await this.getDefaultUserAttributes()
+        break
+      case 'billing':
+        defaultConfig = {
+          enabled: false,
+          provider: 'stripe',
+          mode: 'test',
+          publicKey: '',
+          secretKey: '',
+          webhookSecret: '',
+          currency: 'USD'
+        }
         break
     }
     return { useDefault: true, config: defaultConfig }

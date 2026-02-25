@@ -13,6 +13,7 @@ import LegalConfigDrawer from '@/components/applications/LegalConfigDrawer'
 import IntegrationGuideDrawer from '@/components/applications/IntegrationGuideDrawer'
 import SurveyBuilder from '@/components/applications/SurveyBuilder'
 import UserAttributesConfig from '@/components/applications/UserAttributesConfig'
+import BillingConfigDrawer from '@/components/applications/BillingConfigDrawer'
 import { adminService } from '@/services/adminService'
 import { AnnouncementSettings } from '@/components/appearance/AnnouncementSettings'
 import { SocialSettings } from '@/components/appearance/SocialSettings'
@@ -60,6 +61,7 @@ import {
   SparklesIcon,
   RocketIcon,
   PaintbrushIcon,
+  CreditCardIcon,
 } from 'lucide-react'
 
 interface Application {
@@ -108,6 +110,7 @@ export default function ApplicationConfigPage() {
   const [isCommDrawerOpen, setIsCommDrawerOpen] = useState(false)
   const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false)
   const [isIntegrateDrawerOpen, setIsIntegrateDrawerOpen] = useState(false)
+  const [isBillingDrawerOpen, setIsBillingDrawerOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Add User modal
   const [showAddUser, setShowAddUser] = useState(false)
@@ -395,6 +398,7 @@ export default function ApplicationConfigPage() {
       items: [
         { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
         { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
+        { value: 'billing', icon: <CreditCardIcon className="w-4 h-4" />, label: 'Billing & Subscriptions' },
         { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
       ],
     },
@@ -462,7 +466,13 @@ export default function ApplicationConfigPage() {
                   {section.items.map((item) => (
                     <button
                       key={item.value}
-                      onClick={() => setActiveTab(item.value)}
+                      onClick={() => {
+                        if (item.value === 'billing') {
+                          setIsBillingDrawerOpen(true)
+                        } else {
+                          setActiveTab(item.value)
+                        }
+                      }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                         activeTab === item.value
                           ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-sm'
@@ -1575,6 +1585,12 @@ export default function ApplicationConfigPage() {
         appId={appId}
         appName={application?.name || 'Application'}
         appDomain={application?.domain}
+      />
+      <BillingConfigDrawer
+        isOpen={isBillingDrawerOpen}
+        onClose={() => setIsBillingDrawerOpen(false)}
+        appId={appId}
+        appName={application.name}
       />
 
       {/* Add User Modal */}

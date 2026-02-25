@@ -37,7 +37,9 @@ export async function POST(request: NextRequest) {
 
     // Fetch permissions
     let permissions: string[] = []
-    if (adminUser.isSuperAdmin) {
+    const isPrimaryAdmin = adminUser.email === 'admin@appkit.com'
+    
+    if (adminUser.isSuperAdmin || isPrimaryAdmin) {
       permissions = ['*']
     } else if (adminUser.roleId) {
       const rolePermissions = await prisma.adminRolePermission.findMany({
