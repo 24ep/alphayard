@@ -43,10 +43,19 @@ const PROVIDER_META: Record<string, { icon: React.ReactNode; color: string }> = 
   'sms-otp': { icon: <SmartphoneIcon className="w-4 h-4" />, color: 'bg-amber-50 dark:bg-amber-500/10 text-amber-500' },
 }
 
+const FALLBACK_PROVIDERS: AuthProvider[] = [
+  { id: 'default-email', providerName: 'email-password', displayName: 'Email & Password', isEnabled: true },
+  { id: 'default-google', providerName: 'google-oauth', displayName: 'Google OAuth', isEnabled: false },
+  { id: 'default-github', providerName: 'github-oauth', displayName: 'GitHub OAuth', isEnabled: false },
+  { id: 'default-saml', providerName: 'saml-sso', displayName: 'SAML / SSO', isEnabled: false },
+  { id: 'default-magic', providerName: 'magic-link', displayName: 'Magic Link', isEnabled: false },
+  { id: 'default-sms', providerName: 'sms-otp', displayName: 'SMS OTP', isEnabled: false },
+]
+
 export default function AuthMethodsConfigDrawer({ isOpen, onClose, appId, appName }: AuthMethodsConfigDrawerProps) {
   const [useDefault, setUseDefault] = useState(true)
-  const [providers, setProviders] = useState<AuthProvider[]>([])
-  const [defaultProviders, setDefaultProviders] = useState<AuthProvider[]>([])
+  const [providers, setProviders] = useState<AuthProvider[]>(FALLBACK_PROVIDERS)
+  const [defaultProviders, setDefaultProviders] = useState<AuthProvider[]>(FALLBACK_PROVIDERS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -55,23 +64,39 @@ export default function AuthMethodsConfigDrawer({ isOpen, onClose, appId, appNam
     if (isOpen && appId) loadData()
   }, [isOpen, appId])
 
+  const mergeWithFallbacks = (apiProviders: AuthProvider[]): AuthProvider[] => {
+    if (!apiProviders || apiProviders.length === 0) return FALLBACK_PROVIDERS
+    // Merge: keep API providers, add any missing fallback methods
+    const merged = [...apiProviders]
+    for (const fb of FALLBACK_PROVIDERS) {
+      if (!merged.find(p => p.providerName === fb.providerName)) {
+        merged.push(fb)
+      }
+    }
+    return merged
+  }
+
   const loadData = async () => {
     try {
       setLoading(true)
       const res = await adminService.getAppConfigOverride(appId, 'auth')
       setUseDefault(res.useDefault)
 
-      // Also load the defaults for display
+      // Load defaults, merge with fallbacks so we always show known methods
       const defaults = await adminService.getDefaultAuthMethods()
-      setDefaultProviders(defaults.methods || [])
+      const mergedDefaults = mergeWithFallbacks(defaults.methods || [])
+      setDefaultProviders(mergedDefaults)
 
       if (!res.useDefault && res.config) {
-        setProviders(res.config)
+        setProviders(mergeWithFallbacks(res.config))
       } else {
-        setProviders(defaults.methods || [])
+        setProviders(mergedDefaults)
       }
     } catch (err) {
       console.error('Failed to load app auth config:', err)
+      // On error, still show the fallback defaults
+      setDefaultProviders(FALLBACK_PROVIDERS)
+      setProviders(FALLBACK_PROVIDERS)
     } finally {
       setLoading(false)
     }

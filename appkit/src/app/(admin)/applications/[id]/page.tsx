@@ -10,8 +10,10 @@ import UserDetailDrawer from '@/components/users/UserDetailDrawer'
 import AuthMethodsConfigDrawer from '@/components/applications/AuthMethodsConfigDrawer'
 import CommunicationConfigDrawer from '@/components/applications/CommunicationConfigDrawer'
 import LegalConfigDrawer from '@/components/applications/LegalConfigDrawer'
+import IntegrationGuideDrawer from '@/components/applications/IntegrationGuideDrawer'
 import SurveyBuilder from '@/components/applications/SurveyBuilder'
 import UserAttributesConfig from '@/components/applications/UserAttributesConfig'
+import { adminService } from '@/services/adminService'
 import { AnnouncementSettings } from '@/components/appearance/AnnouncementSettings'
 import { SocialSettings } from '@/components/appearance/SocialSettings'
 import { SplashScreenSettings } from '@/components/appearance/SplashScreenSettings'
@@ -21,6 +23,7 @@ import {
   ServerIcon, 
   UsersIcon,
   GlobeIcon,
+  ShieldIcon,
   ShieldCheckIcon,
   LockIcon,
   MessageSquareIcon,
@@ -104,6 +107,7 @@ export default function ApplicationConfigPage() {
   const [isAuthDrawerOpen, setIsAuthDrawerOpen] = useState(false)
   const [isCommDrawerOpen, setIsCommDrawerOpen] = useState(false)
   const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false)
+  const [isIntegrateDrawerOpen, setIsIntegrateDrawerOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   // Add User modal
   const [showAddUser, setShowAddUser] = useState(false)
@@ -126,6 +130,10 @@ export default function ApplicationConfigPage() {
     updates: { minVersion: '1.0.0', storeUrl: '', forceUpdate: false },
   })
   const [brandingUploading, setBrandingUploading] = useState(false)
+  // Legal configuration state
+  const [legalConfig, setLegalConfig] = useState<any>(null)
+  const [legalUseDefault, setLegalUseDefault] = useState(true)
+  const [legalLoading, setLegalLoading] = useState(true)
 
   const handleBrandingUpload = async (field: string, file: File) => {
     setBrandingUploading(true)
@@ -194,10 +202,24 @@ export default function ApplicationConfigPage() {
         ])
       }
 
+      try {
+        setLegalLoading(true)
+        const res = await adminService.getAppConfigOverride(appId, 'legal')
+        setLegalUseDefault(res.useDefault)
+        
+        const defaults = await adminService.getDefaultLegalConfig()
+        const activeConfig = (!res.useDefault && res.config) ? res.config : defaults.config
+        setLegalConfig(activeConfig)
+      } catch (err) {
+        console.error('Failed to load legal config:', err)
+      } finally {
+        setLegalLoading(false)
+      }
+
       setIsLoading(false)
     }
     loadAppData()
-  }, [appId])
+  }, [appId, isLegalDrawerOpen])
 
   const handleUserClick = (userId: string) => {
     setSelectedUserId(userId)
@@ -363,6 +385,7 @@ export default function ApplicationConfigPage() {
       title: 'Identity & Security',
       items: [
         { value: 'identity', icon: <GlobeIcon className="w-4 h-4" />, label: 'Identity Scope' },
+        { value: 'user-attributes', icon: <UsersIcon className="w-4 h-4" />, label: 'User Attributes' },
         { value: 'auth', icon: <ShieldCheckIcon className="w-4 h-4" />, label: 'Auth Methods' },
         { value: 'security', icon: <LockIcon className="w-4 h-4" />, label: 'Security & MFA' },
       ],
@@ -837,6 +860,10 @@ export default function ApplicationConfigPage() {
                   <FilterIcon className="w-4 h-4 mr-1.5" />
                   Filter
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => setIsIntegrateDrawerOpen(true)} className="border-blue-200 text-blue-600 hover:bg-blue-50">
+                  <CodeIcon className="w-4 h-4 mr-1.5" />
+                  Integration Guide
+                </Button>
                 <Button size="sm" onClick={() => setShowAddUser(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
                   <UserPlusIcon className="w-4 h-4 mr-1.5" />
                   Add User
@@ -933,6 +960,15 @@ export default function ApplicationConfigPage() {
           </div>
         </TabsContent>
 
+        {/* ==================== TAB: User Attributes ==================== */}
+        <TabsContent value="user-attributes" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">User Attributes</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Manage custom data you collect from users. These can be used to segment your audience and personalize their experience.</p>
+            <UserAttributesConfig appId={appId} mode="app" />
+          </div>
+        </TabsContent>
+
         {/* ==================== TAB 3: Global Identity Scope ==================== */}
         <TabsContent value="identity" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
@@ -961,10 +997,6 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              {/* User Attributes — powered by UserAttributesConfig */}
-              <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
-                <UserAttributesConfig appId={appId} mode="app" />
-              </div>
 
               {/* Scope Settings */}
               <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
@@ -1220,58 +1252,104 @@ export default function ApplicationConfigPage() {
             </div>
 
             {/* Current Mode Badge */}
-            <div className="flex items-center space-x-2 mb-4 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-200/50 dark:border-emerald-500/20">
-              <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
-              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Using Default Configuration</span>
-              <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">— Inherited from platform defaults</span>
+            <div className={`flex items-center space-x-2 mb-4 p-3 rounded-lg border transition-colors ${
+              legalUseDefault 
+                ? 'bg-emerald-50/50 dark:bg-emerald-500/5 border-emerald-200/50 dark:border-emerald-500/20' 
+                : 'bg-violet-50/50 dark:bg-violet-500/5 border-violet-200/50 dark:border-violet-500/20'
+            }`}>
+              {legalUseDefault ? (
+                <>
+                  <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Using Default Configuration</span>
+                  <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">— Inherited from platform defaults</span>
+                </>
+              ) : (
+                <>
+                  <ShieldIcon className="w-4 h-4 text-violet-500" />
+                  <span className="text-sm font-medium text-violet-700 dark:text-violet-400">Using Custom Configuration</span>
+                  <span className="text-xs text-violet-600/60 dark:text-violet-400/60">— Individual overrides applied</span>
+                </>
+              )}
             </div>
 
             {/* Summary Preview */}
             <div className="space-y-4">
-              <div>
-                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Legal Documents</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { name: 'Terms of Service', version: 'v2.1', status: 'Published' },
-                    { name: 'Privacy Policy', version: 'v3.0', status: 'Published' },
-                    { name: 'Cookie Policy', version: 'v1.2', status: 'Draft' },
-                    { name: 'Data Processing Agreement', version: 'v1.0', status: 'Published' },
-                  ].map(doc => (
-                    <div key={doc.name} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                      <div className="flex items-center space-x-2">
-                        <ScaleIcon className="w-4 h-4 text-blue-500" />
-                        <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{doc.name}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] text-gray-400 dark:text-zinc-500">{doc.version}</span>
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-                          doc.status === 'Published'
-                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
-                            : 'bg-gray-100 text-gray-500 dark:bg-zinc-700 dark:text-zinc-400'
-                        }`}>{doc.status}</span>
-                      </div>
+              {legalLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2Icon className="w-5 h-5 text-blue-500 animate-spin mr-2" />
+                  <span className="text-xs text-gray-500">Loading configuration...</span>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Legal Documents</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(legalConfig?.documents || []).length > 0 ? (
+                        legalConfig.documents.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                            <div className="flex items-center space-x-2">
+                              <ScaleIcon className="w-4 h-4 text-blue-500" />
+                              <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{doc.title}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-[10px] text-gray-400 dark:text-zinc-500">{doc.version}</span>
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                                doc.status === 'Published'
+                                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                                  : 'bg-gray-100 text-gray-500 dark:bg-zinc-700 dark:text-zinc-400'
+                              }`}>{doc.status}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-400 italic col-span-2">No documents configured</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div>
-                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Compliance</h4>
-                <div className="flex flex-wrap gap-2">
-                  {['GDPR Mode', 'Cookie Consent', 'Right to Erasure', 'Data Export'].map(item => (
-                    <span key={item} className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-[11px] font-medium">
-                      <CheckCircleIcon className="w-3 h-3 mr-1" />
-                      {item}
-                    </span>
-                  ))}
-                  {['Data Retention', 'Age Verification'].map(item => (
-                    <span key={item} className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400 text-[11px] font-medium">
-                      <XCircleIcon className="w-3 h-3 mr-1" />
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Compliance</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.keys(legalConfig?.compliance || {}).length > 0 ? (
+                        Object.entries(legalConfig.compliance).map(([key, val]) => {
+                          const name = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
+                          return (
+                            <span key={key} className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium ${
+                              val 
+                                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
+                                : 'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400'
+                            }`}>
+                              {val ? <CheckCircleIcon className="w-3 h-3 mr-1" /> : <XCircleIcon className="w-3 h-3 mr-1" />}
+                              {name}
+                            </span>
+                          )
+                        })
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No compliance settings configured</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Data Retention</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: 'User Data', value: legalConfig?.retention?.userData, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+                        { label: 'Audit Logs', value: legalConfig?.retention?.auditLog, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
+                        { label: 'Sessions', value: legalConfig?.retention?.sessionData, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
+                      ].map(item => (
+                        <div key={item.label} className={`p-2.5 rounded-lg border border-gray-100 dark:border-zinc-800/50 ${item.bg}`}>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">{item.label}</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className={`text-sm font-bold ${item.color}`}>{item.value || '0'}</span>
+                            <span className="text-[10px] text-gray-500 dark:text-zinc-500">days</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -1489,7 +1567,14 @@ export default function ApplicationConfigPage() {
         isOpen={isLegalDrawerOpen}
         onClose={() => setIsLegalDrawerOpen(false)}
         appId={appId}
-        appName={application.name}
+        appName={application?.name || 'Application'}
+      />
+      <IntegrationGuideDrawer
+        isOpen={isIntegrateDrawerOpen}
+        onClose={() => setIsIntegrateDrawerOpen(false)}
+        appId={appId}
+        appName={application?.name || 'Application'}
+        appDomain={application?.domain}
       />
 
       {/* Add User Modal */}

@@ -13,6 +13,7 @@ import {
   Loader2Icon,
   RotateCcwIcon,
   FileTextIcon,
+  ClockIcon,
 } from 'lucide-react'
 
 interface LegalConfigDrawerProps {
@@ -59,7 +60,21 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
       setDefaultConfig(defaults.config)
 
       if (!res.useDefault && res.config) {
-        setConfig(res.config)
+        // Merge global docs with app overrides to ensure new global docs are visible
+        const mergedDocs = (defaults.config?.documents || []).map((defDoc: any) => {
+          const overrideDoc = res.config.documents?.find((d: any) => d.id === defDoc.id)
+          return overrideDoc ? { ...defDoc, ...overrideDoc } : defDoc
+        })
+
+        // Also include any app-specific docs that don't exist in defaults
+        const appSpecificDocs = (res.config.documents || []).filter(
+          (ad: any) => !defaults.config?.documents.some((dd: any) => dd.id === ad.id)
+        )
+
+        setConfig({ 
+          ...res.config, 
+          documents: [...mergedDocs, ...appSpecificDocs] 
+        })
       } else {
         setConfig(defaults.config)
       }
@@ -234,6 +249,64 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
                             />
                             {!isOverridden && defDoc?.url && (
                               <p className="text-[9px] text-gray-400 mt-1 italic">Using platform default URL</p>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Data Retention Overrides */}
+                  <div className="pt-4 border-t border-gray-100 dark:border-zinc-800/50">
+                    <div className="flex items-center justify-between mb-4 px-1">
+                      <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <ClockIcon className="w-3 h-3 text-amber-500" />
+                        Data Retention
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { key: 'userData', name: 'User Data Retention', desc: 'How long to keep inactive user accounts (days)' },
+                        { key: 'auditLog', name: 'Audit Log Retention', desc: 'Retention period for security and activity logs (days)' },
+                        { key: 'sessionData', name: 'Session Data Retention', desc: 'How long to keep session metadata (days)' },
+                      ].map(item => {
+                        const val = config.retention?.[item.key as keyof typeof config.retention]
+                        const defVal = defaultConfig?.retention?.[item.key as keyof typeof config.retention]
+                        const isOverridden = val !== defVal
+
+                        return (
+                          <div key={item.key} className={`p-4 rounded-xl border transition-all ${isOverridden ? 'border-amber-500/20 bg-amber-500/5' : 'border-gray-200/80 dark:border-zinc-800/80'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">{item.name}</label>
+                                  {isOverridden && <span className="px-1.5 py-0.5 bg-amber-100 dark:bg-amber-500/20 text-[8px] font-bold text-amber-600 uppercase rounded">Custom</span>}
+                                </div>
+                                <p className="text-[9px] text-gray-400">{item.desc}</p>
+                              </div>
+                              {isOverridden && (
+                                <button 
+                                  onClick={() => setConfig({ ...config, retention: { ...config.retention, [item.key]: defVal } })}
+                                  className="text-[10px] font-bold text-amber-500 flex items-center gap-1"
+                                >
+                                  <RotateCcwIcon className="w-2.5 h-2.5" /> Inherit
+                                </button>
+                              )}
+                            </div>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={val || 0}
+                                onChange={e => {
+                                  const newVal = parseInt(e.target.value) || 0
+                                  setConfig(prev => prev ? { ...prev, retention: { ...prev.retention, [item.key]: newVal } } : prev)
+                                }}
+                                className="w-full px-3 py-1.5 bg-white dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                              />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-gray-400 font-medium">days</span>
+                            </div>
+                            {!isOverridden && defVal && (
+                              <p className="text-[9px] text-gray-400 mt-1 italic">Using platform default ({defVal} days)</p>
                             )}
                           </div>
                         )

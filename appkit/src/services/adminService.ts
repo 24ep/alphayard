@@ -747,6 +747,18 @@ class AdminService {
     });
   }
 
+  // User Attributes defaults
+  async getDefaultUserAttributes(): Promise<{ attributes: any[] }> {
+    return this.request<{ attributes: any[] }>('/admin/config/user-attributes');
+  }
+
+  async saveDefaultUserAttributes(attributes: any[]): Promise<any> {
+    return this.request<any>('/admin/config/user-attributes', {
+      method: 'PUT',
+      body: JSON.stringify({ attributes }),
+    });
+  }
+
   // Communication defaults
   async getDefaultCommConfig(): Promise<{ config: any }> {
     return this.request<{ config: any }>('/admin/config/communication');

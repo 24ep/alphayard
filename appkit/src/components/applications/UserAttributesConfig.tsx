@@ -16,6 +16,8 @@ import {
   MailIcon,
   PhoneIcon,
   LinkIcon,
+  AlertTriangleIcon,
+  RefreshCwIcon,
 } from 'lucide-react'
 import { adminService } from '@/services/adminService'
 
@@ -62,11 +64,51 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
   const [defaultAttributes, setDefaultAttributes] = useState<UserAttribute[]>([...SYSTEM_ATTRIBUTES])
   const [appAttributes, setAppAttributes] = useState<UserAttribute[]>([])
   const [appOverrides, setAppOverrides] = useState<Record<string, boolean>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [newAttr, setNewAttr] = useState<Partial<UserAttribute>>({ name: '', label: '', type: 'text', required: false })
 
   const isAppMode = mode === 'app'
+
+  useEffect(() => {
+    loadData()
+  }, [appId, mode])
+
+  useEffect(() => {
+    if (statusMsg) {
+      const t = setTimeout(() => setStatusMsg(null), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [statusMsg])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      if (isAppMode) {
+        const res = await adminService.getAppConfigOverride(appId, 'user-attributes')
+        const defaults = await adminService.getDefaultUserAttributes()
+        setDefaultAttributes(defaults.attributes || [...SYSTEM_ATTRIBUTES])
+        
+        if (!res.useDefault && res.config) {
+          setAppAttributes(res.config.appAttributes || [])
+          setAppOverrides(res.config.overrides || {})
+        }
+      } else {
+        const res = await adminService.getDefaultUserAttributes()
+        setDefaultAttributes(res.attributes || [...SYSTEM_ATTRIBUTES])
+      }
+    } catch (err) {
+      console.error('Failed to load attributes:', err)
+      setLoadError('Failed to load attributes.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const attributes = isAppMode ? [...defaultAttributes, ...appAttributes] : defaultAttributes
 
   const addAttribute = () => {
@@ -104,19 +146,58 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
   const handleSave = async () => {
     try {
       setSaving(true)
-      const payload = isAppMode
-        ? { defaultAttributes, appAttributes, overrides: appOverrides }
-        : { attributes: defaultAttributes }
-      await adminService.saveAppConfig(appId, 'user-attributes', payload)
+      if (isAppMode) {
+        const payload = { 
+          defaultAttributes, 
+          appAttributes, 
+          overrides: appOverrides,
+          useDefault: false // If they are saving here, we assume they want to use overrides
+        }
+        await adminService.saveAppConfig(appId, 'user-attributes', payload)
+      } else {
+        await adminService.saveDefaultUserAttributes(defaultAttributes)
+      }
+      setStatusMsg({ type: 'success', text: 'Attributes saved successfully' })
     } catch (err) {
       console.error('Failed to save attributes:', err)
+      setStatusMsg({ type: 'error', text: 'Failed to save attributes' })
     } finally {
       setSaving(false)
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2Icon className="w-6 h-6 text-blue-500 animate-spin" />
+        <span className="ml-2 text-sm text-gray-500">Loading attributes...</span>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+          <AlertTriangleIcon className="w-6 h-6 text-red-500" />
+        </div>
+        <p className="text-sm text-red-600 dark:text-red-400 font-medium">{loadError}</p>
+        <Button variant="outline" size="sm" onClick={loadData}>
+          <RefreshCwIcon className="w-4 h-4 mr-1.5" /> Retry
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
+      {/* Status Msg */}
+      {statusMsg && (
+        <div className={`p-3 rounded-lg text-xs font-medium ${statusMsg.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
+          {statusMsg.text}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

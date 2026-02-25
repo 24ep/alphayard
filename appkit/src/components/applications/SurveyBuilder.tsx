@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/Button'
 import {
   PlusIcon,
@@ -13,14 +13,14 @@ import {
   ToggleLeftIcon,
   CopyIcon,
   CheckCircle2Icon,
-  PlayIcon,
   EyeIcon,
   SaveIcon,
   Loader2Icon,
   ChevronDownIcon,
   ChevronUpIcon,
   CodeIcon,
-  ExternalLinkIcon,
+  AlertTriangleIcon,
+  RefreshCwIcon,
 } from 'lucide-react'
 import { adminService } from '@/services/adminService'
 
@@ -52,31 +52,47 @@ const QUESTION_TYPES = [
 ]
 
 function generateId() {
-  return Math.random().toString(36).substring(2, 10)
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 10)}`
 }
 
 export default function SurveyBuilder({ appId }: { appId: string }) {
-  const [surveys, setSurveys] = useState<Survey[]>([
-    {
-      id: generateId(),
-      title: 'Onboarding Feedback',
-      description: 'Collect feedback from new users after they complete onboarding.',
-      active: true,
-      completionMessage: 'Thank you for your feedback!',
-      questions: [
-        { id: generateId(), type: 'rating', title: 'How easy was the onboarding process?', description: '', required: true, options: [], maxRating: 5 },
-        { id: generateId(), type: 'single_choice', title: 'How did you hear about us?', description: '', required: false, options: ['Search Engine', 'Social Media', 'Friend / Colleague', 'Other'] },
-      ],
-    },
-  ])
-  const [activeSurveyId, setActiveSurveyId] = useState<string | null>(surveys[0]?.id || null)
-  const [previewMode, setPreviewMode] = useState(false)
+  const [surveys, setSurveys] = useState<Survey[]>([])
+  const [activeSurveyId, setActiveSurveyId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedQ, setExpandedQ] = useState<string | null>(null)
   const [showIntegration, setShowIntegration] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const activeSurvey = surveys.find(s => s.id === activeSurveyId) || null
+
+  useEffect(() => {
+    if (statusMsg) {
+      const t = setTimeout(() => setStatusMsg(null), 3000)
+      return () => clearTimeout(t)
+    }
+  }, [statusMsg])
+
+  const loadSurveys = useCallback(async () => {
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const data = await adminService.getAppConfig(appId)
+      const loaded = data?.config?.surveys || []
+      setSurveys(loaded)
+      if (loaded.length > 0) setActiveSurveyId(loaded[0].id)
+    } catch (err) {
+      console.error('Failed to load surveys:', err)
+      setLoadError('Failed to load surveys. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }, [appId])
+
+  useEffect(() => { loadSurveys() }, [loadSurveys])
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -85,16 +101,9 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
   }
 
   const addSurvey = () => {
-    const newSurvey: Survey = {
-      id: generateId(),
-      title: 'New Survey',
-      description: '',
-      active: false,
-      completionMessage: 'Thank you!',
-      questions: [],
-    }
-    setSurveys(prev => [...prev, newSurvey])
-    setActiveSurveyId(newSurvey.id)
+    const s: Survey = { id: generateId(), title: 'New Survey', description: '', active: false, completionMessage: 'Thank you!', questions: [] }
+    setSurveys(prev => [...prev, s])
+    setActiveSurveyId(s.id)
   }
 
   const updateSurvey = (field: keyof Survey, value: any) => {
@@ -102,9 +111,19 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
     setSurveys(prev => prev.map(s => s.id === activeSurveyId ? { ...s, [field]: value } : s))
   }
 
-  const deleteSurvey = (id: string) => {
-    setSurveys(prev => prev.filter(s => s.id !== id))
-    if (activeSurveyId === id) setActiveSurveyId(surveys.find(s => s.id !== id)?.id || null)
+  const deleteSurvey = async (id: string) => {
+    const prev = [...surveys]
+    const updated = surveys.filter(s => s.id !== id)
+    setSurveys(updated)
+    if (activeSurveyId === id) setActiveSurveyId(updated[0]?.id || null)
+    try {
+      await adminService.saveAppConfig(appId, 'surveys', { surveys: updated })
+      setStatusMsg({ type: 'success', text: 'Survey deleted' })
+    } catch (err) {
+      console.error('Failed to delete survey:', err)
+      setSurveys(prev)
+      setStatusMsg({ type: 'error', text: 'Failed to delete survey' })
+    }
   }
 
   const addQuestion = () => {
@@ -138,22 +157,61 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
     try {
       setSaving(true)
       await adminService.saveAppConfig(appId, 'surveys', { surveys })
+      setStatusMsg({ type: 'success', text: 'Surveys saved successfully' })
     } catch (err) {
       console.error('Failed to save surveys:', err)
+      setStatusMsg({ type: 'error', text: 'Failed to save surveys. Please try again.' })
     } finally {
       setSaving(false)
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-3">
+        <Loader2Icon className="w-8 h-8 text-blue-500 animate-spin" />
+        <p className="text-sm text-gray-500 dark:text-zinc-400">Loading surveys…</p>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+          <AlertTriangleIcon className="w-6 h-6 text-red-500" />
+        </div>
+        <p className="text-sm text-red-600 dark:text-red-400 font-medium">{loadError}</p>
+        <Button variant="outline" size="sm" onClick={loadSurveys}>
+          <RefreshCwIcon className="w-4 h-4 mr-1.5" /> Retry
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
+      {/* Status Toast */}
+      {statusMsg && (
+        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium animate-in slide-in-from-top-2 ${
+          statusMsg.type === 'success'
+            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+            : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-500/20'
+        }`}>
+          {statusMsg.type === 'success'
+            ? <CheckCircle2Icon className="w-4 h-4 flex-shrink-0" />
+            : <AlertTriangleIcon className="w-4 h-4 flex-shrink-0" />}
+          {statusMsg.text}
+        </div>
+      )}
+
       {/* Survey List + Add */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 flex-wrap">
           {surveys.map(s => (
             <button
               key={s.id}
-              onClick={() => { setActiveSurveyId(s.id); setPreviewMode(false) }}
+              onClick={() => setActiveSurveyId(s.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeSurveyId === s.id
                   ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
@@ -170,8 +228,7 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowIntegration(!showIntegration)}>
-            <CodeIcon className="w-4 h-4 mr-1.5" />
-            Integration
+            <CodeIcon className="w-4 h-4 mr-1.5" /> Integration
           </Button>
           <Button onClick={handleSave} disabled={saving} size="sm" className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
             {saving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
@@ -184,12 +241,11 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
       {showIntegration && (
         <div className="rounded-xl border border-blue-200/50 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5 p-5 space-y-4">
           <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 flex items-center gap-2">
-            <CodeIcon className="w-4 h-4" />
-            Survey SDK Integration
+            <CodeIcon className="w-4 h-4" /> Survey SDK Integration
           </h4>
           <div className="relative group">
             <div className="absolute right-3 top-3">
-              <button onClick={() => handleCopy(`import { AppKit } from '@appkit/identity-core';\n\nconst client = new AppKit({ clientId: '${appId}' });\n\n// Trigger a survey\nawait client.showSurvey('${activeSurvey?.id || 'SURVEY_ID'}');\n\n// Listen for completion\nclient.on('survey:completed', (response) => {\n  console.log('Survey responses:', response.answers);\n});`, 'survey-sdk')} className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">
+              <button onClick={() => handleCopy(`import { AppKit } from '@appkit/identity-core';\n\nconst client = new AppKit({ clientId: '${appId}' });\n\nawait client.showSurvey('${activeSurvey?.id || 'SURVEY_ID'}');\n\nclient.on('survey:completed', (response) => {\n  console.log('Survey responses:', response.answers);\n});`, 'survey-sdk')} className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors">
                 {copiedId === 'survey-sdk' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
               </button>
             </div>
@@ -198,10 +254,8 @@ export default function SurveyBuilder({ appId }: { appId: string }) {
 
 const client = new AppKit({ clientId: '${appId}' });
 
-// Trigger a survey
 await client.showSurvey('${activeSurvey?.id || 'SURVEY_ID'}');
 
-// Listen for completion
 client.on('survey:completed', (response) => {
   console.log('Survey responses:', response.answers);
 });`}</code>
@@ -215,7 +269,6 @@ client.on('survey:completed', (response) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Editor */}
           <div className="space-y-4">
-            {/* Survey Meta */}
             <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Survey Details</h4>
@@ -232,27 +285,12 @@ client.on('survey:completed', (response) => {
                   </button>
                 </div>
               </div>
-              <input
-                type="text"
-                value={activeSurvey.title}
-                onChange={e => updateSurvey('title', e.target.value)}
-                placeholder="Survey title"
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-              <textarea
-                value={activeSurvey.description}
-                onChange={e => updateSurvey('description', e.target.value)}
-                placeholder="Description (optional)"
-                rows={2}
-                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
-              <input
-                type="text"
-                value={activeSurvey.completionMessage}
-                onChange={e => updateSurvey('completionMessage', e.target.value)}
-                placeholder="Completion message"
-                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
+              <input type="text" value={activeSurvey.title} onChange={e => updateSurvey('title', e.target.value)} placeholder="Survey title"
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <textarea value={activeSurvey.description} onChange={e => updateSurvey('description', e.target.value)} placeholder="Description (optional)" rows={2}
+                className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+              <input type="text" value={activeSurvey.completionMessage} onChange={e => updateSurvey('completionMessage', e.target.value)} placeholder="Completion message"
+                className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
             </div>
 
             {/* Questions */}
@@ -269,7 +307,6 @@ client.on('survey:completed', (response) => {
                 const isExpanded = expandedQ === q.id
                 return (
                   <div key={q.id} className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 overflow-hidden">
-                    {/* Header */}
                     <div className="flex items-center gap-2 p-3 cursor-pointer hover:bg-gray-50/50 dark:hover:bg-zinc-800/30" onClick={() => setExpandedQ(isExpanded ? null : q.id)}>
                       <GripVerticalIcon className="w-3.5 h-3.5 text-gray-300 dark:text-zinc-600 flex-shrink-0" />
                       <span className="text-[10px] font-bold text-gray-400 w-5">{idx + 1}</span>
@@ -282,22 +319,13 @@ client.on('survey:completed', (response) => {
                         <button onClick={(e) => { e.stopPropagation(); removeQuestion(q.id) }} className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400"><TrashIcon className="w-3 h-3" /></button>
                       </div>
                     </div>
-                    {/* Body */}
                     {isExpanded && (
                       <div className="px-3 pb-3 space-y-3 border-t border-gray-100 dark:border-zinc-800 pt-3">
-                        <input
-                          type="text"
-                          value={q.title}
-                          onChange={e => updateQuestion(q.id, 'title', e.target.value)}
-                          placeholder="Question title"
-                          className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        />
+                        <input type="text" value={q.title} onChange={e => updateQuestion(q.id, 'title', e.target.value)} placeholder="Question title"
+                          className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                         <div className="flex items-center gap-3">
-                          <select
-                            value={q.type}
-                            onChange={e => updateQuestion(q.id, 'type', e.target.value as SurveyQuestion['type'])}
-                            className="px-2 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                          >
+                          <select value={q.type} onChange={e => updateQuestion(q.id, 'type', e.target.value as SurveyQuestion['type'])}
+                            className="px-2 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                             {QUESTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                           </select>
                           <label className="flex items-center gap-1.5 cursor-pointer">
@@ -305,24 +333,14 @@ client.on('survey:completed', (response) => {
                             <span className="text-xs text-gray-500">Required</span>
                           </label>
                         </div>
-
-                        {/* Options for choice types */}
                         {(q.type === 'single_choice' || q.type === 'multi_choice') && (
                           <div className="space-y-2">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Options</label>
                             {q.options.map((opt, oi) => (
                               <div key={oi} className="flex items-center gap-2">
                                 <span className="w-5 h-5 rounded-full border-2 border-gray-300 dark:border-zinc-600 flex items-center justify-center text-[8px] text-gray-400 flex-shrink-0">{oi + 1}</span>
-                                <input
-                                  type="text"
-                                  value={opt}
-                                  onChange={e => {
-                                    const newOpts = [...q.options]
-                                    newOpts[oi] = e.target.value
-                                    updateQuestion(q.id, 'options', newOpts)
-                                  }}
-                                  className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                />
+                                <input type="text" value={opt} onChange={e => { const newOpts = [...q.options]; newOpts[oi] = e.target.value; updateQuestion(q.id, 'options', newOpts) }}
+                                  className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                                 <button onClick={() => updateQuestion(q.id, 'options', q.options.filter((_, i) => i !== oi))} className="text-red-400 hover:text-red-500 p-0.5"><TrashIcon className="w-3 h-3" /></button>
                               </div>
                             ))}
@@ -331,11 +349,11 @@ client.on('survey:completed', (response) => {
                             </button>
                           </div>
                         )}
-
                         {q.type === 'rating' && (
                           <div>
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Max Rating</label>
-                            <input type="number" min={3} max={10} value={q.maxRating || 5} onChange={e => updateQuestion(q.id, 'maxRating', parseInt(e.target.value))} className="ml-2 w-16 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs" />
+                            <input type="number" min={3} max={10} value={q.maxRating || 5} onChange={e => updateQuestion(q.id, 'maxRating', parseInt(e.target.value))}
+                              className="ml-2 w-16 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs" />
                           </div>
                         )}
                       </div>
@@ -370,9 +388,7 @@ client.on('survey:completed', (response) => {
                   <label className="text-xs font-medium text-gray-700 dark:text-zinc-300">
                     {idx + 1}. {q.title || 'Untitled'} {q.required && <span className="text-red-500">*</span>}
                   </label>
-                  {q.type === 'text' && (
-                    <input type="text" placeholder="Type your answer..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs" disabled />
-                  )}
+                  {q.type === 'text' && <input type="text" placeholder="Type your answer..." className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs" disabled />}
                   {(q.type === 'single_choice' || q.type === 'multi_choice') && (
                     <div className="space-y-1.5">
                       {q.options.map((opt, i) => (
@@ -385,9 +401,7 @@ client.on('survey:completed', (response) => {
                   )}
                   {q.type === 'rating' && (
                     <div className="flex items-center gap-1">
-                      {Array.from({ length: q.maxRating || 5 }).map((_, i) => (
-                        <StarIcon key={i} className="w-5 h-5 text-gray-300 dark:text-zinc-600" />
-                      ))}
+                      {Array.from({ length: q.maxRating || 5 }).map((_, i) => <StarIcon key={i} className="w-5 h-5 text-gray-300 dark:text-zinc-600" />)}
                     </div>
                   )}
                   {q.type === 'boolean' && (

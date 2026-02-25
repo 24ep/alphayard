@@ -12,6 +12,8 @@ import {
   InfoIcon,
   PlusIcon,
   EditIcon,
+  Trash2Icon,
+  XIcon,
   Loader2Icon,
 } from 'lucide-react'
 
@@ -55,6 +57,9 @@ export default function DefaultLegalPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [showModal, setShowModal] = useState(false)
+  const [editingDoc, setEditingDoc] = useState<LegalDocument | null>(null)
+  const [formDoc, setFormDoc] = useState<Partial<LegalDocument>>({ title: '', type: '', version: 'v1.0', status: 'Draft' })
 
   useEffect(() => { loadData() }, [])
 
@@ -101,6 +106,54 @@ export default function DefaultLegalPage() {
     }
   }
 
+  const openAddModal = () => {
+    setEditingDoc(null)
+    setFormDoc({ title: '', type: '', version: 'v1.0', status: 'Draft', url: '' })
+    setShowModal(true)
+  }
+
+  const openEditModal = (doc: LegalDocument) => {
+    setEditingDoc(doc)
+    setFormDoc({ ...doc })
+    setShowModal(true)
+  }
+
+  const handleDocSubmit = () => {
+    if (!formDoc.title || !formDoc.type) return
+
+    const newDoc: LegalDocument = {
+      id: editingDoc?.id || formDoc.type.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      title: formDoc.title!,
+      type: formDoc.type!,
+      version: formDoc.version || 'v1.0',
+      status: formDoc.status as 'Published' | 'Draft',
+      lastUpdated: new Date().toISOString().split('T')[0],
+      url: formDoc.url
+    }
+
+    if (editingDoc) {
+      setConfig(prev => ({
+        ...prev,
+        documents: prev.documents.map(d => d.id === editingDoc.id ? newDoc : d)
+      }))
+    } else {
+      setConfig(prev => ({
+        ...prev,
+        documents: [...prev.documents, newDoc]
+      }))
+    }
+    setShowModal(false)
+  }
+
+  const deleteDoc = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      setConfig(prev => ({
+        ...prev,
+        documents: prev.documents.filter(d => d.id !== id)
+      }))
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -119,7 +172,7 @@ export default function DefaultLegalPage() {
         </div>
         <div className="flex items-center space-x-2">
           {saveMessage && <span className={`text-sm font-medium ${saveMessage.includes('success') ? 'text-emerald-600' : 'text-red-500'}`}>{saveMessage}</span>}
-          <Button variant="outline"><PlusIcon className="w-4 h-4 mr-2" />Add Document</Button>
+          <Button variant="outline" onClick={openAddModal}><PlusIcon className="w-4 h-4 mr-2" />Add Document</Button>
           <Button onClick={handleSave} disabled={saving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25">
             {saving ? <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-2" />}
             Save Defaults
@@ -140,20 +193,23 @@ export default function DefaultLegalPage() {
         <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center"><FileTextIcon className="w-4 h-4 mr-2 text-gray-400" />Legal Documents</h2>
         <div className="space-y-3">
           {config.documents.map(doc => (
-            <div key={doc.id} className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-4 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors">
+            <div key={doc.id} className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-4 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 flex items-center justify-center"><ScaleIcon className="w-5 h-5" /></div>
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{doc.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400">{doc.type}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400">{doc.type}{doc.url && <span className="ml-2 font-mono text-[10px] opacity-60">— {doc.url}</span>}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <span className="text-xs text-gray-400 dark:text-zinc-500">{doc.version}</span>
                   <span className="text-xs text-gray-400 dark:text-zinc-500">Updated: {doc.lastUpdated}</span>
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${doc.status === 'Published' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>{doc.status}</span>
-                  <Button variant="ghost" size="sm" className="text-xs"><EditIcon className="w-3.5 h-3.5 mr-1" />Edit</Button>
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                    <Button variant="ghost" size="sm" onClick={() => openEditModal(doc)} className="text-xs text-blue-600"><EditIcon className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="sm" onClick={() => deleteDoc(doc.id)} className="text-xs text-red-500"><Trash2Icon className="w-3.5 h-3.5" /></Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -210,6 +266,86 @@ export default function DefaultLegalPage() {
           </div>
         </div>
       </div>
+
+      {/* Add/Edit Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowModal(false)} />
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-zinc-800/80 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {editingDoc ? 'Edit Document' : 'Add Legal Document'}
+              </h3>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Document Title</label>
+                <input
+                  type="text"
+                  value={formDoc.title}
+                  onChange={e => setFormDoc(p => ({ ...p, title: e.target.value }))}
+                  placeholder="e.g. Terms of Service"
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Type Slug</label>
+                  <input
+                    type="text"
+                    value={formDoc.type}
+                    onChange={e => setFormDoc(p => ({ ...p, type: e.target.value }))}
+                    placeholder="privacy-policy"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Version</label>
+                  <input
+                    type="text"
+                    value={formDoc.version}
+                    onChange={e => setFormDoc(p => ({ ...p, version: e.target.value }))}
+                    placeholder="v1.0"
+                    className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Status</label>
+                <select
+                  value={formDoc.status}
+                  onChange={e => setFormDoc(p => ({ ...p, status: e.target.value as any }))}
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                >
+                  <option value="Draft">Draft</option>
+                  <option value="Published">Published</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Document URL (Optional)</label>
+                <input
+                  type="url"
+                  value={formDoc.url}
+                  onChange={e => setFormDoc(p => ({ ...p, url: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button onClick={handleDocSubmit} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                {editingDoc ? 'Update' : 'Add Document'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
