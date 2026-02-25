@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
       where: { 
         email: email.toLowerCase(),
         isActive: true 
+      },
+      include: {
+        role: true
       }
     })
 
@@ -32,6 +35,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
+    // Fetch permissions
+    let permissions: string[] = []
+    if (adminUser.isSuperAdmin) {
+      permissions = ['*']
+    } else if (adminUser.roleId) {
+      const rolePermissions = await prisma.adminRolePermission.findMany({
+        where: { roleId: adminUser.roleId },
+        include: { permission: true }
+      })
+      permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`)
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       {
@@ -40,8 +55,8 @@ export async function POST(request: NextRequest) {
         email: adminUser.email,
         firstName: adminUser.name || '',
         lastName: '',
-        role: adminUser.roleId || 'admin',
-        permissions: [], // TODO: Fetch permissions from role
+        role: adminUser.role?.name || 'admin',
+        permissions,
         type: 'admin',
         isSuperAdmin: adminUser.isSuperAdmin || false
       },
@@ -60,8 +75,8 @@ export async function POST(request: NextRequest) {
       email: adminUser.email,
       firstName: adminUser.name || undefined,
       lastName: undefined,
-      role: adminUser.roleId || 'admin',
-      permissions: [],
+      role: adminUser.role?.name || 'admin',
+      permissions,
       isSuperAdmin: adminUser.isSuperAdmin || false
     }
 

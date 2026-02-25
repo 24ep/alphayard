@@ -202,9 +202,11 @@ export async function POST(request: NextRequest) {
     const token = jwt.sign(
       { 
         id: user.id, 
+        adminId: user.id,
         email: user.email, 
         role: 'admin', 
-        permissions: ['read', 'write', 'admin'] 
+        type: 'admin',
+        permissions: ['*'] 
       },
       jwtSecret,
       { expiresIn: '7d' }
@@ -261,7 +263,7 @@ export async function POST(request: NextRequest) {
         firstName: user.firstName,
         lastName: user.lastName,
         role: 'admin',
-        permissions: ['read', 'write', 'admin']
+        permissions: ['*']
       },
       sessionId: session.id,
       expiresAt: session.expiresAt
