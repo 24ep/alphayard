@@ -34,6 +34,10 @@ import {
   EyeIcon,
   ScaleIcon,
   SettingsIcon,
+  CodeIcon,
+  CopyIcon,
+  CheckCircle2Icon,
+  ExternalLinkIcon
 } from 'lucide-react'
 
 interface Application {
@@ -75,6 +79,13 @@ export default function ApplicationConfigPage() {
   const [isAuthDrawerOpen, setIsAuthDrawerOpen] = useState(false)
   const [isCommDrawerOpen, setIsCommDrawerOpen] = useState(false)
   const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
 
   useEffect(() => {
     const loadAppData = async () => {
@@ -183,6 +194,7 @@ export default function ApplicationConfigPage() {
 
   const tabItems = [
     { value: 'content', icon: <ServerIcon className="w-4 h-4" />, label: 'App Content' },
+    { value: 'integration', icon: <CodeIcon className="w-4 h-4" />, label: 'Integration Guide' },
     { value: 'users', icon: <UsersIcon className="w-4 h-4" />, label: 'Users' },
     { value: 'identity', icon: <GlobeIcon className="w-4 h-4" />, label: 'Identity Scope' },
     { value: 'auth', icon: <ShieldCheckIcon className="w-4 h-4" />, label: 'Auth Methods' },
@@ -289,6 +301,116 @@ export default function ApplicationConfigPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ==================== TAB: Integration Guide ==================== */}
+        <TabsContent value="integration" className="space-y-6">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Integration Guide</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Initialize the AppKit SDK with this application&apos;s specific configuration to start authenticating users.</p>
+              </div>
+              <Button variant="outline" onClick={() => router.push('/dev-hub')} className="shrink-0 flex items-center gap-2">
+                <ExternalLinkIcon className="w-4 h-4" />
+                Full Dev Docs
+              </Button>
+            </div>
+
+            <div className="space-y-8">
+              {/* Web / Next.js Setup */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                  <GlobeIcon className="w-5 h-5 text-blue-500" />
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Web / React / Next.js Integration</h4>
+                </div>
+                
+                <p className="text-sm text-gray-600 dark:text-zinc-400">1. Install the core identity package:</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button 
+                      onClick={() => handleCopy('npm install @appkit/identity-core', 'install-web')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'install-web' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <code>npm install @appkit/identity-core</code>
+                  </pre>
+                </div>
+
+                <p className="text-sm text-gray-600 dark:text-zinc-400 pt-2">2. Initialize the client in your app using your Environment Variables:</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button 
+                      onClick={() => handleCopy(`NEXT_PUBLIC_APPKIT_DOMAIN="https://${application.domain || 'auth.your-app.com'}"\nNEXT_PUBLIC_APPKIT_CLIENT_ID="${appId}"`, 'env-web')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'env-web' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <code className="text-blue-300">NEXT_PUBLIC_APPKIT_DOMAIN</code><span className="text-gray-400">="https://{application.domain || 'auth.your-app.com'}"</span>{'\n'}
+                    <code className="text-blue-300">NEXT_PUBLIC_APPKIT_CLIENT_ID</code><span className="text-gray-400">="{appId}"</span>
+                  </pre>
+                </div>
+
+                <p className="text-sm text-gray-600 dark:text-zinc-400 pt-2">3. Trigger the login flow:</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button 
+                      onClick={() => handleCopy(`import { AppKit } from '@appkit/identity-core';\n\nconst client = new AppKit({\n  clientId: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID,\n  domain: process.env.NEXT_PUBLIC_APPKIT_DOMAIN\n});\n\n// Trigger login\nawait client.login();`, 'code-web')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'code-web' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <span className="text-purple-400">import</span> {'{ AppKit }'} <span className="text-purple-400">from</span> <span className="text-green-300">'@appkit/identity-core'</span>;<br/><br/>
+                    <span className="text-purple-400">const</span> client = <span className="text-purple-400">new</span> <span className="text-yellow-200">AppKit</span>({'{'}<br/>
+                    {'  '}clientId: process.env.<span className="text-blue-300">NEXT_PUBLIC_APPKIT_CLIENT_ID</span>,<br/>
+                    {'  '}domain: process.env.<span className="text-blue-300">NEXT_PUBLIC_APPKIT_DOMAIN</span><br/>
+                    {'}'});<br/><br/>
+                    <span className="text-gray-500">// Trigger login</span><br/>
+                    <span className="text-purple-400">await</span> client.<span className="text-blue-200">login</span>();
+                  </pre>
+                </div>
+              </div>
+
+              {/* React Native Setup */}
+              <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                  <SmartphoneIcon className="w-5 h-5 text-emerald-500" />
+                  <h4 className="font-semibold text-gray-900 dark:text-white">React Native / Expo Integration</h4>
+                </div>
+                
+                <p className="text-sm text-gray-600 dark:text-zinc-400">Use the official React Native wrapper for AppAuth to handle deep-linking automatically.</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button 
+                      onClick={() => handleCopy(`import { authorize } from 'react-native-app-auth';\n\nconst config = {\n  issuer: 'https://${application.domain || 'auth.your-app.com'}/oauth',\n  clientId: '${appId}',\n  redirectUrl: 'com.appkit.${application.name.toLowerCase().replace(/[^a-z0-9]/g, '')}:/oauth',\n  scopes: ['openid', 'profile', 'email', 'offline_access'],\n  usePKCE: true,\n};\n\nconst authState = await authorize(config);`, 'code-rn')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'code-rn' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <span className="text-purple-400">import</span> {'{ authorize }'} <span className="text-purple-400">from</span> <span className="text-green-300">'react-native-app-auth'</span>;<br/><br/>
+                    <span className="text-purple-400">const</span> config = {'{'}<br/>
+                    {'  '}issuer: <span className="text-green-300">'https://{application.domain || 'auth.your-app.com'}/oauth'</span>,<br/>
+                    {'  '}clientId: <span className="text-green-300">'{appId}'</span>,<br/>
+                    {'  '}redirectUrl: <span className="text-green-300">'com.appkit.{application.name.toLowerCase().replace(/[^a-z0-9]/g, '')}:/oauth'</span>,<br/>
+                    {'  '}scopes: [<span className="text-green-300">'openid'</span>, <span className="text-green-300">'profile'</span>, <span className="text-green-300">'email'</span>, <span className="text-green-300">'offline_access'</span>],<br/>
+                    {'  '}usePKCE: <span className="text-yellow-400">true</span>,<br/>
+                    {'}'};<br/><br/>
+                    <span className="text-purple-400">const</span> authState = <span className="text-purple-400">await</span> <span className="text-blue-200">authorize</span>(config);
+                  </pre>
+                </div>
+              </div>
+
             </div>
           </div>
         </TabsContent>
