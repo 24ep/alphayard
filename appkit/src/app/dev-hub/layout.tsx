@@ -19,7 +19,9 @@ import {
   Globe,
   Smartphone,
   Users,
-  Lock
+  Lock,
+  Settings,
+  Paintbrush
 } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
@@ -57,6 +59,8 @@ const DOC_NAV: DocNavGroup[] = [
     items: [
       { title: 'Login & Auth', href: '/dev-hub/modules/login', icon: <Shield className="h-4 w-4" /> },
       { title: 'Identity & Profiles', href: '/dev-hub/modules/identity', icon: <Code2 className="h-4 w-4" /> },
+      { title: 'Content Management (CMS)', href: '/dev-hub/modules/cms', icon: <BookOpen className="h-4 w-4" /> },
+      { title: 'Localization & i18n', href: '/dev-hub/modules/localization', icon: <Globe className="h-4 w-4" /> },
       { title: 'Groups & Organizations', href: '/dev-hub/modules/groups', icon: <Users className="h-4 w-4" /> },
       { title: 'Security & MFA', href: '/dev-hub/modules/security', icon: <Lock className="h-4 w-4" /> },
       { title: 'Session Management', href: '/dev-hub/modules/sessions', icon: <Layout className="h-4 w-4" /> },
@@ -67,9 +71,17 @@ const DOC_NAV: DocNavGroup[] = [
     items: [
       { title: 'Authentication API', href: '/dev-hub/api/auth' },
       { title: 'Users API', href: '/dev-hub/api/users' },
+      { title: 'CMS & Content API', href: '/dev-hub/api/cms' },
       { title: 'Circles & Groups API', href: '/dev-hub/api/circles' },
-      { title: 'Audit & Security API', href: '/dev-hub/api/audit' },
+      { title: 'Audit & Analytics API', href: '/dev-hub/api/audit' },
       { title: 'Management API', href: '/dev-hub/api/management' },
+    ]
+  },
+  {
+    title: 'Admin Console',
+    items: [
+      { title: 'Application Config', href: '/dev-hub/admin/app-config', icon: <Settings className="h-4 w-4" /> },
+      { title: 'Appearance & Branding', href: '/dev-hub/admin/appearance', icon: <Paintbrush className="h-4 w-4" /> },
     ]
   }
 ]

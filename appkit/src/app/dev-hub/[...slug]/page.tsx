@@ -336,6 +336,52 @@ await client.updateAttributes({
         </div>
       ),
       prev: { title: 'Login & Auth', href: '/dev-hub/modules/login' },
+      next: { title: 'Content Management (CMS)', href: '/dev-hub/modules/cms' }
+    },
+    'modules/cms': {
+      title: 'Content Management (CMS)',
+      description: 'Dynamic content delivery, templates, and the Professional Content Studio.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            AppKit CMS allows you to manage marketing pages, in-app notifications, and dynamic layouts without redeploying your application.
+          </p>
+          
+          <h2 className="text-2xl font-bold mt-12 mb-4">Content Studio</h2>
+          <p className="text-slate-600">The Content Studio provides a powerful editor for creating pages, managing templates, and analyzing content performance.</p>
+          
+          <h2 className="text-2xl font-bold mt-12 mb-4">Rendering Content</h2>
+          <CodeBlock 
+            id="render-content"
+            language="typescript"
+            code={`const content = await client.cms.getContent('welcome-page');
+// Render your components based on the content object
+return <div>{content.title}</div>;`}
+          />
+        </div>
+      ),
+      prev: { title: 'Identity & Profiles', href: '/dev-hub/modules/identity' },
+      next: { title: 'Localization & i18n', href: '/dev-hub/modules/localization' }
+    },
+    'modules/localization': {
+      title: 'Localization & i18n',
+      description: 'Multi-lingual support, translation management, and regional configuration.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed">
+            AppKit supports global applications with built-in localization services for managing languages and translations.
+          </p>
+          
+          <h2 className="text-2xl font-bold mt-12 mb-4">Fetching Translations</h2>
+          <CodeBlock 
+            id="get-translations"
+            language="typescript"
+            code={`const strings = await client.localization.getTranslations('en-US');
+console.log(strings['welcome.title']); // 'Welcome to AppKit'`}
+          />
+        </div>
+      ),
+      prev: { title: 'Content Management (CMS)', href: '/dev-hub/modules/cms' },
       next: { title: 'Groups & Organizations', href: '/dev-hub/modules/groups' }
     },
     'modules/groups': {
@@ -474,6 +520,38 @@ await client.logout({
         </div>
       ),
       prev: { title: 'Authentication API', href: '/dev-hub/api/auth' },
+      next: { title: 'CMS & Content API', href: '/dev-hub/api/cms' }
+    },
+    'api/cms': {
+      title: 'CMS & Content API',
+      description: 'API endpoints for managing content pages, versions, and templates.',
+      content: (
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold">GET /cms/content/pages</h2>
+          <p className="text-slate-600">Retrieve a list of content pages with optional filtering.</p>
+          <CodeBlock 
+            id="cms-list-api"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/cms/content/pages \\
+  -H "Authorization: Bearer YOUR_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">POST /cms/content/pages</h2>
+          <p className="text-slate-600">Create a new content page dynamically.</p>
+          <CodeBlock 
+            id="cms-create-api"
+            language="json"
+            code={`{
+  "title": "Summer Promotion",
+  "slug": "summer-promo",
+  "type": "marketing",
+  "status": "draft",
+  "components": []
+}`}
+          />
+        </div>
+      ),
+      prev: { title: 'Users API', href: '/dev-hub/api/users' },
       next: { title: 'Circles & Groups API', href: '/dev-hub/api/circles' }
     },
     'api/circles': {
@@ -506,8 +584,8 @@ await client.logout({
       next: { title: 'Audit & Security API', href: '/dev-hub/api/audit' }
     },
     'api/audit': {
-      title: 'Audit & Security API',
-      description: 'Access security logs and audit trails for compliance monitoring.',
+      title: 'Audit & Analytics API',
+      description: 'Access security logs, audit trails, and platform analytics.',
       content: (
         <div className="space-y-8">
           <h2 className="text-2xl font-bold">GET /audit/logs</h2>
@@ -516,6 +594,15 @@ await client.logout({
             id="query-logs"
             language="bash"
             code={`curl "https://auth.app.com/api/v1/audit/logs?targetId=usr_123" \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">GET /identity/analytics</h2>
+          <p className="text-slate-600">Retrieve user growth and engagement metrics.</p>
+          <CodeBlock 
+            id="identity-analytics"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/identity/analytics \\
   -H "Authorization: Bearer MGMT_TOKEN"`}
           />
         </div>
@@ -545,9 +632,124 @@ await client.logout({
   -H "Authorization: Bearer MGMT_TOKEN" \\
   -d '{ "name": "Mobile Project" }'`}
           />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">GET /applications/config</h2>
+          <p className="text-slate-600">Fetch global configuration defaults for Auth, Communication, and Legal.</p>
+          <CodeBlock 
+            id="app-config-api"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/app-config/config \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
         </div>
       ),
-      prev: { title: 'Audit & Security API', href: '/dev-hub/api/audit' }
+      prev: { title: 'Audit & Security API', href: '/dev-hub/api/audit' },
+      next: { title: 'Application Config', href: '/dev-hub/admin/app-config' }
+    },
+    'admin/app-config': {
+      title: 'Application Configuration',
+      description: 'Overview of the per-application configuration console with vertical sidebar navigation.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            Each application has a dedicated configuration page organized into a vertical sidebar with grouped sections. This replaces the previous horizontal tab layout for better navigation.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Sidebar Groups</h2>
+          <div className="grid gap-3">
+            {[
+              { group: 'Core', items: 'General, App Content, Integration Guide, Users, Surveys' },
+              { group: 'App Experience', items: 'Branding, Banners, Links & Support, Splash Screen, Version Control' },
+              { group: 'Identity & Security', items: 'Identity Scope, Auth Methods, Security & MFA' },
+              { group: 'Operations', items: 'Communication, Legal & Compliance, Login Sandbox' },
+            ].map((section) => (
+              <div key={section.group} className="p-4 rounded-xl border border-slate-100 bg-slate-50">
+                <h4 className="font-bold text-sm text-slate-900 mb-1">{section.group}</h4>
+                <p className="text-xs text-slate-500">{section.items}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Fetching App Config</h2>
+          <CodeBlock 
+            id="fetch-app-config"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/admin/applications/:appId \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Updating App Settings</h2>
+          <CodeBlock 
+            id="update-app-config"
+            language="bash"
+            code={`curl -X PUT https://auth.app.com/api/v1/admin/applications/:appId \\
+  -H "Authorization: Bearer MGMT_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "My App",
+    "description": "Updated description",
+    "status": "active",
+    "domain": "myapp.example.com"
+  }'`}
+          />
+        </div>
+      ),
+      prev: { title: 'Management API', href: '/dev-hub/api/management' },
+      next: { title: 'Appearance & Branding', href: '/dev-hub/admin/appearance' }
+    },
+    'admin/appearance': {
+      title: 'Appearance & Branding',
+      description: 'Configure branding, banners, links, splash screen, and version control per application.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The <strong>App Experience</strong> section in the application config sidebar provides five appearance-related settings panels. These were previously located on a separate Appearance page and are now integrated directly into each application&apos;s configuration.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Branding</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Set the application name, upload a logo, and configure splash screen quick settings including background color, spinner color, resize mode, and logo animation.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Banners (Announcements)</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Manage in-app announcement banners with configurable type (info, success, warning, error), message text, action URL, and dismissibility. Includes a real-time mobile device preview.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Links & Support</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Configure support channels (email, help desk, WhatsApp, Line), social profiles (Facebook, Instagram, Twitter, LinkedIn, Discord), and app store IDs.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Splash Screen</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Full splash screen customization: background color, spinner color/type (circle, dots, pulse, none), resize mode, logo animation (zoom, rotate, bounce, pulse), and visibility toggles for logo and app name.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Version Control</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Set minimum allowed app version and store URL. Enable force-update mode for critical security fixes to block users on outdated versions.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Saving Branding Config</h2>
+          <CodeBlock 
+            id="save-branding"
+            language="bash"
+            code={`curl -X PUT https://auth.app.com/api/v1/admin/applications/:appId/branding \\
+  -H "Authorization: Bearer MGMT_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "appName": "My Mobile App",
+    "logoUrl": "https://cdn.example.com/logo.png",
+    "announcements": { "enabled": true, "text": "Welcome!", "type": "info" },
+    "social": { "supportEmail": "help@example.com" },
+    "splash": { "backgroundColor": "#1e40af", "spinnerType": "dots" },
+    "updates": { "minVersion": "2.0.0", "forceUpdate": false }
+  }'`}
+          />
+        </div>
+      ),
+      prev: { title: 'Application Config', href: '/dev-hub/admin/app-config' }
     }
   }
 

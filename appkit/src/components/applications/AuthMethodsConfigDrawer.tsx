@@ -15,6 +15,7 @@ import {
   XCircleIcon,
   SaveIcon,
   Loader2Icon,
+  RotateCcwIcon,
 } from 'lucide-react'
 
 interface AuthMethodsConfigDrawerProps {
@@ -139,7 +140,10 @@ export default function AuthMethodsConfigDrawer({ isOpen, onClose, appId, appNam
 
               {useDefault ? (
                 <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-500/5 border border-blue-200/50 dark:border-blue-500/20">
-                  <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-3">Using Platform Defaults</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-300">Using Platform Defaults</p>
+                    <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-[10px] font-bold text-blue-600 uppercase tracking-tight rounded">Global</span>
+                  </div>
                   <div className="space-y-2">
                     {defaultProviders.map(p => {
                       const meta = PROVIDER_META[p.providerName]
@@ -156,22 +160,80 @@ export default function AuthMethodsConfigDrawer({ isOpen, onClose, appId, appNam
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {providers.map(p => {
-                    const meta = PROVIDER_META[p.providerName]
-                    return (
-                      <div key={p.providerName} className="flex items-center justify-between p-3 rounded-lg border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900">
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-8 h-8 rounded-md ${meta?.color || 'bg-gray-50 text-gray-500'} flex items-center justify-center`}>{meta?.icon || <CogIcon className="w-4 h-4" />}</div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{p.displayName}</span>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Individual Overrides</h3>
+                    <span className="text-[10px] text-gray-400 italic">Adjust individual methods from base</span>
+                  </div>
+                  <div className="space-y-3">
+                    {providers.map(p => {
+                      const meta = PROVIDER_META[p.providerName]
+                      const defaultP = defaultProviders.find(dp => dp.providerName === p.providerName)
+                      const isOverridden = JSON.stringify(p) !== JSON.stringify(defaultP)
+                      
+                      return (
+                        <div key={p.providerName} className={`p-4 rounded-xl border transition-all ${isOverridden ? 'border-blue-500/30 bg-blue-500/5 shadow-sm' : 'border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900'}`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className={`w-9 h-9 rounded-lg ${meta?.color || 'bg-gray-50 text-gray-500'} flex items-center justify-center shadow-sm`}>{meta?.icon || <CogIcon className="w-5 h-5" />}</div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{p.displayName}</span>
+                                  {isOverridden && <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-500/20 text-[9px] font-bold text-blue-600 uppercase rounded">Custom</span>}
+                                </div>
+                                <p className="text-[10px] text-gray-500 dark:text-zinc-500 mt-0.5">
+                                  {isOverridden ? 'Configuration overridden for this app' : 'Inheriting system default settings'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" className="sr-only peer" checked={p.isEnabled} onChange={() => toggleProvider(p.providerName)} />
+                                <div className="w-10 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
+                              </label>
+                            </div>
+                          </div>
+                          
+                          {/* Expanded Config */}
+                          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800/50 space-y-3">
+                            <div className="grid grid-cols-1 gap-3">
+                              <div>
+                                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">Client ID</label>
+                                <input 
+                                  type="text" 
+                                  value={p.clientId || ''} 
+                                  placeholder={defaultP?.clientId || 'Enter client id...'}
+                                  onChange={(e) => {
+                                    setProviders(prev => prev.map(item => item.providerName === p.providerName ? { ...item, clientId: e.target.value } : item))
+                                  }}
+                                  className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center justify-between pt-1">
+                              {isOverridden ? (
+                                <button 
+                                  onClick={() => {
+                                    if (defaultP) setProviders(prev => prev.map(item => item.providerName === p.providerName ? { ...defaultP } : item))
+                                  }}
+                                  className="text-[10px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 transition-colors"
+                                >
+                                  <RotateCcwIcon className="w-3 h-3" />
+                                  Reset to Default
+                                </button>
+                              ) : (
+                                <div />
+                              )}
+                              <span className="text-[10px] text-gray-400">
+                                {p.isEnabled ? 'Active' : 'Disabled'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" className="sr-only peer" checked={p.isEnabled} onChange={() => toggleProvider(p.providerName)} />
-                          <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
-                        </label>
-                      </div>
-                    )
-                  })}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </>

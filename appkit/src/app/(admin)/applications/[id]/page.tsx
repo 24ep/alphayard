@@ -10,6 +10,13 @@ import UserDetailDrawer from '@/components/users/UserDetailDrawer'
 import AuthMethodsConfigDrawer from '@/components/applications/AuthMethodsConfigDrawer'
 import CommunicationConfigDrawer from '@/components/applications/CommunicationConfigDrawer'
 import LegalConfigDrawer from '@/components/applications/LegalConfigDrawer'
+import SurveyBuilder from '@/components/applications/SurveyBuilder'
+import UserAttributesConfig from '@/components/applications/UserAttributesConfig'
+import { AnnouncementSettings } from '@/components/appearance/AnnouncementSettings'
+import { SocialSettings } from '@/components/appearance/SocialSettings'
+import { SplashScreenSettings } from '@/components/appearance/SplashScreenSettings'
+import { AppUpdateSettings } from '@/components/appearance/AppUpdateSettings'
+import { BrandingSettings } from '@/components/appearance/BrandingSettings'
 import { 
   ServerIcon, 
   UsersIcon,
@@ -37,7 +44,19 @@ import {
   CodeIcon,
   CopyIcon,
   CheckCircle2Icon,
-  ExternalLinkIcon
+  ExternalLinkIcon,
+  ImageIcon,
+  StarIcon,
+  XIcon,
+  Loader2Icon,
+  SaveIcon,
+  UserPlusIcon,
+  ClipboardListIcon,
+  MegaphoneIcon,
+  LinkIcon as LinksIcon,
+  SparklesIcon,
+  RocketIcon,
+  PaintbrushIcon,
 } from 'lucide-react'
 
 interface Application {
@@ -50,6 +69,12 @@ interface Application {
   lastModified: string
   plan: 'free' | 'pro' | 'enterprise'
   domain?: string
+  logoUrl?: string
+  appUrl?: string
+  gaTrackingId?: string
+  metaTitle?: string
+  metaDescription?: string
+  faviconUrl?: string
 }
 
 interface ApplicationUser {
@@ -72,7 +97,7 @@ export default function ApplicationConfigPage() {
   const [application, setApplication] = useState<Application | null>(null)
   const [users, setUsers] = useState<ApplicationUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('content')
+  const [activeTab, setActiveTab] = useState('general')
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -80,6 +105,46 @@ export default function ApplicationConfigPage() {
   const [isCommDrawerOpen, setIsCommDrawerOpen] = useState(false)
   const [isLegalDrawerOpen, setIsLegalDrawerOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Add User modal
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [addUserForm, setAddUserForm] = useState({ email: '', name: '', role: 'User', plan: 'Free' })
+  const [addingUser, setAddingUser] = useState(false)
+  // Sandbox mode
+  const [sandboxMode, setSandboxMode] = useState<'login' | 'signup'>('login')
+  const [sandboxResult, setSandboxResult] = useState<any>(null)
+  const [sandboxRunning, setSandboxRunning] = useState(false)
+  // General tab
+  const [generalSaving, setGeneralSaving] = useState(false)
+  const [generalMsg, setGeneralMsg] = useState('')
+  // Branding state for appearance components
+  const [appBranding, setAppBranding] = useState<any>({
+    appName: '',
+    logoUrl: '',
+    announcements: { enabled: false, text: '', linkUrl: '', type: 'info' as const, isDismissible: true },
+    social: { supportEmail: '', helpDeskUrl: '', whatsapp: '', instagram: '', facebook: '', line: '', twitter: '', linkedin: '', discord: '', appStoreId: '', playStoreId: '' },
+    splash: { backgroundColor: '#FFFFFF', spinnerColor: '#3B82F6', spinnerType: 'circle' as const, showAppName: true, showLogo: true, resizeMode: 'cover', logoAnimation: 'none' },
+    updates: { minVersion: '1.0.0', storeUrl: '', forceUpdate: false },
+  })
+  const [brandingUploading, setBrandingUploading] = useState(false)
+
+  const handleBrandingUpload = async (field: string, file: File) => {
+    setBrandingUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`/api/v1/admin/applications/${appId}/upload`, { method: 'POST', body: formData })
+      if (res.ok) {
+        const data = await res.json()
+        setAppBranding((prev: any) => ({ ...prev, [field]: data.url || URL.createObjectURL(file) }))
+      } else {
+        setAppBranding((prev: any) => ({ ...prev, [field]: URL.createObjectURL(file) }))
+      }
+    } catch {
+      setAppBranding((prev: any) => ({ ...prev, [field]: URL.createObjectURL(file) }))
+    } finally {
+      setBrandingUploading(false)
+    }
+  }
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text)
@@ -139,6 +204,87 @@ export default function ApplicationConfigPage() {
     setIsDrawerOpen(true)
   }
 
+  const handleAddUser = async () => {
+    if (!addUserForm.email || !addUserForm.name) return
+    try {
+      setAddingUser(true)
+      await fetch(`/api/v1/admin/applications/${appId}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addUserForm),
+      })
+      const newUser: ApplicationUser = {
+        id: Date.now().toString(),
+        email: addUserForm.email,
+        name: addUserForm.name,
+        status: 'active',
+        plan: addUserForm.plan,
+        joinedAt: new Date().toISOString().split('T')[0],
+        lastActive: new Date().toISOString().split('T')[0],
+        role: addUserForm.role,
+      }
+      setUsers(prev => [newUser, ...prev])
+      setShowAddUser(false)
+      setAddUserForm({ email: '', name: '', role: 'User', plan: 'Free' })
+    } catch (err) {
+      console.error('Failed to add user:', err)
+    } finally {
+      setAddingUser(false)
+    }
+  }
+
+  const handleSaveGeneral = async () => {
+    if (!application) return
+    try {
+      setGeneralSaving(true)
+      await fetch(`/api/v1/admin/applications/${appId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(application),
+      })
+      setGeneralMsg('Saved!')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    } catch {
+      setGeneralMsg('Failed')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    } finally {
+      setGeneralSaving(false)
+    }
+  }
+
+  const handleSandboxSimulate = (type: string) => {
+    setSandboxRunning(true)
+    setTimeout(() => {
+      setSandboxRunning(false)
+      if (type.includes('Success')) {
+        setSandboxResult({
+          status: 200,
+          body: {
+            success: true,
+            user: { id: 'usr_sandbox_001', email: 'test@sandbox.example.com', name: 'Sandbox User' },
+            tokens: { access_token: 'eyJhbGciOiJSUzI1NiIs...', refresh_token: 'dGhpcyBpcyBhIHRlc3Q...', expires_in: 3600 },
+          },
+        })
+      } else if (type.includes('Failure') || type.includes('Lockout')) {
+        setSandboxResult({
+          status: 401,
+          body: { success: false, error: type.includes('Lockout') ? 'Account locked. Try again in 30 minutes.' : 'Invalid credentials.' },
+        })
+      } else if (type.includes('MFA')) {
+        setSandboxResult({
+          status: 200,
+          body: { success: true, mfa_required: true, mfa_token: 'mfa_challenge_abc123', methods: ['totp', 'email'] },
+        })
+      } else if (type.includes('Verification')) {
+        setSandboxResult({
+          status: 200,
+          body: { success: true, message: 'Verification email sent to test@sandbox.example.com', verification_token: 'verify_xyz789' },
+        })
+      }
+    }, 800)
+  }
+
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -192,16 +338,43 @@ export default function ApplicationConfigPage() {
     u.email.toLowerCase().includes(userSearchQuery.toLowerCase())
   )
 
-  const tabItems = [
-    { value: 'content', icon: <ServerIcon className="w-4 h-4" />, label: 'App Content' },
-    { value: 'integration', icon: <CodeIcon className="w-4 h-4" />, label: 'Integration Guide' },
-    { value: 'users', icon: <UsersIcon className="w-4 h-4" />, label: 'Users' },
-    { value: 'identity', icon: <GlobeIcon className="w-4 h-4" />, label: 'Identity Scope' },
-    { value: 'auth', icon: <ShieldCheckIcon className="w-4 h-4" />, label: 'Auth Methods' },
-    { value: 'security', icon: <LockIcon className="w-4 h-4" />, label: 'Security & MFA' },
-    { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
-    { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
-    { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
+  const sidebarSections = [
+    {
+      title: 'Core',
+      items: [
+        { value: 'general', icon: <SettingsIcon className="w-4 h-4" />, label: 'General' },
+        { value: 'content', icon: <ServerIcon className="w-4 h-4" />, label: 'App Content' },
+        { value: 'integration', icon: <CodeIcon className="w-4 h-4" />, label: 'Integration Guide' },
+        { value: 'users', icon: <UsersIcon className="w-4 h-4" />, label: 'Users' },
+        { value: 'surveys', icon: <ClipboardListIcon className="w-4 h-4" />, label: 'Surveys' },
+      ],
+    },
+    {
+      title: 'App Experience',
+      items: [
+        { value: 'branding', icon: <PaintbrushIcon className="w-4 h-4" />, label: 'Branding' },
+        { value: 'banners', icon: <MegaphoneIcon className="w-4 h-4" />, label: 'Banners' },
+        { value: 'links', icon: <LinksIcon className="w-4 h-4" />, label: 'Links & Support' },
+        { value: 'splash', icon: <SparklesIcon className="w-4 h-4" />, label: 'Splash Screen' },
+        { value: 'versions', icon: <RocketIcon className="w-4 h-4" />, label: 'Version Control' },
+      ],
+    },
+    {
+      title: 'Identity & Security',
+      items: [
+        { value: 'identity', icon: <GlobeIcon className="w-4 h-4" />, label: 'Identity Scope' },
+        { value: 'auth', icon: <ShieldCheckIcon className="w-4 h-4" />, label: 'Auth Methods' },
+        { value: 'security', icon: <LockIcon className="w-4 h-4" />, label: 'Security & MFA' },
+      ],
+    },
+    {
+      title: 'Operations',
+      items: [
+        { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
+        { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
+        { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
+      ],
+    },
   ]
 
   return (
@@ -254,26 +427,195 @@ export default function ApplicationConfigPage() {
         ))}
       </div>
 
-      {/* Configuration Tabs */}
-      <Tabs activeTab={activeTab} onChange={setActiveTab} className="space-y-4">
-        <div className="border-b border-gray-200 dark:border-zinc-800 overflow-x-auto">
-          <TabsList className="flex space-x-1 bg-transparent p-0 min-w-max">
-            {tabItems.map((tab) => (
-              <TabsTrigger
-                key={tab.value}
-                value={tab.value}
-                className={`flex items-center space-x-2 px-4 py-2.5 text-sm font-medium rounded-none border-b-2 transition-all ${
-                  activeTab === tab.value
-                    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                    : 'border-transparent text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300 hover:border-gray-300'
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </TabsTrigger>
+      {/* Vertical Sidebar + Content Layout */}
+      <div className="flex gap-6">
+        {/* Vertical Sidebar */}
+        <aside className="w-56 shrink-0">
+          <div className="sticky top-4 rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-3 space-y-4">
+            {sidebarSections.map((section) => (
+              <div key={section.title}>
+                <h4 className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest px-3 mb-1.5">{section.title}</h4>
+                <div className="space-y-0.5">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.value}
+                      onClick={() => setActiveTab(item.value)}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        activeTab === item.value
+                          ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-sm'
+                          : 'text-gray-600 dark:text-zinc-400 hover:bg-gray-50 dark:hover:bg-zinc-800/50 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {item.icon}
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             ))}
-          </TabsList>
-        </div>
+          </div>
+        </aside>
+
+        {/* Content Area */}
+        <main className="flex-1 min-w-0">
+        <Tabs activeTab={activeTab} onChange={setActiveTab}>
+          <TabsList className="hidden"><TabsTrigger value={activeTab}>{activeTab}</TabsTrigger></TabsList>
+
+        {/* ==================== TAB: General Settings ==================== */}
+        <TabsContent value="general" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">General Settings</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure your application&apos;s identity, branding, and metadata.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {generalMsg && <span className={`text-xs font-medium ${generalMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{generalMsg}</span>}
+                <Button onClick={handleSaveGeneral} disabled={generalSaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                  {generalSaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {/* Logo & Name */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-gray-200 dark:border-zinc-800 hover:border-blue-400 dark:hover:border-blue-500/30 transition-colors cursor-pointer group">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/20 mb-3">
+                    {application.logoUrl ? (
+                      <img src={application.logoUrl} alt="" className="w-full h-full rounded-2xl object-cover" />
+                    ) : (
+                      application.name.substring(0, 2).toUpperCase()
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-400 group-hover:text-blue-500 transition-colors font-medium">Click to upload logo</p>
+                  <input
+                    type="text"
+                    value={application.logoUrl || ''}
+                    onChange={e => setApplication(prev => prev ? { ...prev, logoUrl: e.target.value } : prev)}
+                    placeholder="Or paste logo URL"
+                    className="mt-2 w-full px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] text-center focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+                <div className="lg:col-span-2 space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Application Name</label>
+                    <input
+                      type="text"
+                      value={application.name}
+                      onChange={e => setApplication(prev => prev ? { ...prev, name: e.target.value } : prev)}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Description</label>
+                    <textarea
+                      value={application.description}
+                      onChange={e => setApplication(prev => prev ? { ...prev, description: e.target.value } : prev)}
+                      rows={2}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Application URL</label>
+                      <input
+                        type="url"
+                        value={application.appUrl || application.domain || ''}
+                        onChange={e => setApplication(prev => prev ? { ...prev, appUrl: e.target.value } : prev)}
+                        placeholder="https://your-app.com"
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Status</label>
+                      <select
+                        value={application.status}
+                        onChange={e => setApplication(prev => prev ? { ...prev, status: e.target.value as Application['status'] } : prev)}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="development">Development</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Analytics & Metadata */}
+              <div className="pt-4 border-t border-gray-100 dark:border-zinc-800/50">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Analytics & Metadata</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Google Analytics ID</label>
+                    <input
+                      type="text"
+                      value={application.gaTrackingId || ''}
+                      onChange={e => setApplication(prev => prev ? { ...prev, gaTrackingId: e.target.value } : prev)}
+                      placeholder="G-XXXXXXXXXX"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Favicon URL</label>
+                    <input
+                      type="url"
+                      value={application.faviconUrl || ''}
+                      onChange={e => setApplication(prev => prev ? { ...prev, faviconUrl: e.target.value } : prev)}
+                      placeholder="https://your-app.com/favicon.ico"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Meta Title</label>
+                    <input
+                      type="text"
+                      value={application.metaTitle || ''}
+                      onChange={e => setApplication(prev => prev ? { ...prev, metaTitle: e.target.value } : prev)}
+                      placeholder="Your App — Tagline"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Meta Description</label>
+                    <input
+                      type="text"
+                      value={application.metaDescription || ''}
+                      onChange={e => setApplication(prev => prev ? { ...prev, metaDescription: e.target.value } : prev)}
+                      placeholder="A short description for search engines"
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Info */}
+              <div className="pt-4 border-t border-gray-100 dark:border-zinc-800/50">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Application Info</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                    <p className="text-gray-400 mb-0.5">App ID</p>
+                    <p className="font-mono text-gray-700 dark:text-zinc-300 truncate">{appId}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                    <p className="text-gray-400 mb-0.5">Plan</p>
+                    <p className="font-medium text-gray-700 dark:text-zinc-300 capitalize">{application.plan}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                    <p className="text-gray-400 mb-0.5">Created</p>
+                    <p className="font-medium text-gray-700 dark:text-zinc-300">{new Date(application.createdAt).toLocaleDateString()}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                    <p className="text-gray-400 mb-0.5">Users</p>
+                    <p className="font-medium text-gray-700 dark:text-zinc-300">{application.users.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
         {/* ==================== TAB 1: App Content ==================== */}
         <TabsContent value="content" className="space-y-4">
@@ -411,6 +753,62 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
+              {/* Signup Integration */}
+              <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                  <UserPlusIcon className="w-5 h-5 text-violet-500" />
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Signup Integration</h4>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-zinc-400">Trigger the signup flow to register new users from your application.</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button
+                      onClick={() => handleCopy(`import { AppKit } from '@appkit/identity-core';\n\nconst client = new AppKit({\n  clientId: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID,\n  domain: process.env.NEXT_PUBLIC_APPKIT_DOMAIN\n});\n\n// Trigger signup\nawait client.signup({\n  email: 'user@example.com',\n  password: 'securePassword123',\n  name: 'John Doe',\n});`, 'code-signup')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'code-signup' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <span className="text-purple-400">import</span> {'{ AppKit }'} <span className="text-purple-400">from</span> <span className="text-green-300">&apos;@appkit/identity-core&apos;</span>;<br/><br/>
+                    <span className="text-purple-400">const</span> client = <span className="text-purple-400">new</span> <span className="text-yellow-200">AppKit</span>({'{'} ... {'}'});<br/><br/>
+                    <span className="text-gray-500">// Trigger signup</span><br/>
+                    <span className="text-purple-400">await</span> client.<span className="text-blue-200">signup</span>({'{'}<br/>
+                    {'  '}email: <span className="text-green-300">&apos;user@example.com&apos;</span>,<br/>
+                    {'  '}password: <span className="text-green-300">&apos;securePassword123&apos;</span>,<br/>
+                    {'  '}name: <span className="text-green-300">&apos;John Doe&apos;</span>,<br/>
+                    {'}'});
+                  </pre>
+                </div>
+              </div>
+
+              {/* Survey SDK */}
+              <div className="space-y-4 pt-6 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex items-center gap-2 border-b border-gray-100 dark:border-zinc-800 pb-2">
+                  <ClipboardListIcon className="w-5 h-5 text-amber-500" />
+                  <h4 className="font-semibold text-gray-900 dark:text-white">Survey SDK</h4>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-zinc-400">Trigger in-app surveys to collect feedback from your users.</p>
+                <div className="relative group">
+                  <div className="absolute right-3 top-3">
+                    <button
+                      onClick={() => handleCopy(`// Show a survey by ID\nawait client.showSurvey('SURVEY_ID');\n\n// Listen for survey completion\nclient.on('survey:completed', (res) => {\n  console.log('Answers:', res.answers);\n});`, 'code-survey')}
+                      className="p-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors"
+                    >
+                      {copiedId === 'code-survey' ? <CheckCircle2Icon className="w-4 h-4 text-emerald-400" /> : <CopyIcon className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800">
+                    <span className="text-gray-500">// Show a survey by ID</span><br/>
+                    <span className="text-purple-400">await</span> client.<span className="text-blue-200">showSurvey</span>(<span className="text-green-300">&apos;SURVEY_ID&apos;</span>);<br/><br/>
+                    <span className="text-gray-500">// Listen for survey completion</span><br/>
+                    client.<span className="text-blue-200">on</span>(<span className="text-green-300">&apos;survey:completed&apos;</span>, (res) ={'> {'}<br/>
+                    {'  '}console.log(<span className="text-green-300">&apos;Answers:&apos;</span>, res.answers);<br/>
+                    {'}'});
+                  </pre>
+                </div>
+              </div>
+
             </div>
           </div>
         </TabsContent>
@@ -439,8 +837,8 @@ export default function ApplicationConfigPage() {
                   <FilterIcon className="w-4 h-4 mr-1.5" />
                   Filter
                 </Button>
-                <Button size="sm" className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
-                  <PlusIcon className="w-4 h-4 mr-1.5" />
+                <Button size="sm" onClick={() => setShowAddUser(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                  <UserPlusIcon className="w-4 h-4 mr-1.5" />
                   Add User
                 </Button>
               </div>
@@ -526,6 +924,15 @@ export default function ApplicationConfigPage() {
           </div>
         </TabsContent>
 
+        {/* ==================== TAB: Surveys ==================== */}
+        <TabsContent value="surveys" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Surveys</h3>
+            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Create and manage surveys to collect user feedback. Embed them via the SDK.</p>
+            <SurveyBuilder appId={appId} />
+          </div>
+        </TabsContent>
+
         {/* ==================== TAB 3: Global Identity Scope ==================== */}
         <TabsContent value="identity" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
@@ -554,33 +961,9 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              {/* User Attributes */}
+              {/* User Attributes — powered by UserAttributesConfig */}
               <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                    <UsersIcon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white">User Attributes</h4>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400">Define required and optional user profile fields</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  {['Email', 'First Name', 'Last Name', 'Phone Number', 'Avatar URL', 'Company'].map((attr, i) => (
-                    <div key={attr} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50">
-                      <span className="text-sm text-gray-700 dark:text-zinc-300">{attr}</span>
-                      <div className="flex items-center space-x-3">
-                        <span className={`text-xs font-medium ${i < 3 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-zinc-500'}`}>
-                          {i < 3 ? 'Required' : 'Optional'}
-                        </span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input type="checkbox" className="sr-only peer" defaultChecked={i < 4} />
-                          <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <UserAttributesConfig appId={appId} mode="app" />
               </div>
 
               {/* Scope Settings */}
@@ -893,33 +1276,74 @@ export default function ApplicationConfigPage() {
           </div>
         </TabsContent>
 
-        {/* ==================== TAB 7: Login Sandbox ==================== */}
+        {/* ==================== TAB: Login Sandbox ==================== */}
         <TabsContent value="sandbox" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Login Sandbox</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Test and preview login flows in a safe sandbox environment.</p>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Login Sandbox</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Test and preview login & signup flows in a safe sandbox environment.</p>
+              </div>
+              <div className="flex items-center rounded-lg bg-gray-100 dark:bg-zinc-800 p-1">
+                {(['login', 'signup'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => { setSandboxMode(mode); setSandboxResult(null) }}
+                    className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      sandboxMode === mode
+                        ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-zinc-400 hover:text-gray-700'
+                    }`}
+                  >
+                    {mode === 'login' ? 'Sign In' : 'Sign Up'}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Preview */}
-              <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 p-8 flex flex-col items-center justify-center min-h-[400px]">
+              <div className="rounded-xl border border-gray-200 dark:border-zinc-800 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-zinc-900 dark:to-zinc-950 p-8 flex flex-col items-center justify-center min-h-[420px]">
                 <div className="w-full max-w-sm space-y-4">
                   <div className="text-center mb-6">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-500/20 mx-auto mb-3">
                       {application.name.substring(0, 2).toUpperCase()}
                     </div>
-                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">Sign in to {application.name}</h4>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Enter your credentials to continue</p>
+                    <h4 className="text-lg font-bold text-gray-900 dark:text-white">
+                      {sandboxMode === 'login' ? `Sign in to ${application.name}` : `Create your ${application.name} account`}
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+                      {sandboxMode === 'login' ? 'Enter your credentials to continue' : 'Fill in the details below to get started'}
+                    </p>
                   </div>
+                  {sandboxMode === 'signup' && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Full Name</label>
+                      <input type="text" placeholder="John Doe" className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Email</label>
                     <input type="email" placeholder="user@example.com" className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Password</label>
-                    <input type="password" placeholder="••••••••" className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
+                    <input type="password" placeholder={'••••••••'} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
                   </div>
+                  {sandboxMode === 'signup' && (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1">Confirm Password</label>
+                        <input type="password" placeholder={'••••••••'} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
+                      </div>
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" className="w-3.5 h-3.5 mt-0.5 text-blue-500 border-gray-300 dark:border-zinc-600 rounded" />
+                        <span className="text-[11px] text-gray-500 dark:text-zinc-400">I agree to the Terms of Service and Privacy Policy</span>
+                      </label>
+                    </>
+                  )}
                   <button className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all">
-                    Sign In
+                    {sandboxMode === 'login' ? 'Sign In' : 'Create Account'}
                   </button>
                   <div className="flex items-center my-3">
                     <div className="flex-1 border-t border-gray-200 dark:border-zinc-700" />
@@ -930,25 +1354,27 @@ export default function ApplicationConfigPage() {
                     <GlobeIcon className="w-4 h-4 mr-2" />
                     Continue with Google
                   </button>
+                  <p className="text-center text-[11px] text-gray-400 mt-2">
+                    {sandboxMode === 'login'
+                      ? <span>Don&apos;t have an account? <button onClick={() => setSandboxMode('signup')} className="text-blue-500 font-medium">Sign up</button></span>
+                      : <span>Already have an account? <button onClick={() => setSandboxMode('login')} className="text-blue-500 font-medium">Sign in</button></span>
+                    }
+                  </p>
                 </div>
               </div>
 
-              {/* Sandbox Controls */}
+              {/* Controls & Response */}
               <div className="space-y-4">
                 <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
                   <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3">Sandbox Settings</h4>
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Test User Email</label>
-                      <input type="email" defaultValue="test@sandbox.example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Test User Password</label>
-                      <input type="password" defaultValue="sandbox123" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                      <input type="email" defaultValue="test@sandbox.example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Redirect URL</label>
-                      <input type="url" defaultValue={`https://${application.domain || 'localhost:3000'}/callback`} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                      <input type="url" defaultValue={`https://${application.domain || 'localhost:3000'}/callback`} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                   </div>
                 </div>
@@ -956,30 +1382,82 @@ export default function ApplicationConfigPage() {
                 <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
                   <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3">Test Scenarios</h4>
                   <div className="space-y-2">
-                    {[
-                      { label: 'Simulate Login Success', desc: 'Test successful authentication flow', icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" /> },
-                      { label: 'Simulate Login Failure', desc: 'Test error handling and messages', icon: <XCircleIcon className="w-4 h-4 text-red-500" /> },
-                      { label: 'Simulate MFA Challenge', desc: 'Test MFA verification step', icon: <ShieldCheckIcon className="w-4 h-4 text-violet-500" /> },
-                      { label: 'Simulate Account Lockout', desc: 'Test lockout after failed attempts', icon: <AlertTriangleIcon className="w-4 h-4 text-amber-500" /> },
-                    ].map((scenario) => (
+                    {(sandboxMode === 'login' ? [
+                      { label: 'Simulate Login Success', desc: 'Successful auth flow', icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" /> },
+                      { label: 'Simulate Login Failure', desc: 'Error handling', icon: <XCircleIcon className="w-4 h-4 text-red-500" /> },
+                      { label: 'Simulate MFA Challenge', desc: 'MFA verification', icon: <ShieldCheckIcon className="w-4 h-4 text-violet-500" /> },
+                      { label: 'Simulate Account Lockout', desc: 'Lockout flow', icon: <AlertTriangleIcon className="w-4 h-4 text-amber-500" /> },
+                    ] : [
+                      { label: 'Simulate Signup Success', desc: 'Successful registration', icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" /> },
+                      { label: 'Simulate Signup Failure', desc: 'Validation errors', icon: <XCircleIcon className="w-4 h-4 text-red-500" /> },
+                      { label: 'Simulate Email Verification', desc: 'Email verification step', icon: <MailIcon className="w-4 h-4 text-blue-500" /> },
+                    ]).map((scenario) => (
                       <button
                         key={scenario.label}
-                        className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all text-left"
+                        onClick={() => handleSandboxSimulate(scenario.label)}
+                        disabled={sandboxRunning}
+                        className="w-full flex items-center space-x-3 p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all text-left disabled:opacity-50"
                       >
                         {scenario.icon}
-                        <div>
+                        <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900 dark:text-white">{scenario.label}</p>
                           <p className="text-xs text-gray-500 dark:text-zinc-400">{scenario.desc}</p>
                         </div>
+                        {sandboxRunning && <Loader2Icon className="w-4 h-4 animate-spin text-blue-500" />}
                       </button>
                     ))}
                   </div>
                 </div>
+
+                {sandboxResult && (
+                  <div className="rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${sandboxResult.status === 200 ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <span className="text-xs font-bold text-gray-600 dark:text-zinc-300">Response ({sandboxResult.status})</span>
+                      </div>
+                      <button onClick={() => setSandboxResult(null)} className="text-gray-400 hover:text-gray-500">
+                        <XIcon className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <pre className="p-4 bg-[#0d1117] text-gray-300 text-xs overflow-x-auto max-h-48">
+                      <code>{JSON.stringify(sandboxResult.body, null, 2)}</code>
+                    </pre>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </TabsContent>
-      </Tabs>
+
+        {/* ==================== TAB: Branding ==================== */}
+        <TabsContent value="branding" className="space-y-4">
+          <BrandingSettings branding={appBranding} setBranding={setAppBranding} handleBrandingUpload={handleBrandingUpload} uploading={brandingUploading} />
+        </TabsContent>
+
+        {/* ==================== TAB: Banners ==================== */}
+        <TabsContent value="banners" className="space-y-4">
+          <AnnouncementSettings announcements={appBranding.announcements} setBranding={setAppBranding} />
+        </TabsContent>
+
+        {/* ==================== TAB: Links & Support ==================== */}
+        <TabsContent value="links" className="space-y-4">
+          <SocialSettings social={appBranding.social} setBranding={setAppBranding} />
+        </TabsContent>
+
+        {/* ==================== TAB: Splash Screen ==================== */}
+        <TabsContent value="splash" className="space-y-4">
+          <SplashScreenSettings branding={appBranding} setBranding={setAppBranding} />
+        </TabsContent>
+
+        {/* ==================== TAB: Version Control ==================== */}
+        <TabsContent value="versions" className="space-y-4">
+          <AppUpdateSettings updates={appBranding.updates} setBranding={setAppBranding} />
+        </TabsContent>
+
+        </Tabs>
+        </main>
+      </div>
 
       {/* User Detail Drawer */}
       {selectedUserId && (
@@ -1013,6 +1491,76 @@ export default function ApplicationConfigPage() {
         appId={appId}
         appName={application.name}
       />
+
+      {/* Add User Modal */}
+      {showAddUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddUser(false)} />
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-zinc-800/80 w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Add New User</h3>
+              <button onClick={() => setShowAddUser(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={addUserForm.email}
+                  onChange={e => setAddUserForm(p => ({ ...p, email: e.target.value }))}
+                  placeholder="user@example.com"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={addUserForm.name}
+                  onChange={e => setAddUserForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="John Doe"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Role</label>
+                  <select
+                    value={addUserForm.role}
+                    onChange={e => setAddUserForm(p => ({ ...p, role: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option>User</option>
+                    <option>Editor</option>
+                    <option>Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Plan</label>
+                  <select
+                    value={addUserForm.plan}
+                    onChange={e => setAddUserForm(p => ({ ...p, plan: e.target.value }))}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    <option>Free</option>
+                    <option>Pro</option>
+                    <option>Enterprise</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowAddUser(false)}>Cancel</Button>
+              <Button onClick={handleAddUser} disabled={addingUser || !addUserForm.email || !addUserForm.name} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                {addingUser ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <UserPlusIcon className="w-4 h-4 mr-1.5" />}
+                Add User
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
