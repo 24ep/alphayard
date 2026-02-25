@@ -1,5 +1,5 @@
-// Database-based Authentication Service
 import { prisma } from '@/server/lib/prisma'
+import bcrypt from 'bcryptjs'
 
 export interface DatabaseAuthUser {
   id: string
@@ -39,12 +39,15 @@ class DatabaseAuthService {
       throw new Error('User not found or inactive')
     }
 
+    // Create a hash of the token for storage
+    const tokenHash = await bcrypt.hash(sessionToken, 10);
+
     // Create session
     const session = await prisma.userSession.create({
       data: {
         userId,
-        sessionToken,
-        refreshToken,
+        // We only store the hash of the token for security and to avoid length limits
+        tokenHash,
         expiresAt,
         isActive: true,
         lastActivityAt: new Date()
@@ -83,9 +86,10 @@ class DatabaseAuthService {
 
   // Get session by token
   async getSessionByToken(token: string): Promise<DatabaseAuthSession | null> {
-    const session = await prisma.userSession.findFirst({
+    // We cannot query by tokenHash directly because bcrypt salts are unique
+    // We get all active sessions and verify the hash
+    const activeSessions = await prisma.userSession.findMany({
       where: {
-        sessionToken: token,
         isActive: true,
         expiresAt: {
           gt: new Date()
@@ -103,6 +107,17 @@ class DatabaseAuthService {
         }
       }
     })
+
+    let session = null;
+    for (const s of activeSessions) {
+        if (s.tokenHash && await bcrypt.compare(token, s.tokenHash)) {
+            session = s;
+            break;
+        } else if (s.sessionToken === token) { // fallback for old unhashed tokens
+            session = s;
+            break;
+        }
+    }
 
     if (!session || !session.user.isActive) {
       return null
@@ -134,9 +149,9 @@ class DatabaseAuthService {
 
   // Get session by refresh token
   async getSessionByRefreshToken(refreshToken: string): Promise<DatabaseAuthSession | null> {
-    const session = await prisma.userSession.findFirst({
+    // For now, treat refresh tokens the same as session tokens in terms of hashing rules
+    const activeSessions = await prisma.userSession.findMany({
       where: {
-        refreshToken: refreshToken,
         isActive: true,
         expiresAt: {
           gt: new Date()
@@ -154,6 +169,17 @@ class DatabaseAuthService {
         }
       }
     })
+
+    let session = null;
+    for (const s of activeSessions) {
+        if (s.tokenHash && await bcrypt.compare(refreshToken, s.tokenHash)) {
+            session = s;
+            break;
+        } else if (s.refreshToken === refreshToken) { // fallback
+            session = s;
+            break;
+        }
+    }
 
     if (!session || !session.user.isActive) {
       return null
