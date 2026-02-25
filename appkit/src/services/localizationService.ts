@@ -24,7 +24,7 @@ export interface Region {
     isEnabled: boolean;
 }
 
-const API_BASE = '/api/admin/cms/localization';
+const API_BASE = '/api/v1/admin/cms/localization';
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     const res = await fetch(url, {
@@ -149,7 +149,7 @@ export const localizationService = {
     getRegions: async (): Promise<Region[]> => {
         // Regions are typically reference data; fetch from countries endpoint  
         try {
-            const res = await fetch('/api/admin/reference/countries');
+            const res = await fetch('/api/v1/admin/reference/countries');
             if (res.ok) {
                 const data = await res.json();
                 return (data.countries || data || []).map((c: any) => ({

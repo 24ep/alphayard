@@ -395,11 +395,11 @@ class AdminService {
   }
 
   async getThemes(): Promise<{ themes: any[] }> {
-    return this.request<{ themes: any[] }>('/admin/config/themes');
+    return this.request<{ themes: any[] }>('/v1/admin/config/themes');
   }
 
   async updateTheme(appId: string, themeName: string, themeConfig: any): Promise<{ setting: any }> {
-    return this.request<{ setting: any }>(`/admin/config/themes/${themeName}`, {
+    return this.request<{ setting: any }>(`/v1/admin/config/themes/${themeName}`, {
       method: 'PUT',
       body: JSON.stringify({ appId, themeConfig }),
     });

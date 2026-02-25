@@ -120,7 +120,7 @@ class UserService {
         if (params.attribute) query.append('attribute', params.attribute)
         if (params.role) query.append('role', params.role)
         
-        const response = await this.request<{ users: any[], total: number, totalPages: number, currentPage: number }>(`/admin/users?${query.toString()}`)
+        const response = await this.request<{ users: any[], total: number, totalPages: number, currentPage: number }>(`/v1/admin/users?${query.toString()}`)
         return {
             users: (response.users || []).map(u => this.mapBackendUser(u)),
             total: response.total || 0,
@@ -130,12 +130,12 @@ class UserService {
     }
 
     async getUserById(id: string): Promise<GlobalUser | undefined> {
-        const response = await this.request<{ user: any }>(`/admin/users/${id}`)
+        const response = await this.request<{ user: any }>(`/v1/admin/users/${id}`)
         return response.user ? this.mapBackendUser(response.user) : undefined
     }
 
     async createUser(userData: any): Promise<GlobalUser> {
-        const response = await this.request<any>('/admin/identity/users', {
+        const response = await this.request<any>('/v1/admin/identity/users', {
             method: 'POST',
             body: JSON.stringify(userData),
         })
@@ -149,7 +149,7 @@ class UserService {
         if (updates.lastName !== undefined) backendUpdates.lastName = updates.lastName
         if (updates.status !== undefined) backendUpdates.is_active = (updates.status === 'active')
         
-        const response = await this.request<any>(`/admin/users/${id}`, {
+        const response = await this.request<any>(`/v1/admin/users/${id}`, {
             method: 'PUT',
             body: JSON.stringify(backendUpdates),
         })
@@ -157,23 +157,23 @@ class UserService {
     }
 
     async deleteUser(id: string): Promise<void> {
-        await this.request(`/admin/users/${id}`, {
+        await this.request(`/v1/admin/users/${id}`, {
             method: 'DELETE',
         })
     }
 
     async getApplications(): Promise<Application[]> {
-        const response = await this.request<{ applications: Application[] }>('/admin/applications')
+        const response = await this.request<{ applications: Application[] }>('/v1/admin/applications')
         return response.applications || []
     }
 
     async getCircles(): Promise<Circle[]> {
-        const response = await this.request<{ circles: Circle[] }>('/admin/circles')
+        const response = await this.request<{ circles: Circle[] }>('/v1/admin/circles')
         return response.circles || []
     }
 
     async impersonateUser(userId: string): Promise<{ token: string }> {
-        return this.request<{ token: string }>(`/admin/users/${userId}/impersonate`, {
+        return this.request<{ token: string }>(`/v1/admin/users/${userId}/impersonate`, {
             method: 'POST'
         })
     }

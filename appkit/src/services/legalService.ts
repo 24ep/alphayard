@@ -59,7 +59,7 @@ const getAuthHeaders = () => {
 // =====================================================
 
 export async function getLegalDocuments(): Promise<LegalDocument[]> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents`, {
     headers: getAuthHeaders(),
   });
   
@@ -72,7 +72,7 @@ export async function getLegalDocuments(): Promise<LegalDocument[]> {
 }
 
 export async function getLegalDocument(id: string): Promise<LegalDocument> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents/${id}`, {
     headers: getAuthHeaders(),
   });
   
@@ -85,7 +85,7 @@ export async function getLegalDocument(id: string): Promise<LegalDocument> {
 }
 
 export async function createLegalDocument(document: Partial<LegalDocument>): Promise<LegalDocument> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(document),
@@ -101,7 +101,7 @@ export async function createLegalDocument(document: Partial<LegalDocument>): Pro
 }
 
 export async function updateLegalDocument(id: string, updates: Partial<LegalDocument>): Promise<LegalDocument> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(updates),
@@ -117,7 +117,7 @@ export async function updateLegalDocument(id: string, updates: Partial<LegalDocu
 }
 
 export async function deleteLegalDocument(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -128,7 +128,7 @@ export async function deleteLegalDocument(id: string): Promise<void> {
 }
 
 export async function publishLegalDocument(id: string): Promise<LegalDocument> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents/${id}/publish`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents/${id}/publish`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -142,7 +142,7 @@ export async function publishLegalDocument(id: string): Promise<LegalDocument> {
 }
 
 export async function archiveLegalDocument(id: string): Promise<LegalDocument> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/documents/${id}/archive`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/documents/${id}/archive`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -160,7 +160,7 @@ export async function archiveLegalDocument(id: string): Promise<LegalDocument> {
 // =====================================================
 
 export async function getDeveloperDocs(): Promise<DeveloperDoc[]> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/developer-docs`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/developer-docs`, {
     headers: getAuthHeaders(),
   });
   
@@ -173,7 +173,7 @@ export async function getDeveloperDocs(): Promise<DeveloperDoc[]> {
 }
 
 export async function getDeveloperDoc(id: string): Promise<DeveloperDoc> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/developer-docs/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/developer-docs/${id}`, {
     headers: getAuthHeaders(),
   });
   
@@ -186,7 +186,7 @@ export async function getDeveloperDoc(id: string): Promise<DeveloperDoc> {
 }
 
 export async function createDeveloperDoc(document: Partial<DeveloperDoc>): Promise<DeveloperDoc> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/developer-docs`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/developer-docs`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(document),
@@ -202,7 +202,7 @@ export async function createDeveloperDoc(document: Partial<DeveloperDoc>): Promi
 }
 
 export async function updateDeveloperDoc(id: string, updates: Partial<DeveloperDoc>): Promise<DeveloperDoc> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/developer-docs/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/developer-docs/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(updates),
@@ -218,7 +218,7 @@ export async function updateDeveloperDoc(id: string, updates: Partial<DeveloperD
 }
 
 export async function deleteDeveloperDoc(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/legal/developer-docs/${id}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/legal/developer-docs/${id}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });

@@ -3,7 +3,6 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { prisma } from '@/server/lib/prisma'
 import { config } from '@/server/config/env'
-import { auditService, AuditAction } from '@/server/services/auditService'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,51 +13,37 @@ export async function POST(request: NextRequest) {
     }
 
     // Find admin user
-    const adminUser = await prisma.adminUser.findUnique({
-      where: { email },
-      include: {
-        role: true,
-        adminUserApplications: {
-          include: { application: true }
-        }
+    const adminUser = await prisma.adminUser.findFirst({
+      where: { 
+        email: email.toLowerCase(),
+        isActive: true 
       }
     })
 
-    if (!adminUser || !adminUser.isActive) {
+    if (!adminUser) {
+      console.log(`Login failed: Admin user ${email} not found or inactive`)
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Verify password
+    // Check password
     const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash)
     if (!isValidPassword) {
+      console.log(`Login failed: Invalid password for ${email}`)
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // Create permissions array
-    let permissions: string[] = []
-    if (adminUser.isSuperAdmin) {
-      permissions = ['*']
-    } else if (adminUser.role) {
-      // Fetch permissions for the role
-      const rolePermissions = await prisma.adminRolePermission.findMany({
-        where: { roleId: adminUser.roleId! },
-        include: { permission: true }
-      })
-      permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`)
-    }
-
-    // Generate JWT
+    // Generate JWT token
     const token = jwt.sign(
       {
-        id: adminUser.id, // admin_users.id
+        id: adminUser.id,
         adminId: adminUser.id,
         email: adminUser.email,
-        firstName: adminUser.name.split(' ')[0] || '',
-        lastName: adminUser.name.split(' ').slice(1).join(' ') || '',
-        role: adminUser.role?.name || 'admin',
+        firstName: adminUser.name || '',
+        lastName: '',
+        role: adminUser.roleId || 'admin',
+        permissions: [], // TODO: Fetch permissions from role
         type: 'admin',
-        isSuperAdmin: adminUser.isSuperAdmin,
-        permissions
+        isSuperAdmin: adminUser.isSuperAdmin || false
       },
       config.JWT_SECRET,
       { expiresIn: '24h' }
@@ -70,33 +55,24 @@ export async function POST(request: NextRequest) {
       data: { lastLoginAt: new Date() }
     })
 
-    // Audit login
-    await auditService.logAuthEvent(
-      adminUser.id,
-      AuditAction.LOGIN,
-      'AdminUser',
-      {},
-      request.ip,
-      request.headers.get('User-Agent') || undefined
-    )
+    const userResponse = {
+      id: adminUser.id,
+      email: adminUser.email,
+      firstName: adminUser.name || undefined,
+      lastName: undefined,
+      role: adminUser.roleId || 'admin',
+      permissions: [],
+      isSuperAdmin: adminUser.isSuperAdmin || false
+    }
 
-    return NextResponse.json({
-      token,
-      user: {
-        id: adminUser.id,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role?.name,
-        isSuperAdmin: adminUser.isSuperAdmin,
-        avatarUrl: adminUser.avatarUrl
-      }
+    return NextResponse.json({ 
+      success: true, 
+      data: { user: userResponse, token },
+      message: 'Login successful' 
     })
 
   } catch (error: any) {
-    console.error('Admin login error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    console.error('Local admin login error:', error)
+    return NextResponse.json({ error: 'Login failed', details: error.message }, { status: 500 })
   }
 }

@@ -218,7 +218,7 @@ export const settingsService = {
       // Get authentication token
       const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
       
-      const res = await fetch(`${base}/admin/config/branding`, { 
+      const res = await fetch(`${base}/v1/admin/config/branding`, { 
         credentials: 'include',
         headers: {
           ...(token && { Authorization: `Bearer ${token}` })
@@ -255,7 +255,7 @@ export const settingsService = {
        // Get authentication token
        const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null
        
-      const res = await fetch(`${base}/admin/config/branding`, {
+      const res = await fetch(`${base}/v1/admin/config/branding`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
@@ -275,8 +275,9 @@ export const settingsService = {
   async getTheme(apiBase?: string): Promise<MobileThemeConfig | null> {
     const STORAGE_KEY_THEME = 'appkit.theme.settings.v1'
     try {
-      const base = apiBase || (typeof window !== 'undefined' ? '/api/v1' : (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3002'}/api/v1`))
-      const res = await fetch(`${base}/admin/config/themes`, {
+      const { API_BASE_URL } = await import('./apiConfig')
+      const base = apiBase || API_BASE_URL
+      const res = await fetch(`${base}/v1/admin/config/themes`, {
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
@@ -310,8 +311,9 @@ export const settingsService = {
     storage?.setItem(STORAGE_KEY_THEME, JSON.stringify(themeConfig))
 
     try {
-      const base = apiBase || (typeof window !== 'undefined' ? '/api/v1' : (process.env.NEXT_PUBLIC_API_URL || `${process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3002'}/api/v1`))
-      const res = await fetch(`${base}/admin/config/themes/default`, {
+      const { API_BASE_URL } = await import('./apiConfig')
+      const base = apiBase || API_BASE_URL
+      const res = await fetch(`${base}/v1/admin/config/themes/default`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',

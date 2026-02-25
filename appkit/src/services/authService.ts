@@ -97,7 +97,7 @@ class AuthService {
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     // Call real API
-    const response = await this.request<AuthResponse>('/admin/auth/login', {
+    const response = await this.request<AuthResponse>('/v1/admin/auth/login', {
       method: 'POST',
       body: JSON.stringify({
         email: credentials.email,
@@ -140,7 +140,7 @@ class AuthService {
   async logout(): Promise<void> {
     try {
       // Call API to logout
-      await this.request<void>('/admin/auth/logout', {
+      await this.request<void>('/v1/admin/auth/logout', {
         method: 'POST',
       })
     } catch (error) {

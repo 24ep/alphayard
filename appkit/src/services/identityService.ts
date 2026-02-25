@@ -255,7 +255,7 @@ export async function createUser(data: {
   emailVerified?: boolean;
   sendWelcomeEmail?: boolean;
 }): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -270,7 +270,7 @@ export async function createUser(data: {
 }
 
 export async function bulkUserOperation(action: string, userIds: string[], data?: any): Promise<{ affected: number }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/bulk`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/bulk`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ action, userIds, data }),
@@ -298,7 +298,7 @@ export async function exportUsers(options?: {
   if (options?.startDate) params.append('startDate', options.startDate);
   if (options?.endDate) params.append('endDate', options.endDate);
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/export?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/export?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -314,7 +314,7 @@ export async function exportUsers(options?: {
 }
 
 export async function assignUserRole(userId: string, roleId?: string, roleName?: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/role`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/role`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ roleId, roleName }),
@@ -333,7 +333,7 @@ export async function getUserSessions(userId: string, includeExpired = false): P
   const params = new URLSearchParams();
   if (includeExpired) params.append('includeExpired', 'true');
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/sessions?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/sessions?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -345,7 +345,7 @@ export async function getUserSessions(userId: string, includeExpired = false): P
 }
 
 export async function revokeSession(sessionId: string, reason?: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/sessions/${sessionId}/revoke`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/sessions/${sessionId}/revoke`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ reason }),
@@ -357,7 +357,7 @@ export async function revokeSession(sessionId: string, reason?: string): Promise
 }
 
 export async function revokeAllUserSessions(userId: string): Promise<{ revokedCount: number }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/sessions/revoke-all`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/sessions/revoke-all`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -374,7 +374,7 @@ export async function revokeAllUserSessions(userId: string): Promise<{ revokedCo
 // =====================================================
 
 export async function getUserDevices(userId: string): Promise<{ devices: UserDevice[] }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/devices`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/devices`, {
     headers: getAuthHeaders(),
   });
   
@@ -386,7 +386,7 @@ export async function getUserDevices(userId: string): Promise<{ devices: UserDev
 }
 
 export async function trustDevice(deviceId: string, trusted: boolean): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/devices/${deviceId}/trust`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/devices/${deviceId}/trust`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ trusted }),
@@ -398,7 +398,7 @@ export async function trustDevice(deviceId: string, trusted: boolean): Promise<v
 }
 
 export async function blockDevice(deviceId: string, reason?: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/devices/${deviceId}/block`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/devices/${deviceId}/block`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ reason }),
@@ -410,7 +410,7 @@ export async function blockDevice(deviceId: string, reason?: string): Promise<vo
 }
 
 export async function unblockDevice(deviceId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/devices/${deviceId}/unblock`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/devices/${deviceId}/unblock`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -421,7 +421,7 @@ export async function unblockDevice(deviceId: string): Promise<void> {
 }
 
 export async function deleteDevice(deviceId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/devices/${deviceId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/devices/${deviceId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -436,7 +436,7 @@ export async function deleteDevice(deviceId: string): Promise<void> {
 // =====================================================
 
 export async function getUserMFA(userId: string): Promise<{ mfaSettings: UserMFA[] }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/mfa`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/mfa`, {
     headers: getAuthHeaders(),
   });
   
@@ -448,7 +448,7 @@ export async function getUserMFA(userId: string): Promise<{ mfaSettings: UserMFA
 }
 
 export async function disableUserMFA(userId: string, mfaType?: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/mfa/disable`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/mfa/disable`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ mfaType }),
@@ -460,7 +460,7 @@ export async function disableUserMFA(userId: string, mfaType?: string): Promise<
 }
 
 export async function generateBackupCodes(userId: string): Promise<{ codes: string[] }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/mfa/backup-codes`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/mfa/backup-codes`, {
     method: 'POST',
     headers: getAuthHeaders(),
   });
@@ -480,7 +480,7 @@ export async function getSecurityPolicies(applicationId?: string): Promise<{ pol
   const params = new URLSearchParams();
   if (applicationId) params.append('applicationId', applicationId);
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/security-policies?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/security-policies?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -492,7 +492,7 @@ export async function getSecurityPolicies(applicationId?: string): Promise<{ pol
 }
 
 export async function getSecurityPolicy(policyId: string): Promise<{ policy: SecurityPolicy }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/security-policies/${policyId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/security-policies/${policyId}`, {
     headers: getAuthHeaders(),
   });
   
@@ -504,7 +504,7 @@ export async function getSecurityPolicy(policyId: string): Promise<{ policy: Sec
 }
 
 export async function createSecurityPolicy(data: Partial<SecurityPolicy>): Promise<{ policy: SecurityPolicy }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/security-policies`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/security-policies`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -518,7 +518,7 @@ export async function createSecurityPolicy(data: Partial<SecurityPolicy>): Promi
 }
 
 export async function updateSecurityPolicy(policyId: string, data: Partial<SecurityPolicy>): Promise<{ policy: SecurityPolicy }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/security-policies/${policyId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/security-policies/${policyId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -532,7 +532,7 @@ export async function updateSecurityPolicy(policyId: string, data: Partial<Secur
 }
 
 export async function deleteSecurityPolicy(policyId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/security-policies/${policyId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/security-policies/${policyId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -566,7 +566,7 @@ export async function getLoginHistory(options?: {
   if (options?.limit) params.append('limit', String(options.limit));
   if (options?.offset) params.append('offset', String(options.offset));
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/login-history?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/login-history?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -578,7 +578,7 @@ export async function getLoginHistory(options?: {
 }
 
 export async function getUserLoginHistory(userId: string, limit = 50, offset = 0): Promise<{ entries: LoginHistoryEntry[]; total: number }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/login-history?limit=${limit}&offset=${offset}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/login-history?limit=${limit}&offset=${offset}`, {
     headers: getAuthHeaders(),
   });
   
@@ -597,7 +597,7 @@ export async function getOAuthProviders(applicationId?: string): Promise<{ provi
   const params = new URLSearchParams();
   if (applicationId) params.append('applicationId', applicationId);
   
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -607,8 +607,9 @@ export async function getOAuthProviders(applicationId?: string): Promise<{ provi
   
   const data = await response.json();
   // Map backend response to frontend interface
+  const rawProviders = data.providers || data.data?.providers || [];
   return {
-    providers: (data.providers || []).map((p: any) => ({
+    providers: rawProviders.map((p: any) => ({
       id: p.id,
       providerName: p.name,
       displayName: p.displayName,
@@ -635,7 +636,7 @@ export async function getOAuthProviders(applicationId?: string): Promise<{ provi
 }
 
 export async function getOAuthProvider(providerId: string): Promise<{ provider: OAuthProvider }> {
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers/${providerId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers/${providerId}`, {
     headers: getAuthHeaders(),
   });
   
@@ -694,7 +695,7 @@ export async function createOAuthProvider(data: Partial<OAuthProvider>): Promise
     displayOrder: data.displayOrder,
   };
 
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(backendData),
@@ -735,7 +736,7 @@ export async function updateOAuthProvider(providerId: string, data: Partial<OAut
   if (data.buttonColor !== undefined) backendData.buttonColor = data.buttonColor;
   if (data.displayOrder !== undefined) backendData.displayOrder = data.displayOrder;
 
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers/${providerId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers/${providerId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(backendData),
@@ -750,7 +751,7 @@ export async function updateOAuthProvider(providerId: string, data: Partial<OAut
 }
 
 export async function deleteOAuthProvider(providerId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers/${providerId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers/${providerId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -761,7 +762,7 @@ export async function deleteOAuthProvider(providerId: string): Promise<void> {
 }
 
 export async function toggleOAuthProvider(providerId: string): Promise<{ provider: any }> {
-  const response = await fetch(`${API_BASE_URL}/admin/sso-providers/${providerId}/toggle`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/sso-providers/${providerId}/toggle`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });
@@ -781,7 +782,7 @@ export async function getUserGroups(applicationId?: string): Promise<{ groups: U
   const params = new URLSearchParams();
   if (applicationId) params.append('applicationId', applicationId);
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -793,7 +794,7 @@ export async function getUserGroups(applicationId?: string): Promise<{ groups: U
 }
 
 export async function getUserGroup(groupId: string): Promise<{ group: UserGroup; members: any[] }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups/${groupId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups/${groupId}`, {
     headers: getAuthHeaders(),
   });
   
@@ -805,7 +806,7 @@ export async function getUserGroup(groupId: string): Promise<{ group: UserGroup;
 }
 
 export async function createUserGroup(data: Partial<UserGroup>): Promise<{ group: UserGroup }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -819,7 +820,7 @@ export async function createUserGroup(data: Partial<UserGroup>): Promise<{ group
 }
 
 export async function updateUserGroup(groupId: string, data: Partial<UserGroup>): Promise<{ group: UserGroup }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups/${groupId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups/${groupId}`, {
     method: 'PUT',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -833,7 +834,7 @@ export async function updateUserGroup(groupId: string, data: Partial<UserGroup>)
 }
 
 export async function deleteUserGroup(groupId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups/${groupId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups/${groupId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -844,7 +845,7 @@ export async function deleteUserGroup(groupId: string): Promise<void> {
 }
 
 export async function addUserToGroup(groupId: string, userId: string, role?: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups/${groupId}/members`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups/${groupId}/members`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify({ userId, role }),
@@ -856,7 +857,7 @@ export async function addUserToGroup(groupId: string, userId: string, role?: str
 }
 
 export async function removeUserFromGroup(groupId: string, userId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/groups/${groupId}/members/${userId}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/groups/${groupId}/members/${userId}`, {
     method: 'DELETE',
     headers: getAuthHeaders(),
   });
@@ -867,7 +868,7 @@ export async function removeUserFromGroup(groupId: string, userId: string): Prom
 }
 
 export async function getUserGroupMemberships(userId: string): Promise<{ groups: UserGroup[] }> {
-  const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/groups`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/groups`, {
     headers: getAuthHeaders(),
   });
   
@@ -902,7 +903,7 @@ export async function getIdentityAuditLog(options?: {
   if (options?.limit) params.append('limit', String(options.limit));
   if (options?.offset) params.append('offset', String(options.offset));
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/audit-log?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/audit-log?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -932,7 +933,7 @@ export async function getUserAnalytics(options?: {
   if (options?.startDate) params.append('startDate', options.startDate);
   if (options?.endDate) params.append('endDate', options.endDate);
   
-  const response = await fetch(`${API_BASE_URL}/admin/identity/analytics?${params}`, {
+  const response = await fetch(`${API_BASE_URL}/v1/admin/identity/analytics?${params}`, {
     headers: getAuthHeaders(),
   });
   
@@ -946,7 +947,7 @@ export async function getUserAnalytics(options?: {
 // Export all functions
 export async function logIdentityAction(action: any): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/audit-log`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/audit-log`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(action),
@@ -968,7 +969,7 @@ export async function getSessions(userId: string, options?: any): Promise<{ sess
     if (options?.offset) params.append('offset', String(options.offset));
     if (options?.isActive !== undefined) params.append('isActive', String(options.isActive));
     
-    const response = await fetch(`${API_BASE_URL}/admin/identity/sessions?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/sessions?${params}`, {
       headers: getAuthHeaders(),
     });
     
@@ -985,7 +986,7 @@ export async function getSessions(userId: string, options?: any): Promise<{ sess
 
 export async function getSessionById(sessionId: string): Promise<UserSession | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/sessions/${sessionId}`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/sessions/${sessionId}`, {
       headers: getAuthHeaders(),
     });
     
@@ -1006,7 +1007,7 @@ export async function getSessionById(sessionId: string): Promise<UserSession | n
 
 export async function revokeAllSessions(userId: string, reason?: string, revokedBy?: string): Promise<number> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/sessions/revoke-all`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/sessions/revoke-all`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ reason, revokedBy }),
@@ -1026,7 +1027,7 @@ export async function revokeAllSessions(userId: string, reason?: string, revoked
 
 export async function getDevices(userId: string): Promise<UserDevice[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/devices`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/devices`, {
       headers: getAuthHeaders(),
     });
     
@@ -1044,7 +1045,7 @@ export async function getDevices(userId: string): Promise<UserDevice[]> {
 
 export async function getMFASettings(userId: string): Promise<MFASettings | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/mfa`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/mfa`, {
       headers: getAuthHeaders(),
     });
     
@@ -1065,7 +1066,7 @@ export async function getMFASettings(userId: string): Promise<MFASettings | null
 
 export async function disableMFA(userId: string, mfaType: string): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/identity/users/${userId}/mfa/disable`, {
+    const response = await fetch(`${API_BASE_URL}/v1/admin/identity/users/${userId}/mfa/disable`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify({ mfaType }),
