@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import UserDetailDrawer from '@/components/users/UserDetailDrawer'
-import AuthMethodsDrawer from '@/components/applications/AuthMethodsDrawer'
-import CommunicationDrawer from '@/components/applications/CommunicationDrawer'
-import LegalComplianceDrawer from '@/components/applications/LegalComplianceDrawer'
-import { adminService } from '@/services/adminService'
+import AuthMethodsConfigDrawer from '@/components/applications/AuthMethodsConfigDrawer'
+import CommunicationConfigDrawer from '@/components/applications/CommunicationConfigDrawer'
+import LegalConfigDrawer from '@/components/applications/LegalConfigDrawer'
 import { 
   ServerIcon, 
   UsersIcon,
@@ -18,9 +17,6 @@ import {
   ShieldCheckIcon,
   LockIcon,
   MessageSquareIcon,
-  ScaleIcon, // Added
-  FileTextIcon, // Added
-  ShieldIcon, // Added
   CogIcon,
   ArrowLeftIcon,
   PlusIcon,
@@ -36,6 +32,8 @@ import {
   ToggleLeftIcon,
   ClockIcon,
   EyeIcon,
+  ScaleIcon,
+  SettingsIcon,
 } from 'lucide-react'
 
 interface Application {
@@ -71,7 +69,6 @@ export default function ApplicationConfigPage() {
   const [users, setUsers] = useState<ApplicationUser[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('content')
-  const [contentSubTab, setContentSubTab] = useState('collections')
   const [userSearchQuery, setUserSearchQuery] = useState('')
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
@@ -82,19 +79,13 @@ export default function ApplicationConfigPage() {
   useEffect(() => {
     const loadAppData = async () => {
       try {
-        // Use adminService which includes auth headers automatically
-        const appData = await adminService.getApplication(appId) as any
-        setApplication({
-          id: appData.id || appId,
-          name: appData.name || 'Unnamed App',
-          description: appData.description || '',
-          status: appData.is_active === false ? 'inactive' : 'active',
-          users: appData.user_count || 0,
-          createdAt: appData.createdAt || appData.created_at || '',
-          lastModified: appData.updatedAt || appData.updated_at || '',
-          plan: appData.plan || 'free',
-          domain: appData.domain || appData.slug,
-        })
+        const res = await fetch(`/api/v1/admin/applications/${appId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setApplication(data.application || data)
+        } else {
+          throw new Error('Failed to fetch')
+        }
       } catch {
         setApplication({
           id: appId,
@@ -109,14 +100,23 @@ export default function ApplicationConfigPage() {
         })
       }
 
-      // Users fallback - no dedicated API endpoint yet
-      setUsers([
-        { id: '1', email: 'john.doe@example.com', name: 'John Doe', status: 'active', plan: 'Enterprise', joinedAt: '2024-01-15', lastActive: '2024-02-22', phone: '+1 555-0101', role: 'Admin' },
-        { id: '2', email: 'jane.smith@example.com', name: 'Jane Smith', status: 'active', plan: 'Pro', joinedAt: '2024-01-20', lastActive: '2024-02-21', phone: '+1 555-0102', role: 'User' },
-        { id: '3', email: 'bob.wilson@example.com', name: 'Bob Wilson', status: 'inactive', plan: 'Free', joinedAt: '2024-02-01', lastActive: '2024-02-10', role: 'User' },
-        { id: '4', email: 'sarah.connor@example.com', name: 'Sarah Connor', status: 'active', plan: 'Pro', joinedAt: '2024-01-25', lastActive: '2024-02-22', phone: '+1 555-0104', role: 'Editor' },
-        { id: '5', email: 'mike.ross@example.com', name: 'Mike Ross', status: 'suspended', plan: 'Free', joinedAt: '2024-02-05', lastActive: '2024-02-15', role: 'User' },
-      ])
+      try {
+        const res = await fetch(`/api/v1/admin/applications/${appId}/users`)
+        if (res.ok) {
+          const data = await res.json()
+          setUsers(data.users || data || [])
+        } else {
+          throw new Error('Failed to fetch')
+        }
+      } catch {
+        setUsers([
+          { id: '1', email: 'john.doe@example.com', name: 'John Doe', status: 'active', plan: 'Enterprise', joinedAt: '2024-01-15', lastActive: '2024-02-22', phone: '+1 555-0101', role: 'Admin' },
+          { id: '2', email: 'jane.smith@example.com', name: 'Jane Smith', status: 'active', plan: 'Pro', joinedAt: '2024-01-20', lastActive: '2024-02-21', phone: '+1 555-0102', role: 'User' },
+          { id: '3', email: 'bob.wilson@example.com', name: 'Bob Wilson', status: 'inactive', plan: 'Free', joinedAt: '2024-02-01', lastActive: '2024-02-10', role: 'User' },
+          { id: '4', email: 'sarah.connor@example.com', name: 'Sarah Connor', status: 'active', plan: 'Pro', joinedAt: '2024-01-25', lastActive: '2024-02-22', phone: '+1 555-0104', role: 'Editor' },
+          { id: '5', email: 'mike.ross@example.com', name: 'Mike Ross', status: 'suspended', plan: 'Free', joinedAt: '2024-02-05', lastActive: '2024-02-15', role: 'User' },
+        ])
+      }
 
       setIsLoading(false)
     }
@@ -269,120 +269,27 @@ export default function ApplicationConfigPage() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Application Content</h3>
             <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Manage your application&apos;s content, collections, pages, and appearance settings.</p>
             
-            {/* Sub-selection tabs */}
-            <div className="flex space-x-2 mb-6 border-b border-gray-200 dark:border-zinc-800 pb-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
-                { id: 'collections', label: 'Collections', icon: <ServerIcon className="w-4 h-4" /> },
-                { id: 'pages', label: 'Pages', icon: <MonitorIcon className="w-4 h-4" /> },
-                { id: 'appearance', label: 'Appearance', icon: <EyeIcon className="w-4 h-4" /> },
-              ].map((sub) => (
+                { title: 'Collections', desc: 'Manage content types and entries', icon: <ServerIcon className="w-5 h-5" />, link: '/collections' },
+                { title: 'Pages', desc: 'Build and manage pages', icon: <MonitorIcon className="w-5 h-5" />, link: '/pages' },
+                { title: 'Appearance', desc: 'Theme and branding settings', icon: <EyeIcon className="w-5 h-5" />, link: '/appearance' },
+              ].map((item, i) => (
                 <button
-                  key={sub.id}
-                  onClick={() => setContentSubTab(sub.id)}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    contentSubTab === sub.id
-                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30'
-                      : 'text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-zinc-800/50 border border-transparent'
-                  }`}
+                  key={i}
+                  onClick={() => router.push(item.link)}
+                  className="flex items-start space-x-3 p-4 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all text-left group"
                 >
-                  {sub.icon}
-                  <span>{sub.label}</span>
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 flex items-center justify-center flex-shrink-0 group-hover:bg-blue-100 dark:group-hover:bg-blue-500/20 transition-colors">
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{item.title}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">{item.desc}</p>
+                  </div>
                 </button>
               ))}
             </div>
-
-            {/* Collections Sub-tab */}
-            {contentSubTab === 'collections' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">Collections</h4>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Manage content types and structured data entries.</p>
-                  </div>
-                  <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-sm">
-                    <PlusIcon className="w-4 h-4 mr-1" /> New Collection
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {['Blog Posts', 'Products', 'FAQs', 'Testimonials'].map((name) => (
-                    <div key={name} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                          <ServerIcon className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{name}</span>
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-xs">Manage</Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Pages Sub-tab */}
-            {contentSubTab === 'pages' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">Pages</h4>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Build and manage application pages.</p>
-                  </div>
-                  <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-sm">
-                    <PlusIcon className="w-4 h-4 mr-1" /> New Page
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {['Home', 'About', 'Contact', 'Pricing', 'Dashboard'].map((name) => (
-                    <div key={name} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-500/10 text-violet-500 flex items-center justify-center">
-                          <MonitorIcon className="w-4 h-4" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{name}</span>
-                      </div>
-                      <Button variant="ghost" size="sm" className="text-xs">Edit</Button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Appearance Sub-tab */}
-            {contentSubTab === 'appearance' && (
-              <div className="space-y-4">
-                <div>
-                  <h4 className="text-base font-semibold text-gray-900 dark:text-white">Appearance</h4>
-                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">Theme, branding, and visual settings.</p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { label: 'Primary Color', value: '#3B82F6', type: 'color' },
-                    { label: 'Logo URL', value: 'https://example.com/logo.png', type: 'text' },
-                    { label: 'Favicon URL', value: 'https://example.com/favicon.ico', type: 'text' },
-                    { label: 'Font Family', value: 'Inter', type: 'select' },
-                  ].map((field) => (
-                    <div key={field.label}>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">{field.label}</label>
-                      {field.type === 'color' ? (
-                        <div className="flex items-center space-x-2">
-                          <input type="color" defaultValue={field.value} className="w-8 h-8 rounded border-0 cursor-pointer" />
-                          <input type="text" defaultValue={field.value} className="flex-1 px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
-                        </div>
-                      ) : field.type === 'select' ? (
-                        <select className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm text-gray-700 dark:text-zinc-300">
-                          <option>Inter</option><option>Roboto</option><option>Open Sans</option><option>Poppins</option>
-                        </select>
-                      ) : (
-                        <input type="text" defaultValue={field.value} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="pt-4 border-t border-gray-100 dark:border-zinc-800">
-                  <Button className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 text-sm">Save Appearance</Button>
-                </div>
-              </div>
-            )}
           </div>
         </TabsContent>
 
@@ -595,52 +502,40 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Authentication Methods</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Authentication Methods</h3>
                 <p className="text-sm text-gray-500 dark:text-zinc-400">Configure SSO providers, OAuth, and other authentication methods for this application.</p>
               </div>
-              <Button 
-                onClick={() => setIsAuthDrawerOpen(true)}
-                className="bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20"
-              >
-                <LockIcon className="w-4 h-4 mr-2" />
-                Configure Auth Methods
+              <Button onClick={() => setIsAuthDrawerOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25">
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                Configure
               </Button>
             </div>
 
-            <div className="space-y-4">
+            {/* Current Mode Badge */}
+            <div className="flex items-center space-x-2 mb-4 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-200/50 dark:border-emerald-500/20">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Using Default Configuration</span>
+              <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">— Inherited from platform defaults</span>
+            </div>
+
+            {/* Summary Preview */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {[
-                { name: 'Email & Password', desc: 'Traditional email/password login', icon: <MailIcon className="w-5 h-5" />, color: 'bg-blue-50 dark:bg-blue-500/10 text-blue-500', enabled: true },
-                { name: 'Google OAuth', desc: 'Sign in with Google account', icon: <GlobeIcon className="w-5 h-5" />, color: 'bg-red-50 dark:bg-red-500/10 text-red-500', enabled: true },
-                { name: 'GitHub OAuth', desc: 'Sign in with GitHub account', icon: <CogIcon className="w-5 h-5" />, color: 'bg-gray-50 dark:bg-zinc-500/10 text-gray-700 dark:text-zinc-300', enabled: false },
-                { name: 'SAML SSO', desc: 'Enterprise SAML 2.0 single sign-on', icon: <ShieldCheckIcon className="w-5 h-5" />, color: 'bg-violet-50 dark:bg-violet-500/10 text-violet-500', enabled: false },
-                { name: 'Magic Link', desc: 'Passwordless email login', icon: <KeyIcon className="w-5 h-5" />, color: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500', enabled: true },
-                { name: 'SMS OTP', desc: 'Phone number verification', icon: <SmartphoneIcon className="w-5 h-5" />, color: 'bg-amber-50 dark:bg-amber-500/10 text-amber-500', enabled: false },
-              ].map((method) => (
-                <div key={method.name} className="flex items-center justify-between p-4 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 rounded-lg ${method.color} flex items-center justify-center`}>
-                      {method.icon}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{method.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-zinc-400">{method.desc}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    {method.enabled ? (
-                      <span className="flex items-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                        <CheckCircleIcon className="w-4 h-4 mr-1" /> Enabled
-                      </span>
-                    ) : (
-                      <span className="flex items-center text-xs font-medium text-gray-400 dark:text-zinc-500">
-                        <XCircleIcon className="w-4 h-4 mr-1" /> Disabled
-                      </span>
-                    )}
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked={method.enabled} />
-                      <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
-                    </label>
-                  </div>
+                { name: 'Email & Password', icon: <MailIcon className="w-4 h-4" />, color: 'text-blue-500', enabled: true },
+                { name: 'Google OAuth', icon: <GlobeIcon className="w-4 h-4" />, color: 'text-red-500', enabled: true },
+                { name: 'GitHub OAuth', icon: <CogIcon className="w-4 h-4" />, color: 'text-gray-500', enabled: false },
+                { name: 'SAML SSO', icon: <ShieldCheckIcon className="w-4 h-4" />, color: 'text-violet-500', enabled: false },
+                { name: 'Magic Link', icon: <KeyIcon className="w-4 h-4" />, color: 'text-emerald-500', enabled: true },
+                { name: 'SMS OTP', icon: <SmartphoneIcon className="w-4 h-4" />, color: 'text-amber-500', enabled: false },
+              ].map((m) => (
+                <div key={m.name} className="flex items-center space-x-2 p-2.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                  <span className={m.color}>{m.icon}</span>
+                  <span className="text-xs font-medium text-gray-700 dark:text-zinc-300 flex-1">{m.name}</span>
+                  {m.enabled ? (
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  ) : (
+                    <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-zinc-600" />
+                  )}
                 </div>
               ))}
             </div>
@@ -745,101 +640,60 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Communication Settings</h3>
-                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure email templates, notifications, and messaging for this application.</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Communication Settings</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure email, SMS, push notifications, and templates for this application.</p>
               </div>
-              <Button 
-                onClick={() => setIsCommDrawerOpen(true)}
-                className="bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-500/30 hover:bg-violet-100 dark:hover:bg-violet-500/20"
-              >
-                <MessageSquareIcon className="w-4 h-4 mr-2" />
-                Configure Communication
+              <Button onClick={() => setIsCommDrawerOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25">
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                Configure
               </Button>
             </div>
 
-            <div className="space-y-6">
-              {/* Email Templates */}
-              <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                  <MailIcon className="w-4 h-4 mr-2 text-blue-500" />
-                  Email Templates
-                </h4>
-                <div className="space-y-2">
-                  {[
-                    { name: 'Welcome Email', desc: 'Sent when a new user registers', status: 'Active' },
-                    { name: 'Password Reset', desc: 'Password reset link email', status: 'Active' },
-                    { name: 'Email Verification', desc: 'Verify email address', status: 'Active' },
-                    { name: 'MFA Code', desc: 'Multi-factor authentication code', status: 'Active' },
-                    { name: 'Account Locked', desc: 'Account lockout notification', status: 'Draft' },
-                    { name: 'Plan Upgrade', desc: 'Subscription upgrade confirmation', status: 'Draft' },
-                  ].map((template) => (
-                    <div key={template.name} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">{template.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-zinc-400">{template.desc}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${
-                          template.status === 'Active' 
-                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' 
-                            : 'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400'
-                        }`}>
-                          {template.status}
-                        </span>
-                        <Button variant="ghost" size="sm" className="text-xs">Edit</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {/* Current Mode Badge */}
+            <div className="flex items-center space-x-2 mb-4 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-200/50 dark:border-emerald-500/20">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Using Default Configuration</span>
+              <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">— Inherited from platform defaults</span>
+            </div>
 
-              {/* Notification Channels */}
+            {/* Summary Preview */}
+            <div className="space-y-4">
               <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                  <MessageSquareIcon className="w-4 h-4 mr-2 text-violet-500" />
-                  Notification Channels
-                </h4>
-                <div className="space-y-3">
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Channels</h4>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {[
-                    { name: 'Email Notifications', enabled: true },
-                    { name: 'SMS Notifications', enabled: false },
-                    { name: 'Push Notifications', enabled: true },
-                    { name: 'In-App Notifications', enabled: true },
+                    { name: 'Email', icon: <MailIcon className="w-4 h-4" />, color: 'text-blue-500', enabled: true },
+                    { name: 'SMS', icon: <SmartphoneIcon className="w-4 h-4" />, color: 'text-red-500', enabled: false },
+                    { name: 'Push', icon: <MonitorIcon className="w-4 h-4" />, color: 'text-amber-500', enabled: false },
+                    { name: 'In-App', icon: <MessageSquareIcon className="w-4 h-4" />, color: 'text-violet-500', enabled: true },
                   ].map((ch) => (
-                    <div key={ch.name} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50">
-                      <span className="text-sm text-gray-700 dark:text-zinc-300">{ch.name}</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked={ch.enabled} />
-                        <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
-                      </label>
+                    <div key={ch.name} className="flex items-center space-x-2 p-2.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                      <span className={ch.color}>{ch.icon}</span>
+                      <span className="text-xs font-medium text-gray-700 dark:text-zinc-300 flex-1">{ch.name}</span>
+                      {ch.enabled ? (
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      ) : (
+                        <span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-zinc-600" />
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* SMTP Settings */}
               <div>
-                <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                  <CogIcon className="w-4 h-4 mr-2 text-gray-500" />
-                  SMTP Configuration
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">SMTP Host</label>
-                    <input type="text" defaultValue="smtp.example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">SMTP Port</label>
-                    <input type="number" defaultValue="587" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">From Email</label>
-                    <input type="email" defaultValue="noreply@example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">From Name</label>
-                    <input type="text" defaultValue="AppKit" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                  </div>
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Email Templates</h4>
+                <div className="flex flex-wrap gap-2">
+                  {['Welcome Email', 'Password Reset', 'Email Verification', 'MFA Code'].map(t => (
+                    <span key={t} className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-[11px] font-medium">
+                      <CheckCircleIcon className="w-3 h-3 mr-1" />
+                      {t}
+                    </span>
+                  ))}
+                  {['Account Locked', 'Plan Upgrade'].map(t => (
+                    <span key={t} className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400 text-[11px] font-medium">
+                      {t} (Draft)
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
@@ -851,65 +705,73 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Legal & Compliance</h3>
-                <p className="text-sm text-gray-500 dark:text-zinc-400">Manage terms of service, privacy policy, and compliance standards for this application.</p>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Legal & Compliance</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Manage legal documents and compliance settings for this application.</p>
               </div>
-              <Button 
-                onClick={() => setIsLegalDrawerOpen(true)}
-                className="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-500/20"
-              >
-                <ScaleIcon className="w-4 h-4 mr-2" />
-                Configure Legal Settings
+              <Button onClick={() => setIsLegalDrawerOpen(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25">
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                Configure
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-800/20">
-                <div className="flex items-center space-x-3 mb-4">
-                  <FileTextIcon className="w-5 h-5 text-gray-400" />
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Legal Documents</h4>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Terms of Service</span>
-                    <span className="text-blue-500 truncate max-w-[150px]">example.com/terms</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Privacy Policy</span>
-                    <span className="text-blue-500 truncate max-w-[150px]">example.com/privacy</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Cookie Policy</span>
-                    <span className="text-blue-500 truncate max-w-[150px]">example.com/cookies</span>
-                  </div>
+            {/* Current Mode Badge */}
+            <div className="flex items-center space-x-2 mb-4 p-3 rounded-lg bg-emerald-50/50 dark:bg-emerald-500/5 border border-emerald-200/50 dark:border-emerald-500/20">
+              <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Using Default Configuration</span>
+              <span className="text-xs text-emerald-600/60 dark:text-emerald-400/60">— Inherited from platform defaults</span>
+            </div>
+
+            {/* Summary Preview */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Legal Documents</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {[
+                    { name: 'Terms of Service', version: 'v2.1', status: 'Published' },
+                    { name: 'Privacy Policy', version: 'v3.0', status: 'Published' },
+                    { name: 'Cookie Policy', version: 'v1.2', status: 'Draft' },
+                    { name: 'Data Processing Agreement', version: 'v1.0', status: 'Published' },
+                  ].map(doc => (
+                    <div key={doc.name} className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
+                      <div className="flex items-center space-x-2">
+                        <ScaleIcon className="w-4 h-4 text-blue-500" />
+                        <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{doc.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] text-gray-400 dark:text-zinc-500">{doc.version}</span>
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+                          doc.status === 'Published'
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'
+                            : 'bg-gray-100 text-gray-500 dark:bg-zinc-700 dark:text-zinc-400'
+                        }`}>{doc.status}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl border border-gray-100 dark:border-zinc-800 bg-gray-50/30 dark:bg-zinc-800/20">
-                <div className="flex items-center space-x-3 mb-4">
-                  <ShieldIcon className="w-5 h-5 text-gray-400" />
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Compliance Status</h4>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Platform Standard</span>
-                    <span className="font-medium text-gray-700 dark:text-zinc-300">GDPR</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Data Residency</span>
-                    <span className="font-medium text-gray-700 dark:text-zinc-300">US (Oregon)</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Consent Requirement</span>
-                    <span className="text-emerald-500 font-medium">Enabled</span>
-                  </div>
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Compliance</h4>
+                <div className="flex flex-wrap gap-2">
+                  {['GDPR Mode', 'Cookie Consent', 'Right to Erasure', 'Data Export'].map(item => (
+                    <span key={item} className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 text-[11px] font-medium">
+                      <CheckCircleIcon className="w-3 h-3 mr-1" />
+                      {item}
+                    </span>
+                  ))}
+                  {['Data Retention', 'Age Verification'].map(item => (
+                    <span key={item} className="inline-flex items-center px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-400 text-[11px] font-medium">
+                      <XCircleIcon className="w-3 h-3 mr-1" />
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </div>
         </TabsContent>
 
-        {/* ==================== TAB 8: Login Sandbox ==================== */}
+        {/* ==================== TAB 7: Login Sandbox ==================== */}
         <TabsContent value="sandbox" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Login Sandbox</h3>
@@ -1010,35 +872,22 @@ export default function ApplicationConfigPage() {
         />
       )}
 
-      {/* Auth Methods Drawer */}
-      {application && (
-        <AuthMethodsDrawer
-          isOpen={isAuthDrawerOpen}
-          onClose={() => setIsAuthDrawerOpen(false)}
-          applicationId={appId}
-          applicationName={application.name}
-        />
-      )}
-
-      {/* Communication Drawer */}
-      {application && (
-        <CommunicationDrawer
-          isOpen={isCommDrawerOpen}
-          onClose={() => setIsCommDrawerOpen(false)}
-          applicationId={appId}
-          applicationName={application.name}
-        />
-      )}
-
-      {/* Legal & Compliance Drawer */}
-      {application && (
-        <LegalComplianceDrawer
-          isOpen={isLegalDrawerOpen}
-          onClose={() => setIsLegalDrawerOpen(false)}
-          applicationId={appId}
-          applicationName={application.name}
-        />
-      )}
+      {/* Config Drawers */}
+      <AuthMethodsConfigDrawer
+        isOpen={isAuthDrawerOpen}
+        onClose={() => setIsAuthDrawerOpen(false)}
+        appName={application.name}
+      />
+      <CommunicationConfigDrawer
+        isOpen={isCommDrawerOpen}
+        onClose={() => setIsCommDrawerOpen(false)}
+        appName={application.name}
+      />
+      <LegalConfigDrawer
+        isOpen={isLegalDrawerOpen}
+        onClose={() => setIsLegalDrawerOpen(false)}
+        appName={application.name}
+      />
     </div>
   )
 }

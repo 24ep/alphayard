@@ -1,7 +1,8 @@
 'use client'
 
 import React from 'react'
-import { X, Zap } from 'lucide-react'
+import { X } from 'lucide-react'
+import { AppSwitcher } from './AppSwitcher'
 import { type NavHub } from './AdminNavigation'
 
 interface AdminMobileMenuProps {
@@ -30,13 +31,8 @@ export function AdminMobileMenu({
                 onClick={onClose}
             />
             <div className="relative flex flex-col w-80 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl h-full animate-in slide-in-from-left border-r border-gray-200/50 dark:border-zinc-800/50">
-                <div className="p-6 border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between bg-white dark:bg-zinc-900 sticky top-0 z-10">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-                            <Zap className="w-4 h-4" />
-                        </div>
-                        <span className="font-bold text-gray-900 dark:text-white">AppKit Platform</span>
-                    </div>
+                <div className="p-6 border-b border-gray-200/50 dark:border-zinc-800/50 flex items-center justify-between">
+                    <AppSwitcher />
                     <button onClick={onClose} className="p-2.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-xl transition-all duration-200" aria-label="Close mobile menu" title="Close menu">
                         <X className="w-5 h-5" />
                     </button>
