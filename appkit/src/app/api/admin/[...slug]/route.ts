@@ -1,104 +1,34 @@
-// Catch-all proxy for /api/admin/* to /api/v1/admin/* with fallback for Railway
-// Updated: 2026-02-24 00:00 - Railway deployment fix v6
+// Catch-all proxy for /api/admin/* to /api/v1/admin/* 
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_ADMIN_URL || 
                    process.env.NEXT_PUBLIC_BACKEND_URL || 
                    'http://127.0.0.1:4000'
 
-// Check if we're in production environment (Railway)
-const isProduction = process.env.NODE_ENV === 'production'
-const isRailway = process.env.RAILWAY_ENVIRONMENT !== undefined || 
-                  process.env.RAILWAY_SERVICE_NAME !== undefined ||
-                  process.env.RAILWAY_PROJECT_NAME !== undefined
-
-// Mock data fallbacks for Railway deployment
-const getMockData = (slug: string) => {
-  const mockData: Record<string, any> = {
-    'auth/me': {
-      success: true,
-      data: {
-        id: 'admin-user-id',
-        email: 'admin@appkit.com',
-        name: 'Admin User',
-        role: 'admin',
-        permissions: ['read', 'write', 'admin']
-      }
-    },
-    'admin-users/3d24d17c-4b1f-4fb0-b88b-7dbc9eba238e': {
-      success: true,
-      data: {
-        id: '3d24d17c-4b1f-4fb0-b88b-7dbc9eba238e',
-        permissions: ['applications:read', 'applications:write', 'users:read', 'users:write']
-      }
-    },
-    'sso-providers': {
-      success: true,
-      data: []
-    },
-    'config/branding': {
-      success: true,
-      data: {
-        adminAppName: 'AppKit Admin',
-        logoUrl: null,
-        iconUrl: null
-      }
-    },
-    'auth/login': {
-      success: true,
-      data: {
-        token: 'mock-jwt-token',
-        user: {
-          id: 'admin-user-id',
-          email: 'admin@appkit.com',
-          name: 'Admin User'
-        }
-      }
-    },
-    'auth/logout': {
-      success: true,
-      message: 'Logged out successfully'
-    }
-  }
-  
-  return mockData[slug]
-}
-
 export async function GET(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
   
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-      })
+  try {
+    const url = new URL(request.url)
+    const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
+    
+    const response = await fetch(backendUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+    })
 
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-    }
+    const data = await response.json()
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('API proxy error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable', message: String(error) }, 
+      { status: 503 }
+    )
   }
-  
-  // Fallback for Railway or when backend is unavailable
-  const mockData = getMockData(slug)
-  if (mockData) {
-    return NextResponse.json(mockData, { status: 200 })
-  }
-  
-  return NextResponse.json({
-    success: false,
-    error: 'Service temporarily unavailable in production mode',
-    message: 'This endpoint is not available in the current deployment'
-  }, { status: 503 })
 }
 
 export async function POST(request: NextRequest, { params }: { params: { slug: string[] } }) {
@@ -112,102 +42,84 @@ export async function POST(request: NextRequest, { params }: { params: { slug: s
     // No body or invalid JSON, continue with empty body
   }
   
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-        body: JSON.stringify(body),
-      })
+  try {
+    const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}`
+    
+    const response = await fetch(backendUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+      body: JSON.stringify(body),
+    })
 
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-    }
+    const data = await response.json()
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('API proxy error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable', message: String(error) }, 
+      { status: 503 }
+    )
   }
-  
-  // Fallback for Railway or when backend is unavailable
-  const mockData = getMockData(slug)
-  if (mockData) {
-    return NextResponse.json(mockData, { status: 200 })
-  }
-  
-  return NextResponse.json({
-    success: false,
-    error: 'Service temporarily unavailable in production mode',
-    message: 'This endpoint is not available in the current deployment'
-  }, { status: 503 })
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
-  const body = await request.json()
-  
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-        body: JSON.stringify(body),
-      })
-
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-    }
+  let body = {}
+  try {
+    body = await request.json()
+  } catch (error) {
+    // No body
   }
   
-  // Fallback for Railway or when backend is unavailable
-  return NextResponse.json({
-    success: false,
-    error: 'Service temporarily unavailable in production mode',
-    message: 'This endpoint is not available in the current deployment'
-  }, { status: 503 })
+  try {
+    const url = new URL(request.url)
+    const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
+    
+    const response = await fetch(backendUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+      body: JSON.stringify(body),
+    })
+
+    const data = await response.json()
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('API proxy error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable', message: String(error) }, 
+      { status: 503 }
+    )
+  }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { slug: string[] } }) {
   const slug = params.slug.join('/')
   
-  // Only try to connect to backend if we're in development and backend URL is explicitly set
-  if (!isProduction && !isRailway && BACKEND_URL.includes('127.0.0.1')) {
-    try {
-      const url = new URL(request.url)
-      const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
-      
-      const response = await fetch(backendUrl, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cookie': request.headers.get('Cookie') || '',
-        },
-      })
+  try {
+    const url = new URL(request.url)
+    const backendUrl = `${BACKEND_URL}/api/v1/admin/${slug}${url.search}`
+    
+    const response = await fetch(backendUrl, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+    })
 
-      const data = await response.json()
-      return NextResponse.json(data, { status: response.status })
-    } catch (error) {
-      console.error('API proxy error:', error)
-    }
+    const data = await response.json()
+    return NextResponse.json(data, { status: response.status })
+  } catch (error) {
+    console.error('API proxy error:', error)
+    return NextResponse.json(
+      { success: false, error: 'Service temporarily unavailable', message: String(error) }, 
+      { status: 503 }
+    )
   }
-  
-  // Fallback for Railway or when backend is unavailable
-  return NextResponse.json({
-    success: false,
-    error: 'Service temporarily unavailable in production mode',
-    message: 'This endpoint is not available in the current deployment'
-  }, { status: 503 })
 }

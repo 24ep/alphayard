@@ -1,26 +1,57 @@
 import { NextResponse } from 'next/server'
+import prisma from '@/server/lib/prisma'
 
 export async function GET(
   request: Request,
   { params }: { params: { userId: string } }
 ) {
   try {
-    const userId = params.userId
+    const { userId } = params
 
-    // Mock user details response
+    // Fetch user from database
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        subscriptions: {
+          include: {
+            plan: true
+          }
+        },
+        userApplications: true
+      }
+    })
+
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    // Determine the active plan (if any), otherwise 'Free'
+    const activeSubscription = dbUser.subscriptions?.find(s => s.status === 'active')
+    const planName = activeSubscription?.plan?.name || 'Free'
+
+    // Determine role (defaulting to the role in the first userApplication, or 'User')
+    const primaryRole = dbUser.userApplications?.[0]?.role || 'User'
+
+    // Parse preferences for any extra info (like company/address) if they exist
+    const prefs = dbUser.preferences as any || {}
+
+    // Transform to expected frontend format
     const user = {
-      id: userId,
-      email: 'alex@example.com',
-      name: 'Alex Developer',
-      status: 'active',
-      plan: 'pro',
-      joinedAt: '2023-11-15T10:00:00Z',
-      lastActive: new Date().toISOString(),
-      avatar: '',
-      phone: '+1 (555) 123-4567',
-      address: '123 Tech Lane, Innovation City, CA 94000',
-      company: 'Acme Corp',
-      role: 'Admin'
+      id: dbUser.id,
+      email: dbUser.email,
+      name: `${dbUser.firstName} ${dbUser.lastName}`.trim(),
+      status: dbUser.isActive ? 'active' : 'inactive',
+      plan: planName,
+      joinedAt: dbUser.createdAt.toISOString(),
+      lastActive: dbUser.lastLoginAt?.toISOString() || dbUser.createdAt.toISOString(),
+      avatar: dbUser.avatarUrl || undefined,
+      phone: dbUser.phoneNumber || undefined,
+      address: prefs.address || undefined,
+      company: prefs.company || undefined,
+      role: primaryRole
     }
 
     return NextResponse.json({ user })

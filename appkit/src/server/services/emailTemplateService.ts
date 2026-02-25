@@ -265,9 +265,10 @@ class EmailTemplateService {
         htmlContent: string;
         textContent?: string;
     } | null> {
-        // Find template by slug (for now, we'll use the first template as mock)
-        const templates = await this.listTemplates();
-        const template = templates.templates.find(t => t.name.toLowerCase().includes(slug.toLowerCase()));
+        // Find template by exact slug in database
+        const template = await prisma.emailTemplate.findFirst({
+            where: { slug }
+        });
         
         if (!template) return null;
 
@@ -282,8 +283,8 @@ class EmailTemplateService {
 
         return {
             subject: render(template.subject),
-            htmlContent: render(template.htmlContent),
-            textContent: template.textContent ? render(template.textContent) : undefined
+            htmlContent: template.htmlContent ? render(template.htmlContent as string) : '',
+            textContent: template.textContent ? render(template.textContent as string) : undefined
         };
     }
 

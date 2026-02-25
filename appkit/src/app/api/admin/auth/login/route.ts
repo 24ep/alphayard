@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/server/lib/prisma'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 import { databaseAuthService } from '@/services/databaseAuthService'
 
 export async function POST(request: NextRequest) {
@@ -196,8 +197,18 @@ export async function POST(request: NextRequest) {
       data: { lastLoginAt: new Date() }
     })
 
-    // Generate JWT token (mock for now - in production use proper JWT)
-    const token = `jwt-${user.id}-${Date.now()}-${Math.random().toString(36).substring(2)}`
+    // Generate proper JWT token for production
+    const jwtSecret = process.env.JWT_SECRET || 'fallback_development_secret_only'
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        email: user.email, 
+        role: 'admin', 
+        permissions: ['read', 'write', 'admin'] 
+      },
+      jwtSecret,
+      { expiresIn: '7d' }
+    )
     
     // Create session in database
     const expiresAt = new Date()

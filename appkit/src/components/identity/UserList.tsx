@@ -148,7 +148,7 @@ export const UserList: React.FC<UserListProps> = ({
                 </table>
             </div>
 
-            {/* Pagination Controls (Mock) */}
+            {/* Pagination Controls */}
             <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
                 <span>Showing {users.length} of {totalUsers} users</span>
                 <div className="flex gap-2">
