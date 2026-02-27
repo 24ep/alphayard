@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
     if (auth.error || !auth.admin) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
-    if (!hasPermission(auth.admin, 'branding:view') && !hasPermission(auth.admin, 'applications:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'branding:view') && !hasPermission(auth.admin, 'applications:view')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     // Try to find an active application with branding settings
     const activeApplication = await prisma.application.findFirst({
@@ -59,9 +59,9 @@ export async function PUT(request: NextRequest) {
     if (auth.error || !auth.admin) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
-    if (!hasPermission(auth.admin, 'branding:update')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'branding:update')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const body = await request.json()
     const { branding } = body

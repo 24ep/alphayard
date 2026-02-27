@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
     if (auth.error || !auth.admin) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
-    if (!hasPermission(auth.admin, 'system:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'system:view')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const attributes = await defaultConfigService.getDefaultUserAttributes()
     return NextResponse.json({ attributes: attributes || [] }) 
@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
     if (auth.error || !auth.admin) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
-    if (!hasPermission(auth.admin, 'system:edit')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'system:edit')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const body = await request.json()
     const ok = await defaultConfigService.saveDefaultUserAttributes(body)

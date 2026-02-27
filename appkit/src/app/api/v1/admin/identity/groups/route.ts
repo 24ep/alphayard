@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'users:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'users:view')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const { searchParams } = new URL(request.url)
     const applicationId = searchParams.get('applicationId')
@@ -98,9 +98,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'users:edit')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'users:edit')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const body = await request.json()
     const { name, slug, description, permissions, color, icon, applicationId, isDefault = false } = body

@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'permissions:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'permissions:view')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const { searchParams } = new URL(request.url)
     const module = searchParams.get('module')

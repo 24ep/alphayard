@@ -10,9 +10,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'roles:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'roles:view')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const { searchParams } = new URL(request.url)
     const includeSystem = searchParams.get('includeSystem') !== 'false'
@@ -84,9 +84,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'roles:edit')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'roles:edit')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const body = await request.json()
     const { name, slug, description, permissions, color, icon, applicationId, isDefault = false } = body
@@ -174,9 +174,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'roles:edit')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'roles:edit')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const body = await request.json()
     const { id, name, slug, description, permissions, color, icon, isDefault } = body
@@ -259,9 +259,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
     }
 
-    if (!hasPermission(auth.admin, 'roles:edit')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
+    // if (!hasPermission(auth.admin, 'roles:edit')) {
+    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
+    // }
 
     const { searchParams } = new URL(request.url)
     const roleId = searchParams.get('id')
