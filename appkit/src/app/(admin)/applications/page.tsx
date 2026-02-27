@@ -30,11 +30,11 @@ interface Application {
 }
 
 const fallbackApps: Application[] = [
-  { id: '1', name: 'E-Commerce Platform', description: 'Online shopping application with payment integration', status: 'active', users: 8500, createdAt: '2024-01-15', lastModified: '2024-02-20', plan: 'enterprise', domain: 'shop.example.com' },
-  { id: '2', name: 'SaaS Dashboard', description: 'Analytics and reporting dashboard for businesses', status: 'active', users: 6200, createdAt: '2024-02-01', lastModified: '2024-02-22', plan: 'pro', domain: 'dash.example.com' },
-  { id: '3', name: 'Mobile Banking App', description: 'Digital banking and financial services', status: 'active', users: 4800, createdAt: '2024-01-20', lastModified: '2024-02-18', plan: 'enterprise', domain: 'bank.example.com' },
-  { id: '4', name: 'Healthcare Portal', description: 'Patient management and telemedicine platform', status: 'development', users: 320, createdAt: '2024-02-10', lastModified: '2024-02-21', plan: 'pro' },
-  { id: '5', name: 'Education Hub', description: 'Online learning management system', status: 'inactive', users: 0, createdAt: '2024-01-05', lastModified: '2024-01-15', plan: 'free' },
+  { id: '00000000-0000-0000-0000-000000000001', name: 'E-Commerce Platform', description: 'Online shopping application with payment integration', status: 'active', users: 8500, createdAt: '2024-01-15', lastModified: '2024-02-20', plan: 'enterprise', domain: 'shop.example.com' },
+  { id: '00000000-0000-0000-0000-000000000002', name: 'SaaS Dashboard', description: 'Analytics and reporting dashboard for businesses', status: 'active', users: 6200, createdAt: '2024-02-01', lastModified: '2024-02-22', plan: 'pro', domain: 'dash.example.com' },
+  { id: '00000000-0000-0000-0000-000000000003', name: 'Mobile Banking App', description: 'Digital banking and financial services', status: 'active', users: 4800, createdAt: '2024-01-20', lastModified: '2024-02-18', plan: 'enterprise', domain: 'bank.example.com' },
+  { id: '00000000-0000-0000-0000-000000000004', name: 'Healthcare Portal', description: 'Patient management and telemedicine platform', status: 'development', users: 320, createdAt: '2024-02-10', lastModified: '2024-02-21', plan: 'pro' },
+  { id: '00000000-0000-0000-0000-000000000005', name: 'Education Hub', description: 'Online learning management system', status: 'inactive', users: 0, createdAt: '2024-01-05', lastModified: '2024-01-15', plan: 'free' },
 ]
 
 export default function ApplicationsPage() {
