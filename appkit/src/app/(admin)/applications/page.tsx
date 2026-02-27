@@ -92,8 +92,8 @@ export default function ApplicationsPage() {
   }
 
   const filteredApps = applications.filter(app => 
-    app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    app.description.toLowerCase().includes(searchQuery.toLowerCase())
+    (app.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (app.description || '').toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   if (isLoading) {
