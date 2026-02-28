@@ -8,16 +8,6 @@ export function middleware(request: NextRequest) {
 
   console.log(`[${requestId}] ${request.method} ${request.url} - ${request.headers.get('user-agent') || 'Unknown'}`)
 
-  // Rewrite /api/admin/* → /api/v1/admin/* (except routes with their own handlers)
-  // This must happen in middleware because NextResponse.rewrite() is not supported in route handlers
-  if (pathname.startsWith('/api/admin/') && !pathname.startsWith('/api/admin/auth/')) {
-    const url = request.nextUrl.clone()
-    url.pathname = pathname.replace('/api/admin/', '/api/v1/admin/')
-    const response = NextResponse.rewrite(url)
-    response.headers.set('X-Request-ID', requestId)
-    return response
-  }
-
   const response = NextResponse.next()
 
   // CORS headers
