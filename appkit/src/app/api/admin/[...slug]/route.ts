@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = process.env.BACKEND_ADMIN_URL || 
                    process.env.NEXT_PUBLIC_BACKEND_URL || 
-                   'http://127.0.0.1:4000'
+                   `http://127.0.0.1:${process.env.PORT || 3002}`
 
 async function safeJsonResponse(response: Response) {
   const contentType = response.headers.get('content-type')
