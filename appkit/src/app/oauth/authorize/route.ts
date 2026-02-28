@@ -42,8 +42,22 @@ export async function GET(request: NextRequest) {
 
   if (!userId) {
     // Redirect to login if not authenticated
-    const loginUrl = new URL('/login', request.url);
-    loginUrl.searchParams.set('redirect', request.url);
+    // Extract real host from headers, or use NEXT_PUBLIC_SITE_URL fallback
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    const forwardedProto = request.headers.get('x-forwarded-proto') || 'https';
+    const host = forwardedHost || request.headers.get('host');
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+    
+    // Choose best base URL to construct absolute links
+    const baseUrl = siteUrl || (host ? `${forwardedProto}://${host}` : request.nextUrl.origin);
+    
+    // Construct the external URL for the current request
+    const currentUrl = new URL(request.url);
+    const externalCurrentUrl = new URL(currentUrl.pathname + currentUrl.search, baseUrl);
+    
+    const loginUrl = new URL('/login', baseUrl);
+    loginUrl.searchParams.set('redirect', externalCurrentUrl.toString());
+    
     return NextResponse.redirect(loginUrl);
   }
 

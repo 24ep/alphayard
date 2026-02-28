@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         authUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         params: new URLSearchParams({
           client_id: oauthProvider.clientId,
-          redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/google',
+          redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/google`,
           response_type: 'code',
           scope: scopes.join(' '),
           state: state || `google-${Date.now()}`,
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
         authUrl: 'https://github.com/login/oauth/authorize',
         params: new URLSearchParams({
           client_id: oauthProvider.clientId,
-          redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/github',
+          redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/github`,
           scope: scopes.join(' '),
           state: state || `github-${Date.now()}`
         })
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
         params: new URLSearchParams({
           client_id: oauthProvider.clientId,
-          redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/microsoft',
+          redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/microsoft`,
           response_type: 'code',
           scope: scopes.join(' '),
           state: state || `microsoft-${Date.now()}`
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         client_secret: oauthProvider.clientSecret,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/google'
+        redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/google`
       })
       
       tokenResponse = await fetch(tokenUrl, {
@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
         client_secret: oauthProvider.clientSecret,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/github'
+        redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/github`
       })
       
       tokenResponse = await fetch(tokenUrl, {
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         client_secret: oauthProvider.clientSecret,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: redirectUri || 'https://appkits.up.railway.app/auth/callback/microsoft',
+        redirect_uri: redirectUri || `${process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app'}/auth/callback/microsoft`,
         scope: 'openid email profile'
       })
       
