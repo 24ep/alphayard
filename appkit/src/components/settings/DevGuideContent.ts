@@ -207,7 +207,7 @@ const authUrl = \`\${ISSUER}/oauth/authorize?\` +
 const config = {
   issuer: 'https://appkits.up.railway.app',
   clientId: 'YOUR_CLIENT_ID',
-  redirectUrl: 'com.boundary.app:/oauth',
+  redirectUrl: 'com.appkit.app:/oauth',
   scopes: ['openid', 'profile', 'email', 'offline_access'],
   usePKCE: true,
 };
@@ -222,7 +222,7 @@ const result = await authorize(config);`
     <action android:name="android.intent.action.VIEW" />
     <category android:name="android.intent.category.DEFAULT" />
     <category android:name="android.intent.category.BROWSABLE" />
-    <data android:scheme="com.boundary.app" android:path="/oauth" />
+    <data android:scheme="com.appkit.app" android:path="/oauth" />
 </intent-filter>`
       }
     ]

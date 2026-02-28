@@ -1167,10 +1167,9 @@ await client.billing.subscribe(userId, planId);`}
     )
   }
 }
-
 export const searchDocs = Object.keys(DOCS).map(slug => ({
   slug,
   title: DOCS[slug].title,
   description: DOCS[slug].description,
-  href: slug === 'home' ? '/dev-hub' : `/dev-hub/\${slug}`
+  href: slug === 'home' ? '/dev-hub' : `/dev-hub/${slug}`
 }))

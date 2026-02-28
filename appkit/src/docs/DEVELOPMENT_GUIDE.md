@@ -1,4 +1,4 @@
-# Boundary Login Module Development Guide
+# AppKit Login Module Development Guide
 
 ## Overview
 
@@ -90,10 +90,10 @@ Use the "Test in Sandbox" button to verify your login flow works correctly.
 ### JavaScript/TypeScript
 
 ```typescript
-import { BoundaryAuth } from '@boundary/auth'
+import { AppKit } from 'alphayard-appkit'
 
 // Initialize
-const auth = new BoundaryAuth({
+const auth = new AppKit({
   clientId: 'your-client-id',
   redirectUri: 'https://your-app.com/callback',
   apiUrl: 'https://appkits.up.railway.app'
@@ -103,8 +103,8 @@ const auth = new BoundaryAuth({
 async function login(email: string, password: string) {
   try {
     const result = await auth.signIn(email, password)
-    localStorage.setItem('boundary_token', result.token)
-    localStorage.setItem('boundary_user', JSON.stringify(result.user))
+    localStorage.setItem('appkit_token', result.token)
+    localStorage.setItem('appkit_user', JSON.stringify(result.user))
     return result
   } catch (error) {
     console.error('Login failed:', error)
@@ -115,13 +115,13 @@ async function login(email: string, password: string) {
 // Logout
 async function logout() {
   await auth.signOut()
-  localStorage.removeItem('boundary_token')
-  localStorage.removeItem('boundary_user')
+  localStorage.removeItem('appkit_token')
+  localStorage.removeItem('appkit_user')
 }
 
 // Check authentication
 function isAuthenticated(): boolean {
-  const token = localStorage.getItem('boundary_token')
+  const token = localStorage.getItem('appkit_token')
   return token ? !auth.isTokenExpired(token) : false
 }
 ```
@@ -130,15 +130,15 @@ function isAuthenticated(): boolean {
 
 ```typescript
 import { useState, useEffect } from 'react'
-import { BoundaryAuth } from '@boundary/auth'
+import { AppKit } from 'alphayard-appkit'
 
 export function useBoundaryAuth() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   
-  const auth = new BoundaryAuth({
-    clientId: process.env.NEXT_PUBLIC_BOUNDARY_CLIENT_ID,
+  const auth = new AppKit({
+    clientId: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID,
     redirectUri: `${window.location.origin}/callback`
   })
 
@@ -148,7 +148,7 @@ export function useBoundaryAuth() {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem('boundary_token')
+      const token = localStorage.getItem('appkit_token')
       if (token && !auth.isTokenExpired(token)) {
         const userData = await auth.getUser(token)
         setUser(userData)
@@ -166,7 +166,7 @@ export function useBoundaryAuth() {
     
     try {
       const result = await auth.signIn(email, password)
-      localStorage.setItem('boundary_token', result.token)
+      localStorage.setItem('appkit_token', result.token)
       setUser(result.user)
       return result
     } catch (err) {
@@ -179,8 +179,8 @@ export function useBoundaryAuth() {
 
   const logout = async () => {
     await auth.signOut()
-    localStorage.removeItem('boundary_token')
-    localStorage.removeItem('boundary_user')
+    localStorage.removeItem('appkit_token')
+    localStorage.removeItem('appkit_user')
     setUser(null)
   }
 
@@ -196,7 +196,7 @@ export function useBoundaryAuth() {
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { BoundaryAuth } from '@boundary/auth'
+import { AppKit } from 'alphayard-appkit'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -205,8 +205,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const auth = new BoundaryAuth({
-    clientId: process.env.NEXT_PUBLIC_BOUNDARY_CLIENT_ID!,
+  const auth = new AppKit({
+    clientId: process.env.NEXT_PUBLIC_APPKIT_CLIENT_ID!,
     redirectUri: `${window.location.origin}/auth/callback`
   })
 
@@ -270,16 +270,16 @@ export default function LoginPage() {
 
 ```javascript
 const express = require('express')
-const { BoundaryAuth } = require('@boundary/auth')
+const { AppKit } = require('alphayard-appkit')
 const cookieParser = require('cookie-parser')
 
 const app = express()
 app.use(express.json())
 app.use(cookieParser())
 
-const auth = new BoundaryAuth({
-  clientId: process.env.BOUNDARY_CLIENT_ID,
-  clientSecret: process.env.BOUNDARY_CLIENT_SECRET,
+const auth = new AppKit({
+  clientId: process.env.APPKIT_CLIENT_ID,
+  clientSecret: process.env.APPKIT_CLIENT_SECRET,
   apiUrl: 'https://appkits.up.railway.app'
 })
 
@@ -291,7 +291,7 @@ app.post('/api/auth/login', async (req, res) => {
     const result = await auth.signIn(email, password)
     
     // Set HTTP-only cookie
-    res.cookie('boundary_token', result.token, {
+    res.cookie('appkit_token', result.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
@@ -313,7 +313,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
-  const token = req.cookies.boundary_token || req.headers.authorization?.split(' ')[1]
+  const token = req.cookies.appkit_token || req.headers.authorization?.split(' ')[1]
   
   if (!token) {
     return res.status(401).json({ error: 'Access token required' })
@@ -344,16 +344,16 @@ app.listen(3000, () => {
 
 ```bash
 # Required
-BOUNDARY_CLIENT_ID=your_client_id_here
-BOUNDARY_CLIENT_SECRET=your_client_secret_here
-BOUNDARY_API_URL=https://appkits.up.railway.app
-BOUNDARY_REDIRECT_URI=http://localhost:3000/auth/callback
+APPKIT_CLIENT_ID=your_client_id_here
+APPKIT_CLIENT_SECRET=your_client_secret_here
+APPKIT_API_URL=https://appkits.up.railway.app
+APPKIT_REDIRECT_URI=http://localhost:3000/auth/callback
 
 # Optional
-BOUNDARY_SCOPE=read write
-BOUNDARY_TOKEN_STORAGE=localStorage
-BOUNDARY_SESSION_TIMEOUT=3600
-BOUNDARY_WEBHOOK_SECRET=whsec_your_signing_secret
+APPKIT_SCOPE=read write
+APPKIT_TOKEN_STORAGE=localStorage
+APPKIT_SESSION_TIMEOUT=3600
+APPKIT_WEBHOOK_SECRET=whsec_your_signing_secret
 ```
 
 ### Configuration Options
@@ -394,9 +394,9 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 
 ```typescript
 // Test your integration
-describe('Boundary Auth Integration', () => {
+describe('AppKit Auth Integration', () => {
   test('should login successfully', async () => {
-    const auth = new BoundaryAuth({
+    const auth = new AppKit({
       clientId: 'test-client-id',
       redirectUri: 'http://localhost:3000/callback'
     })
@@ -407,7 +407,7 @@ describe('Boundary Auth Integration', () => {
   })
   
   test('should handle invalid credentials', async () => {
-    const auth = new BoundaryAuth({
+    const auth = new AppKit({
       clientId: 'test-client-id',
       redirectUri: 'http://localhost:3000/callback'
     })
@@ -462,8 +462,8 @@ describe('Boundary Auth Integration', () => {
 
 ```javascript
 // Check current authentication state
-console.log('Token:', localStorage.getItem('boundary_token'))
-console.log('User:', localStorage.getItem('boundary_user'))
+console.log('Token:', localStorage.getItem('appkit_token'))
+console.log('User:', localStorage.getItem('appkit_user'))
 console.log('Current URL:', window.location.href)
 
 // Clear authentication data
@@ -484,9 +484,9 @@ fetch('/api/sandbox/test-login')
 - [Security Guidelines](https://docs.boundary.com/security)
 
 ### Community
-- [GitHub Repository](https://github.com/boundary/auth)
-- [Discord Community](https://discord.gg/boundary)
-- [Stack Overflow](https://stackoverflow.com/questions/tagged/boundary-auth)
+- [GitHub Repository](https://github.com/appkit/auth)
+- [Discord Community](https://discord.gg/appkit)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/appkit-auth)
 
 ### Support Channels
 - [Support Center](https://boundary.com/support)
@@ -499,16 +499,16 @@ fetch('/api/sandbox/test-login')
 
 1. **Update Dependencies**
    ```bash
-   npm install @boundary/auth@latest
+   npm install alphayard-appkit@latest
    ```
 
 2. **Update Initialization**
    ```typescript
    // Old
-   const auth = new BoundaryAuth('client-id')
+   const auth = new AppKit('client-id')
    
    // New
-   const auth = new BoundaryAuth({
+   const auth = new AppKit({
      clientId: 'client-id',
      redirectUri: 'https://your-app.com/callback'
    })
@@ -582,9 +582,9 @@ npm run test:a11y
 ### Adding Custom Languages
 
 ```typescript
-import { BoundaryAuth } from '@boundary/auth'
+import { AppKit } from 'alphayard-appkit'
 
-const auth = new BoundaryAuth({
+const auth = new AppKit({
   locale: 'custom-locale',
   messages: {
     'login.title': 'Custom Login Title',
@@ -596,7 +596,7 @@ const auth = new BoundaryAuth({
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/boundary/auth/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/appkit/auth/blob/main/LICENSE) file for details.
 
 ## Contributing
 
@@ -604,4 +604,4 @@ We welcome contributions! Please see our [Contributing Guide](https://github.com
 
 ---
 
-For more information, visit [boundary.com](https://boundary.com) or contact our support team.
+For more information, visit [appkit.com](https://appkit.com) or contact our support team.
