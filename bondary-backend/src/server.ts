@@ -25,6 +25,7 @@ import v1Router from './routes/v1';
 import healthRoutes from './routes/health';
 import webhooksRoutes from './routes/mobile/webhooks';
 import uploadsRouter from './routes/uploadsRouter';
+import { config } from './config/env';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -61,6 +62,12 @@ if (isProduction && cluster.isPrimary) {
 function startServer() {
   const app = express();
   const server = createServer(app);
+
+  // Trust proxy for Railway/Load Balancers
+  if (config.TRUST_PROXY) {
+    app.set('trust proxy', 1);
+    console.log('âœ… Trust Proxy enabled');
+  }
 
   // We'll initialize these later in initializeServices after connecting
   let redisClient: any = null;

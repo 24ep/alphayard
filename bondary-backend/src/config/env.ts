@@ -69,6 +69,12 @@ const envSchema = z.object({
   // Rate Limiting
   RATE_LIMIT_WINDOW_MS: z.string().transform(Number).default('900000'), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: z.string().transform(Number).default('100'),
+
+  // Railway/Proxy Configuration
+  TRUST_PROXY: z.string().transform(val => val === 'true').default('true'),
+  NEXT_PUBLIC_APP_URL: z.string().url().default('https://appkits.up.railway.app'),
+  APP_URL: z.string().url().default('https://appkits.up.railway.app'),
+  NEXTAUTH_URL: z.string().url().default('https://appkits.up.railway.app'),
 });
 
 type Env = z.infer<typeof envSchema>;
