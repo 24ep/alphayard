@@ -228,7 +228,7 @@ async function handleLogin(authData: any, clientId: string, clientIP: string) {
       sessionId: session.id
     })
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -253,7 +253,18 @@ async function handleLogin(authData: any, clientId: string, clientIP: string) {
         deviceInfo: deviceInfo || {}
       },
       message: 'Login successful'
-    })
+    });
+
+    // Set a session cookie for OIDC/OAuth support
+    response.cookies.set('appkit_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
   } catch (error) {
     console.error('🔐 Login error:', error)
     return NextResponse.json(
@@ -369,7 +380,7 @@ async function handleRegister(authData: any, clientId: string, clientIP: string)
       sessionId
     })
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -387,7 +398,18 @@ async function handleRegister(authData: any, clientId: string, clientIP: string)
         tokenType: 'Bearer'
       },
       message: 'Registration successful'
-    }, { status: 201 })
+    }, { status: 201 });
+
+    // Set a session cookie for OIDC/OAuth support
+    response.cookies.set('appkit_token', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
   } catch (error) {
     console.error('🔐 Registration error:', error)
     return NextResponse.json(

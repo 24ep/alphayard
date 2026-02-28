@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       token,
       user: {
@@ -104,7 +104,18 @@ export async function POST(request: NextRequest) {
       },
       sessionId: session.id,
       expiresAt: session.expiresAt
-    })
+    });
+
+    // Set a session cookie for OIDC/OAuth support
+    response.cookies.set('appkit_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
 
   } catch (error: any) {
     console.error('[login] Error:', error.message)

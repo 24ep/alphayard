@@ -306,7 +306,7 @@ export async function POST(request: NextRequest) {
     // Log security event
     console.log(`🔐 SSO Login: ${provider} - ${user.email} - Session: ${sessionId}`)
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       token,
       refreshToken,
@@ -323,7 +323,18 @@ export async function POST(request: NextRequest) {
         expiresAt: expiresAt.toISOString()
       },
       provider
-    })
+    });
+
+    // Set a session cookie for OIDC/OAuth support
+    response.cookies.set('appkit_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
   } catch (error) {
     console.error('SSO token exchange error:', error)
     return NextResponse.json(

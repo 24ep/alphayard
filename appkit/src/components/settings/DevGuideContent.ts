@@ -79,10 +79,10 @@ const jwtCheck = jwt({
   secret: jwksClient.expressJwtSecret({
     cache: true,
     rateLimit: true,
-    jwksUri: 'https://auth.boundary.com/.well-known/jwks.json'
+    jwksUri: 'https://appkits.up.railway.app/.well-known/jwks.json'
   }),
   audience: 'https://api.yourapp.com',
-  issuer: 'https://auth.boundary.com/',
+  issuer: 'https://appkits.up.railway.app',
   algorithms: ['RS256']
 });
 
@@ -111,7 +111,7 @@ security = HTTPBearer()
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         # Verify JWT token
-        jwks_url = "https://auth.boundary.com/.well-known/jwks.json"
+        jwks_url = "https://appkits.up.railway.app/.well-known/jwks.json"
         jwks_response = requests.get(jwks_url)
         jwks = jwks_response.json()
         
@@ -121,7 +121,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             jwks, 
             algorithms=["RS256"],
             audience="https://api.yourapp.com",
-            issuer="https://auth.boundary.com"
+            issuer="https://appkits.up.railway.app"
         )
         return decoded
     except jwt.ExpiredSignatureError:
@@ -150,8 +150,8 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
             )
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
-                    .jwkSetUri("https://auth.boundary.com/.well-known/jwks.json")
-                    .issuer("https://auth.boundary.com")
+                    .jwkSetUri("https://appkits.up.railway.app/.well-known/jwks.json")
+                    .issuer("https://appkits.up.railway.app")
                     .audience("https://api.yourapp.com")
                 )
             );
@@ -205,7 +205,7 @@ const authUrl = \`\${ISSUER}/oauth/authorize?\` +
         code: `import { authorize } from 'react-native-app-auth';
 
 const config = {
-  issuer: 'https://auth.boundary.com/oauth',
+  issuer: 'https://appkits.up.railway.app',
   clientId: 'YOUR_CLIENT_ID',
   redirectUrl: 'com.boundary.app:/oauth',
   scopes: ['openid', 'profile', 'email', 'offline_access'],
@@ -451,7 +451,7 @@ const { SamlStrategy } = require('passport-saml');
 const passport = require('passport');
 
 const samlStrategy = new SamlStrategy({
-  entryPoint: 'https://auth.boundary.com/saml/login',
+  entryPoint: 'https://appkits.up.railway.app/oauth/authorize',
   issuer: 'https://yourapp.com/saml',
   callbackUrl: 'https://yourapp.com/saml/acs',
   cert: '-----BEGIN CERTIFICATE-----\n...SAML_CERT...\n-----END CERTIFICATE-----'

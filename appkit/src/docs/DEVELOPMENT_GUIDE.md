@@ -96,7 +96,7 @@ import { BoundaryAuth } from '@boundary/auth'
 const auth = new BoundaryAuth({
   clientId: 'your-client-id',
   redirectUri: 'https://your-app.com/callback',
-  apiUrl: 'https://api.boundary.com'
+  apiUrl: 'https://appkits.up.railway.app'
 })
 
 // Login
@@ -280,7 +280,7 @@ app.use(cookieParser())
 const auth = new BoundaryAuth({
   clientId: process.env.BOUNDARY_CLIENT_ID,
   clientSecret: process.env.BOUNDARY_CLIENT_SECRET,
-  apiUrl: 'https://api.boundary.com'
+  apiUrl: 'https://appkits.up.railway.app'
 })
 
 // Login endpoint
@@ -346,7 +346,7 @@ app.listen(3000, () => {
 # Required
 BOUNDARY_CLIENT_ID=your_client_id_here
 BOUNDARY_CLIENT_SECRET=your_client_secret_here
-BOUNDARY_API_URL=https://api.boundary.com
+BOUNDARY_API_URL=https://appkits.up.railway.app
 BOUNDARY_REDIRECT_URI=http://localhost:3000/auth/callback
 
 # Optional
@@ -387,7 +387,7 @@ curl -X POST http://localhost:3000/api/sandbox/test-login \
 
 # Test token validation
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-  https://api.boundary.com/user/me
+  https://appkits.up.railway.app/oauth/userinfo
 ```
 
 ### Integration Testing

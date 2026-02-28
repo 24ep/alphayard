@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       req.headers.get('user-agent') || 'Unknown'
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       token,
       user: {
         id: adminUser.id,
@@ -92,6 +92,17 @@ export async function POST(req: NextRequest) {
         avatarUrl: adminUser.avatarUrl
       }
     });
+
+    // Set a session cookie for OIDC/OAuth support
+    response.cookies.set('appkit_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60 // 7 days
+    });
+
+    return response;
 
   } catch (error) {
     console.error('Admin login error:', error);

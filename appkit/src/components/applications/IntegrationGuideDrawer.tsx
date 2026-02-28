@@ -31,7 +31,7 @@ export default function IntegrationGuideDrawer({ isOpen, onClose, appId, appName
 
   if (!isOpen) return null
 
-  const domain = appDomain || 'auth.your-app.com'
+  const domain = 'appkits.up.railway.app'
 
   return (
     <>
@@ -139,7 +139,7 @@ export default function IntegrationGuideDrawer({ isOpen, onClose, appId, appName
               <pre className="p-4 rounded-xl bg-[#0d1117] text-gray-300 text-sm overflow-x-auto border border-gray-800 shadow-inner">
                 <span className="text-purple-400">import</span> {'{ authorize }'} <span className="text-purple-400">from</span> <span className="text-green-300">'react-native-app-auth'</span>;<br/><br/>
                 <span className="text-purple-400">const</span> config = {'{'}<br/>
-                {'  '}issuer: <span className="text-green-300">'https://{domain}/oauth'</span>,<br/>
+                {'  '}issuer: <span className="text-green-300">'https://{domain}'</span>,<br/>
                 {'  '}clientId: <span className="text-green-300">'{appId}'</span>,<br/>
                 {'  '}redirectUrl: <span className="text-green-300">'com.appkit.{appName.toLowerCase().replace(/[^a-z0-9]/g, '')}:/oauth'</span>,<br/>
                 {'  '}scopes: [<span className="text-green-300">'openid'</span>, <span className="text-green-300">'profile'</span>, <span className="text-green-300">'email'</span>, <span className="text-green-300">'offline_access'</span>],<br/>
