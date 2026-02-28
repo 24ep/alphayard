@@ -50,11 +50,12 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy seed file and entrypoint script for database initialization
-COPY --from=builder /app/prisma/seed.ts ./prisma/
+# Copy seed and schema for database initialization
+COPY --from=builder /app/prisma/seed-prod.js ./prisma/
+COPY --from=builder /app/prisma/schema.prisma ./prisma/
 COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 
 USER nextjs
 
