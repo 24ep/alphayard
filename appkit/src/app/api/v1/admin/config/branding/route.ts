@@ -4,14 +4,7 @@ import { prisma } from '@/server/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authenticate(request)
-    if (auth.error || !auth.admin) {
-      return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
-    }
-    // if (!hasPermission(auth.admin, 'branding:view') && !hasPermission(auth.admin, 'applications:view')) {
-    //   return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    // }
-
+    // Branding is public — needed by the login page before authentication
     // Try to find an active application with branding settings
     const activeApplication = await prisma.application.findFirst({
       where: { isActive: true },

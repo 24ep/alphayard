@@ -4,14 +4,7 @@ import { prisma } from '@/server/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await authenticate(request)
-    if (auth.error || !auth.admin) {
-      return NextResponse.json({ error: auth.error || 'Unauthorized' }, { status: auth.status || 401 })
-    }
-    if (!hasPermission(auth.admin, 'sso:view')) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 })
-    }
-
+    // SSO providers list is public — needed by the login page to show SSO buttons
     // Fetch OAuth providers from the database (CORE schema table)
     const providers = await prisma.oAuthProvider.findMany({
       where: { isEnabled: true },
