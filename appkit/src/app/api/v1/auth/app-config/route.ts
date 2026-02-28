@@ -13,14 +13,27 @@ export async function GET(req: NextRequest) {
 
     if (!applicationId && clientId) {
       const cleanClientId = clientId.trim();
-      // Find the application by client_id using findFirst to avoid unique constraint matching errors
-      const client = await prisma.oAuthClient.findFirst({
-        where: { clientId: cleanClientId },
-        select: { applicationId: true }
+      
+      // First, try to find an Application directly if the clientId is actually an Application ID
+      // (This is common because our Integration Guide tells developers to use App ID as Client ID)
+      const directApp = await prisma.application.findUnique({
+        where: { id: cleanClientId },
+        select: { id: true }
       });
-      console.log(`[AppConfig API] Looked up cleanClientId: ${cleanClientId}, Found OAuthClient:`, client);
-      if (client?.applicationId) {
-        applicationId = client.applicationId;
+
+      if (directApp) {
+        console.log(`[AppConfig API] Found Application directly using clientId as App ID:`, directApp.id);
+        applicationId = directApp.id;
+      } else {
+        // Find the application by client_id in OAuthClient
+        const client = await prisma.oAuthClient.findFirst({
+          where: { clientId: cleanClientId },
+          select: { applicationId: true }
+        });
+        console.log(`[AppConfig API] Looked up cleanClientId: ${cleanClientId}, Found OAuthClient:`, client);
+        if (client?.applicationId) {
+          applicationId = client.applicationId;
+        }
       }
     }
 
