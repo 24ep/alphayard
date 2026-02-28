@@ -12,6 +12,18 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
     instrumentationHook: true,
   },
+  async rewrites() {
+    return {
+      // Rewrites are checked after pages/public files and before dynamic routes
+      // "fallback" rewrites only apply when no page or earlier rewrite matches
+      fallback: [
+        {
+          source: '/api/admin/:path*',
+          destination: '/api/v1/admin/:path*',
+        },
+      ],
+    }
+  },
 }
 
 module.exports = withSentryConfig(nextConfig, {

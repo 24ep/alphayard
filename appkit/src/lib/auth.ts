@@ -17,47 +17,34 @@ export interface AuthenticatedRequest extends NextRequest {
 export async function authenticate(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-  const reqPath = req.nextUrl?.pathname || 'unknown';
 
   if (!token) {
-    console.warn(`[auth] No token for ${reqPath}`);
     return { error: 'Access denied', status: 401 };
   }
 
   try {
-    // Compare secrets to detect mismatch between login route and auth
-    const envSecret = process.env.JWT_SECRET;
-    const configSecret = config.JWT_SECRET;
-    if (envSecret !== configSecret) {
-      console.error(`[auth] JWT_SECRET MISMATCH: env length=${envSecret?.length}, config length=${configSecret?.length}`);
-    }
+    const decoded = jwt.verify(token, config.JWT_SECRET) as any;
 
-    const decoded = jwt.verify(token, configSecret) as any;
-    console.log(`[auth] Token verified for ${decoded.email} (type=${decoded.type}, role=${decoded.role}) on ${reqPath}`);
-    
     // Infer admin type from role claim for legacy tokens missing the type field
     const tokenType = decoded.type || (decoded.role === 'admin' || decoded.role === 'super_admin' ? 'admin' : undefined);
 
     if (tokenType !== 'admin') {
-      console.warn(`[auth] Rejected non-admin token (type: '${decoded.type}', role: '${decoded.role}') for ${decoded.email}`);
       return { error: 'Admin access required', status: 403 };
     }
 
-    // Verify user exists in DB and is active (check admin_users first, fall back to users)
+    // Verify user exists in DB and is active
+    // Check admin_users first, then fall back to users table
     const userId = decoded.adminId || decoded.id;
     let adminUser = await prisma.adminUser.findUnique({
       where: { id: userId },
       select: { id: true, isActive: true, isSuperAdmin: true, email: true }
     });
-    console.log(`[auth] adminUser lookup for ${userId}: ${adminUser ? 'found' : 'NOT FOUND'}`);
 
     if (!adminUser) {
-      // Fallback: user may exist in the users table (created via login route)
       const user = await prisma.user.findUnique({
         where: { id: userId },
         select: { id: true, isActive: true, email: true, userType: true }
       });
-      console.log(`[auth] users table fallback for ${userId}: ${user ? `found (userType=${user.userType}, active=${user.isActive})` : 'NOT FOUND'}`);
       if (user && user.isActive) {
         adminUser = {
           id: user.id,
@@ -68,10 +55,8 @@ export async function authenticate(req: NextRequest) {
       }
     }
 
+    // Last resort: trust verified JWT claims when DB lookup fails
     if (!adminUser || !adminUser.isActive) {
-      // Last resort: trust JWT claims if the token is valid and has admin type/role
-      // This handles cases where user exists in DB under a different schema or during migration
-      console.warn(`[auth] DB lookup failed for ${userId} (${decoded.email}), trusting JWT claims on ${reqPath}`);
       return {
         admin: {
           id: decoded.id,
@@ -84,7 +69,6 @@ export async function authenticate(req: NextRequest) {
       };
     }
 
-    console.log(`[auth] ✓ Authenticated ${decoded.email} (isSuperAdmin=${adminUser.isSuperAdmin}) on ${reqPath}`);
     return {
       admin: {
         id: decoded.id,
@@ -96,7 +80,7 @@ export async function authenticate(req: NextRequest) {
       }
     };
   } catch (err: any) {
-    console.error(`[auth] Token verification failed on ${reqPath}: ${err.message}`);
+    console.error(`[auth] Token verification failed: ${err.message}`);
     return { error: 'Invalid or expired token', status: 401 };
   }
 }
