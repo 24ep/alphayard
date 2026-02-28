@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@components/ui/Button'
 import { Input } from '@components/ui/Input'
+import DevHubSearch from './components/DevHubSearch'
 
 interface DocNavItem {
   title: string
@@ -117,7 +118,7 @@ export default function DevHubLayout({ children }: { children: React.ReactNode }
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 font-bold text-white shadow-lg shadow-blue-500/25">
                 A
               </div>
-              <span className="hidden font-bold sm:inline-block text-lg tracking-tight">AlphaYard Docs</span>
+              <span className="hidden font-bold sm:inline-block text-lg tracking-tight">AppKit Docs</span>
             </Link>
             <nav className="flex items-center gap-6 hidden md:flex">
               <Link href="/identity/login-config" className="text-slate-500 hover:text-slate-900 transition-colors">Configuration</Link>
@@ -129,14 +130,7 @@ export default function DevHubLayout({ children }: { children: React.ReactNode }
           </div>
           <div className="flex flex-1 items-center justify-end space-x-4">
             <div className="w-full max-w-sm hidden sm:block">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input 
-                  type="search" 
-                  placeholder="Search documentation..." 
-                  className="pl-10 h-10 w-full bg-slate-50 dark:bg-slate-900 rounded-full border-slate-200"
-                />
-              </div>
+              <DevHubSearch />
             </div>
             <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
               {isSidebarOpen ? <X /> : <Menu />}
