@@ -33,11 +33,28 @@ export async function authenticate(req: NextRequest) {
       return { error: 'Admin access required', status: 403 };
     }
 
-    // Verify user exists in DB and is active
-    const adminUser = await prisma.adminUser.findUnique({
-      where: { id: decoded.adminId || decoded.id },
+    // Verify user exists in DB and is active (check admin_users first, fall back to users)
+    const userId = decoded.adminId || decoded.id;
+    let adminUser = await prisma.adminUser.findUnique({
+      where: { id: userId },
       select: { id: true, isActive: true, isSuperAdmin: true, email: true }
     });
+
+    if (!adminUser) {
+      // Fallback: user may exist in the users table (created via login route)
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, isActive: true, email: true, userType: true }
+      });
+      if (user && user.isActive) {
+        adminUser = {
+          id: user.id,
+          isActive: true,
+          isSuperAdmin: user.userType === 'admin',
+          email: user.email
+        };
+      }
+    }
 
     if (!adminUser || !adminUser.isActive) {
       return { error: 'Invalid or inactive user', status: 401 };
