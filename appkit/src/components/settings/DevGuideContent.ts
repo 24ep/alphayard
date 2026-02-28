@@ -300,6 +300,129 @@ const verifyMFA = async (userId, token) => {
     ]
   },
   {
+    id: 'webhooks',
+    title: 'Webhooks',
+    icon: 'Webhook',
+    sections: [
+      {
+        title: 'Register Webhook Endpoint',
+        description: 'Create a webhook to receive real-time event notifications.',
+        language: 'javascript',
+        code: `const response = await fetch('/api/v1/applications/{appId}/webhooks', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': \`Bearer \${MGMT_TOKEN}\`
+  },
+  body: JSON.stringify({
+    url: 'https://api.example.com/webhooks/appkit',
+    events: ['user.created', 'user.login', 'user.signup'],
+    secret: 'whsec_your_signing_secret'
+  })
+});
+
+const webhook = await response.json();
+// { id: 'wh_123', url: '...', events: [...], status: 'active' }`
+      },
+      {
+        title: 'Verify Webhook Signature',
+        description: 'Validate incoming webhook payloads using HMAC-SHA256 signatures.',
+        language: 'javascript',
+        code: `const crypto = require('crypto');
+
+function verifyWebhook(payload, signature, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}
+
+// In your Express handler:
+app.post('/webhooks/appkit', (req, res) => {
+  const sig = req.headers['x-appkit-signature'];
+  if (!verifyWebhook(JSON.stringify(req.body), sig, WEBHOOK_SECRET)) {
+    return res.status(401).send('Invalid signature');
+  }
+  // Process event...
+  res.status(200).send('OK');
+});`
+      }
+    ]
+  },
+  {
+    id: 'activity',
+    title: 'Activity Log & Audit',
+    icon: 'Activity',
+    sections: [
+      {
+        title: 'Query Activity Log',
+        description: 'Fetch admin activity logs for compliance and debugging.',
+        language: 'javascript',
+        code: `const response = await fetch(
+  '/api/v1/applications/{appId}/activity?type=config&limit=50&from=2024-02-01',
+  { headers: { 'Authorization': \`Bearer \${MGMT_TOKEN}\` } }
+);
+
+const logs = await response.json();
+// [{ id, action, user, timestamp, type }]`
+      },
+      {
+        title: 'Export Activity Log',
+        description: 'Export logs in CSV or JSON format for compliance reporting.',
+        language: 'bash',
+        code: `curl "https://auth.app.com/api/v1/applications/{appId}/activity/export?format=csv" \\
+  -H "Authorization: Bearer MGMT_TOKEN" \\
+  -o audit_log.csv`
+      }
+    ]
+  },
+  {
+    id: 'communication',
+    title: 'Communication',
+    icon: 'MessageSquare',
+    sections: [
+      {
+        title: 'Send Transactional Email',
+        description: 'Send templated emails via the Communication API.',
+        language: 'javascript',
+        code: `await fetch('/api/v1/applications/{appId}/communication/email', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': \`Bearer \${MGMT_TOKEN}\`
+  },
+  body: JSON.stringify({
+    to: 'user@example.com',
+    template: 'welcome-email',
+    data: { name: 'John', activationUrl: 'https://...' }
+  })
+});`
+      },
+      {
+        title: 'Send Push Notification',
+        description: 'Deliver push notifications to mobile and web clients.',
+        language: 'javascript',
+        code: `await fetch('/api/v1/applications/{appId}/communication/push', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': \`Bearer \${MGMT_TOKEN}\`
+  },
+  body: JSON.stringify({
+    userId: 'usr_123',
+    title: 'New message',
+    body: 'You have a new notification',
+    data: { deepLink: '/messages/123' }
+  })
+});`
+      }
+    ]
+  },
+  {
     id: 'saml',
     title: 'SAML SSO',
     icon: 'Building2',

@@ -11,7 +11,11 @@ import {
   Zap, 
   Globe,
   Smartphone,
-  Server
+  Server,
+  Webhook,
+  Activity,
+  MessageSquare,
+  CreditCard
 } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Badge } from '../../components/ui/Badge'
@@ -71,6 +75,32 @@ export default function DevHubHome() {
           </p>
           <Link href="/dev-hub/installation" className="text-purple-600 font-bold text-sm inline-flex items-center gap-2 hover:gap-3 transition-all">
             View SDKs <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="group p-8 rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <div className="h-12 w-12 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 mb-6 group-hover:scale-110 transition-transform">
+            <Webhook className="h-6 w-6" />
+          </div>
+          <h3 className="text-xl font-bold mb-3">Webhooks & Events</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">
+            Receive real-time HTTP callbacks for user signups, logins, profile changes, and security events.
+          </p>
+          <Link href="/dev-hub/modules/webhooks" className="text-amber-600 font-bold text-sm inline-flex items-center gap-2 hover:gap-3 transition-all">
+            Explore Webhooks <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+
+        <div className="group p-8 rounded-3xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <div className="h-12 w-12 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 mb-6 group-hover:scale-110 transition-transform">
+            <MessageSquare className="h-6 w-6" />
+          </div>
+          <h3 className="text-xl font-bold mb-3">Communication</h3>
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed mb-6">
+            Unified API for transactional emails, SMS, push notifications, and in-app messaging with templates.
+          </p>
+          <Link href="/dev-hub/modules/communication" className="text-emerald-600 font-bold text-sm inline-flex items-center gap-2 hover:gap-3 transition-all">
+            Explore Communication <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
       </section>

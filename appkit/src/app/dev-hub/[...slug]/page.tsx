@@ -463,7 +463,7 @@ await client.logout({
         </div>
       ),
       prev: { title: 'Security & MFA', href: '/dev-hub/modules/security' },
-      next: { title: 'Authentication API', href: '/dev-hub/api/auth' }
+      next: { title: 'Webhooks', href: '/dev-hub/modules/webhooks' }
     },
     'api/auth': {
       title: 'Authentication API',
@@ -520,7 +520,7 @@ await client.logout({
         </div>
       ),
       prev: { title: 'Authentication API', href: '/dev-hub/api/auth' },
-      next: { title: 'CMS & Content API', href: '/dev-hub/api/cms' }
+      next: { title: 'Webhooks API', href: '/dev-hub/api/webhooks' }
     },
     'api/cms': {
       title: 'CMS & Content API',
@@ -551,7 +551,7 @@ await client.logout({
           />
         </div>
       ),
-      prev: { title: 'Users API', href: '/dev-hub/api/users' },
+      prev: { title: 'Communication API', href: '/dev-hub/api/communication' },
       next: { title: 'Circles & Groups API', href: '/dev-hub/api/circles' }
     },
     'api/circles': {
@@ -580,8 +580,8 @@ await client.logout({
           />
         </div>
       ),
-      prev: { title: 'Users API', href: '/dev-hub/api/users' },
-      next: { title: 'Audit & Security API', href: '/dev-hub/api/audit' }
+      prev: { title: 'CMS & Content API', href: '/dev-hub/api/cms' },
+      next: { title: 'Audit & Analytics API', href: '/dev-hub/api/audit' }
     },
     'api/audit': {
       title: 'Audit & Analytics API',
@@ -607,7 +607,7 @@ await client.logout({
           />
         </div>
       ),
-      prev: { title: 'Circles & Groups API', href: '/dev-hub/api/circles' },
+      prev: { title: 'CMS & Content API', href: '/dev-hub/api/cms' },
       next: { title: 'Management API', href: '/dev-hub/api/management' }
     },
     'api/management': {
@@ -643,7 +643,7 @@ await client.logout({
           />
         </div>
       ),
-      prev: { title: 'Audit & Security API', href: '/dev-hub/api/audit' },
+      prev: { title: 'Audit & Analytics API', href: '/dev-hub/api/audit' },
       next: { title: 'Application Config', href: '/dev-hub/admin/app-config' }
     },
     'admin/app-config': {
@@ -658,10 +658,10 @@ await client.logout({
           <h2 className="text-2xl font-bold mt-12 mb-4">Sidebar Groups</h2>
           <div className="grid gap-3">
             {[
-              { group: 'Core', items: 'General, App Content, Integration Guide, Users, Surveys' },
-              { group: 'App Experience', items: 'Branding, Banners, Links & Support, Splash Screen, Version Control' },
-              { group: 'Identity & Security', items: 'Identity Scope, Auth Methods, Security & MFA' },
-              { group: 'Operations', items: 'Communication, Legal & Compliance, Login Sandbox' },
+              { group: 'Core', items: 'General (API Key, Danger Zone), Integration Guide, Users, Surveys' },
+              { group: 'App Experience', items: 'Branding, Banners, Links & Support, Splash Screen, Auth Page Style' },
+              { group: 'Identity & Security', items: 'Identity Scope, User Attributes, Auth Methods, Security & MFA' },
+              { group: 'Operations', items: 'Communication, Webhooks, Legal & Compliance, Billing & Subscriptions, Activity Log, Login Sandbox' },
             ].map((section) => (
               <div key={section.group} className="p-4 rounded-xl border border-slate-100 bg-slate-50">
                 <h4 className="font-bold text-sm text-slate-900 mb-1">{section.group}</h4>
@@ -749,7 +749,443 @@ await client.logout({
           />
         </div>
       ),
-      prev: { title: 'Application Config', href: '/dev-hub/admin/app-config' }
+      prev: { title: 'Application Config', href: '/dev-hub/admin/app-config' },
+      next: { title: 'Auth Page Style', href: '/dev-hub/admin/auth-style' }
+    },
+    'admin/auth-style': {
+      title: 'Auth Page Style',
+      description: 'Visual customization of login and signup pages per device type.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The Auth Page Style panel lets you customize the visual appearance of your authentication forms for each device type (Desktop Web, Mobile Web, Mobile App).
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Features</h2>
+          <div className="grid gap-3">
+            {[
+              { title: 'Layout', desc: 'Choose between centered, left-aligned, or split layouts' },
+              { title: 'Colors', desc: 'Background, card, text, button, and link colors' },
+              { title: 'Typography', desc: 'Font family, sizes, social login button layout' },
+              { title: 'Content', desc: 'Custom title, subtitle, and footer text' },
+              { title: 'Providers', desc: 'Customize logos, labels, and colors per auth provider' },
+              { title: 'Options', desc: 'Show/hide remember me, forgot password, social divider' },
+            ].map(f => (
+              <div key={f.title} className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <h4 className="font-bold text-sm">{f.title}</h4>
+                <p className="text-xs text-slate-500">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Saving Auth Style</h2>
+          <CodeBlock
+            id="save-auth-style"
+            language="bash"
+            code={`curl -X PUT https://auth.app.com/api/v1/admin/applications/:appId/auth-style \\
+  -H "Authorization: Bearer MGMT_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "desktopWeb": { "layout": "centered", "bgColor": "#ffffff", ... },
+    "mobileWeb": { "layout": "fullWidth", "bgColor": "#f8fafc", ... },
+    "mobileApp": { "layout": "centered", "bgColor": "#0f172a", ... },
+    "providers": [{ "id": "google", "label": "Google", "bgColor": "#fff" }]
+  }'`}
+          />
+        </div>
+      ),
+      prev: { title: 'Appearance & Branding', href: '/dev-hub/admin/appearance' },
+      next: { title: 'Activity Log', href: '/dev-hub/admin/activity' }
+    },
+    'admin/activity': {
+      title: 'Activity Log',
+      description: 'Audit trail of all configuration changes and admin actions.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The Activity Log tab provides a complete audit trail of all admin actions across your application, including config changes, user operations, webhook events, and security updates.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Event Types</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { type: 'config', desc: 'Settings and branding changes' },
+              { type: 'user', desc: 'User creation, updates, suspension' },
+              { type: 'webhook', desc: 'Webhook endpoint modifications' },
+              { type: 'security', desc: 'MFA and password policy changes' },
+            ].map(e => (
+              <div key={e.type} className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <code className="text-xs font-bold text-blue-600">{e.type}</code>
+                <p className="text-xs text-slate-500 mt-1">{e.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Querying the Activity Log</h2>
+          <CodeBlock
+            id="query-activity"
+            language="bash"
+            code={`curl "https://auth.app.com/api/v1/applications/:appId/activity?type=config&limit=50" \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Exporting Logs</h2>
+          <CodeBlock
+            id="export-activity"
+            language="bash"
+            code={`curl "https://auth.app.com/api/v1/applications/:appId/activity/export?format=csv" \\
+  -H "Authorization: Bearer MGMT_TOKEN" -o activity.csv`}
+          />
+        </div>
+      ),
+      prev: { title: 'Auth Page Style', href: '/dev-hub/admin/auth-style' }
+    },
+    'modules/webhooks': {
+      title: 'Webhooks',
+      description: 'Receive real-time notifications when events occur in your application.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            Webhooks let your backend receive HTTP POST callbacks whenever key events happen — user signups, logins, profile updates, and more.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Available Events</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {['user.created', 'user.login', 'user.signup', 'user.updated', 'user.deleted', 'auth.mfa_enabled', 'session.created', 'session.expired'].map(ev => (
+              <code key={ev} className="px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs font-mono text-slate-700">{ev}</code>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Registering a Webhook</h2>
+          <CodeBlock
+            id="register-webhook"
+            language="typescript"
+            code={`await client.webhooks.create({
+  url: 'https://api.example.com/webhooks/appkit',
+  events: ['user.created', 'user.login'],
+  secret: 'whsec_your_signing_secret', // optional
+});`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Verifying Signatures</h2>
+          <CodeBlock
+            id="verify-webhook"
+            language="typescript"
+            code={`import crypto from 'crypto';
+
+function verifyWebhook(payload: string, signature: string, secret: string) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expected)
+  );
+}`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Payload Format</h2>
+          <CodeBlock
+            id="webhook-payload"
+            language="json"
+            code={`{
+  "event": "user.created",
+  "timestamp": "2024-02-22T10:30:00Z",
+  "applicationId": "app_123",
+  "data": {
+    "userId": "usr_001",
+    "email": "john@example.com",
+    "name": "John Doe"
+  }
+}`}
+          />
+        </div>
+      ),
+      prev: { title: 'Session Management', href: '/dev-hub/modules/sessions' },
+      next: { title: 'Communication', href: '/dev-hub/modules/communication' }
+    },
+    'modules/communication': {
+      title: 'Communication',
+      description: 'Send transactional emails, SMS, push notifications, and in-app messages.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            AppKit Communication provides a unified API for sending messages across multiple channels with template support and delivery tracking.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Channels</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { ch: 'Email', provider: 'SendGrid / SES', status: 'Available' },
+              { ch: 'SMS', provider: 'Twilio', status: 'Available' },
+              { ch: 'Push', provider: 'Firebase / APNs', status: 'Available' },
+              { ch: 'In-App', provider: 'Built-in', status: 'Available' },
+            ].map(c => (
+              <div key={c.ch} className="p-3 rounded-xl border border-slate-100 bg-slate-50">
+                <h4 className="font-bold text-sm">{c.ch}</h4>
+                <p className="text-xs text-slate-500">{c.provider}</p>
+              </div>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Sending Email</h2>
+          <CodeBlock
+            id="send-email"
+            language="typescript"
+            code={`await client.communication.sendEmail({
+  to: 'user@example.com',
+  template: 'welcome-email',
+  data: { name: 'John', activationUrl: '...' },
+});`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Push Notifications</h2>
+          <CodeBlock
+            id="send-push"
+            language="typescript"
+            code={`await client.communication.sendPush(userId, {
+  title: 'New message',
+  body: 'You have a new notification',
+  data: { deepLink: '/messages/123' },
+});`}
+          />
+        </div>
+      ),
+      prev: { title: 'Webhooks', href: '/dev-hub/modules/webhooks' },
+      next: { title: 'Surveys', href: '/dev-hub/modules/surveys' }
+    },
+    'modules/surveys': {
+      title: 'Surveys',
+      description: 'Build, distribute, and analyze user surveys with the Survey Builder.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The Surveys module provides a drag-and-drop survey builder with support for multiple question types, conditional logic, and real-time result analytics.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Question Types</h2>
+          <div className="grid grid-cols-2 gap-2">
+            {['Rating (1-5 stars)', 'Text (short/long)', 'Multiple Choice', 'NPS Score', 'Yes/No', 'Dropdown'].map(q => (
+              <div key={q} className="p-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-700 font-medium">{q}</div>
+            ))}
+          </div>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Triggering a Survey</h2>
+          <CodeBlock
+            id="trigger-survey"
+            language="typescript"
+            code={`await client.surveys.trigger(surveyId, {
+  userId: 'usr_123',
+  context: { screen: 'checkout', action: 'purchase_complete' },
+});`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Fetching Results</h2>
+          <CodeBlock
+            id="survey-results"
+            language="typescript"
+            code={`const results = await client.surveys.getResults(surveyId);
+// { responses: [...], summary: { avg: 4.2, count: 128 } }`}
+          />
+        </div>
+      ),
+      prev: { title: 'Communication', href: '/dev-hub/modules/communication' },
+      next: { title: 'Legal & Compliance', href: '/dev-hub/modules/legal' }
+    },
+    'modules/legal': {
+      title: 'Legal & Compliance',
+      description: 'Manage legal documents, consent tracking, GDPR compliance, and data retention.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The Legal module handles privacy policies, terms of service, cookie consent, and GDPR/CCPA compliance requirements with versioned document management.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Document Management</h2>
+          <p className="text-slate-600 leading-relaxed">
+            Each document supports URL-based linking or inline content editing with a built-in Markdown editor, version tracking, and draft/published/archived status.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Fetching Legal Docs</h2>
+          <CodeBlock
+            id="get-legal"
+            language="typescript"
+            code={`const legal = await client.legal.getDocuments();
+// [{ id, title, url, content, version, status, lastUpdated }]
+
+// Check consent status
+const consent = await client.legal.getConsent(userId);
+// { termsAccepted: true, privacyAccepted: true, cookiePreferences: {...} }`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Compliance Settings</h2>
+          <CodeBlock
+            id="compliance"
+            language="typescript"
+            code={`// Compliance toggles available:
+// - GDPR Compliance
+// - Cookie Consent
+// - Age Verification
+// - Data Retention Policy
+// - Right to Erasure
+// - Audit Logging`}
+          />
+        </div>
+      ),
+      prev: { title: 'Surveys', href: '/dev-hub/modules/surveys' },
+      next: { title: 'Billing & Subscriptions', href: '/dev-hub/modules/billing' }
+    },
+    'modules/billing': {
+      title: 'Billing & Subscriptions',
+      description: 'Manage subscription plans, payment methods, and billing cycles.',
+      content: (
+        <div className="space-y-8">
+          <p className="text-slate-600 leading-relaxed text-lg">
+            The Billing module integrates with your payment provider to manage subscription plans, usage metering, and invoice generation.
+          </p>
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Subscription Plans</h2>
+          <CodeBlock
+            id="get-plans"
+            language="typescript"
+            code={`const plans = await client.billing.getPlans();
+// [{ id, name, price, interval, features: [...] }]
+
+// Assign plan to user
+await client.billing.subscribe(userId, planId);`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">Usage & Metering</h2>
+          <CodeBlock
+            id="billing-usage"
+            language="typescript"
+            code={`const usage = await client.billing.getUsage(userId);
+// { apiCalls: 1250, storage: '2.3GB', activeUsers: 45 }`}
+          />
+        </div>
+      ),
+      prev: { title: 'Legal & Compliance', href: '/dev-hub/modules/legal' },
+      next: { title: 'Groups & Organizations', href: '/dev-hub/modules/groups' }
+    },
+    'api/webhooks': {
+      title: 'Webhooks API',
+      description: 'REST endpoints for managing webhook endpoints and delivery logs.',
+      content: (
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold">GET /webhooks</h2>
+          <p className="text-slate-600 leading-relaxed">List all registered webhook endpoints for the application.</p>
+          <CodeBlock
+            id="list-webhooks-api"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/applications/:appId/webhooks \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">POST /webhooks</h2>
+          <p className="text-slate-600 leading-relaxed">Register a new webhook endpoint.</p>
+          <CodeBlock
+            id="create-webhook-api"
+            language="json"
+            code={`{
+  "url": "https://api.example.com/webhooks",
+  "events": ["user.created", "user.login"],
+  "secret": "whsec_optional_signing_secret"
+}`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">DELETE /webhooks/:id</h2>
+          <p className="text-slate-600 leading-relaxed">Remove a webhook endpoint.</p>
+          <CodeBlock
+            id="delete-webhook-api"
+            language="bash"
+            code={`curl -X DELETE https://auth.app.com/api/v1/applications/:appId/webhooks/wh_123 \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+        </div>
+      ),
+      prev: { title: 'Users API', href: '/dev-hub/api/users' },
+      next: { title: 'Activity Log API', href: '/dev-hub/api/activity' }
+    },
+    'api/activity': {
+      title: 'Activity Log API',
+      description: 'Query and export the admin activity audit trail.',
+      content: (
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold">GET /activity</h2>
+          <p className="text-slate-600 leading-relaxed">Query activity logs with filtering by type, date range, and user.</p>
+          <CodeBlock
+            id="get-activity-api"
+            language="bash"
+            code={`curl "https://auth.app.com/api/v1/applications/:appId/activity?type=config&from=2024-02-01&limit=50" \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">GET /activity/export</h2>
+          <p className="text-slate-600 leading-relaxed">Export activity logs in CSV or JSON format for compliance reporting.</p>
+          <CodeBlock
+            id="export-activity-api"
+            language="bash"
+            code={`curl "https://auth.app.com/api/v1/applications/:appId/activity/export?format=csv" \\
+  -H "Authorization: Bearer MGMT_TOKEN" -o audit_log.csv`}
+          />
+        </div>
+      ),
+      prev: { title: 'Webhooks API', href: '/dev-hub/api/webhooks' },
+      next: { title: 'Communication API', href: '/dev-hub/api/communication' }
+    },
+    'api/communication': {
+      title: 'Communication API',
+      description: 'Send emails, SMS, push notifications, and manage templates.',
+      content: (
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold">POST /communication/email</h2>
+          <p className="text-slate-600 leading-relaxed">Send a transactional email using a template.</p>
+          <CodeBlock
+            id="comm-email-api"
+            language="json"
+            code={`{
+  "to": "user@example.com",
+  "template": "welcome-email",
+  "data": { "name": "John", "activationUrl": "https://..." }
+}`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">POST /communication/push</h2>
+          <CodeBlock
+            id="comm-push-api"
+            language="json"
+            code={`{
+  "userId": "usr_123",
+  "title": "New message",
+  "body": "You have a new notification",
+  "data": { "deepLink": "/messages/123" }
+}`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">POST /communication/sms</h2>
+          <CodeBlock
+            id="comm-sms-api"
+            language="json"
+            code={`{
+  "to": "+1234567890",
+  "template": "otp-code",
+  "data": { "code": "123456" }
+}`}
+          />
+
+          <h2 className="text-2xl font-bold mt-12 mb-4">GET /communication/templates</h2>
+          <p className="text-slate-600 leading-relaxed">List all email and message templates.</p>
+          <CodeBlock
+            id="comm-templates-api"
+            language="bash"
+            code={`curl https://auth.app.com/api/v1/applications/:appId/communication/templates \\
+  -H "Authorization: Bearer MGMT_TOKEN"`}
+          />
+        </div>
+      ),
+      prev: { title: 'Activity Log API', href: '/dev-hub/api/activity' },
+      next: { title: 'CMS & Content API', href: '/dev-hub/api/cms' }
     }
   }
 

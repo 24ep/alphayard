@@ -24,31 +24,66 @@ Use the "Test in Sandbox" button to verify your login flow works correctly.
 
 ## Features
 
-### 🔐 Authentication Methods
+### Authentication Methods
 - **Email/Password**: Traditional login with email and password
 - **Social Login**: Support for Google, Microsoft, GitHub, Apple, and more
 - **Enterprise SSO**: SAML, OIDC, and custom SSO providers
-- **Multi-factor Authentication**: Optional 2FA with SMS, email, or authenticator apps
+- **Multi-factor Authentication**: TOTP, SMS, Email OTP, and FIDO2 hardware keys
+- **Magic Links**: Passwordless email-based authentication
 
-### 🎨 Customization Options
+### Customization Options
 - **Branding**: Logo, colors, fonts, and custom CSS
+- **Auth Page Style**: Per-device (Desktop Web, Mobile Web, Mobile App) visual customization of login/signup pages
 - **Layout**: Multiple layout options (centered, split, full-width)
 - **Form Fields**: Configure which fields to show/hide
 - **Animations**: Smooth transitions and micro-interactions
 - **Responsive**: Device-specific configurations for desktop, mobile, tablet
 
-### 🛡️ Security Features
+### Security Features
 - **Rate Limiting**: Prevent brute force attacks
-- **Session Management**: Secure token handling
-- **Password Strength**: Configurable password requirements
-- **Account Lockout**: Temporary lock after failed attempts
+- **Session Management**: Configurable timeout and max concurrent sessions
+- **Password Policy**: Min length, complexity requirements, expiry, lockout duration
+- **Account Lockout**: Temporary lock after configurable failed attempts
 - **GDPR Compliance**: Privacy and data protection features
 
-### 🌐 Multi-Platform Support
+### Webhooks & Events
+- **Real-time Callbacks**: HTTP POST notifications for user.created, user.login, user.signup, user.updated, user.deleted, auth.mfa_enabled, session.created, session.expired
+- **Signature Verification**: HMAC-SHA256 payload signing for security
+- **Management UI**: Add, remove, and monitor webhook endpoints from the admin console
+
+### Communication
+- **Email**: Transactional emails via SendGrid/SES with template support
+- **SMS**: OTP and notifications via Twilio
+- **Push Notifications**: Firebase/APNs integration
+- **In-App Messaging**: Built-in notification system
+
+### Activity Log & Audit
+- **Audit Trail**: Complete log of all admin actions (config, user, webhook, security changes)
+- **Filtering**: Filter by event type, date range, and user
+- **Export**: CSV and JSON export for compliance reporting
+
+### Surveys
+- **Survey Builder**: Drag-and-drop with rating, text, multiple choice, NPS, yes/no, dropdown
+- **Conditional Logic**: Show/hide questions based on previous answers
+- **Analytics**: Real-time result aggregation and summary
+
+### Billing & Subscriptions
+- **Plan Management**: Configure subscription tiers with features
+- **Usage Metering**: Track API calls, storage, and active users
+- **Invoice Generation**: Automated billing cycles
+
+### Multi-Platform Support
 - **Web Desktop**: Full-featured desktop browser experience
 - **Web Mobile**: Optimized for mobile browsers
 - **Mobile App**: Native app integration support
 - **Tablet**: Tablet-specific layouts and interactions
+
+### Application Management
+- **API Key**: View, copy, and manage application API keys
+- **Danger Zone**: Application deletion with confirmation safeguard
+- **Identity Scope**: Configurable OpenID Connect scopes (openid, profile, email, phone, address)
+- **User Attributes**: Custom metadata fields for user segmentation
+- **Legal & Compliance**: Versioned legal documents with inline Markdown editor, compliance toggles
 
 ## Integration Guide
 
@@ -318,6 +353,7 @@ BOUNDARY_REDIRECT_URI=http://localhost:3000/auth/callback
 BOUNDARY_SCOPE=read write
 BOUNDARY_TOKEN_STORAGE=localStorage
 BOUNDARY_SESSION_TIMEOUT=3600
+BOUNDARY_WEBHOOK_SECRET=whsec_your_signing_secret
 ```
 
 ### Configuration Options

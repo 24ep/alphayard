@@ -64,6 +64,12 @@ import {
   PaintbrushIcon,
   CreditCardIcon,
   LogInIcon,
+  WebhookIcon,
+  ActivityIcon,
+  Trash2Icon,
+  RefreshCwIcon,
+  AlertCircleIcon,
+  HashIcon,
 } from 'lucide-react'
 
 interface Application {
@@ -139,6 +145,45 @@ export default function ApplicationConfigPage() {
   const [legalConfig, setLegalConfig] = useState<any>(null)
   const [legalUseDefault, setLegalUseDefault] = useState(true)
   const [legalLoading, setLegalLoading] = useState(true)
+  // Security & MFA state (controlled)
+  const [securityConfig, setSecurityConfig] = useState({
+    mfa: { totp: true, sms: false, email: true, fido2: false },
+    password: { minLength: 8, maxAttempts: 5, expiryDays: 90, lockoutMinutes: 30, requireUppercase: true, requireLowercase: true, requireNumber: true, requireSpecial: false },
+    session: { timeoutMinutes: 60, maxConcurrent: 3 },
+  })
+  const [securitySaving, setSecuritySaving] = useState(false)
+  const [securityMsg, setSecurityMsg] = useState('')
+  // Identity Scope state (controlled)
+  const [identityConfig, setIdentityConfig] = useState({
+    model: 'Email-based',
+    scopes: { openid: true, profile: true, email: true, phone: false, address: false },
+  })
+  const [identitySaving, setIdentitySaving] = useState(false)
+  const [identityMsg, setIdentityMsg] = useState('')
+  // API Key
+  const [apiKeyVisible, setApiKeyVisible] = useState(false)
+  const [apiKey] = useState(`ak_live_${appId.substring(0, 8)}...${Math.random().toString(36).substring(2, 10)}`)
+  // Webhooks
+  const [webhooks, setWebhooks] = useState([
+    { id: '1', url: 'https://api.example.com/webhooks/appkit', events: ['user.created', 'user.login'], status: 'active' as const, lastTriggered: '2024-02-22T10:30:00Z' },
+    { id: '2', url: 'https://hooks.slack.com/services/T00/B00/xxx', events: ['user.signup'], status: 'active' as const, lastTriggered: '2024-02-21T15:45:00Z' },
+  ])
+  const [showAddWebhook, setShowAddWebhook] = useState(false)
+  const [newWebhookUrl, setNewWebhookUrl] = useState('')
+  // Activity Log
+  const [activityLog] = useState([
+    { id: '1', action: 'Auth config updated', user: 'admin@example.com', timestamp: '2024-02-22T10:30:00Z', type: 'config' as const },
+    { id: '2', action: 'User john.doe@example.com created', user: 'admin@example.com', timestamp: '2024-02-22T09:15:00Z', type: 'user' as const },
+    { id: '3', action: 'Webhook endpoint added', user: 'admin@example.com', timestamp: '2024-02-21T16:45:00Z', type: 'webhook' as const },
+    { id: '4', action: 'MFA settings updated', user: 'admin@example.com', timestamp: '2024-02-21T14:20:00Z', type: 'security' as const },
+    { id: '5', action: 'Branding logo uploaded', user: 'admin@example.com', timestamp: '2024-02-20T11:30:00Z', type: 'config' as const },
+    { id: '6', action: 'Legal documents updated', user: 'admin@example.com', timestamp: '2024-02-20T09:00:00Z', type: 'config' as const },
+    { id: '7', action: 'User mike.ross@example.com suspended', user: 'admin@example.com', timestamp: '2024-02-19T17:10:00Z', type: 'user' as const },
+    { id: '8', action: 'Application status changed to active', user: 'admin@example.com', timestamp: '2024-02-19T10:00:00Z', type: 'config' as const },
+  ])
+  // Danger zone
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const handleBrandingUpload = async (field: string, file: File) => {
     setBrandingUploading(true)
@@ -279,6 +324,63 @@ export default function ApplicationConfigPage() {
     }
   }
 
+  const handleSaveSecurity = async () => {
+    try {
+      setSecuritySaving(true)
+      await fetch(`/api/v1/admin/applications/${appId}/security`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(securityConfig),
+      })
+      setSecurityMsg('Saved!')
+      setTimeout(() => setSecurityMsg(''), 3000)
+    } catch {
+      setSecurityMsg('Failed')
+      setTimeout(() => setSecurityMsg(''), 3000)
+    } finally {
+      setSecuritySaving(false)
+    }
+  }
+
+  const handleSaveIdentity = async () => {
+    try {
+      setIdentitySaving(true)
+      await fetch(`/api/v1/admin/applications/${appId}/identity`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(identityConfig),
+      })
+      setIdentityMsg('Saved!')
+      setTimeout(() => setIdentityMsg(''), 3000)
+    } catch {
+      setIdentityMsg('Failed')
+      setTimeout(() => setIdentityMsg(''), 3000)
+    } finally {
+      setIdentitySaving(false)
+    }
+  }
+
+  const handleAddWebhook = () => {
+    if (!newWebhookUrl) return
+    setWebhooks(prev => [...prev, { id: Date.now().toString(), url: newWebhookUrl, events: ['user.created'], status: 'active' as const, lastTriggered: '' }])
+    setNewWebhookUrl('')
+    setShowAddWebhook(false)
+  }
+
+  const handleDeleteWebhook = (id: string) => {
+    setWebhooks(prev => prev.filter(w => w.id !== id))
+  }
+
+  const handleDeleteApp = async () => {
+    try {
+      await fetch(`/api/v1/admin/applications/${appId}`, { method: 'DELETE' })
+      router.push('/applications')
+    } catch {
+      setGeneralMsg('Delete failed')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    }
+  }
+
   const handleSandboxSimulate = (type: string) => {
     setSandboxRunning(true)
     setTimeout(() => {
@@ -370,7 +472,6 @@ export default function ApplicationConfigPage() {
       title: 'Core',
       items: [
         { value: 'general', icon: <SettingsIcon className="w-4 h-4" />, label: 'General' },
-        { value: 'content', icon: <ServerIcon className="w-4 h-4" />, label: 'App Content' },
         { value: 'integration', icon: <CodeIcon className="w-4 h-4" />, label: 'Integration Guide' },
         { value: 'users', icon: <UsersIcon className="w-4 h-4" />, label: 'Users' },
         { value: 'surveys', icon: <ClipboardListIcon className="w-4 h-4" />, label: 'Surveys' },
@@ -383,7 +484,6 @@ export default function ApplicationConfigPage() {
         { value: 'banners', icon: <MegaphoneIcon className="w-4 h-4" />, label: 'Banners' },
         { value: 'links', icon: <LinksIcon className="w-4 h-4" />, label: 'Links & Support' },
         { value: 'splash', icon: <SparklesIcon className="w-4 h-4" />, label: 'Splash Screen' },
-        { value: 'versions', icon: <RocketIcon className="w-4 h-4" />, label: 'Version Control' },
         { value: 'auth-style', icon: <LogInIcon className="w-4 h-4" />, label: 'Auth Page Style' },
       ],
     },
@@ -400,8 +500,10 @@ export default function ApplicationConfigPage() {
       title: 'Operations',
       items: [
         { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
+        { value: 'webhooks', icon: <WebhookIcon className="w-4 h-4" />, label: 'Webhooks' },
         { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
         { value: 'billing', icon: <CreditCardIcon className="w-4 h-4" />, label: 'Billing & Subscriptions' },
+        { value: 'activity', icon: <ActivityIcon className="w-4 h-4" />, label: 'Activity Log' },
         { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
       ],
     },
@@ -415,6 +517,7 @@ export default function ApplicationConfigPage() {
           <button 
             onClick={() => router.push('/applications')}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
+            title="Back to applications"
           >
             <ArrowLeftIcon className="w-5 h-5 text-gray-500 dark:text-zinc-400" />
           </button>
@@ -539,6 +642,7 @@ export default function ApplicationConfigPage() {
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Application Name</label>
                     <input
                       type="text"
+                      title="Application name"
                       value={application.name}
                       onChange={e => setApplication(prev => prev ? { ...prev, name: e.target.value } : prev)}
                       className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -547,6 +651,7 @@ export default function ApplicationConfigPage() {
                   <div>
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Description</label>
                     <textarea
+                      title="Application description"
                       value={application.description}
                       onChange={e => setApplication(prev => prev ? { ...prev, description: e.target.value } : prev)}
                       rows={2}
@@ -567,6 +672,7 @@ export default function ApplicationConfigPage() {
                     <div>
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Status</label>
                       <select
+                        title="Application status"
                         value={application.status}
                         onChange={e => setApplication(prev => prev ? { ...prev, status: e.target.value as Application['status'] } : prev)}
                         className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -655,8 +761,82 @@ export default function ApplicationConfigPage() {
                 <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">App Version Control</h4>
                 <AppUpdateSettings updates={appBranding.updates} setBranding={setAppBranding} />
               </div>
+
+              {/* API Key */}
+              <div className="pt-4 border-t border-gray-100 dark:border-zinc-800/50">
+                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">API Key</h4>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700">
+                  <KeyIcon className="w-4 h-4 text-amber-500 shrink-0" />
+                  <code className="flex-1 text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">
+                    {apiKeyVisible ? apiKey : '••••••••••••••••••••••••••••••••'}
+                  </code>
+                  <button onClick={() => setApiKeyVisible(!apiKeyVisible)} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title={apiKeyVisible ? 'Hide API key' : 'Show API key'}>
+                    <EyeIcon className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => handleCopy(apiKey, 'apikey')} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy API key">
+                    {copiedId === 'apikey' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-2">Use this key to authenticate API requests. Keep it secret and never expose it in client-side code.</p>
+              </div>
             </div>
           </div>
+
+          {/* Danger Zone */}
+          <div className="rounded-xl border border-red-200/80 dark:border-red-500/20 bg-red-50/30 dark:bg-red-500/5 p-6">
+            <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 flex items-center gap-2 mb-3">
+              <AlertCircleIcon className="w-4 h-4" /> Danger Zone
+            </h4>
+            <p className="text-xs text-red-600/70 dark:text-red-400/60 mb-4">Deleting this application is permanent and cannot be undone. All users, data, and configuration will be lost.</p>
+            {!showDeleteConfirm ? (
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(true)} className="border-red-300 dark:border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10">
+                <Trash2Icon className="w-4 h-4 mr-1.5" /> Delete Application
+              </Button>
+            ) : (
+              <div className="space-y-3 p-4 rounded-lg border border-red-200 dark:border-red-500/20 bg-white dark:bg-zinc-900">
+                <p className="text-xs text-red-700 dark:text-red-400 font-medium">Type <code className="px-1.5 py-0.5 bg-red-100 dark:bg-red-500/10 rounded font-mono text-[10px]">{application.name}</code> to confirm:</p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder={application.name}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-red-200 dark:border-red-500/30 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                />
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }} className="text-xs">Cancel</Button>
+                  <Button onClick={handleDeleteApp} disabled={deleteConfirmText !== application.name} className="bg-red-600 text-white border-0 hover:bg-red-700 disabled:opacity-40 text-xs">
+                    <Trash2Icon className="w-3.5 h-3.5 mr-1" /> Permanently Delete
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Application Metadata
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Fetch and update application settings programmatically:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Fetch application metadata
+const app = await client.getApplication();
+// { id, name, domain, platform, status, apiKey, ... }
+
+// Update application settings
+await client.updateApplication({
+  name: 'My App',
+  domain: 'myapp.com',
+  platform: 'web',
+});
+
+// Regenerate API key
+const { apiKey } = await client.regenerateApiKey();`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}
+PUT  /api/v1/applications/{appId}
+POST /api/v1/applications/{appId}/regenerate-key`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB: Integration Guide ==================== */}
@@ -938,6 +1118,39 @@ export default function ApplicationConfigPage() {
               </div>
             )}
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Users API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Manage users programmatically via the API:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// List users with pagination & filters
+const { users, total } = await client.users.list({
+  page: 1,
+  limit: 20,
+  search: 'john',
+  status: 'active',
+});
+
+// Get user by ID
+const user = await client.users.get(userId);
+
+// Update user attributes
+await client.users.update(userId, {
+  displayName: 'John Doe',
+  metadata: { plan: 'pro' },
+});
+
+// Delete / deactivate user
+await client.users.deactivate(userId);
+await client.users.delete(userId);`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET    /api/v1/applications/{appId}/users
+GET    /api/v1/applications/{appId}/users/:id
+PATCH  /api/v1/applications/{appId}/users/:id
+DELETE /api/v1/applications/{appId}/users/:id`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB: Surveys ==================== */}
@@ -947,6 +1160,36 @@ export default function ApplicationConfigPage() {
             <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Create and manage surveys to collect user feedback. Embed them via the SDK.</p>
             <SurveyBuilder appId={appId} />
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Surveys Integration
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Trigger and collect survey responses via the SDK:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Show a survey to the user
+await client.surveys.show(surveyId);
+
+// Submit survey response
+await client.surveys.submit(surveyId, {
+  answers: [
+    { questionId: 'q1', value: 5 },
+    { questionId: 'q2', value: 'Great experience!' },
+  ],
+});
+
+// Fetch survey results (admin)
+const results = await client.surveys.getResults(surveyId);
+// { responses: [...], summary: { avg: 4.2, count: 128 } }
+
+// List available surveys
+const surveys = await client.surveys.list();`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/surveys
+GET  /api/v1/applications/{appId}/surveys/:id
+POST /api/v1/applications/{appId}/surveys/:id/respond
+GET  /api/v1/applications/{appId}/surveys/:id/results`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB: User Attributes ==================== */}
@@ -956,13 +1199,50 @@ export default function ApplicationConfigPage() {
             <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Manage custom data you collect from users. These can be used to segment your audience and personalize their experience.</p>
             <UserAttributesConfig appId={appId} mode="app" />
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — User Attributes API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Read and write custom user attributes via the SDK:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Set user attributes
+await client.user.setAttributes({
+  plan: 'pro',
+  onboarded: true,
+  company: 'Acme Inc',
+});
+
+// Get user attributes
+const attrs = await client.user.getAttributes();
+// { plan: 'pro', onboarded: true, company: 'Acme Inc' }
+
+// Use attributes for segmentation
+const segment = await client.segments.evaluate(userId);
+// { segments: ['power-users', 'paying'] }`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET   /api/v1/applications/{appId}/users/:id/attributes
+PATCH /api/v1/applications/{appId}/users/:id/attributes
+GET   /api/v1/applications/{appId}/attributes/schema`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB 3: Global Identity Scope ==================== */}
         <TabsContent value="identity" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Global Identity Scope</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Configure how user identities are managed across this application.</p>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Global Identity Scope</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure how user identities are managed across this application.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {identityMsg && <span className={`text-xs font-medium ${identityMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{identityMsg}</span>}
+                <Button onClick={handleSaveIdentity} disabled={identitySaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                  {identitySaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
 
             <div className="space-y-6">
               {/* Identity Model */}
@@ -977,7 +1257,12 @@ export default function ApplicationConfigPage() {
                       <p className="text-xs text-gray-500 dark:text-zinc-400">Control how users are identified in this application</p>
                     </div>
                   </div>
-                  <select className="text-sm border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-1.5 text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                  <select
+                    title="Identity model"
+                    value={identityConfig.model}
+                    onChange={e => setIdentityConfig(prev => ({ ...prev, model: e.target.value }))}
+                    className="text-sm border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg px-3 py-1.5 text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
                     <option>Email-based</option>
                     <option>Username-based</option>
                     <option>Phone-based</option>
@@ -985,7 +1270,6 @@ export default function ApplicationConfigPage() {
                   </select>
                 </div>
               </div>
-
 
               {/* Scope Settings */}
               <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
@@ -999,20 +1283,26 @@ export default function ApplicationConfigPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {[
-                    { scope: 'openid', desc: 'Basic OpenID Connect', enabled: true },
-                    { scope: 'profile', desc: 'User profile information', enabled: true },
-                    { scope: 'email', desc: 'Email address access', enabled: true },
-                    { scope: 'phone', desc: 'Phone number access', enabled: false },
-                    { scope: 'address', desc: 'Physical address', enabled: false },
-                  ].map((s) => (
+                  {([
+                    { scope: 'openid' as const, desc: 'Basic OpenID Connect' },
+                    { scope: 'profile' as const, desc: 'User profile information' },
+                    { scope: 'email' as const, desc: 'Email address access' },
+                    { scope: 'phone' as const, desc: 'Phone number access' },
+                    { scope: 'address' as const, desc: 'Physical address' },
+                  ]).map((s) => (
                     <div key={s.scope} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50">
                       <div>
                         <span className="text-sm font-medium text-gray-800 dark:text-zinc-200">{s.scope}</span>
                         <span className="text-xs text-gray-500 dark:text-zinc-400 ml-2">— {s.desc}</span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked={s.enabled} />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          title={`Toggle ${s.scope} scope`}
+                          checked={identityConfig.scopes[s.scope]}
+                          onChange={e => setIdentityConfig(prev => ({ ...prev, scopes: { ...prev.scopes, [s.scope]: e.target.checked } }))}
+                        />
                         <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
                       </label>
                     </div>
@@ -1021,6 +1311,33 @@ export default function ApplicationConfigPage() {
               </div>
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Identity Scope Integration
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Request and inspect identity scopes during authentication:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Request specific scopes during auth
+const session = await client.auth.signIn({
+  email: 'user@example.com',
+  password: '***',
+  scopes: ['openid', 'profile', 'email'],
+});
+
+// Inspect token scopes
+const token = await client.auth.getAccessToken();
+const decoded = client.auth.decodeToken(token);
+// decoded.scope === 'openid profile email'
+
+// Fetch available scopes for this app
+const scopes = await client.identity.getScopes();
+// [{ name: 'openid', enabled: true }, ...]`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/identity/scopes
+PUT  /api/v1/applications/{appId}/identity/scopes
+GET  /api/v1/applications/{appId}/identity/model`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB 4: Authentication Methods ==================== */}
@@ -1066,13 +1383,58 @@ export default function ApplicationConfigPage() {
               ))}
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Auth Methods Integration
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Fetch enabled authentication providers and initiate auth flows:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Fetch enabled auth methods for this app
+const methods = await client.getAuthMethods();
+// methods: [{ providerName, displayName, isEnabled, clientId }]
+
+// Initiate OAuth flow
+await client.auth.startOAuth('google-oauth', {
+  redirectUri: 'https://yourapp.com/callback',
+  scope: 'openid email profile',
+});
+
+// Email & password login
+const session = await client.auth.signIn({
+  email: 'user@example.com',
+  password: '***',
+});
+
+// Magic link
+await client.auth.sendMagicLink('user@example.com');
+
+// Check auth status
+const user = await client.auth.getCurrentUser();`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/auth/methods
+POST /api/v1/applications/{appId}/auth/signin
+POST /api/v1/applications/{appId}/auth/oauth/start
+POST /api/v1/applications/{appId}/auth/magic-link`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB 5: Security & MFA ==================== */}
         <TabsContent value="security" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Security & MFA</h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400 mb-6">Configure multi-factor authentication, password policies, and session security.</p>
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Security & MFA</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure multi-factor authentication, password policies, and session security.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {securityMsg && <span className={`text-xs font-medium ${securityMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{securityMsg}</span>}
+                <Button onClick={handleSaveSecurity} disabled={securitySaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                  {securitySaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
 
             <div className="space-y-6">
               {/* MFA Settings */}
@@ -1082,19 +1444,25 @@ export default function ApplicationConfigPage() {
                   Multi-Factor Authentication
                 </h4>
                 <div className="space-y-3">
-                  {[
-                    { name: 'TOTP (Authenticator App)', desc: 'Google Authenticator, Authy, etc.', enabled: true },
-                    { name: 'SMS Verification', desc: 'Send OTP via text message', enabled: false },
-                    { name: 'Email Verification', desc: 'Send OTP via email', enabled: true },
-                    { name: 'Hardware Key (FIDO2)', desc: 'YubiKey, Titan Security Key', enabled: false },
-                  ].map((mfa) => (
-                    <div key={mfa.name} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
+                  {([
+                    { key: 'totp' as const, name: 'TOTP (Authenticator App)', desc: 'Google Authenticator, Authy, etc.' },
+                    { key: 'sms' as const, name: 'SMS Verification', desc: 'Send OTP via text message' },
+                    { key: 'email' as const, name: 'Email Verification', desc: 'Send OTP via email' },
+                    { key: 'fido2' as const, name: 'Hardware Key (FIDO2)', desc: 'YubiKey, Titan Security Key' },
+                  ]).map((mfa) => (
+                    <div key={mfa.key} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
                       <div>
                         <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{mfa.name}</p>
                         <p className="text-xs text-gray-500 dark:text-zinc-400">{mfa.desc}</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" className="sr-only peer" defaultChecked={mfa.enabled} />
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          title={`Toggle ${mfa.name}`}
+                          checked={securityConfig.mfa[mfa.key]}
+                          onChange={e => setSecurityConfig(prev => ({ ...prev, mfa: { ...prev.mfa, [mfa.key]: e.target.checked } }))}
+                        />
                         <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
                       </label>
                     </div>
@@ -1109,31 +1477,38 @@ export default function ApplicationConfigPage() {
                   Password Policy
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { label: 'Minimum Length', type: 'number', defaultValue: '8' },
-                    { label: 'Max Login Attempts', type: 'number', defaultValue: '5' },
-                    { label: 'Password Expiry (days)', type: 'number', defaultValue: '90' },
-                    { label: 'Lockout Duration (min)', type: 'number', defaultValue: '30' },
-                  ].map((field) => (
-                    <div key={field.label}>
+                  {([
+                    { label: 'Minimum Length', key: 'minLength' as const },
+                    { label: 'Max Login Attempts', key: 'maxAttempts' as const },
+                    { label: 'Password Expiry (days)', key: 'expiryDays' as const },
+                    { label: 'Lockout Duration (min)', key: 'lockoutMinutes' as const },
+                  ]).map((field) => (
+                    <div key={field.key}>
                       <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">{field.label}</label>
                       <input
-                        type={field.type}
-                        defaultValue={field.defaultValue}
+                        type="number"
+                        title={field.label}
+                        value={securityConfig.password[field.key]}
+                        onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [field.key]: parseInt(e.target.value) || 0 } }))}
                         className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                       />
                     </div>
                   ))}
                 </div>
                 <div className="mt-4 space-y-2">
-                  {[
-                    { label: 'Require uppercase letter', checked: true },
-                    { label: 'Require lowercase letter', checked: true },
-                    { label: 'Require number', checked: true },
-                    { label: 'Require special character', checked: false },
-                  ].map((rule) => (
-                    <label key={rule.label} className="flex items-center space-x-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked={rule.checked} className="w-4 h-4 text-blue-500 border-gray-300 dark:border-zinc-600 rounded focus:ring-blue-500/20" />
+                  {([
+                    { label: 'Require uppercase letter', key: 'requireUppercase' as const },
+                    { label: 'Require lowercase letter', key: 'requireLowercase' as const },
+                    { label: 'Require number', key: 'requireNumber' as const },
+                    { label: 'Require special character', key: 'requireSpecial' as const },
+                  ]).map((rule) => (
+                    <label key={rule.key} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={securityConfig.password[rule.key]}
+                        onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [rule.key]: e.target.checked } }))}
+                        className="w-4 h-4 text-blue-500 border-gray-300 dark:border-zinc-600 rounded focus:ring-blue-500/20"
+                      />
                       <span className="text-sm text-gray-700 dark:text-zinc-300">{rule.label}</span>
                     </label>
                   ))}
@@ -1149,16 +1524,72 @@ export default function ApplicationConfigPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Session Timeout (min)</label>
-                    <input type="number" defaultValue="60" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    <input
+                      type="number"
+                      title="Session timeout in minutes"
+                      value={securityConfig.session.timeoutMinutes}
+                      onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, timeoutMinutes: parseInt(e.target.value) || 0 } }))}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Max Concurrent Sessions</label>
-                    <input type="number" defaultValue="3" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                    <input
+                      type="number"
+                      title="Max concurrent sessions"
+                      value={securityConfig.session.maxConcurrent}
+                      onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, maxConcurrent: parseInt(e.target.value) || 0 } }))}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
                   </div>
                 </div>
               </div>
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Security &amp; MFA Integration
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Integrate MFA enrollment and verification in your app:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Check if MFA is required for the user
+const mfaStatus = await client.mfa.getStatus();
+// { required: true, methods: ['totp', 'email'] }
+
+// Enroll user in TOTP
+const { secret, qrCodeUrl } = await client.mfa.enrollTOTP();
+// Display qrCodeUrl for the user to scan
+
+// Verify TOTP code
+await client.mfa.verifyTOTP({ code: '123456' });
+
+// Send email OTP
+await client.mfa.sendEmailOTP();
+
+// Verify email OTP
+await client.mfa.verifyEmailOTP({ code: '654321' });`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Password policy &amp; session management:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Fetch password policy
+const policy = await client.security.getPasswordPolicy();
+// { minLength, requireUppercase, requireNumber, ... }
+
+// Validate password client-side
+const result = client.security.validatePassword('P@ss1', policy);
+// { valid: false, errors: ['Too short', 'Needs uppercase'] }
+
+// Session management
+const sessions = await client.sessions.list();
+await client.sessions.revoke(sessionId);
+await client.sessions.revokeAll(); // logout everywhere`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/security/mfa/status
+POST /api/v1/applications/{appId}/security/mfa/enroll
+POST /api/v1/applications/{appId}/security/mfa/verify
+GET  /api/v1/applications/{appId}/security/password-policy
+GET  /api/v1/applications/{appId}/sessions
+DEL  /api/v1/applications/{appId}/sessions/:id`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB 6: Communication ==================== */}
@@ -1227,6 +1658,215 @@ export default function ApplicationConfigPage() {
               </div>
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Communication API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Send emails, SMS, and push notifications via the API:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Send transactional email
+await client.communication.sendEmail({
+  to: 'user@example.com',
+  template: 'welcome-email',
+  data: { name: 'John', activationUrl: '...' },
+});
+
+// Send push notification
+await client.communication.sendPush(userId, {
+  title: 'New message',
+  body: 'You have a new notification',
+  data: { deepLink: '/messages/123' },
+});
+
+// List email templates
+const templates = await client.communication.listTemplates();
+
+// Send SMS
+await client.communication.sendSMS({
+  to: '+1234567890',
+  template: 'otp-code',
+  data: { code: '123456' },
+});`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`POST /api/v1/applications/{appId}/communication/email
+POST /api/v1/applications/{appId}/communication/push
+POST /api/v1/applications/{appId}/communication/sms
+GET  /api/v1/applications/{appId}/communication/templates`}</code></pre>
+            </div>
+          </details>
+        </TabsContent>
+
+        {/* ==================== TAB: Webhooks ==================== */}
+        <TabsContent value="webhooks" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Webhooks</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Receive real-time notifications when events occur in your application.</p>
+              </div>
+              <Button onClick={() => setShowAddWebhook(true)} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                <PlusIcon className="w-4 h-4 mr-1.5" /> Add Endpoint
+              </Button>
+            </div>
+
+            {/* Add Webhook Form */}
+            {showAddWebhook && (
+              <div className="mb-4 p-4 rounded-lg border border-blue-200 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5 space-y-3">
+                <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 block">Endpoint URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={newWebhookUrl}
+                    onChange={e => setNewWebhookUrl(e.target.value)}
+                    placeholder="https://api.example.com/webhooks"
+                    className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <Button onClick={handleAddWebhook} disabled={!newWebhookUrl} className="bg-blue-600 text-white border-0">Add</Button>
+                  <Button variant="outline" onClick={() => { setShowAddWebhook(false); setNewWebhookUrl('') }}>Cancel</Button>
+                </div>
+              </div>
+            )}
+
+            {/* Webhook List */}
+            <div className="space-y-3">
+              {webhooks.map(wh => (
+                <div key={wh.id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`w-2 h-2 rounded-full ${wh.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                      <code className="text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">{wh.url}</code>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      {wh.events.map(ev => (
+                        <span key={ev} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400">{ev}</span>
+                      ))}
+                      {wh.lastTriggered && <span className="text-[10px] text-gray-400 ml-1">Last: {new Date(wh.lastTriggered).toLocaleString()}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => handleDeleteWebhook(wh.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors" title="Delete webhook">
+                    <Trash2Icon className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {webhooks.length === 0 && (
+                <div className="text-center py-10">
+                  <WebhookIcon className="w-10 h-10 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">No webhook endpoints configured</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Add an endpoint to start receiving event notifications</p>
+                </div>
+              )}
+            </div>
+
+            {/* Available Events */}
+            <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
+              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Available Events</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {['user.created', 'user.login', 'user.signup', 'user.updated', 'user.deleted', 'auth.mfa_enabled', 'session.created', 'session.expired'].map(ev => (
+                  <span key={ev} className="inline-flex items-center px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50 text-[10px] font-mono text-gray-600 dark:text-zinc-400">
+                    <HashIcon className="w-3 h-3 mr-1 text-gray-400" />{ev}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Webhooks API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Configure and manage webhook endpoints programmatically:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// List webhooks
+const hooks = await client.webhooks.list();
+
+// Create webhook endpoint
+await client.webhooks.create({
+  url: 'https://api.example.com/webhooks',
+  events: ['user.created', 'user.login'],
+});
+
+// Delete webhook
+await client.webhooks.delete(webhookId);
+
+// Webhook payload format
+{
+  "event": "user.created",
+  "timestamp": "2024-02-22T10:30:00Z",
+  "data": { "userId": "usr_001", "email": "..." }
+}`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET    /api/v1/applications/{appId}/webhooks
+POST   /api/v1/applications/{appId}/webhooks
+DELETE /api/v1/applications/{appId}/webhooks/:id`}</code></pre>
+            </div>
+          </details>
+        </TabsContent>
+
+        {/* ==================== TAB: Activity Log ==================== */}
+        <TabsContent value="activity" className="space-y-4">
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Activity Log</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Audit trail of all configuration changes and admin actions.</p>
+              </div>
+              <Button variant="outline" onClick={() => {}} title="Refresh activity log">
+                <RefreshCwIcon className="w-4 h-4 mr-1.5" /> Refresh
+              </Button>
+            </div>
+
+            <div className="space-y-1">
+              {activityLog.map((log, i) => {
+                const typeColors: Record<string, string> = {
+                  config: 'bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400',
+                  user: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+                  webhook: 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400',
+                  security: 'bg-violet-100 dark:bg-violet-500/20 text-violet-600 dark:text-violet-400',
+                }
+                return (
+                  <div key={log.id} className={`flex items-start gap-3 px-4 py-3 rounded-lg ${i % 2 === 0 ? 'bg-gray-50/50 dark:bg-zinc-800/20' : ''}`}>
+                    <span className={`shrink-0 inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${typeColors[log.type] || 'bg-gray-100 text-gray-500'}`}>
+                      {log.type}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 dark:text-zinc-200">{log.action}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-0.5">
+                        by <span className="font-medium">{log.user}</span> · {new Date(log.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {activityLog.length === 0 && (
+              <div className="text-center py-10">
+                <ActivityIcon className="w-10 h-10 text-gray-300 dark:text-zinc-600 mx-auto mb-3" />
+                <p className="text-sm text-gray-500 dark:text-zinc-400">No activity recorded yet</p>
+              </div>
+            )}
+          </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Activity Log API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Query the audit log for compliance and debugging:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Fetch activity log
+const logs = await client.activity.list({
+  page: 1,
+  limit: 50,
+  type: 'config', // or 'user', 'security', 'webhook'
+  from: '2024-02-01',
+  to: '2024-02-28',
+});
+
+// Export activity log
+const csv = await client.activity.export({ format: 'csv' });`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/activity
+GET  /api/v1/applications/{appId}/activity/export`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB 7: Legal & Compliance ==================== */}
@@ -1344,6 +1984,36 @@ export default function ApplicationConfigPage() {
               )}
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Legal &amp; Compliance API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Manage legal documents, consent tracking, and data compliance:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Fetch legal documents for display
+const docs = await client.legal.getDocuments();
+// [{ type: 'terms', title, url, version }, ...]
+
+// Record user consent
+await client.legal.recordConsent(userId, {
+  documentType: 'terms',
+  version: '2.1',
+  accepted: true,
+});
+
+// Check user consent status
+const consent = await client.legal.getConsent(userId);
+// { terms: { accepted: true, version: '2.1', at: '...' } }
+
+// Handle data deletion request (GDPR)
+await client.legal.requestDataDeletion(userId);`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`GET  /api/v1/applications/{appId}/legal/documents
+POST /api/v1/applications/{appId}/legal/consent
+GET  /api/v1/applications/{appId}/legal/consent/:userId
+POST /api/v1/applications/{appId}/legal/data-deletion`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB: Login Sandbox ==================== */}
@@ -1486,7 +2156,7 @@ export default function ApplicationConfigPage() {
                         <span className={`w-2 h-2 rounded-full ${sandboxResult.status === 200 ? 'bg-emerald-500' : 'bg-red-500'}`} />
                         <span className="text-xs font-bold text-gray-600 dark:text-zinc-300">Response ({sandboxResult.status})</span>
                       </div>
-                      <button onClick={() => setSandboxResult(null)} className="text-gray-400 hover:text-gray-500">
+                      <button onClick={() => setSandboxResult(null)} title="Dismiss result" className="text-gray-400 hover:text-gray-500">
                         <XIcon className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1498,6 +2168,33 @@ export default function ApplicationConfigPage() {
               </div>
             </div>
           </div>
+          <details className="rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5">
+            <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 select-none">
+              <CodeIcon className="w-4 h-4" /> Dev Guide — Login Sandbox API
+            </summary>
+            <div className="px-5 pb-4 space-y-3">
+              <p className="text-xs text-gray-600 dark:text-zinc-400">Use the sandbox API for testing auth flows in development:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`// Create a sandbox test user
+const testUser = await client.sandbox.createUser({
+  email: 'test@sandbox.example.com',
+  password: 'test123',
+});
+
+// Simulate auth scenarios
+await client.sandbox.simulate('login-success');
+await client.sandbox.simulate('login-failure');
+await client.sandbox.simulate('mfa-challenge');
+await client.sandbox.simulate('account-lockout');
+
+// Get sandbox logs
+const logs = await client.sandbox.getLogs();
+// [{ event, timestamp, request, response }, ...]`}</code></pre>
+              <p className="text-xs text-gray-600 dark:text-zinc-400">API endpoints:</p>
+              <pre className="p-3 rounded-lg bg-[#0d1117] text-gray-300 text-xs overflow-x-auto border border-gray-800"><code>{`POST /api/v1/applications/{appId}/sandbox/users
+POST /api/v1/applications/{appId}/sandbox/simulate
+GET  /api/v1/applications/{appId}/sandbox/logs`}</code></pre>
+            </div>
+          </details>
         </TabsContent>
 
         {/* ==================== TAB: Branding ==================== */}
@@ -1628,7 +2325,7 @@ client.on('announcement:dismiss', (id) => { ... });`}</code></pre>
           <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-zinc-800/80 w-full max-w-md p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Add New User</h3>
-              <button onClick={() => setShowAddUser(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
+              <button onClick={() => setShowAddUser(false)} title="Close modal" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
@@ -1657,6 +2354,7 @@ client.on('announcement:dismiss', (id) => { ... });`}</code></pre>
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Role</label>
                   <select
+                    title="User role"
                     value={addUserForm.role}
                     onChange={e => setAddUserForm(p => ({ ...p, role: e.target.value }))}
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -1669,6 +2367,7 @@ client.on('announcement:dismiss', (id) => { ... });`}</code></pre>
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Plan</label>
                   <select
+                    title="User plan"
                     value={addUserForm.plan}
                     onChange={e => setAddUserForm(p => ({ ...p, plan: e.target.value }))}
                     className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
