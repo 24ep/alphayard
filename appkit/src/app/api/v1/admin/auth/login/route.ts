@@ -12,80 +12,104 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    // Find admin user
+    // Try admin_users table first, then fall back to users table
+    let userId: string
+    let userEmail: string
+    let userName: string
+    let roleName = 'admin'
+    let permissions: string[] = ['*']
+    let isSuperAdmin = false
+
     const adminUser = await prisma.adminUser.findFirst({
       where: { 
         email: email.toLowerCase(),
         isActive: true 
       },
-      include: {
-        role: true
-      }
+      include: { role: true }
     })
 
-    if (!adminUser) {
-      console.log(`Login failed: Admin user ${email} not found or inactive`)
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
+    if (adminUser) {
+      // Validate password against admin_users
+      const isValid = await bcrypt.compare(password, adminUser.passwordHash)
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      }
+      userId = adminUser.id
+      userEmail = adminUser.email
+      userName = adminUser.name || ''
+      roleName = adminUser.role?.name || 'admin'
+      isSuperAdmin = adminUser.isSuperAdmin || adminUser.email === 'admin@appkit.com'
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash)
-    if (!isValidPassword) {
-      console.log(`Login failed: Invalid password for ${email}`)
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
-    }
+      if (!isSuperAdmin && adminUser.roleId) {
+        const rolePermissions = await prisma.adminRolePermission.findMany({
+          where: { roleId: adminUser.roleId },
+          include: { permission: true }
+        })
+        permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`)
+      }
 
-    // Fetch permissions
-    let permissions: string[] = []
-    const isPrimaryAdmin = adminUser.email === 'admin@appkit.com'
-    
-    if (adminUser.isSuperAdmin || isPrimaryAdmin) {
-      permissions = ['*']
-    } else if (adminUser.roleId) {
-      const rolePermissions = await prisma.adminRolePermission.findMany({
-        where: { roleId: adminUser.roleId },
-        include: { permission: true }
+      await prisma.adminUser.update({
+        where: { id: adminUser.id },
+        data: { lastLoginAt: new Date() }
       })
-      permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`)
+    } else {
+      // Fallback: check users table (seed creates admin@appkit.com here)
+      const user = await prisma.user.findFirst({
+        where: { 
+          email: email.toLowerCase(),
+          isActive: true 
+        }
+      })
+      if (!user) {
+        console.log(`[login] User ${email} not found in admin_users or users`)
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      }
+      const isValid = await bcrypt.compare(password, user.passwordHash || '')
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      }
+      userId = user.id
+      userEmail = user.email
+      userName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      isSuperAdmin = user.userType === 'admin'
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() }
+      })
     }
 
     // Generate JWT token
     const token = jwt.sign(
       {
-        id: adminUser.id,
-        adminId: adminUser.id,
-        email: adminUser.email,
-        firstName: adminUser.name || '',
+        id: userId,
+        adminId: userId,
+        email: userEmail,
+        firstName: userName,
         lastName: '',
-        role: adminUser.role?.name || 'admin',
+        role: roleName,
         permissions,
         type: 'admin',
-        isSuperAdmin: adminUser.isSuperAdmin || false
+        isSuperAdmin
       },
       config.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '7d' }
     )
 
-    // Update last login
-    await prisma.adminUser.update({
-      where: { id: adminUser.id },
-      data: { lastLoginAt: new Date() }
-    })
+    console.log(`[login] ✓ ${userEmail} logged in (isSuperAdmin=${isSuperAdmin})`)
 
-    const userResponse = {
-      id: adminUser.id,
-      email: adminUser.email,
-      firstName: adminUser.name || undefined,
-      lastName: undefined,
-      role: adminUser.role?.name || 'admin',
-      permissions,
-      isSuperAdmin: adminUser.isSuperAdmin || false
-    }
-
+    // Return token at top level (client reads response.token)
     return NextResponse.json({ 
       success: true, 
-      data: { user: userResponse, token },
-      message: 'Login successful' 
+      token,
+      user: {
+        id: userId,
+        email: userEmail,
+        firstName: userName,
+        role: roleName,
+        permissions,
+        isSuperAdmin
+      }
     })
 
   } catch (error: any) {
