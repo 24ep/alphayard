@@ -107,15 +107,15 @@ export default function BillingConfigDrawer({ isOpen, onClose, appId, appName }:
       const res = await adminService.getAppConfigOverride(appId, 'billing')
       setUseDefault(res.useDefault)
 
-      // Get effective defaults from service
-      const effectiveRes = await adminService.getAppConfigOverride('', 'billing')
-      const systemDefaults = effectiveRes.config || DEFAULT_BILLING_CONFIG
+      // Billing currently uses static platform defaults when no app override exists.
+      // Avoid requesting with empty appId, which returns HTTP 400 from the API.
+      const systemDefaults = DEFAULT_BILLING_CONFIG
       setDefaultConfig(systemDefaults)
 
       if (!res.useDefault && res.config) {
         setConfig({ ...DEFAULT_BILLING_CONFIG, ...res.config })
       } else {
-        setConfig(systemDefaults)
+        setConfig({ ...DEFAULT_BILLING_CONFIG, ...(res.config || systemDefaults) })
       }
     } catch (err) {
       console.error('Failed to load app billing config:', err)
@@ -169,7 +169,7 @@ export default function BillingConfigDrawer({ isOpen, onClose, appId, appName }:
               <p className="text-sm text-gray-500 dark:text-zinc-400 mt-0.5">{appName}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500">
+          <button onClick={onClose} title="Close billing config" className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 dark:text-zinc-500">
             <XIcon className="w-5 h-5" />
           </button>
         </div>
@@ -212,6 +212,7 @@ export default function BillingConfigDrawer({ isOpen, onClose, appId, appName }:
                     <input 
                       type="checkbox" 
                       className="sr-only peer" 
+                      title="Toggle payment enablement"
                       checked={config.enabled} 
                       disabled={useDefault}
                       onChange={() => setConfig(prev => ({ ...prev, enabled: !prev.enabled }))} 

@@ -44,20 +44,35 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const authStyle = settings?.authStyle || {};
 
     const devices = authStyle.devices || {};
+    const legacyStyle =
+      authStyle &&
+      typeof authStyle === 'object' &&
+      !Array.isArray(authStyle) &&
+      !authStyle.devices
+        ? authStyle
+        : null;
     const providers = Array.isArray(authStyle.providers) ? authStyle.providers : [];
 
     if (requestedDevice) {
+      const resolvedStyle =
+        devices[requestedDevice] ||
+        devices.desktopWeb ||
+        devices.mobileWeb ||
+        devices.mobileApp ||
+        legacyStyle ||
+        null;
+
       return NextResponse.json({
         appId: app.id,
         device: requestedDevice,
-        style: devices[requestedDevice] || null,
+        style: resolvedStyle,
         providers
       });
     }
 
     return NextResponse.json({
       appId: app.id,
-      devices,
+      devices: Object.keys(devices).length > 0 ? devices : (legacyStyle ? { desktopWeb: legacyStyle } : {}),
       providers
     });
   } catch (error) {
