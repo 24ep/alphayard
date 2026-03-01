@@ -108,6 +108,15 @@ interface Application {
     postLoginRedirect: string
     postSignupRedirect: string
   }
+  securityConfig?: {
+    mfa: { totp: boolean; sms: boolean; email: boolean; fido2: boolean }
+    password: { minLength: number; maxAttempts: number; expiryDays: number; lockoutMinutes: number; requireUppercase: boolean; requireLowercase: boolean; requireNumber: boolean; requireSpecial: boolean }
+    session: { timeoutMinutes: number; maxConcurrent: number }
+  }
+  identityConfig?: {
+    model: string
+    scopes: { openid: boolean; profile: boolean; email: boolean; phone: boolean; address: boolean }
+  }
 }
 
 interface ApplicationUser {
@@ -122,6 +131,25 @@ interface ApplicationUser {
   phone?: string
   role?: string
 }
+
+interface WebhookEndpoint {
+  id: string
+  url: string
+  events: string[]
+  status: 'active' | 'inactive'
+  lastTriggered: string
+}
+
+const WEBHOOK_EVENTS = [
+  'user.created',
+  'user.login',
+  'user.signup',
+  'user.updated',
+  'user.deleted',
+  'auth.mfa_enabled',
+  'session.created',
+  'session.expired',
+] as const
 
 export default function ApplicationConfigPage() {
   const params = useParams()
@@ -150,8 +178,9 @@ export default function ApplicationConfigPage() {
   // General tab
   const [generalSaving, setGeneralSaving] = useState(false)
   const [generalMsg, setGeneralMsg] = useState('')
+  const [generatedClientId, setGeneratedClientId] = useState<string | null>(null)
   const [generatedClientSecret, setGeneratedClientSecret] = useState<string | null>(null)
-  const [rotateClientSecretOnSave, setRotateClientSecretOnSave] = useState(false)
+  const [generateClientIdOnSave, setGenerateClientIdOnSave] = useState(false)
   const [showRotateSecretConfirm, setShowRotateSecretConfirm] = useState(false)
   const [newRedirectUri, setNewRedirectUri] = useState('')
   const [draggedRedirectUri, setDraggedRedirectUri] = useState<string | null>(null)
@@ -187,14 +216,16 @@ export default function ApplicationConfigPage() {
   const [identityMsg, setIdentityMsg] = useState('')
   // API Key
   const [apiKeyVisible, setApiKeyVisible] = useState(false)
-  const [apiKey] = useState(`ak_live_${appId.substring(0, 8)}...${Math.random().toString(36).substring(2, 10)}`)
   // Webhooks
-  const [webhooks, setWebhooks] = useState([
-    { id: '1', url: 'https://api.example.com/webhooks/appkit', events: ['user.created', 'user.login'], status: 'active' as const, lastTriggered: '2024-02-22T10:30:00Z' },
-    { id: '2', url: 'https://hooks.slack.com/services/T00/B00/xxx', events: ['user.signup'], status: 'active' as const, lastTriggered: '2024-02-21T15:45:00Z' },
-  ])
+  const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([])
   const [showAddWebhook, setShowAddWebhook] = useState(false)
   const [newWebhookUrl, setNewWebhookUrl] = useState('')
+  const [newWebhookEvents, setNewWebhookEvents] = useState<string[]>(['user.created'])
+  const [webhookMsg, setWebhookMsg] = useState('')
+  const [editingWebhookId, setEditingWebhookId] = useState<string | null>(null)
+  const [editingWebhookUrl, setEditingWebhookUrl] = useState('')
+  const [editingWebhookEvents, setEditingWebhookEvents] = useState<string[]>([])
+  const [editingWebhookStatus, setEditingWebhookStatus] = useState<'active' | 'inactive'>('active')
   // Activity Log
   const [activityLog, setActivityLog] = useState<{ id: string; action: string; user: string; timestamp: string; type: 'config' | 'user' | 'webhook' | 'security' }[]>([])
   const [activityLoading, setActivityLoading] = useState(false)
@@ -208,19 +239,9 @@ export default function ApplicationConfigPage() {
         const data = await res.json()
         setActivityLog(data.entries || data)
       } else { throw new Error('Failed') }
-    } catch {
-      setActivityLog([
-        { id: '1', action: 'Auth config updated', user: 'admin@example.com', timestamp: new Date(Date.now() - 3600000).toISOString(), type: 'config' },
-        { id: '2', action: 'User john.doe@example.com created', user: 'admin@example.com', timestamp: new Date(Date.now() - 7200000).toISOString(), type: 'user' },
-        { id: '3', action: 'Webhook endpoint added', user: 'admin@example.com', timestamp: new Date(Date.now() - 86400000).toISOString(), type: 'webhook' },
-        { id: '4', action: 'MFA settings updated', user: 'admin@example.com', timestamp: new Date(Date.now() - 90000000).toISOString(), type: 'security' },
-        { id: '5', action: 'Branding logo uploaded', user: 'admin@example.com', timestamp: new Date(Date.now() - 172800000).toISOString(), type: 'config' },
-        { id: '6', action: 'Legal documents updated', user: 'admin@example.com', timestamp: new Date(Date.now() - 180000000).toISOString(), type: 'config' },
-        { id: '7', action: 'User mike.ross@example.com suspended', user: 'admin@example.com', timestamp: new Date(Date.now() - 259200000).toISOString(), type: 'user' },
-        { id: '8', action: 'Application status changed to active', user: 'admin@example.com', timestamp: new Date(Date.now() - 345600000).toISOString(), type: 'config' },
-        { id: '9', action: 'Identity scope updated to include phone', user: 'admin@example.com', timestamp: new Date(Date.now() - 432000000).toISOString(), type: 'security' },
-        { id: '10', action: 'Webhook https://hooks.slack.com/... removed', user: 'admin@example.com', timestamp: new Date(Date.now() - 518400000).toISOString(), type: 'webhook' },
-      ])
+    } catch (err) {
+      console.error('Failed to load activity log:', err)
+      setActivityLog([])
     } finally { setActivityLoading(false) }
   }, [appId])
 
@@ -252,10 +273,12 @@ export default function ApplicationConfigPage() {
         const data = await res.json()
         setAppBranding((prev: any) => ({ ...prev, [field]: data.url || URL.createObjectURL(file) }))
       } else {
-        setAppBranding((prev: any) => ({ ...prev, [field]: URL.createObjectURL(file) }))
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Upload failed')
       }
-    } catch {
-      setAppBranding((prev: any) => ({ ...prev, [field]: URL.createObjectURL(file) }))
+    } catch (error: any) {
+      setGeneralMsg(error?.message || 'Upload failed')
+      setTimeout(() => setGeneralMsg(''), 3000)
     } finally {
       setBrandingUploading(false)
     }
@@ -379,31 +402,22 @@ export default function ApplicationConfigPage() {
         const res = await fetch(`/api/v1/admin/applications/${appId}`)
         if (res.ok) {
           const data = await res.json()
-          setApplication(data.application || data)
+          const appData = data.application || data
+          setApplication(appData)
+          if (appData?.securityConfig) {
+            setSecurityConfig(appData.securityConfig)
+          }
+          if (appData?.identityConfig) {
+            setIdentityConfig(appData.identityConfig)
+          }
         } else {
           throw new Error('Failed to fetch')
         }
-      } catch {
-        setApplication({
-          id: appId,
-          name: 'E-Commerce Platform',
-          description: 'Online shopping application with payment integration',
-          status: 'active',
-          platform: 'web',
-          users: 1250,
-          createdAt: '2024-01-15',
-          lastModified: '2024-02-20',
-          plan: 'enterprise',
-          domain: 'shop.example.com',
-          authBehavior: {
-            signupEnabled: true,
-            emailVerificationRequired: false,
-            inviteOnly: false,
-            allowedEmailDomains: [],
-            postLoginRedirect: '',
-            postSignupRedirect: ''
-          }
-        })
+      } catch (err) {
+        console.error('Failed to load application data:', err)
+        setApplication(null)
+        setGeneralMsg('Failed to load application')
+        setTimeout(() => setGeneralMsg(''), 3000)
       }
 
       try {
@@ -414,14 +428,22 @@ export default function ApplicationConfigPage() {
         } else {
           throw new Error('Failed to fetch')
         }
-      } catch {
-        setUsers([
-          { id: '1', email: 'john.doe@example.com', name: 'John Doe', status: 'active', plan: 'Enterprise', joinedAt: '2024-01-15', lastActive: '2024-02-22', phone: '+1 555-0101', role: 'Admin' },
-          { id: '2', email: 'jane.smith@example.com', name: 'Jane Smith', status: 'active', plan: 'Pro', joinedAt: '2024-01-20', lastActive: '2024-02-21', phone: '+1 555-0102', role: 'User' },
-          { id: '3', email: 'bob.wilson@example.com', name: 'Bob Wilson', status: 'inactive', plan: 'Free', joinedAt: '2024-02-01', lastActive: '2024-02-10', role: 'User' },
-          { id: '4', email: 'sarah.connor@example.com', name: 'Sarah Connor', status: 'active', plan: 'Pro', joinedAt: '2024-01-25', lastActive: '2024-02-22', phone: '+1 555-0104', role: 'Editor' },
-          { id: '5', email: 'mike.ross@example.com', name: 'Mike Ross', status: 'suspended', plan: 'Free', joinedAt: '2024-02-05', lastActive: '2024-02-15', role: 'User' },
-        ])
+      } catch (err) {
+        console.error('Failed to load users:', err)
+        setUsers([])
+      }
+
+      try {
+        const res = await fetch(`/api/v1/admin/applications/${appId}/webhooks`)
+        if (res.ok) {
+          const data = await res.json()
+          setWebhooks(Array.isArray(data?.webhooks) ? data.webhooks : [])
+        } else {
+          throw new Error('Failed to fetch')
+        }
+      } catch (err) {
+        console.error('Failed to load webhooks:', err)
+        setWebhooks([])
       }
 
       try {
@@ -458,12 +480,17 @@ export default function ApplicationConfigPage() {
     if (!addUserForm.email || !addUserForm.name) return
     try {
       setAddingUser(true)
-      await fetch(`/api/v1/admin/applications/${appId}/users`, {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addUserForm),
       })
-      const newUser: ApplicationUser = {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Failed to add user')
+      }
+      const data = await res.json().catch(() => ({}))
+      const newUser: ApplicationUser = data?.user || {
         id: Date.now().toString(),
         email: addUserForm.email,
         name: addUserForm.name,
@@ -478,6 +505,8 @@ export default function ApplicationConfigPage() {
       setAddUserForm({ email: '', name: '', role: 'User', plan: 'Free' })
     } catch (err) {
       console.error('Failed to add user:', err)
+      setGeneralMsg(err instanceof Error ? err.message : 'Failed to add user')
+      setTimeout(() => setGeneralMsg(''), 3000)
     } finally {
       setAddingUser(false)
     }
@@ -500,6 +529,7 @@ export default function ApplicationConfigPage() {
     }
     try {
       setGeneralSaving(true)
+      setGeneratedClientId(null)
       setGeneratedClientSecret(null)
       const res = await fetch(`/api/v1/admin/applications/${appId}`, {
         method: 'PUT',
@@ -507,7 +537,7 @@ export default function ApplicationConfigPage() {
         body: JSON.stringify({
           ...application,
           oauthClientId: application.oauthClientId,
-          rotateClientSecret: rotateClientSecretOnSave
+          generateClientId: generateClientIdOnSave
         }),
       })
       const data = await res.json()
@@ -517,11 +547,14 @@ export default function ApplicationConfigPage() {
       if (data?.application) {
         setApplication(data.application)
       }
+      if (data?.generatedClientId) {
+        setGeneratedClientId(data.generatedClientId)
+        setGenerateClientIdOnSave(false)
+      }
       if (data?.generatedClientSecret) {
         setGeneratedClientSecret(data.generatedClientSecret)
-        setRotateClientSecretOnSave(false)
       }
-      setGeneralMsg(data?.warning ? 'Saved (with warning)' : 'Saved!')
+      setGeneralMsg(data?.warning ? `Saved: ${data.warning}` : 'Saved!')
       setTimeout(() => setGeneralMsg(''), 3000)
     } catch (error: any) {
       setGeneralMsg(error?.message || 'Failed')
@@ -531,18 +564,62 @@ export default function ApplicationConfigPage() {
     }
   }
 
+  const handleRotateClientSecretNow = async () => {
+    if (!application) return
+    try {
+      setGeneralSaving(true)
+      setGeneratedClientSecret(null)
+      const res = await fetch(`/api/v1/admin/applications/${appId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          oauthClientId: application.oauthClientId,
+          rotateClientSecret: true
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to rotate client secret')
+      }
+      if (data?.application) {
+        setApplication(data.application)
+      }
+      if (data?.generatedClientId) {
+        setGeneratedClientId(data.generatedClientId)
+      }
+      if (data?.generatedClientSecret) {
+        setGeneratedClientSecret(data.generatedClientSecret)
+      }
+      setGeneralMsg('Client secret rotated')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    } catch (error: any) {
+      setGeneralMsg(error?.message || 'Failed to rotate secret')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    } finally {
+      setGeneralSaving(false)
+    }
+  }
+
   const handleSaveSecurity = async () => {
     try {
       setSecuritySaving(true)
-      await fetch(`/api/v1/admin/applications/${appId}/security`, {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/security`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(securityConfig),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Failed to save security settings')
+      }
+      const data = await res.json().catch(() => null)
+      if (data?.securityConfig) {
+        setSecurityConfig(data.securityConfig)
+      }
       setSecurityMsg('Saved!')
       setTimeout(() => setSecurityMsg(''), 3000)
-    } catch {
-      setSecurityMsg('Failed')
+    } catch (error: any) {
+      setSecurityMsg(error?.message || 'Failed')
       setTimeout(() => setSecurityMsg(''), 3000)
     } finally {
       setSecuritySaving(false)
@@ -552,38 +629,124 @@ export default function ApplicationConfigPage() {
   const handleSaveIdentity = async () => {
     try {
       setIdentitySaving(true)
-      await fetch(`/api/v1/admin/applications/${appId}/identity`, {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/identity`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(identityConfig),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Failed to save identity settings')
+      }
+      const data = await res.json().catch(() => null)
+      if (data?.identityConfig) {
+        setIdentityConfig(data.identityConfig)
+      }
       setIdentityMsg('Saved!')
       setTimeout(() => setIdentityMsg(''), 3000)
-    } catch {
-      setIdentityMsg('Failed')
+    } catch (error: any) {
+      setIdentityMsg(error?.message || 'Failed')
       setTimeout(() => setIdentityMsg(''), 3000)
     } finally {
       setIdentitySaving(false)
     }
   }
 
-  const handleAddWebhook = () => {
+  const handleAddWebhook = async () => {
     if (!newWebhookUrl) return
-    setWebhooks(prev => [...prev, { id: Date.now().toString(), url: newWebhookUrl, events: ['user.created'], status: 'active' as const, lastTriggered: '' }])
-    setNewWebhookUrl('')
-    setShowAddWebhook(false)
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/webhooks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newWebhookUrl, events: newWebhookEvents })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to add webhook')
+      }
+      setWebhooks(Array.isArray(data?.webhooks) ? data.webhooks : [])
+      setNewWebhookUrl('')
+      setNewWebhookEvents(['user.created'])
+      setShowAddWebhook(false)
+      setWebhookMsg('Webhook added')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    } catch (error: any) {
+      setWebhookMsg(error?.message || 'Failed to add webhook')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    }
   }
 
-  const handleDeleteWebhook = (id: string) => {
-    setWebhooks(prev => prev.filter(w => w.id !== id))
+  const handleDeleteWebhook = async (id: string) => {
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/webhooks`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to delete webhook')
+      }
+      setWebhooks(Array.isArray(data?.webhooks) ? data.webhooks : [])
+      setWebhookMsg('Webhook deleted')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    } catch (error: any) {
+      setWebhookMsg(error?.message || 'Failed to delete webhook')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    }
+  }
+
+  const handleStartWebhookEdit = (webhook: WebhookEndpoint) => {
+    setEditingWebhookId(webhook.id)
+    setEditingWebhookUrl(webhook.url)
+    setEditingWebhookEvents(webhook.events)
+    setEditingWebhookStatus(webhook.status)
+  }
+
+  const handleCancelWebhookEdit = () => {
+    setEditingWebhookId(null)
+    setEditingWebhookUrl('')
+    setEditingWebhookEvents([])
+    setEditingWebhookStatus('active')
+  }
+
+  const handleSaveWebhookEdit = async () => {
+    if (!editingWebhookId) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/webhooks`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingWebhookId,
+          url: editingWebhookUrl,
+          events: editingWebhookEvents,
+          status: editingWebhookStatus
+        })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to update webhook')
+      }
+      setWebhooks(Array.isArray(data?.webhooks) ? data.webhooks : [])
+      handleCancelWebhookEdit()
+      setWebhookMsg('Webhook updated')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    } catch (error: any) {
+      setWebhookMsg(error?.message || 'Failed to update webhook')
+      setTimeout(() => setWebhookMsg(''), 3000)
+    }
   }
 
   const handleDeleteApp = async () => {
     try {
-      await fetch(`/api/v1/admin/applications/${appId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/v1/admin/applications/${appId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data?.error || 'Delete failed')
+      }
       router.push('/applications')
-    } catch {
-      setGeneralMsg('Delete failed')
+    } catch (error: any) {
+      setGeneralMsg(error?.message || 'Delete failed')
       setTimeout(() => setGeneralMsg(''), 3000)
     }
   }
@@ -1136,16 +1299,13 @@ export default function ApplicationConfigPage() {
                   <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-zinc-700">
                     <KeyIcon className="w-4 h-4 text-amber-500 shrink-0" />
                     <code className="flex-1 text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">
-                      {apiKeyVisible ? apiKey : '••••••••••••••••••••••••••••••••'}
+                      {apiKeyVisible ? 'Not available in this UI' : '••••••••••••••••••••••••••••••••'}
                     </code>
-                    <button onClick={() => setApiKeyVisible(!apiKeyVisible)} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title={apiKeyVisible ? 'Hide API key' : 'Show API key'}>
+                    <button onClick={() => setApiKeyVisible(!apiKeyVisible)} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title={apiKeyVisible ? 'Hide placeholder' : 'Show placeholder'}>
                       <EyeIcon className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => handleCopy(apiKey, 'apikey')} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy API key">
-                      {copiedId === 'apikey' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                    </button>
                   </div>
-                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-2">Keep this secret. Never expose it in client-side code.</p>
+                  <p className="text-[10px] text-gray-400 dark:text-zinc-500 mt-2">API key management is not available on this screen yet. Use backend tooling or Dev Hub APIs once enabled.</p>
                 </div>
               </div>
 
@@ -1169,26 +1329,47 @@ export default function ApplicationConfigPage() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
                     <p className="text-gray-500 pt-1">Client ID</p>
-                    {application.oauthClientId ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={application.oauthClientId || ''}
-                            onChange={e => setApplication(prev => prev ? { ...prev, oauthClientId: e.target.value } : prev)}
-                            className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-md text-xs font-mono text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                            placeholder="client_id"
-                            title="OAuth Client ID"
-                          />
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={application.oauthClientId || ''}
+                          onChange={e => setApplication(prev => prev ? { ...prev, oauthClientId: e.target.value } : prev)}
+                          className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-md text-xs font-mono text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          placeholder="client_id"
+                          title="OAuth Client ID"
+                        />
+                        {application.oauthClientId && (
                           <button onClick={() => handleCopy(application.oauthClientId!, 'client-id')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy Client ID">
                             {copiedId === 'client-id' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
                           </button>
-                        </div>
-                        <p className="text-[10px] text-gray-400 dark:text-zinc-500">Client ID can be edited and saved. Must be unique.</p>
+                        )}
                       </div>
-                    ) : (
-                      <p className="text-gray-500 dark:text-zinc-400">Not configured</p>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant={generateClientIdOnSave ? 'primary' : 'outline'}
+                          className="h-7 px-2.5 text-xs"
+                          onClick={() => setGenerateClientIdOnSave(v => !v)}
+                          title="Generate new Client ID on next save"
+                        >
+                          <RefreshCwIcon className="w-3.5 h-3.5 mr-1" />
+                          {generateClientIdOnSave ? 'Will generate on save' : 'Generate on save'}
+                        </Button>
+                      </div>
+                      {generatedClientId && (
+                        <div className="mt-2 p-2 rounded-md border border-blue-200 dark:border-blue-900/40 bg-blue-50/80 dark:bg-blue-950/20">
+                          <p className="text-[10px] text-blue-700 dark:text-blue-300 mb-1">Generated Client ID:</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 text-[11px] font-mono text-blue-800 dark:text-blue-200 break-all">{generatedClientId}</code>
+                            <button onClick={() => handleCopy(generatedClientId, 'generated-client-id')} className="p-1 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-300 transition-colors" title="Copy generated client ID">
+                              {copiedId === 'generated-client-id' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-[10px] text-gray-400 dark:text-zinc-500">Client ID can be edited or generated on save.</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
                     <p className="text-gray-500 pt-1">Client Secret</p>
@@ -1204,20 +1385,14 @@ export default function ApplicationConfigPage() {
                     <div className="mt-2 flex items-center gap-2">
                       <Button
                         type="button"
-                        variant={rotateClientSecretOnSave ? 'primary' : 'outline'}
+                        variant="outline"
                         className="h-7 px-2.5 text-xs"
-                        onClick={() => {
-                          if (rotateClientSecretOnSave) {
-                            setRotateClientSecretOnSave(false)
-                            return
-                          }
-                          setShowRotateSecretConfirm(true)
-                        }}
-                        disabled={!application.oauthClientId}
-                        title={!application.oauthClientId ? 'No OAuth client available' : 'Rotate client secret on next save'}
+                        onClick={() => setShowRotateSecretConfirm(true)}
+                        title="Rotate client secret now"
+                        disabled={generalSaving}
                       >
                         <RefreshCwIcon className="w-3.5 h-3.5 mr-1" />
-                        {rotateClientSecretOnSave ? 'Will rotate on save' : 'Rotate on save'}
+                        Rotate secret now
                       </Button>
                     </div>
                     {generatedClientSecret && (
@@ -1596,133 +1771,123 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB 5: Security & MFA ==================== */}
         <TabsContent value="security" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
-              <div className="md:pr-3">
-                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Security & MFA</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Configure authentication hardening, password policy, and sessions.</p>
-              </div>
+            <div className="flex items-start justify-between mb-6">
               <div>
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Security & MFA</h3>
-                    <p className="text-sm text-gray-500 dark:text-zinc-400">Configure multi-factor authentication, password policies, and session security.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {securityMsg && <span className={`text-xs font-medium ${securityMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{securityMsg}</span>}
-                    <Button onClick={handleSaveSecurity} disabled={securitySaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
-                      {securitySaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
-                      Save Changes
-                    </Button>
-                  </div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Security & MFA</h3>
+                <p className="text-sm text-gray-500 dark:text-zinc-400">Configure multi-factor authentication, password policies, and session security.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {securityMsg && <span className={`text-xs font-medium ${securityMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{securityMsg}</span>}
+                <Button onClick={handleSaveSecurity} disabled={securitySaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                  {securitySaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Multi-Factor Authentication</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Choose which second-factor methods are available.</p>
                 </div>
-
-                <div className="space-y-6">
-                  {/* MFA Settings */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                      <LockIcon className="w-4 h-4 mr-2 text-violet-500" />
-                      Multi-Factor Authentication
-                    </h4>
-                    <div className="space-y-3">
-                      {([
-                        { key: 'totp' as const, name: 'TOTP (Authenticator App)', desc: 'Google Authenticator, Authy, etc.' },
-                        { key: 'sms' as const, name: 'SMS Verification', desc: 'Send OTP via text message' },
-                        { key: 'email' as const, name: 'Email Verification', desc: 'Send OTP via email' },
-                        { key: 'fido2' as const, name: 'Hardware Key (FIDO2)', desc: 'YubiKey, Titan Security Key' },
-                      ]).map((mfa) => (
-                        <div key={mfa.key} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
-                          <div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{mfa.name}</p>
-                            <p className="text-xs text-gray-500 dark:text-zinc-400">{mfa.desc}</p>
-                          </div>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              className="sr-only peer"
-                              title={`Toggle ${mfa.name}`}
-                              checked={securityConfig.mfa[mfa.key]}
-                              onChange={e => setSecurityConfig(prev => ({ ...prev, mfa: { ...prev.mfa, [mfa.key]: e.target.checked } }))}
-                            />
-                            <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Password Policy */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                      <KeyIcon className="w-4 h-4 mr-2 text-amber-500" />
-                      Password Policy
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {([
-                        { label: 'Minimum Length', key: 'minLength' as const },
-                        { label: 'Max Login Attempts', key: 'maxAttempts' as const },
-                        { label: 'Password Expiry (days)', key: 'expiryDays' as const },
-                        { label: 'Lockout Duration (min)', key: 'lockoutMinutes' as const },
-                      ]).map((field) => (
-                        <div key={field.key}>
-                          <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">{field.label}</label>
-                          <input
-                            type="number"
-                            title={field.label}
-                            value={securityConfig.password[field.key]}
-                            onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [field.key]: parseInt(e.target.value) || 0 } }))}
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {([
-                        { label: 'Require uppercase letter', key: 'requireUppercase' as const },
-                        { label: 'Require lowercase letter', key: 'requireLowercase' as const },
-                        { label: 'Require number', key: 'requireNumber' as const },
-                        { label: 'Require special character', key: 'requireSpecial' as const },
-                      ]).map((rule) => (
-                        <label key={rule.key} className="flex items-center space-x-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={securityConfig.password[rule.key]}
-                            onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [rule.key]: e.target.checked } }))}
-                            className="w-4 h-4 text-blue-500 border-gray-300 dark:border-zinc-600 rounded focus:ring-blue-500/20"
-                          />
-                          <span className="text-sm text-gray-700 dark:text-zinc-300">{rule.label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Session Settings */}
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-800 dark:text-zinc-200 mb-3 flex items-center">
-                      <ClockIcon className="w-4 h-4 mr-2 text-blue-500" />
-                      Session Management
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  {([
+                    { key: 'totp' as const, name: 'TOTP (Authenticator App)', desc: 'Google Authenticator, Authy, etc.' },
+                    { key: 'sms' as const, name: 'SMS Verification', desc: 'Send OTP via text message' },
+                    { key: 'email' as const, name: 'Email Verification', desc: 'Send OTP via email' },
+                    { key: 'fido2' as const, name: 'Hardware Key (FIDO2)', desc: 'YubiKey, Titan Security Key' },
+                  ]).map((mfa) => (
+                    <div key={mfa.key} className="flex items-center justify-between border border-gray-200 dark:border-zinc-700 rounded-lg px-3 py-2.5">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Session Timeout (min)</label>
-                        <input
-                          type="number"
-                          title="Session timeout in minutes"
-                          value={securityConfig.session.timeoutMinutes}
-                          onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, timeoutMinutes: parseInt(e.target.value) || 0 } }))}
-                          className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                        />
+                        <p className="text-sm font-medium text-gray-800 dark:text-zinc-200">{mfa.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-zinc-400">{mfa.desc}</p>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Max Concurrent Sessions</label>
+                      <label className="relative inline-flex items-center cursor-pointer">
                         <input
-                          type="number"
-                          title="Max concurrent sessions"
-                          value={securityConfig.session.maxConcurrent}
-                          onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, maxConcurrent: parseInt(e.target.value) || 0 } }))}
-                          className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          type="checkbox"
+                          className="sr-only peer"
+                          title={`Toggle ${mfa.name}`}
+                          checked={securityConfig.mfa[mfa.key]}
+                          onChange={e => setSecurityConfig(prev => ({ ...prev, mfa: { ...prev.mfa, [mfa.key]: e.target.checked } }))}
                         />
-                      </div>
+                        <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full"></div>
+                      </label>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Password Policy</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Set strength requirements and lockout behavior.</p>
+                </div>
+                <div className="space-y-3">
+                  {([
+                    { label: 'Minimum Length', key: 'minLength' as const },
+                    { label: 'Max Login Attempts', key: 'maxAttempts' as const },
+                    { label: 'Password Expiry (days)', key: 'expiryDays' as const },
+                    { label: 'Lockout Duration (min)', key: 'lockoutMinutes' as const },
+                  ]).map((field) => (
+                    <div key={field.key} className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-2 items-center">
+                      <label className="text-sm text-gray-700 dark:text-zinc-300">{field.label}</label>
+                      <input
+                        type="number"
+                        title={field.label}
+                        value={securityConfig.password[field.key]}
+                        onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [field.key]: parseInt(e.target.value) || 0 } }))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+                  ))}
+                  {([
+                    { label: 'Require uppercase letter', key: 'requireUppercase' as const },
+                    { label: 'Require lowercase letter', key: 'requireLowercase' as const },
+                    { label: 'Require number', key: 'requireNumber' as const },
+                    { label: 'Require special character', key: 'requireSpecial' as const },
+                  ]).map((rule) => (
+                    <label key={rule.key} className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-2 items-center cursor-pointer">
+                      <span className="text-sm text-gray-700 dark:text-zinc-300">{rule.label}</span>
+                      <span>
+                        <input
+                          type="checkbox"
+                          checked={securityConfig.password[rule.key]}
+                          onChange={e => setSecurityConfig(prev => ({ ...prev, password: { ...prev.password, [rule.key]: e.target.checked } }))}
+                          className="w-4 h-4 text-blue-500 border-gray-300 dark:border-zinc-600 rounded focus:ring-blue-500/20"
+                          title={rule.label}
+                        />
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Session Management</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Control timeout and concurrent sessions.</p>
+                </div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-2 items-center">
+                    <label className="text-sm text-gray-700 dark:text-zinc-300">Session Timeout (min)</label>
+                    <input
+                      type="number"
+                      title="Session timeout in minutes"
+                      value={securityConfig.session.timeoutMinutes}
+                      onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, timeoutMinutes: parseInt(e.target.value) || 0 } }))}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[210px_minmax(0,1fr)] gap-2 items-center">
+                    <label className="text-sm text-gray-700 dark:text-zinc-300">Max Concurrent Sessions</label>
+                    <input
+                      type="number"
+                      title="Max concurrent sessions"
+                      value={securityConfig.session.maxConcurrent}
+                      onChange={e => setSecurityConfig(prev => ({ ...prev, session: { ...prev.session, maxConcurrent: parseInt(e.target.value) || 0 } }))}
+                      className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    />
                   </div>
                 </div>
               </div>
@@ -1816,6 +1981,9 @@ export default function ApplicationConfigPage() {
                 <PlusIcon className="w-4 h-4 mr-1.5" /> Add Endpoint
               </Button>
             </div>
+            {webhookMsg && (
+              <div className="mb-4 text-xs text-gray-600 dark:text-zinc-400">{webhookMsg}</div>
+            )}
 
             {/* Add Webhook Form */}
             {showAddWebhook && (
@@ -1829,8 +1997,32 @@ export default function ApplicationConfigPage() {
                     placeholder="https://api.example.com/webhooks"
                     className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   />
-                  <Button onClick={handleAddWebhook} disabled={!newWebhookUrl} className="bg-blue-600 text-white border-0">Add</Button>
-                  <Button variant="outline" onClick={() => { setShowAddWebhook(false); setNewWebhookUrl('') }}>Cancel</Button>
+                  <Button onClick={handleAddWebhook} disabled={!newWebhookUrl || newWebhookEvents.length === 0} className="bg-blue-600 text-white border-0">Add</Button>
+                  <Button variant="outline" onClick={() => { setShowAddWebhook(false); setNewWebhookUrl(''); setNewWebhookEvents(['user.created']) }}>Cancel</Button>
+                </div>
+                <div className="mt-2">
+                  <label className="text-xs font-medium text-gray-600 dark:text-zinc-400 block mb-2">Events</label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {WEBHOOK_EVENTS.map((eventName) => {
+                      const checked = newWebhookEvents.includes(eventName)
+                      return (
+                        <label key={eventName} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 px-2 py-1.5 text-[11px] text-gray-700 dark:text-zinc-300">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setNewWebhookEvents((prev) => {
+                                if (e.target.checked) return Array.from(new Set([...prev, eventName]))
+                                return prev.filter((item) => item !== eventName)
+                              })
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500/30"
+                          />
+                          <span className="font-mono">{eventName}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             )}
@@ -1838,22 +2030,88 @@ export default function ApplicationConfigPage() {
             {/* Webhook List */}
             <div className="space-y-3">
               {webhooks.map(wh => (
-                <div key={wh.id} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`w-2 h-2 rounded-full ${wh.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                      <code className="text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">{wh.url}</code>
+                <div key={wh.id} className="p-4 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-gray-300 dark:hover:border-zinc-700 transition-colors">
+                  {editingWebhookId === wh.id ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="url"
+                          value={editingWebhookUrl}
+                          onChange={(e) => setEditingWebhookUrl(e.target.value)}
+                          placeholder="https://api.example.com/webhooks"
+                          className="flex-1 px-3 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        />
+                        <select
+                          value={editingWebhookStatus}
+                          onChange={(e) => setEditingWebhookStatus(e.target.value === 'inactive' ? 'inactive' : 'active')}
+                          className="px-2.5 py-2 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          title="Webhook status"
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        {WEBHOOK_EVENTS.map((eventName) => {
+                          const checked = editingWebhookEvents.includes(eventName)
+                          return (
+                            <label key={eventName} className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-zinc-700 px-2 py-1.5 text-[11px] text-gray-700 dark:text-zinc-300">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setEditingWebhookEvents((prev) => {
+                                    if (e.target.checked) return Array.from(new Set([...prev, eventName]))
+                                    return prev.filter((item) => item !== eventName)
+                                  })
+                                }}
+                                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500/30"
+                              />
+                              <span className="font-mono">{eventName}</span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelWebhookEdit}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSaveWebhookEdit}
+                          disabled={!editingWebhookUrl || editingWebhookEvents.length === 0}
+                          className="bg-blue-600 text-white border-0"
+                        >
+                          Save
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
-                      {wh.events.map(ev => (
-                        <span key={ev} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400">{ev}</span>
-                      ))}
-                      {wh.lastTriggered && <span className="text-[10px] text-gray-400 ml-1">Last: {new Date(wh.lastTriggered).toLocaleString()}</span>}
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`w-2 h-2 rounded-full ${wh.status === 'active' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                          <code className="text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">{wh.url}</code>
+                        </div>
+                        <div className="flex items-center gap-2 ml-4">
+                          {wh.events.map(ev => (
+                            <span key={ev} className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-400">{ev}</span>
+                          ))}
+                          {wh.lastTriggered && <span className="text-[10px] text-gray-400 ml-1">Last: {new Date(wh.lastTriggered).toLocaleString()}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button onClick={() => handleStartWebhookEdit(wh)} className="px-2 py-1 text-xs rounded-md border border-gray-200 dark:border-zinc-700 text-gray-600 dark:text-zinc-300 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors" title="Edit webhook">
+                          Edit
+                        </button>
+                        <button onClick={() => handleDeleteWebhook(wh.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors" title="Delete webhook">
+                          <Trash2Icon className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <button onClick={() => handleDeleteWebhook(wh.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-gray-400 hover:text-red-500 transition-colors" title="Delete webhook">
-                    <Trash2Icon className="w-4 h-4" />
-                  </button>
+                  )}
                 </div>
               ))}
               {webhooks.length === 0 && (
@@ -1869,7 +2127,7 @@ export default function ApplicationConfigPage() {
             <div className="mt-6 pt-4 border-t border-gray-100 dark:border-zinc-800">
               <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Available Events</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {['user.created', 'user.login', 'user.signup', 'user.updated', 'user.deleted', 'auth.mfa_enabled', 'session.created', 'session.expired'].map(ev => (
+                {WEBHOOK_EVENTS.map(ev => (
                   <span key={ev} className="inline-flex items-center px-2 py-1.5 rounded-lg bg-gray-50 dark:bg-zinc-800/50 text-[10px] font-mono text-gray-600 dark:text-zinc-400">
                     <HashIcon className="w-3 h-3 mr-1 text-gray-400" />{ev}
                   </span>
@@ -2263,15 +2521,11 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB: Links & Support ==================== */}
         <TabsContent value="links" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
-              <div className="md:pr-3">
-                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Support Channels</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Configure support links and social contact channels.</p>
-              </div>
-              <div>
-                <SocialSettings social={appBranding.social} setBranding={setAppBranding} />
-              </div>
+            <div className="space-y-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Links & Support</h3>
+              <p className="text-sm text-gray-500 dark:text-zinc-400">Configure support links and social contact channels.</p>
             </div>
+            <SocialSettings social={appBranding.social} setBranding={setAppBranding} />
           </div>
           <button onClick={() => setActiveDevGuide('social-links')} className="w-full rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5 px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
             <CodeIcon className="w-4 h-4" /> Dev Guide — Social & Support Links
@@ -2281,15 +2535,11 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB: Splash Screen ==================== */}
         <TabsContent value="splash" className="space-y-4">
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
-              <div className="md:pr-3">
-                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Splash Screen</p>
-                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Control launch screen visuals and behavior.</p>
-              </div>
-              <div>
-                <SplashScreenSettings branding={appBranding} setBranding={setAppBranding} />
-              </div>
+            <div className="space-y-2 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Splash Screen</h3>
+              <p className="text-sm text-gray-500 dark:text-zinc-400">Control launch screen visuals and behavior.</p>
             </div>
+            <SplashScreenSettings branding={appBranding} setBranding={setAppBranding} />
           </div>
           <button onClick={() => setActiveDevGuide('splash')} className="w-full rounded-xl border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/30 dark:bg-blue-500/5 px-5 py-3 text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
             <CodeIcon className="w-4 h-4" /> Dev Guide — Splash Screen Config
@@ -2357,7 +2607,7 @@ export default function ApplicationConfigPage() {
               </button>
             </div>
             <p className="text-sm text-gray-600 dark:text-zinc-400">
-              This generates a new client secret after you click <span className="font-semibold">Save Changes</span>. The new secret is shown once and must be updated in your integrations.
+              This generates a new client secret immediately. The new secret is shown once and must be updated in your integrations.
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-lg px-3 py-2">
               Existing integrations using the old secret will fail until updated.
@@ -2369,11 +2619,11 @@ export default function ApplicationConfigPage() {
               <Button
                 variant="primary"
                 onClick={() => {
-                  setRotateClientSecretOnSave(true)
+                  handleRotateClientSecretNow()
                   setShowRotateSecretConfirm(false)
                 }}
               >
-                Confirm Rotation
+                Rotate Now
               </Button>
             </div>
           </div>
@@ -2459,12 +2709,12 @@ export default function ApplicationConfigPage() {
         description="Fetch and update application settings programmatically."
         platform="both"
         webContent={[
-          { description: 'Web SDK — Fetch & update app metadata:', code: `import { AppKit } from '@appkit/web';\n\nconst client = new AppKit({ apiKey: 'ak_...' });\nconst app = await client.getApplication();\n// { id, name, domain, platform, status, apiKey, ... }\n\nawait client.updateApplication({\n  name: 'My App',\n  domain: 'myapp.com',\n  platform: 'web',\n});\n\nconst { apiKey } = await client.regenerateApiKey();` },
+          { description: 'Web SDK — Fetch & update app metadata:', code: `import { AppKit } from '@appkit/web';\n\nconst client = new AppKit({ apiKey: 'ak_...' });\nconst app = await client.getApplication();\n// { id, name, domain, platform, status, ... }\n\nawait client.updateApplication({\n  name: 'My App',\n  domain: 'myapp.com',\n  platform: 'web',\n});` },
         ]}
         mobileContent={[
           { description: 'React Native SDK — Fetch & update app metadata:', code: `import { AppKit } from '@appkit/react-native';\n\nconst client = new AppKit({ apiKey: 'ak_...' });\nconst app = await client.getApplication();\n// { id, name, bundleId, platform, status, ... }\n\nawait client.updateApplication({\n  name: 'My Mobile App',\n  bundleId: 'com.myapp.mobile',\n  deepLinkScheme: 'myapp://',\n});` },
         ]}
-        apiEndpoints={`GET  /api/v1/applications/{appId}\nPUT  /api/v1/applications/{appId}\nPOST /api/v1/applications/{appId}/regenerate-key`}
+        apiEndpoints={`GET  /api/v1/admin/applications/{appId}\nPUT  /api/v1/admin/applications/{appId}\nDELETE /api/v1/admin/applications/{appId}`}
       />
       <DevGuideDrawer
         open={activeDevGuide === 'users'}
@@ -2590,11 +2840,11 @@ export default function ApplicationConfigPage() {
         open={activeDevGuide === 'sandbox'}
         onClose={() => setActiveDevGuide(null)}
         title="Login Sandbox API"
-        description="Use the sandbox API for testing auth flows in development."
+        description="Sandbox endpoints are not implemented yet in this build."
         sharedContent={[
           { description: 'Create test users and simulate auth scenarios:', code: `const testUser = await client.sandbox.createUser({\n  email: 'test@sandbox.example.com',\n  password: 'test123',\n});\n\nawait client.sandbox.simulate('login-success');\nawait client.sandbox.simulate('login-failure');\nawait client.sandbox.simulate('mfa-challenge');\nawait client.sandbox.simulate('account-lockout');\n\nconst logs = await client.sandbox.getLogs();` },
         ]}
-        apiEndpoints={`POST /api/v1/applications/{appId}/sandbox/users\nPOST /api/v1/applications/{appId}/sandbox/simulate\nGET  /api/v1/applications/{appId}/sandbox/logs`}
+        apiEndpoints={`Planned: sandbox endpoints are coming soon`}
       />
       <DevGuideDrawer
         open={activeDevGuide === 'branding'}

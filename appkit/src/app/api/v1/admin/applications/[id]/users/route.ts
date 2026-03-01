@@ -73,3 +73,125 @@ export async function GET(
     )
   }
 }
+
+export async function POST(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: 'Invalid application ID format' },
+        { status: 400 }
+      )
+    }
+
+    const appExists = await prisma.application.findUnique({
+      where: { id },
+      select: { id: true }
+    })
+    if (!appExists) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+    const name = typeof body.name === 'string' ? body.name.trim() : ''
+    const role = typeof body.role === 'string' && body.role.trim() ? body.role.trim() : 'User'
+
+    if (!email || !name) {
+      return NextResponse.json(
+        { error: 'Email and name are required' },
+        { status: 400 }
+      )
+    }
+
+    const [firstNameRaw, ...lastNameParts] = name.split(/\s+/)
+    const firstName = (firstNameRaw || '').trim() || 'User'
+    const lastName = lastNameParts.join(' ').trim() || 'Member'
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        createdAt: true,
+        lastLoginAt: true
+      }
+    })
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          firstName,
+          lastName
+        },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          isActive: true,
+          createdAt: true,
+          lastLoginAt: true
+        }
+      })
+    }
+
+    const userApp = await prisma.userApplication.upsert({
+      where: {
+        userId_applicationId: {
+          userId: user.id,
+          applicationId: id
+        }
+      },
+      update: {
+        role,
+        status: 'active',
+        lastActiveAt: new Date()
+      },
+      create: {
+        userId: user.id,
+        applicationId: id,
+        role,
+        status: 'active'
+      },
+      select: {
+        joinedAt: true,
+        role: true,
+        status: true,
+        lastActiveAt: true
+      }
+    })
+
+    return NextResponse.json(
+      {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+          status: userApp.status.toLowerCase(),
+          plan: 'Free',
+          joinedAt: userApp.joinedAt.toISOString(),
+          lastActive: userApp.lastActiveAt?.toISOString() || user.lastLoginAt?.toISOString() || user.createdAt.toISOString(),
+          role: userApp.role
+        }
+      },
+      { status: 201 }
+    )
+  } catch (error) {
+    console.error('Error adding application user:', error)
+    return NextResponse.json(
+      { error: 'Failed to add user' },
+      { status: 500 }
+    )
+  }
+}

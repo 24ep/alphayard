@@ -5,6 +5,66 @@ import { randomBytes } from 'crypto'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+function parseSettings(input: unknown): Record<string, any> {
+  if (typeof input === 'string') {
+    try {
+      return JSON.parse(input || '{}')
+    } catch {
+      return {}
+    }
+  }
+  return input && typeof input === 'object' ? { ...(input as Record<string, any>) } : {}
+}
+
+function normalizeOptionalString(input: unknown): string {
+  return typeof input === 'string' ? input.trim() : ''
+}
+
+function normalizeSecurityConfig(input: unknown, fallback?: any) {
+  const source = input && typeof input === 'object' ? (input as any) : (fallback || {})
+  const mfa = source.mfa && typeof source.mfa === 'object' ? source.mfa : {}
+  const password = source.password && typeof source.password === 'object' ? source.password : {}
+  const session = source.session && typeof source.session === 'object' ? source.session : {}
+  return {
+    mfa: {
+      totp: mfa.totp !== false,
+      sms: mfa.sms === true,
+      email: mfa.email !== false,
+      fido2: mfa.fido2 === true
+    },
+    password: {
+      minLength: Number.isFinite(password.minLength) ? Number(password.minLength) : 8,
+      maxAttempts: Number.isFinite(password.maxAttempts) ? Number(password.maxAttempts) : 5,
+      expiryDays: Number.isFinite(password.expiryDays) ? Number(password.expiryDays) : 90,
+      lockoutMinutes: Number.isFinite(password.lockoutMinutes) ? Number(password.lockoutMinutes) : 30,
+      requireUppercase: password.requireUppercase !== false,
+      requireLowercase: password.requireLowercase !== false,
+      requireNumber: password.requireNumber !== false,
+      requireSpecial: password.requireSpecial === true
+    },
+    session: {
+      timeoutMinutes: Number.isFinite(session.timeoutMinutes) ? Number(session.timeoutMinutes) : 60,
+      maxConcurrent: Number.isFinite(session.maxConcurrent) ? Number(session.maxConcurrent) : 3
+    }
+  }
+}
+
+function normalizeIdentityConfig(input: unknown, fallback?: any) {
+  const source = input && typeof input === 'object' ? (input as any) : (fallback || {})
+  const scopes = source.scopes && typeof source.scopes === 'object' ? source.scopes : {}
+  const model = typeof source.model === 'string' && source.model.trim() ? source.model.trim() : 'Email-based'
+  return {
+    model,
+    scopes: {
+      openid: scopes.openid !== false,
+      profile: scopes.profile !== false,
+      email: scopes.email !== false,
+      phone: scopes.phone === true,
+      address: scopes.address === true
+    }
+  }
+}
+
 function isValidPostAuthRedirect(value: string): boolean {
   const trimmed = value.trim()
   if (!trimmed) return true
@@ -15,6 +75,19 @@ function isValidPostAuthRedirect(value: string): boolean {
   } catch {
     return false
   }
+}
+
+async function generateUniqueOAuthClientId(basePrefix: string): Promise<string | null> {
+  const prefix = (basePrefix || 'app').replace(/[^a-z0-9_-]/gi, '').toLowerCase() || 'app'
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const candidate = `${prefix}_${randomBytes(6).toString('hex')}`
+    const existing = await prisma.oAuthClient.findFirst({
+      where: { clientId: candidate },
+      select: { id: true }
+    })
+    if (!existing) return candidate
+  }
+  return null
 }
 
 const applicationQuery = {
@@ -45,22 +118,35 @@ function formatApplication(application: any) {
       ? oauthRedirectUrisRaw.filter((item: unknown): item is string => typeof item === 'string')
       : []
 
-  const settings =
-    typeof application.settings === 'string'
-      ? JSON.parse(application.settings || '{}')
-      : (application.settings || {})
+  const settings = parseSettings(application.settings)
   const rawAuthBehavior = settings.authBehavior || {}
+  const platform = settings.platform === 'mobile' ? 'mobile' : 'web'
+  const securityConfig = normalizeSecurityConfig(settings.securityConfig)
+  const identityConfig = normalizeIdentityConfig(settings.identityConfig)
 
   return {
     id: application.id,
     name: application.name,
     description: application.description || 'No description provided.',
     status: application.isActive ? 'active' : 'inactive',
+    platform,
     users: application._count.userApplications,
     createdAt: application.createdAt.toISOString(),
     lastModified: application.updatedAt.toISOString(),
     plan: 'free', // Default fallback since plan isn't on the model directly
-    domain: application.slug ? `${application.slug}.appkit.com` : undefined, // Fallback slug
+    domain:
+      typeof settings.domain === 'string' && settings.domain.trim()
+        ? settings.domain.trim()
+        : (application.slug ? `${application.slug}.appkit.com` : undefined),
+    appUrl: normalizeOptionalString(settings.appUrl),
+    gaTrackingId: normalizeOptionalString(settings.gaTrackingId),
+    metaTitle: normalizeOptionalString(settings.metaTitle),
+    metaDescription: normalizeOptionalString(settings.metaDescription),
+    faviconUrl: normalizeOptionalString(settings.faviconUrl),
+    bundleId: normalizeOptionalString(settings.bundleId),
+    deepLinkScheme: normalizeOptionalString(settings.deepLinkScheme),
+    securityConfig,
+    identityConfig,
     oauthClientId: primaryOAuthClient?.clientId || null,
     oauthClientType: primaryOAuthClient?.clientType || null,
     oauthClientSecretConfigured: Boolean(primaryOAuthClient?.clientSecretHash),
@@ -136,11 +222,23 @@ export async function PUT(
       name,
       description,
       status,
+      platform,
       logoUrl,
+      appUrl,
+      domain,
+      gaTrackingId,
+      metaTitle,
+      metaDescription,
+      faviconUrl,
+      bundleId,
+      deepLinkScheme,
+      securityConfig,
+      identityConfig,
       oauthRedirectUris,
       authBehavior,
       oauthClientId,
-      rotateClientSecret
+      rotateClientSecret,
+      generateClientId
     } = body || {}
 
     const app = await prisma.application.findUnique({
@@ -161,10 +259,7 @@ export async function PUT(
           ? true
           : app.isActive
 
-    const currentSettings =
-      typeof app.settings === 'string'
-        ? JSON.parse(app.settings || '{}')
-        : (app.settings || {})
+    const currentSettings = parseSettings(app.settings)
 
     const normalizedAuthBehavior = authBehavior && typeof authBehavior === 'object'
       ? {
@@ -190,6 +285,10 @@ export async function PUT(
           postSignupRedirect: ''
         })
 
+    const normalizedPlatform = platform === 'mobile' ? 'mobile' : 'web'
+    const normalizedSecurityConfig = normalizeSecurityConfig(securityConfig, currentSettings.securityConfig)
+    const normalizedIdentityConfig = normalizeIdentityConfig(identityConfig, currentSettings.identityConfig)
+
     if (
       !isValidPostAuthRedirect(normalizedAuthBehavior.postLoginRedirect) ||
       !isValidPostAuthRedirect(normalizedAuthBehavior.postSignupRedirect)
@@ -209,16 +308,107 @@ export async function PUT(
         isActive,
         settings: {
           ...currentSettings,
-          authBehavior: normalizedAuthBehavior
+          platform: normalizedPlatform,
+          authBehavior: normalizedAuthBehavior,
+          appUrl: normalizeOptionalString(appUrl),
+          domain: normalizeOptionalString(domain),
+          gaTrackingId: normalizeOptionalString(gaTrackingId),
+          metaTitle: normalizeOptionalString(metaTitle),
+          metaDescription: normalizeOptionalString(metaDescription),
+          faviconUrl: normalizeOptionalString(faviconUrl),
+          bundleId: normalizeOptionalString(bundleId),
+          deepLinkScheme: normalizeOptionalString(deepLinkScheme),
+          securityConfig: normalizedSecurityConfig,
+          identityConfig: normalizedIdentityConfig
         }
       }
     })
 
     let redirectUpdateWarning: string | null = null
     let generatedClientSecret: string | null = null
-    const primaryOAuthClient = app.oauthClients[0]
+    let generatedClientId: string | null = null
+    let primaryOAuthClient = app.oauthClients[0]
+    let generatedClientIdHandledDuringCreate = false
 
-    if (primaryOAuthClient && typeof oauthClientId === 'string') {
+    const normalizedRequestedClientId = typeof oauthClientId === 'string' ? oauthClientId.trim() : null
+    const requestedRedirectUris = Array.isArray(oauthRedirectUris)
+      ? oauthRedirectUris
+          .map((item: unknown) => (typeof item === 'string' ? item.trim() : ''))
+          .filter(Boolean)
+      : []
+    const shouldEnsureOAuthClient =
+      generateClientId === true ||
+      rotateClientSecret === true ||
+      requestedRedirectUris.length > 0 ||
+      typeof oauthClientId === 'string'
+
+    if (!primaryOAuthClient && shouldEnsureOAuthClient) {
+      let clientIdForCreate = normalizedRequestedClientId
+
+      if (generateClientId === true || !clientIdForCreate) {
+        clientIdForCreate = await generateUniqueOAuthClientId(app.slug || app.name || 'app')
+        if (!clientIdForCreate) {
+          return NextResponse.json(
+            { error: 'Failed to generate a unique Client ID. Please try again.' },
+            { status: 500 }
+          )
+        }
+        generatedClientId = clientIdForCreate
+        if (generateClientId === true) {
+          generatedClientIdHandledDuringCreate = true
+        }
+      }
+
+      const duplicateClient = await prisma.oAuthClient.findFirst({
+        where: { clientId: clientIdForCreate },
+        select: { id: true }
+      })
+      if (duplicateClient) {
+        return NextResponse.json(
+          { error: 'Client ID is already in use.' },
+          { status: 409 }
+        )
+      }
+
+      let clientSecretHashForCreate: string | null = null
+      if (rotateClientSecret === true) {
+        generatedClientSecret = `acs_${randomBytes(24).toString('base64url')}`
+        clientSecretHashForCreate = await bcrypt.hash(generatedClientSecret, 12)
+      }
+
+      primaryOAuthClient = await prisma.oAuthClient.create({
+        data: {
+          clientId: clientIdForCreate,
+          clientType: 'confidential',
+          name: `${app.name} OAuth Client`,
+          applicationId: app.id,
+          redirectUris: requestedRedirectUris,
+          ...(clientSecretHashForCreate ? { clientSecretHash: clientSecretHashForCreate } : {})
+        },
+        select: {
+          id: true,
+          clientId: true,
+          clientType: true,
+          clientSecretHash: true,
+          redirectUris: true
+        }
+      }) as any
+    }
+
+    if (primaryOAuthClient && generateClientId === true && !generatedClientIdHandledDuringCreate) {
+      const nextClientId = await generateUniqueOAuthClientId(app.slug || app.name || 'app')
+      if (!nextClientId) {
+        return NextResponse.json(
+          { error: 'Failed to generate a unique Client ID. Please try again.' },
+          { status: 500 }
+        )
+      }
+      await prisma.oAuthClient.update({
+        where: { id: primaryOAuthClient.id },
+        data: { clientId: nextClientId }
+      })
+      generatedClientId = nextClientId
+    } else if (primaryOAuthClient && typeof oauthClientId === 'string' && generateClientId !== true) {
       const normalizedClientId = oauthClientId.trim()
       if (!normalizedClientId) {
         return NextResponse.json(
@@ -249,7 +439,7 @@ export async function PUT(
       }
     }
 
-    if (primaryOAuthClient && rotateClientSecret === true) {
+    if (primaryOAuthClient && rotateClientSecret === true && !generatedClientSecret) {
       // One-time reveal secret; only hash is stored in DB.
       generatedClientSecret = `acs_${randomBytes(24).toString('base64url')}`
       const clientSecretHash = await bcrypt.hash(generatedClientSecret, 12)
@@ -275,7 +465,7 @@ export async function PUT(
             redirectUris: sanitizedRedirectUris
           }
         })
-      } else {
+      } else if (sanitizedRedirectUris.length > 0) {
         redirectUpdateWarning = 'No active OAuth client found for this application.'
       }
     }
@@ -294,12 +484,51 @@ export async function PUT(
     return NextResponse.json({
       application: formatApplication(updatedApp),
       warning: redirectUpdateWarning,
-      generatedClientSecret
+      generatedClientSecret,
+      generatedClientId
     })
   } catch (error) {
     console.error('Error updating application:', error)
     return NextResponse.json(
       { error: 'Failed to update application' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params
+    if (!UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: 'Invalid application ID format' },
+        { status: 400 }
+      )
+    }
+
+    const app = await prisma.application.findUnique({
+      where: { id },
+      select: { id: true, name: true }
+    })
+    if (!app) {
+      return NextResponse.json(
+        { error: 'Application not found' },
+        { status: 404 }
+      )
+    }
+
+    await prisma.application.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({ success: true, id: app.id })
+  } catch (error: any) {
+    console.error('Error deleting application:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete application' },
       { status: 500 }
     )
   }
