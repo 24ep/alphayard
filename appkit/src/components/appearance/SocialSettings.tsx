@@ -4,7 +4,7 @@ import React from 'react'
 import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '../ui/Card'
 import { Input } from '../ui/Input'
 import { SocialLinksConfig } from './types'
-import { ShareIcon, EnvelopeIcon, GlobeAltIcon, ChatBubbleLeftIcon, DevicePhoneMobileIcon, AtSymbolIcon, LinkIcon, UserGroupIcon } from '@heroicons/react/24/outline'
+import { ShareIcon, EnvelopeIcon, GlobeAltIcon, ChatBubbleLeftIcon, DevicePhoneMobileIcon, AtSymbolIcon, LinkIcon, UserGroupIcon, CodeBracketIcon } from '@heroicons/react/24/outline'
 
 interface SocialSettingsProps {
     social: SocialLinksConfig
@@ -54,6 +54,9 @@ export function SocialSettings({ social, setBranding }: SocialSettingsProps) {
                     <div className="space-y-3">
                         <SocialItem label="Support Email" field="supportEmail" placeholder="support@example.com" icon={EnvelopeIcon} colorClass="text-red-500" />
                         <SocialItem label="Help Desk URL" field="helpDeskUrl" placeholder="https://help.example.com" icon={GlobeAltIcon} colorClass="text-blue-500" />
+                        <SocialItem label="GitHub Repository" field="githubRepo" placeholder="https://github.com/owner/repo" icon={CodeBracketIcon} colorClass="text-gray-900" />
+                        <SocialItem label="GitLab Repository" field="gitlabRepo" placeholder="https://gitlab.com/group/project" icon={CodeBracketIcon} colorClass="text-orange-600" />
+                        <SocialItem label="Reference Docs URL" field="docsUrl" placeholder="https://docs.example.com" icon={LinkIcon} colorClass="text-purple-600" />
                         <SocialItem label="WhatsApp Number" field="whatsapp" placeholder="+1234567890" icon={ChatBubbleLeftIcon} colorClass="text-green-500" />
                         <SocialItem label="Line ID / URL" field="line" placeholder="https://line.me/..." icon={ChatBubbleLeftIcon} colorClass="text-green-600" />
                     </div>

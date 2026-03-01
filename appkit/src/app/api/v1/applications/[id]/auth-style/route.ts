@@ -3,6 +3,7 @@ import { prisma } from '@/server/lib/prisma';
 
 type DeviceType = 'mobileApp' | 'mobileWeb' | 'desktopWeb';
 const ALLOWED_DEVICES: DeviceType[] = ['mobileApp', 'mobileWeb', 'desktopWeb'];
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -13,10 +14,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Invalid device value' }, { status: 400 });
     }
 
-    let app = await prisma.application.findUnique({
-      where: { id },
-      select: { id: true, settings: true }
-    });
+    let app = UUID_REGEX.test(id)
+      ? await prisma.application.findUnique({
+          where: { id },
+          select: { id: true, settings: true }
+        })
+      : null;
 
     // Backward-compatibility: allow OAuth client_id in place of app ID.
     if (!app) {

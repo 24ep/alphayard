@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/lib/prisma';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params;
@@ -9,9 +11,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     const { devices, providers } = body;
 
     // First try finding an Application by its actual ID
-    let app = await prisma.application.findUnique({
-      where: { id }
-    });
+    let app = UUID_REGEX.test(id)
+      ? await prisma.application.findUnique({
+          where: { id }
+        })
+      : null;
 
     // If not found, it might be a client_id that the user pasted in the dashboard.
     // Try finding the Application linked to this client_id to be helpful.

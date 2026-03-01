@@ -49,6 +49,9 @@ export interface OnboardingConfig {
 export interface SocialLinksConfig {
     supportEmail: string;
     helpDeskUrl: string;
+    githubRepo: string;
+    gitlabRepo: string;
+    docsUrl: string;
     whatsapp: string;
     instagram: string;
     facebook: string;

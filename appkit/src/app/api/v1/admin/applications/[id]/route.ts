@@ -90,6 +90,9 @@ function normalizeBrandingConfig(input: unknown, fallback?: any) {
     social: {
       supportEmail: typeof social.supportEmail === 'string' ? social.supportEmail : '',
       helpDeskUrl: typeof social.helpDeskUrl === 'string' ? social.helpDeskUrl : '',
+      githubRepo: typeof social.githubRepo === 'string' ? social.githubRepo : '',
+      gitlabRepo: typeof social.gitlabRepo === 'string' ? social.gitlabRepo : '',
+      docsUrl: typeof social.docsUrl === 'string' ? social.docsUrl : '',
       whatsapp: typeof social.whatsapp === 'string' ? social.whatsapp : '',
       instagram: typeof social.instagram === 'string' ? social.instagram : '',
       facebook: typeof social.facebook === 'string' ? social.facebook : '',

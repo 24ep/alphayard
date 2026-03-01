@@ -121,7 +121,7 @@ interface Application {
     appName: string
     logoUrl: string
     announcements: { enabled: boolean; text: string; linkUrl: string; type: 'info' | 'success' | 'warning' | 'error'; isDismissible: boolean }
-    social: { supportEmail: string; helpDeskUrl: string; whatsapp: string; instagram: string; facebook: string; line: string; twitter: string; linkedin: string; discord: string; appStoreId: string; playStoreId: string }
+    social: { supportEmail: string; helpDeskUrl: string; githubRepo: string; gitlabRepo: string; docsUrl: string; whatsapp: string; instagram: string; facebook: string; line: string; twitter: string; linkedin: string; discord: string; appStoreId: string; playStoreId: string }
     splash: { backgroundColor: string; spinnerColor: string; spinnerType: string; showAppName: boolean; showLogo: boolean; resizeMode: string; logoAnimation: string }
     updates: { minVersion: string; storeUrl: string; forceUpdate: boolean }
   }
@@ -201,7 +201,7 @@ export default function ApplicationConfigPage() {
     appName: '',
     logoUrl: '',
     announcements: { enabled: false, text: '', linkUrl: '', type: 'info' as const, isDismissible: true },
-    social: { supportEmail: '', helpDeskUrl: '', whatsapp: '', instagram: '', facebook: '', line: '', twitter: '', linkedin: '', discord: '', appStoreId: '', playStoreId: '' },
+    social: { supportEmail: '', helpDeskUrl: '', githubRepo: '', gitlabRepo: '', docsUrl: '', whatsapp: '', instagram: '', facebook: '', line: '', twitter: '', linkedin: '', discord: '', appStoreId: '', playStoreId: '' },
     splash: { backgroundColor: '#FFFFFF', spinnerColor: '#3B82F6', spinnerType: 'circle' as const, showAppName: true, showLogo: true, resizeMode: 'cover', logoAnimation: 'none' },
     updates: { minVersion: '1.0.0', storeUrl: '', forceUpdate: false },
   })

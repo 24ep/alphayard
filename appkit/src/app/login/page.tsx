@@ -307,15 +307,72 @@ function LoginPageContent() {
     setIsLoading(true)
     setError('')
 
+    const resolveClientIdForSubmit = () => {
+      if (clientId) return clientId
+      const directClientId = searchParams?.get('client_id')
+      if (directClientId) return directClientId
+      const redirect = searchParams?.get('redirect')
+      if (redirect) {
+        try {
+          const decodedRedirect = decodeURIComponent(redirect)
+          const nested = decodedRedirect.startsWith('http')
+            ? new URL(decodedRedirect)
+            : new URL(decodedRedirect, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
+          return nested.searchParams.get('client_id') || null
+        } catch {
+          return null
+        }
+      }
+      return null
+    }
+    const resolvedClientId = resolveClientIdForSubmit()
+
     try {
       if (formMode === 'signin') {
-        const response = await authService.login({ email, password, clientId: clientId || undefined })
-        const redirect =
-          searchParams?.get('redirect') ||
-          response.redirectTo ||
-          authBehavior.postLoginRedirect ||
-          '/dashboard'
-        router.push(redirect)
+        if (resolvedClientId) {
+          const payload = {
+            action: 'login',
+            clientId: resolvedClientId,
+            email,
+            password,
+            rememberMe: true,
+            deviceInfo: {
+              userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown',
+              platform: typeof window !== 'undefined' ? window.navigator.platform : 'Unknown'
+            }
+          }
+
+          const res = await fetch('/api/v1/admin/identity/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          })
+          const data = await res.json()
+          if (!res.ok) {
+            throw new Error(data.error || 'Login failed')
+          }
+
+          if (typeof window !== 'undefined' && data.tokens?.accessToken) {
+            localStorage.setItem('admin_token', data.tokens.accessToken)
+            localStorage.setItem('admin_user', JSON.stringify(data.user))
+          }
+
+          const redirect =
+            searchParams?.get('redirect') ||
+            data.redirectTo ||
+            authBehavior.postLoginRedirect ||
+            '/dashboard'
+          router.push(redirect)
+        } else {
+          // Fallback for admin console login flows without app client context.
+          const response = await authService.login({ email, password, clientId: clientId || undefined })
+          const redirect =
+            searchParams?.get('redirect') ||
+            response.redirectTo ||
+            authBehavior.postLoginRedirect ||
+            '/dashboard'
+          router.push(redirect)
+        }
       } else {
         if (!authBehavior.signupEnabled) {
           throw new Error('Signup is disabled for this application')
@@ -324,7 +381,7 @@ function LoginPageContent() {
         // Registration flow
         const payload = {
           action: 'register',
-          clientId: clientId || 'appkit-admin',
+          clientId: resolvedClientId || 'appkit-admin',
           email,
           password,
           firstName,
