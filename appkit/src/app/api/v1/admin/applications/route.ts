@@ -36,8 +36,27 @@ export async function GET(request: NextRequest) {
       GROUP BY application_id
     `
 
+    const totalRows = await prisma.$queryRaw<Array<{ application_id: string; total_users: number }>>`
+      SELECT
+        application_id,
+        COUNT(DISTINCT user_id)::int AS total_users
+      FROM (
+        SELECT application_id, user_id
+        FROM user_applications
+        WHERE application_id IS NOT NULL
+        UNION
+        SELECT application_id, user_id
+        FROM user_sessions
+        WHERE application_id IS NOT NULL
+      ) app_users
+      GROUP BY application_id
+    `
+
     const onlineByApp = new Map<string, number>(
       onlineRows.map((row) => [row.application_id, Number(row.online_users || 0)])
+    )
+    const totalByApp = new Map<string, number>(
+      totalRows.map((row) => [row.application_id, Number(row.total_users || 0)])
     )
 
     const formattedApps = applications.map(app => ({
@@ -45,7 +64,7 @@ export async function GET(request: NextRequest) {
       name: app.name,
       description: app.description || 'No description provided.',
       status: app.isActive ? 'active' : 'inactive',
-      users: app._count.userApplications,
+      users: totalByApp.get(app.id) ?? app._count.userApplications,
       onlineUsers: onlineByApp.get(app.id) || 0,
       createdAt: app.createdAt.toISOString(),
       lastModified: app.updatedAt.toISOString(),

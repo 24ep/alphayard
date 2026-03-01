@@ -55,6 +55,29 @@ function LoginPageContent() {
     postSignupRedirect: ''
   })
 
+  const navigateAfterAuth = (target?: string | null) => {
+    const fallback = '/'
+    const raw = (target || '').trim()
+    const destination = raw || fallback
+
+    if (typeof window === 'undefined') {
+      router.push(destination)
+      return
+    }
+
+    try {
+      // Support absolute redirect URLs while preventing invalid navigation strings.
+      const parsed = destination.startsWith('http://') || destination.startsWith('https://')
+        ? new URL(destination)
+        : new URL(destination, window.location.origin)
+
+      // Use full page navigation so freshly set auth cookies are reliably included.
+      window.location.assign(parsed.toString())
+    } catch {
+      window.location.assign(fallback)
+    }
+  }
+
   const detectAuthStyleDevice = (): 'mobileApp' | 'mobileWeb' | 'desktopWeb' => {
     if (typeof window === 'undefined') return 'desktopWeb'
 
@@ -84,7 +107,7 @@ function LoginPageContent() {
   useEffect(() => {
     if (authService.isAuthenticated()) {
         const redirect = searchParams?.get('redirect') || '/dashboard'
-        router.push(redirect)
+        navigateAfterAuth(redirect)
         return
     }
     
@@ -362,7 +385,7 @@ function LoginPageContent() {
             data.redirectTo ||
             authBehavior.postLoginRedirect ||
             '/dashboard'
-          router.push(redirect)
+          navigateAfterAuth(redirect)
         } else {
           // Fallback for admin console login flows without app client context.
           const response = await authService.login({ email, password, clientId: clientId || undefined })
@@ -371,7 +394,7 @@ function LoginPageContent() {
             response.redirectTo ||
             authBehavior.postLoginRedirect ||
             '/dashboard'
-          router.push(redirect)
+          navigateAfterAuth(redirect)
         }
       } else {
         if (!authBehavior.signupEnabled) {
@@ -414,7 +437,7 @@ function LoginPageContent() {
             data.redirectTo ||
             authBehavior.postSignupRedirect ||
             '/dashboard'
-          router.push(redirect)
+          navigateAfterAuth(redirect)
         } else {
           throw new Error('No access token received')
         }
