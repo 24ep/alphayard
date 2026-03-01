@@ -150,6 +150,9 @@ export default function ApplicationConfigPage() {
   // General tab
   const [generalSaving, setGeneralSaving] = useState(false)
   const [generalMsg, setGeneralMsg] = useState('')
+  const [generatedClientSecret, setGeneratedClientSecret] = useState<string | null>(null)
+  const [rotateClientSecretOnSave, setRotateClientSecretOnSave] = useState(false)
+  const [showRotateSecretConfirm, setShowRotateSecretConfirm] = useState(false)
   const [newRedirectUri, setNewRedirectUri] = useState('')
   const [draggedRedirectUri, setDraggedRedirectUri] = useState<string | null>(null)
   const [dragOverRedirectUri, setDragOverRedirectUri] = useState<string | null>(null)
@@ -497,20 +500,31 @@ export default function ApplicationConfigPage() {
     }
     try {
       setGeneralSaving(true)
+      setGeneratedClientSecret(null)
       const res = await fetch(`/api/v1/admin/applications/${appId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(application),
+        body: JSON.stringify({
+          ...application,
+          oauthClientId: application.oauthClientId,
+          rotateClientSecret: rotateClientSecretOnSave
+        }),
       })
-      if (!res.ok) throw new Error('Failed to save application')
       const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to save application')
+      }
       if (data?.application) {
         setApplication(data.application)
       }
+      if (data?.generatedClientSecret) {
+        setGeneratedClientSecret(data.generatedClientSecret)
+        setRotateClientSecretOnSave(false)
+      }
       setGeneralMsg(data?.warning ? 'Saved (with warning)' : 'Saved!')
       setTimeout(() => setGeneralMsg(''), 3000)
-    } catch {
-      setGeneralMsg('Failed')
+    } catch (error: any) {
+      setGeneralMsg(error?.message || 'Failed')
       setTimeout(() => setGeneralMsg(''), 3000)
     } finally {
       setGeneralSaving(false)
@@ -827,10 +841,10 @@ export default function ApplicationConfigPage() {
 
             {/* Single-column layout: label left, config right */}
             <div className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Identity</p>
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Logo, app name, and description</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Identity</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Logo, app name, and description</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-zinc-800 hover:border-blue-400 dark:hover:border-blue-500/30 transition-colors cursor-pointer group shrink-0">
@@ -862,9 +876,9 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">URLs & Status</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">URLs & Status</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -882,10 +896,10 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Login & Signup Behavior</p>
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Control signup policy and post-auth redirects.</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Login & Signup Behavior</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Control signup policy and post-auth redirects.</p>
                 </div>
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -975,10 +989,10 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Redirect URIs</p>
-                  <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">OAuth callback URIs for this app client</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Redirect URIs</p>
+                  <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">OAuth callback URIs for this app client</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex gap-2">
@@ -1004,7 +1018,7 @@ export default function ApplicationConfigPage() {
                           onDragOver={(event) => handleRedirectUriDragOver(event, uri)}
                           onDrop={(event) => handleRedirectUriDrop(event, uri)}
                           onDragEnd={handleRedirectUriDragEnd}
-                          className={`flex items-center gap-2 p-2 rounded-lg border bg-gray-50 dark:bg-zinc-800/50 transition-colors ${
+                          className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
                             dragOverRedirectUri === uri
                               ? 'border-blue-400 dark:border-blue-500'
                               : 'border-gray-200 dark:border-zinc-700'
@@ -1059,9 +1073,9 @@ export default function ApplicationConfigPage() {
               </div>
 
               {application.platform === 'mobile' && (
-                <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                   <div className="md:pr-3">
-                    <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Mobile Config</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Mobile Config</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -1077,9 +1091,9 @@ export default function ApplicationConfigPage() {
               )}
 
               {application.platform === 'web' && (
-                <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                   <div className="md:pr-3">
-                    <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Web Config</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Web Config</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
@@ -1094,9 +1108,9 @@ export default function ApplicationConfigPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">{application.platform === 'web' ? 'SEO & Analytics' : 'App Metadata'}</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{application.platform === 'web' ? 'SEO & Analytics' : 'App Metadata'}</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
@@ -1114,12 +1128,12 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">API Key</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">API Key</p>
                 </div>
                 <div>
-                  <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700">
+                  <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-zinc-700">
                     <KeyIcon className="w-4 h-4 text-amber-500 shrink-0" />
                     <code className="flex-1 text-xs font-mono text-gray-700 dark:text-zinc-300 truncate">
                       {apiKeyVisible ? apiKey : '••••••••••••••••••••••••••••••••'}
@@ -1135,13 +1149,13 @@ export default function ApplicationConfigPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Application Info</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Application Info</p>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">App ID</p>
+                <div className="space-y-3 text-xs">
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">App ID</p>
                     <div className="flex items-center gap-2">
                       <p className="font-mono text-gray-700 dark:text-zinc-300 truncate">{appId}</p>
                       <button onClick={() => handleCopy(appId, 'app-id')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy App ID">
@@ -1149,25 +1163,36 @@ export default function ApplicationConfigPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">Platform</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">Platform</p>
                     <p className="font-medium text-gray-700 dark:text-zinc-300 capitalize">{application.platform === 'web' ? '🌐 Web App' : '📱 Mobile App'}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">Client ID</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
+                    <p className="text-gray-500 pt-1">Client ID</p>
                     {application.oauthClientId ? (
-                      <div className="flex items-center gap-2">
-                        <p className="font-mono text-gray-700 dark:text-zinc-300 truncate">{application.oauthClientId}</p>
-                        <button onClick={() => handleCopy(application.oauthClientId!, 'client-id')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy Client ID">
-                          {copiedId === 'client-id' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
-                        </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={application.oauthClientId || ''}
+                            onChange={e => setApplication(prev => prev ? { ...prev, oauthClientId: e.target.value } : prev)}
+                            className="flex-1 min-w-0 px-2.5 py-1.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-md text-xs font-mono text-gray-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            placeholder="client_id"
+                            title="OAuth Client ID"
+                          />
+                          <button onClick={() => handleCopy(application.oauthClientId!, 'client-id')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy Client ID">
+                            {copiedId === 'client-id' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 dark:text-zinc-500">Client ID can be edited and saved. Must be unique.</p>
                       </div>
                     ) : (
                       <p className="text-gray-500 dark:text-zinc-400">Not configured</p>
                     )}
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">Client Secret</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
+                    <p className="text-gray-500 pt-1">Client Secret</p>
+                    <div>
                     <p className={`font-medium ${application.oauthClientSecretConfigured ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {application.oauthClientSecretConfigured ? 'Configured' : 'Not configured'}
                     </p>
@@ -1176,9 +1201,57 @@ export default function ApplicationConfigPage() {
                         Type: {application.oauthClientType}
                       </p>
                     )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant={rotateClientSecretOnSave ? 'primary' : 'outline'}
+                        className="h-7 px-2.5 text-xs"
+                        onClick={() => {
+                          if (rotateClientSecretOnSave) {
+                            setRotateClientSecretOnSave(false)
+                            return
+                          }
+                          setShowRotateSecretConfirm(true)
+                        }}
+                        disabled={!application.oauthClientId}
+                        title={!application.oauthClientId ? 'No OAuth client available' : 'Rotate client secret on next save'}
+                      >
+                        <RefreshCwIcon className="w-3.5 h-3.5 mr-1" />
+                        {rotateClientSecretOnSave ? 'Will rotate on save' : 'Rotate on save'}
+                      </Button>
+                    </div>
+                    {generatedClientSecret && (
+                      <div className="mt-2 p-2 rounded-md border border-amber-200 dark:border-amber-900/40 bg-amber-50/80 dark:bg-amber-950/20">
+                        <p className="text-[10px] text-amber-700 dark:text-amber-300 mb-1">New secret (shown once):</p>
+                        <div className="flex items-center gap-2">
+                          <code className="flex-1 text-[11px] font-mono text-amber-800 dark:text-amber-200 break-all">{generatedClientSecret}</code>
+                          <button onClick={() => handleCopy(generatedClientSecret, 'generated-client-secret')} className="p-1 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-600 dark:text-amber-300 transition-colors" title="Copy new client secret">
+                            {copiedId === 'generated-client-secret' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50 md:col-span-2">
-                    <p className="text-gray-400 mb-0.5">Redirect URI (Canonical)</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
+                    <p className="text-gray-500">OAuth Notes</p>
+                    <p className="text-[11px] text-gray-500 dark:text-zinc-400">
+                      Rotating secret invalidates old integrations unless they are updated with the new value.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">Client ID Copy</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono text-gray-700 dark:text-zinc-300 truncate">{application.oauthClientId || 'Not configured'}</p>
+                      {application.oauthClientId && (
+                        <button onClick={() => handleCopy(application.oauthClientId!, 'client-id-compact')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy Client ID">
+                          {copiedId === 'client-id-compact' ? <CheckCircle2Icon className="w-3.5 h-3.5 text-emerald-500" /> : <CopyIcon className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">Redirect URI (Canonical)</p>
                     <div className="flex items-center gap-2">
                       <p className="font-mono text-gray-700 dark:text-zinc-300 truncate">{canonicalRedirectUri}</p>
                       <button onClick={() => handleCopy(canonicalRedirectUri, 'redirect-uri')} className="p-1 rounded-md hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-400 transition-colors" title="Copy Redirect URI">
@@ -1186,20 +1259,20 @@ export default function ApplicationConfigPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">Plan</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">Plan</p>
                     <p className="font-medium text-gray-700 dark:text-zinc-300 capitalize">{application.plan}</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-zinc-800/50">
-                    <p className="text-gray-400 mb-0.5">Users</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                    <p className="text-gray-500">Users</p>
                     <p className="font-medium text-gray-700 dark:text-zinc-300">{application.users.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start rounded-lg border border-gray-200/80 dark:border-zinc-800/80 p-3.5">
+              <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-3 items-start py-2">
                 <div className="md:pr-3">
-                  <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">App Version Control</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">App Version Control</p>
                 </div>
                 <div>
                   <AppUpdateSettings updates={appBranding.updates} setBranding={setAppBranding} />
@@ -1525,8 +1598,8 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
               <div className="md:pr-3">
-                <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Security & MFA</p>
-                <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Configure authentication hardening, password policy, and sessions.</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Security & MFA</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Configure authentication hardening, password policy, and sessions.</p>
               </div>
               <div>
                 <div className="flex items-start justify-between mb-6">
@@ -2166,8 +2239,8 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
               <div className="md:pr-3">
-                <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Identity & Brand</p>
-                <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Set core visual identity, colors, and brand assets.</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Identity & Brand</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Set core visual identity, colors, and brand assets.</p>
               </div>
               <div>
                 <BrandingSettings branding={appBranding} setBranding={setAppBranding} handleBrandingUpload={handleBrandingUpload} uploading={brandingUploading} />
@@ -2192,8 +2265,8 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
               <div className="md:pr-3">
-                <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Support Channels</p>
-                <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Configure support links and social contact channels.</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Support Channels</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Configure support links and social contact channels.</p>
               </div>
               <div>
                 <SocialSettings social={appBranding.social} setBranding={setAppBranding} />
@@ -2210,8 +2283,8 @@ export default function ApplicationConfigPage() {
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
             <div className="grid grid-cols-1 md:grid-cols-[220px_minmax(0,1fr)] gap-2 items-start">
               <div className="md:pr-3">
-                <p className="text-xs font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-widest">Splash Screen</p>
-                <p className="text-[11px] text-gray-400 dark:text-zinc-500 mt-1">Control launch screen visuals and behavior.</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">Splash Screen</p>
+                <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">Control launch screen visuals and behavior.</p>
               </div>
               <div>
                 <SplashScreenSettings branding={appBranding} setBranding={setAppBranding} />
@@ -2271,6 +2344,41 @@ export default function ApplicationConfigPage() {
         appId={appId}
         appName={application.name}
       />
+
+      {/* Confirm Client Secret Rotation */}
+      {showRotateSecretConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowRotateSecretConfirm(false)} />
+          <div className="relative bg-white dark:bg-zinc-900 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-zinc-800/80 w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Rotate Client Secret?</h3>
+              <button onClick={() => setShowRotateSecretConfirm(false)} title="Close modal" className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
+                <XIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-zinc-400">
+              This generates a new client secret after you click <span className="font-semibold">Save Changes</span>. The new secret is shown once and must be updated in your integrations.
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-lg px-3 py-2">
+              Existing integrations using the old secret will fail until updated.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setShowRotateSecretConfirm(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setRotateClientSecretOnSave(true)
+                  setShowRotateSecretConfirm(false)
+                }}
+              >
+                Confirm Rotation
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add User Modal */}
       {showAddUser && (

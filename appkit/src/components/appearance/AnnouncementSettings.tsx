@@ -29,87 +29,80 @@ export function AnnouncementSettings({ announcements, setBranding }: Announcemen
     }
 
     return (
-        <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 bg-white/80 backdrop-blur-xl">
+        <Card className="border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 shadow-none">
             <CardHeader className="border-b border-gray-100/50 pb-3">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-                            <MegaphoneIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg">Announcement Banners</CardTitle>
-                            <CardDescription>Broadcase messages and marketing banners to all users.</CardDescription>
-                        </div>
+                    <div>
+                        <CardTitle className="text-lg">Announcement Banners</CardTitle>
+                        <CardDescription>Broadcast messages and marketing banners to all users.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
             <CardBody className="p-5 space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-900">Enable Banner</h4>
+                <div className="space-y-4">
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-700">Enable Banner</label>
+                            <div className="flex items-center justify-between gap-4">
                                 <p className="text-xs text-gray-500">Toggle whether the banner is visible in the mobile app.</p>
+                                <button 
+                                    onClick={() => updateAnnouncement('enabled', !announcements.enabled)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${announcements.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                    title={announcements.enabled ? 'Disable banner' : 'Enable banner'}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${announcements.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
                             </div>
-                            <button 
-                                onClick={() => updateAnnouncement('enabled', !announcements.enabled)}
-                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${announcements.enabled ? 'bg-blue-600' : 'bg-gray-200'}`}
-                                title={announcements.enabled ? 'Disable banner' : 'Enable banner'}
-                            >
-                                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${announcements.enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                            </button>
                         </div>
 
-                        <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-gray-500">Banner Message</label>
-                                <textarea 
-                                    value={announcements.text}
-                                    onChange={(e) => updateAnnouncement('text', e.target.value)}
-                                    className="content-input min-h-[80px] text-sm resize-none"
-                                    placeholder="Enter your announcement text here..."
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
+                            <label className="text-sm font-medium text-gray-700 pt-2">Banner Message</label>
+                            <textarea 
+                                value={announcements.text}
+                                onChange={(e) => updateAnnouncement('text', e.target.value)}
+                                className="content-input min-h-[80px] text-sm resize-none"
+                                placeholder="Enter your announcement text here..."
+                            />
+                        </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-gray-500 flex items-center gap-2">
-                                    <LinkIcon className="w-3.5 h-3.5" />
-                                    Action URL (Optional)
-                                </label>
-                                <Input 
-                                    value={announcements.linkUrl}
-                                    onChange={(e) => updateAnnouncement('linkUrl', e.target.value)}
-                                    placeholder="https://example.com/promo"
-                                    className="text-sm"
-                                />
-                            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                                <LinkIcon className="w-4 h-4" />
+                                Action URL (Optional)
+                            </label>
+                            <Input 
+                                value={announcements.linkUrl}
+                                onChange={(e) => updateAnnouncement('linkUrl', e.target.value)}
+                                placeholder="https://example.com/promo"
+                                className="text-sm"
+                            />
+                        </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-gray-500">Banner Type</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(['info', 'success', 'warning', 'error'] as const).map((type) => (
-                                        <button
-                                            key={type}
-                                            onClick={() => updateAnnouncement('type', type)}
-                                            className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
-                                                announcements.type === type 
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                                                    : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
-                                            }`}
-                                            title={`Set banner type to ${type}`}
-                                        >
-                                            {typeIcons[type]}
-                                            <span className="capitalize">{type}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-start">
+                            <label className="text-sm font-medium text-gray-700 pt-2">Banner Type</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['info', 'success', 'warning', 'error'] as const).map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => updateAnnouncement('type', type)}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+                                            announcements.type === type 
+                                                ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                                                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                                        }`}
+                                        title={`Set banner type to ${type}`}
+                                    >
+                                        {typeIcons[type]}
+                                        <span className="capitalize">{type}</span>
+                                    </button>
+                                ))}
                             </div>
+                        </div>
 
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-gray-50/50 border border-gray-100">
-                                <div>
-                                    <h4 className="text-sm font-bold text-gray-900">Allow Dismiss</h4>
-                                    <p className="text-xs text-gray-500">Let users close the banner until the next app launch.</p>
-                                </div>
+                        <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
+                            <label className="text-sm font-medium text-gray-700">Allow Dismiss</label>
+                            <div className="flex items-center justify-between gap-4">
+                                <p className="text-xs text-gray-500">Let users close the banner until the next app launch.</p>
                                 <button 
                                     onClick={() => updateAnnouncement('isDismissible', !announcements.isDismissible)}
                                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${announcements.isDismissible ? 'bg-blue-600' : 'bg-gray-200'}`}
@@ -121,84 +114,6 @@ export function AnnouncementSettings({ announcements, setBranding }: Announcemen
                         </div>
                     </div>
 
-                    {/* Mobile Preview */}
-                    <div className="hidden lg:block space-y-4">
-                        <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest">Real-time Preview</label>
-                        <div className="flex justify-center py-8 bg-gray-50/50 rounded-3xl border border-gray-100 sticky top-4">
-                            {/* Device Frame */}
-                            <div className="relative w-[300px] h-[600px] bg-white rounded-[3rem] shadow-[0_0_0_12px_#111827,0_20px_50px_-10px_rgba(0,0,0,0.3)] overflow-hidden ring-1 ring-gray-900/5">
-                                {/* Device Notch */}
-                                <div className="absolute top-0 inset-x-0 h-7 bg-black z-20 flex justify-center">
-                                    <div className="h-6 w-32 bg-black rounded-b-2xl"></div>
-                                </div>
-                                
-                                {/* Status Bar */}
-                                <div className="absolute top-2 inset-x-0 px-6 flex justify-between items-center text-black text-[10px] font-medium z-20">
-                                    <span>9:41</span>
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-4 h-2.5 rounded-[3px] border border-black/40 relative">
-                                            <div className="absolute inset-0.5 bg-black rounded-[1px]"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* App Header */}
-                                <div className="pt-14 pb-4 px-6 border-b border-gray-100 flex items-center justify-between">
-                                    <div className="w-8 h-8 rounded-full bg-gray-100"></div>
-                                    <div className="h-4 w-24 bg-gray-100 rounded-lg"></div>
-                                    <div className="w-8 h-8 rounded-full bg-gray-100"></div>
-                                </div>
-
-                                {/* Announcement Banner Simulation */}
-                                {announcements.enabled && (
-                                    <div className={clsx(
-                                        "px-4 py-3 flex items-start gap-3 border-b animate-in slide-in-from-top-4 relative",
-                                        announcements.type === 'info' && "bg-blue-50/50 border-blue-100 text-blue-700",
-                                        announcements.type === 'success' && "bg-emerald-50/50 border-emerald-100 text-emerald-700",
-                                        announcements.type === 'warning' && "bg-amber-50/50 border-amber-100 text-amber-700",
-                                        announcements.type === 'error' && "bg-rose-50/50 border-rose-100 text-rose-700",
-                                    )}>
-                                        <div className="shrink-0 mt-0.5">
-                                            {typeIcons[announcements.type]}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium leading-relaxed">
-                                                {announcements.text || "Your announcement text will appear here."}
-                                            </p>
-                                            {announcements.linkUrl && (
-                                                <div className="flex items-center gap-1 mt-1 text-[10px] font-bold underline opacity-80">
-                                                    Learn More <span aria-hidden="true">&rarr;</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {announcements.isDismissible && (
-                                            <button className="shrink-0 p-1 -mr-1 opacity-60 hover:opacity-100" title="Dismiss banner">
-                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* App Content Simulation */}
-                                <div className="p-4 space-y-4 opacity-50">
-                                    <div className="h-32 rounded-2xl bg-gray-100"></div>
-                                    <div className="space-y-2">
-                                        <div className="h-4 w-3/4 bg-gray-100 rounded"></div>
-                                        <div className="h-4 w-1/2 bg-gray-100 rounded"></div>
-                                    </div>
-                                    <div className="h-24 rounded-2xl bg-gray-100"></div>
-                                    <div className="h-24 rounded-2xl bg-gray-100"></div>
-                                </div>
-
-                                {/* Home Indicator */}
-                                <div className="absolute bottom-2 inset-x-0 flex justify-center z-20">
-                                    <div className="w-32 h-1 bg-black/20 rounded-full"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </CardBody>
         </Card>

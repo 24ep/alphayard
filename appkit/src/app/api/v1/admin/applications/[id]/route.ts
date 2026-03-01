@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/server/lib/prisma'
+import bcrypt from 'bcryptjs'
+import { randomBytes } from 'crypto'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -136,7 +138,9 @@ export async function PUT(
       status,
       logoUrl,
       oauthRedirectUris,
-      authBehavior
+      authBehavior,
+      oauthClientId,
+      rotateClientSecret
     } = body || {}
 
     const app = await prisma.application.findUnique({
@@ -211,6 +215,50 @@ export async function PUT(
     })
 
     let redirectUpdateWarning: string | null = null
+    let generatedClientSecret: string | null = null
+    const primaryOAuthClient = app.oauthClients[0]
+
+    if (primaryOAuthClient && typeof oauthClientId === 'string') {
+      const normalizedClientId = oauthClientId.trim()
+      if (!normalizedClientId) {
+        return NextResponse.json(
+          { error: 'Client ID cannot be empty.' },
+          { status: 400 }
+        )
+      }
+
+      const duplicateClient = await prisma.oAuthClient.findFirst({
+        where: {
+          clientId: normalizedClientId,
+          NOT: { id: primaryOAuthClient.id }
+        },
+        select: { id: true }
+      })
+      if (duplicateClient) {
+        return NextResponse.json(
+          { error: 'Client ID is already in use.' },
+          { status: 409 }
+        )
+      }
+
+      if (normalizedClientId !== primaryOAuthClient.clientId) {
+        await prisma.oAuthClient.update({
+          where: { id: primaryOAuthClient.id },
+          data: { clientId: normalizedClientId }
+        })
+      }
+    }
+
+    if (primaryOAuthClient && rotateClientSecret === true) {
+      // One-time reveal secret; only hash is stored in DB.
+      generatedClientSecret = `acs_${randomBytes(24).toString('base64url')}`
+      const clientSecretHash = await bcrypt.hash(generatedClientSecret, 12)
+      await prisma.oAuthClient.update({
+        where: { id: primaryOAuthClient.id },
+        data: { clientSecretHash }
+      })
+    }
+
     if (Array.isArray(oauthRedirectUris)) {
       const sanitizedRedirectUris = Array.from(
         new Set(
@@ -220,7 +268,6 @@ export async function PUT(
         )
       )
 
-      const primaryOAuthClient = app.oauthClients[0]
       if (primaryOAuthClient) {
         await prisma.oAuthClient.update({
           where: { id: primaryOAuthClient.id },
@@ -246,7 +293,8 @@ export async function PUT(
 
     return NextResponse.json({
       application: formatApplication(updatedApp),
-      warning: redirectUpdateWarning
+      warning: redirectUpdateWarning,
+      generatedClientSecret
     })
   } catch (error) {
     console.error('Error updating application:', error)

@@ -21,59 +21,52 @@ export function AppUpdateSettings({ updates, setBranding }: AppUpdateSettingsPro
     }
 
     return (
-        <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 bg-white/80 backdrop-blur-xl">
+        <Card className="border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 shadow-none">
             <CardHeader className="border-b border-gray-100/50 pb-3">
                 <div className="flex items-center justify-between w-full">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                            <RocketLaunchIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg">App Version Control</CardTitle>
-                            <CardDescription>Manage mandatory updates and version compliance.</CardDescription>
-                        </div>
+                    <div>
+                        <CardTitle className="text-lg">App Version Control</CardTitle>
+                        <CardDescription>Manage mandatory updates and version compliance.</CardDescription>
                     </div>
                 </div>
             </CardHeader>
-            <CardBody className="p-5 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-gray-500 flex items-center gap-2">
-                            <ArrowDownCircleIcon className="w-3.5 h-3.5" />
-                            Minimum Allowed Version
-                        </label>
+            <CardBody className="p-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-2 items-start">
+                    <label className="text-sm font-medium text-gray-700 pt-2 flex items-center gap-2">
+                        <ArrowDownCircleIcon className="w-4 h-4" />
+                        Minimum Allowed Version
+                    </label>
+                    <div>
                         <Input 
                             value={updates.minVersion}
                             onChange={(e) => updateSettings('minVersion', e.target.value)}
                             placeholder="e.g. 1.2.5"
                             className="text-sm font-mono"
                         />
-                        <p className="text-[10px] text-gray-400">Users on versions lower than this will be prompted to update.</p>
+                        <p className="text-[10px] text-gray-400 mt-1">Users on versions lower than this will be prompted to update.</p>
                     </div>
+                </div>
 
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-gray-500 flex items-center gap-2">
-                            <GlobeAltIcon className="w-3.5 h-3.5" />
-                            App Store / Play Store URL
-                        </label>
-                        <Input 
-                            value={updates.storeUrl}
-                            onChange={(e) => updateSettings('storeUrl', e.target.value)}
-                            placeholder="https://apps.apple.com/..."
-                            className="text-sm"
-                        />
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-2 items-start">
+                    <label className="text-sm font-medium text-gray-700 pt-2 flex items-center gap-2">
+                        <GlobeAltIcon className="w-4 h-4" />
+                        App Store / Play Store URL
+                    </label>
+                    <Input 
+                        value={updates.storeUrl}
+                        onChange={(e) => updateSettings('storeUrl', e.target.value)}
+                        placeholder="https://apps.apple.com/..."
+                        className="text-sm"
+                    />
+                </div>
 
-                    <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50/30 border border-amber-100 md:col-span-2">
-                        <div className="flex gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                                <ShieldCheckIcon className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-amber-900">Force Update (Strict Mode)</h4>
-                                <p className="text-xs text-amber-800/60">If enabled, users cannot bypass the update screen. Use only for critical security fixes.</p>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-2 items-start border border-amber-100 rounded-xl p-3">
+                    <label className="text-sm font-medium text-amber-900 pt-1 flex items-center gap-2">
+                        <ShieldCheckIcon className="w-4 h-4" />
+                        Force Update (Strict Mode)
+                    </label>
+                    <div className="flex items-center justify-between gap-4">
+                        <p className="text-xs text-amber-800/70">If enabled, users cannot bypass the update screen. Use only for critical security fixes.</p>
                         <button 
                             onClick={() => updateSettings('forceUpdate', !updates.forceUpdate)}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${updates.forceUpdate ? 'bg-amber-500' : 'bg-gray-200'}`}
