@@ -57,6 +57,10 @@ COPY --from=builder /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY --from=builder /app/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 
+# Runtime key storage directory for auto-generated OIDC keys.
+# In production, mount a persistent volume at /app/secrets to avoid key rotation.
+RUN mkdir -p /app/secrets/oidc && chown -R nextjs:nodejs /app/secrets
+
 USER nextjs
 
 EXPOSE 3001

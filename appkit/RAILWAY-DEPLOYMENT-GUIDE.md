@@ -64,6 +64,41 @@ ADMIN_PASSWORD=change-this-password
 NEXT_PUBLIC_SITE_URL=https://appkits.up.railway.app
 ```
 
+### **OIDC Keys (Option 3 — mounted secret files, recommended)**
+
+For OAuth/OIDC token signing, AppKit needs RSA keys.  
+Instead of long multiline env vars, mount secret files and set file paths:
+
+```bash
+OIDC_PRIVATE_KEY_PATH=/run/secrets/oidc_private_key
+OIDC_PUBLIC_KEY_PATH=/run/secrets/oidc_public_key
+```
+
+Expected file contents:
+- `/run/secrets/oidc_private_key` -> PEM private key (`-----BEGIN PRIVATE KEY-----`)
+- `/run/secrets/oidc_public_key` -> PEM public key (`-----BEGIN PUBLIC KEY-----`)
+
+If these are missing, `/oauth/token` will fail with key configuration errors.
+
+For local Docker Compose, this repo already includes an example mount in `docker-compose.yml`:
+
+```yaml
+volumes:
+  - ./secrets/oidc_private_key:/run/secrets/oidc_private_key:ro
+  - ./secrets/oidc_public_key:/run/secrets/oidc_public_key:ro
+```
+
+### **Secure Auto-Generate on Deploy (fallback)**
+
+The container entrypoint now supports secure key auto-generation when no OIDC key env/path is provided:
+
+- Generates 2048-bit RSA keypair once
+- Stores at `/app/secrets/oidc/private.key` and `/app/secrets/oidc/public.key`
+- Uses strict permissions (`600`)
+- Reuses existing files on restart
+
+⚠️ For production safety, mount a persistent volume at `/app/secrets`; otherwise keys rotate on redeploy/restart and existing tokens become invalid.
+
 ---
 
 ## 🧪 **Step 3: Test After Deployment**

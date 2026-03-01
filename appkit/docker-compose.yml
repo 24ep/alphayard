@@ -14,6 +14,17 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=${DATABASE_URL}
       - BACKEND_ADMIN_URL=${BACKEND_ADMIN_URL:-http://host.docker.internal:3001}
+      # Option 3 (recommended): mounted secret files for OIDC keys
+      - OIDC_PRIVATE_KEY_PATH=/run/secrets/oidc_private_key
+      - OIDC_PUBLIC_KEY_PATH=/run/secrets/oidc_public_key
+      # Keep JWT secret in env
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      # Mount your key files from host (read-only)
+      - ./secrets/oidc_private_key:/run/secrets/oidc_private_key:ro
+      - ./secrets/oidc_public_key:/run/secrets/oidc_public_key:ro
+      # Persistent runtime storage for auto-generated keys (fallback path)
+      - oidc-secrets:/app/secrets
     networks:
       - admin-net
     restart: unless-stopped
@@ -26,3 +37,6 @@ services:
 networks:
   admin-net:
     driver: bridge
+
+volumes:
+  oidc-secrets:

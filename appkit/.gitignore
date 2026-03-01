@@ -1,0 +1,8 @@
+secrets/*
+!secrets/.gitkeep
+
+# OIDC key material (local generation)
+oidc-private.key
+oidc-public.key
+private.key
+public.key

@@ -12,19 +12,45 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 
-// Helper function to load RSA keys with environment support
-const loadKey = (envKey?: string, envPath?: string, defaultPath: string = ''): string => {
-  if (envKey) return envKey.replace(/\\n/g, '\n');
-  const keyPath = path.resolve(process.cwd(), envPath || defaultPath);
-  if (fs.existsSync(keyPath)) {
-    return fs.readFileSync(keyPath, 'utf8');
+// Helper function to load RSA keys with env/file path support.
+// Priority: inline env PEM -> explicit path -> default path -> mounted secrets.
+const loadKey = (
+  envKey?: string,
+  envPath?: string,
+  defaultPath: string = '',
+  fallbackSecretPaths: string[] = []
+): string => {
+  if (envKey && envKey.trim()) return envKey.replace(/\\n/g, '\n');
+
+  const candidatePaths = [
+    envPath || defaultPath,
+    ...fallbackSecretPaths
+  ].filter(Boolean);
+
+  for (const candidate of candidatePaths) {
+    const keyPath = path.isAbsolute(candidate) ? candidate : path.resolve(process.cwd(), candidate);
+    if (fs.existsSync(keyPath)) {
+      return fs.readFileSync(keyPath, 'utf8');
+    }
   }
-  console.warn(`Warning: RSA key not found at ${keyPath}. OIDC will fail.`);
+
+  const attempted = candidatePaths.join(', ');
+  console.warn(`Warning: RSA key not found. Tried: ${attempted || 'no paths configured'}. OIDC will fail.`);
   return '';
 };
 
-const PRIVATE_KEY = loadKey(config.OIDC_PRIVATE_KEY, config.OIDC_PRIVATE_KEY_PATH, 'private.key');
-const PUBLIC_KEY = loadKey(config.OIDC_PUBLIC_KEY, config.OIDC_PUBLIC_KEY_PATH, 'public.key');
+const PRIVATE_KEY = loadKey(
+  config.OIDC_PRIVATE_KEY,
+  config.OIDC_PRIVATE_KEY_PATH,
+  'private.key',
+  ['/run/secrets/oidc_private_key', '/run/secrets/oidc-private-key', '/run/secrets/private.key']
+);
+const PUBLIC_KEY = loadKey(
+  config.OIDC_PUBLIC_KEY,
+  config.OIDC_PUBLIC_KEY_PATH,
+  'public.key',
+  ['/run/secrets/oidc_public_key', '/run/secrets/oidc-public-key', '/run/secrets/public.key']
+);
 
 export interface OAuthClient {
   id: string;
@@ -68,6 +94,24 @@ export interface CreateClientData {
 }
 
 class SSOProviderService {
+  private getSigningKey(): string {
+    if (!PRIVATE_KEY || !PRIVATE_KEY.trim()) {
+      throw new Error(
+        'OIDC_PRIVATE_KEY is not configured. Set OIDC_PRIVATE_KEY or OIDC_PRIVATE_KEY_PATH to enable OAuth token signing.'
+      );
+    }
+    return PRIVATE_KEY;
+  }
+
+  private getVerificationKey(): string {
+    if (!PUBLIC_KEY || !PUBLIC_KEY.trim()) {
+      throw new Error(
+        'OIDC_PUBLIC_KEY is not configured. Set OIDC_PUBLIC_KEY or OIDC_PUBLIC_KEY_PATH to enable token verification/JWKS.'
+      );
+    }
+    return PUBLIC_KEY;
+  }
+
   private isUuid(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   }
@@ -349,6 +393,7 @@ class SSOProviderService {
       )
     `;
 
+    const signingKey = this.getSigningKey();
     return jwt.sign(
       {
         jti: tokenId,
@@ -357,7 +402,7 @@ class SSOProviderService {
         scope: scope,
         type: 'access_token'
       },
-      PRIVATE_KEY,
+      signingKey,
       { algorithm: 'RS256', expiresIn: '1h' }
     );
   }
@@ -391,7 +436,8 @@ class SSOProviderService {
     // Standard OIDC requires JWKS.
     
     // Extract modulus and exponent from public key (simplified)
-    const pubKeyObj = crypto.createPublicKey(PUBLIC_KEY);
+    const verificationKey = this.getVerificationKey();
+    const pubKeyObj = crypto.createPublicKey(verificationKey);
     const jwk = pubKeyObj.export({ format: 'jwk' });
 
     return {
@@ -408,7 +454,8 @@ class SSOProviderService {
 
   async validateAccessToken(token: string): Promise<any> {
     try {
-      const decoded = jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'] }) as any;
+      const verificationKey = this.getVerificationKey();
+      const decoded = jwt.verify(token, verificationKey, { algorithms: ['RS256'] }) as any;
       if (decoded.type !== 'access_token') {
         throw new Error('Invalid token type');
       }
@@ -439,6 +486,7 @@ class SSOProviderService {
     const name = adminUser ? adminUser.name : (user ? `${user.firstName} ${user.lastName}` : '');
     const email = adminUser ? adminUser.email : (user ? user.email : '');
 
+    const signingKey = this.getSigningKey();
     return jwt.sign(
       {
         iss: process.env.NEXT_PUBLIC_SITE_URL || 'https://appkits.up.railway.app',
@@ -450,7 +498,7 @@ class SSOProviderService {
         iat: Math.floor(Date.now() / 1000),
         exp: Math.floor(Date.now() / 1000) + (1 * 60 * 60) // 1 hour
       },
-      PRIVATE_KEY,
+      signingKey,
       { algorithm: 'RS256', keyid: 'appkit-main-key' }
     );
   }

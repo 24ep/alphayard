@@ -69,6 +69,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[oauth] Token error:', error);
+    const message = error?.message || 'Failed to exchange token';
+    const isServerConfigError = message.includes('OIDC_PRIVATE_KEY is not configured');
 
     // Log failed token exchange
     await auditService.logAuthEvent(
@@ -77,16 +79,29 @@ export async function POST(request: NextRequest) {
       'OAuth:Token',
       { 
         clientId: clientIdForLog, 
-        error: error.message,
+        error: message,
         action: 'token_exchange_failed'
       },
       request.headers.get('x-forwarded-for') || '127.0.0.1',
       request.headers.get('user-agent') || 'Unknown'
     );
 
-    return NextResponse.json({ 
-      error: 'invalid_grant', 
-      error_description: error.message || 'Failed to exchange token' 
-    }, { status: 400 });
+    if (isServerConfigError) {
+      return NextResponse.json(
+        {
+          error: 'server_error',
+          error_description: message
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: 'invalid_grant',
+        error_description: message
+      },
+      { status: 400 }
+    );
   }
 }

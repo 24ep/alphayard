@@ -237,6 +237,23 @@ const result = await authorize(config);`}
 NEXT_PUBLIC_APPKIT_CLIENT_ID="your_client_id_here"
 APPKIT_CLIENT_SECRET="your_secret_here" # Server-side only`}
         />
+
+        <h2 className="text-2xl font-bold mt-12 mb-4">AppKit Infrastructure (OIDC Keys)</h2>
+        <p className="text-slate-600 leading-relaxed">
+          OIDC signing keys are configured on the <strong>AppKit server</strong> (global), not per application.
+          Missing keys will cause token issuance failures.
+        </p>
+        <CodeBlock
+          id="oidc-key-env"
+          language="bash"
+          code={`# Generate RSA keys (example)
+openssl genrsa -out private.key 2048
+openssl rsa -in private.key -pubout -out public.key
+
+# Set on AppKit server environment (Railway/Vercel/etc)
+OIDC_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----"
+OIDC_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\\n...\\n-----END PUBLIC KEY-----"`}
+        />
       </div>
     ),
     prev: { title: 'Quick Start', href: '/dev-hub/quick-start' },
@@ -712,6 +729,17 @@ await client.billing.subscribe(userId, planId);`}
 # Add for confidential non-PKCE clients only:
 #  -d "client_secret=YOUR_CLIENT_SECRET"`}
         />
+
+        <h2 className="text-2xl font-bold mt-12 mb-4">Troubleshooting</h2>
+        <div className="p-4 rounded-xl border border-amber-100 bg-amber-50/30 space-y-2 text-sm text-amber-900">
+          <p><strong>secretOrPrivateKey must have a value</strong> or <strong>OIDC_PRIVATE_KEY is not configured</strong></p>
+          <p>
+            Configure <code>OIDC_PRIVATE_KEY</code> (and <code>OIDC_PUBLIC_KEY</code>) on the AppKit server, then redeploy.
+          </p>
+          <p>
+            Do not set these under per-application config; they are global server infrastructure keys.
+          </p>
+        </div>
       </div>
     ),
     prev: { title: 'Session Management', href: '/dev-hub/modules/sessions' },
