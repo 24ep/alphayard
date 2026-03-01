@@ -152,6 +152,16 @@ class SSOProviderService {
         `;
       }
 
+      // If still not found, and it's a UUID, try to find the first active OAuthClient for this Application ID
+      if (result.length === 0 && isValidUuid) {
+        console.log(`[SSOProviderService] Trying lookup by application_id: ${cleanClientId}`);
+        result = await prisma.$queryRaw<any[]>`
+          SELECT * FROM oauth_clients 
+          WHERE application_id = ${cleanClientId}::uuid AND is_active = true
+          LIMIT 1
+        `;
+      }
+
       if (result.length === 0) {
         console.error(`[SSOProviderService] Client not found for ID: ${cleanClientId}`);
         throw new Error('Invalid client ID');
