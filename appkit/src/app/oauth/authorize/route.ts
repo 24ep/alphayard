@@ -57,6 +57,9 @@ export async function GET(request: NextRequest) {
     
     const loginUrl = new URL('/login', baseUrl);
     loginUrl.searchParams.set('redirect', externalCurrentUrl.toString());
+    if (clientId) {
+      loginUrl.searchParams.set('client_id', clientId);
+    }
     
     return NextResponse.redirect(loginUrl);
   }
