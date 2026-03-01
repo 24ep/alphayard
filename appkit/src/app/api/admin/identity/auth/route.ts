@@ -4,6 +4,7 @@ import { prisma } from '@/server/lib/prisma'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { randomBytes, randomUUID } from 'crypto'
+import { isIP } from 'node:net'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key-for-development'
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret'
@@ -37,6 +38,22 @@ const DEFAULT_AUTH_BEHAVIOR: AuthBehaviorConfig = {
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function toInetOrNull(value: string | null | undefined): string | null {
+  if (!value) return null
+  const firstHop = value.split(',')[0]?.trim()
+  if (!firstHop) return null
+
+  // [IPv6]:port format
+  const bracketed = firstHop.match(/^\[([^\]]+)\](?::\d+)?$/)
+  if (bracketed?.[1] && isIP(bracketed[1])) return bracketed[1]
+
+  // IPv4:port format
+  const ipv4WithPort = firstHop.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/)
+  if (ipv4WithPort?.[1] && isIP(ipv4WithPort[1])) return ipv4WithPort[1]
+
+  return isIP(firstHop) ? firstHop : null
+}
 
 function normalizeAuthBehavior(settings: any): AuthBehaviorConfig {
   const raw = settings?.authBehavior || {}
@@ -343,6 +360,7 @@ async function handleLogin(authData: any, clientId: string, clientIP: string) {
     const userAgent = parsedDeviceInfo.userAgent || 'Unknown'
     
     // Create session in database
+    const safeClientIp = toInetOrNull(clientIP)
     const session = await prisma.userSession.create({
       data: {
         id: sessionId,
@@ -355,7 +373,7 @@ async function handleLogin(authData: any, clientId: string, clientIP: string) {
         deviceType: parsedDeviceInfo.device || 'Unknown',
         deviceName: parsedDeviceInfo.name || 'Unknown Device',
         browser: parsedDeviceInfo.browser || 'Unknown',
-        ipAddress: clientIP,
+        ipAddress: safeClientIp,
         country: parsedDeviceInfo.country || null,
         city: parsedDeviceInfo.city || null,
         isRemembered: rememberMe
@@ -555,6 +573,7 @@ async function handleRegister(authData: any, clientId: string, clientIP: string)
     
     const parsedDeviceInfo = deviceInfo || {}
     
+    const safeClientIp = toInetOrNull(clientIP)
     await prisma.userSession.create({
       data: {
         id: sessionId,
@@ -567,7 +586,7 @@ async function handleRegister(authData: any, clientId: string, clientIP: string)
         deviceType: parsedDeviceInfo.device || 'Unknown',
         deviceName: parsedDeviceInfo.name || 'Unknown Device',
         browser: parsedDeviceInfo.browser || 'Unknown',
-        ipAddress: clientIP,
+        ipAddress: safeClientIp,
         country: parsedDeviceInfo.country || null,
         city: parsedDeviceInfo.city || null
       }
