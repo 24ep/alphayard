@@ -13,8 +13,17 @@ export async function GET(request: NextRequest) {
   const scope = searchParams.get('scope');
   const state = searchParams.get('state');
   const nonce = searchParams.get('nonce');
+  const prompt = searchParams.get('prompt');
+  const screenHint = searchParams.get('screen_hint');
   const codeChallenge = searchParams.get('code_challenge');
   const codeChallengeMethod = searchParams.get('code_challenge_method');
+  const promptValues = (prompt || '')
+    .split(' ')
+    .map((v) => v.trim().toLowerCase())
+    .filter(Boolean);
+  const forceLogin = promptValues.includes('login');
+  const promptNone = promptValues.includes('none');
+  const wantsSignup = (screenHint || '').toLowerCase() === 'signup';
 
   // 1. Basic validation
   if (!clientId) {
@@ -31,7 +40,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get('appkit_token')?.value;
   let userId: string | null = null;
 
-  if (token) {
+  if (token && !forceLogin) {
     try {
       const decoded = jwt.verify(token, config.JWT_SECRET) as any;
       userId = decoded.id || decoded.adminId;
@@ -41,6 +50,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (!userId) {
+    if (promptNone) {
+      return NextResponse.json(
+        { error: 'login_required', error_description: 'User is not authenticated' },
+        { status: 401 }
+      );
+    }
+
     // Redirect to login if not authenticated
     // Extract real host from headers, or use NEXT_PUBLIC_SITE_URL fallback
     const forwardedHost = request.headers.get('x-forwarded-host');
@@ -59,6 +75,10 @@ export async function GET(request: NextRequest) {
     loginUrl.searchParams.set('redirect', externalCurrentUrl.toString());
     if (clientId) {
       loginUrl.searchParams.set('client_id', clientId);
+    }
+    if (wantsSignup) {
+      // Hint the hosted auth page to open signup mode.
+      loginUrl.searchParams.set('mode', 'signup');
     }
     
     return NextResponse.redirect(loginUrl);
