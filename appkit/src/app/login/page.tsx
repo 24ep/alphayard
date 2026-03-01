@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/Label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Separator } from '@/components/ui/Separator'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert'
-import { Eye, EyeOff, Mail, Lock, AlertCircle, Layers, Chrome, Github, Twitter } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, AlertCircle, Layers, Chrome, Github, Twitter, User as UserIcon } from 'lucide-react'
 
 import { Suspense } from 'react'
 
@@ -41,6 +41,23 @@ function LoginPageContent() {
   const [ssoLoading, setSsoLoading] = useState<string | null>(null)
   const [authStyle, setAuthStyle] = useState<any>(null)
   const [authStyleProviders, setAuthStyleProviders] = useState<any[]>([])
+  const [formMode, setFormMode] = useState<'signin' | 'signup'>('signin')
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [clientId, setClientId] = useState<string | null>(null)
+
+  const getBorderRadiusValue = () => {
+    if (!authStyle?.borderRadius) return '0.5rem';
+    switch (authStyle.borderRadius) {
+      case 'none': return '0px';
+      case 'small': return '0.25rem';
+      case 'medium': return '0.5rem';
+      case 'large': return '1rem';
+      case 'full': return '9999px';
+      default: return '0.5rem';
+    }
+  };
 
   // Check if already authenticated and load settings
   useEffect(() => {
@@ -79,6 +96,7 @@ function LoginPageContent() {
         }
 
         if (clientId) {
+          setClientId(clientId);
           try {
             console.log('Fetching app config for clientId:', clientId);
             const res = await fetch(`/api/v1/auth/app-config?client_id=${clientId}`);
@@ -201,11 +219,50 @@ function LoginPageContent() {
     setError('')
 
     try {
-        await authService.login({ email, password })
+      if (formMode === 'signin') {
+        const response = await authService.login({ email, password })
         const redirect = searchParams?.get('redirect') || '/dashboard'
         router.push(redirect)
+      } else {
+        // Registration flow
+        const payload = {
+          action: 'register',
+          clientId: clientId || 'appkit-admin',
+          email,
+          password,
+          firstName,
+          lastName,
+          acceptTerms,
+          deviceInfo: {
+            userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'Unknown',
+            platform: typeof window !== 'undefined' ? window.navigator.platform : 'Unknown'
+          }
+        }
+
+        const res = await fetch('/api/v1/admin/identity/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || 'Registration failed')
+        }
+
+        // Store token and redirect upon successful registration
+        if (typeof window !== 'undefined' && data.tokens?.accessToken) {
+          localStorage.setItem('admin_token', data.tokens.accessToken)
+          localStorage.setItem('admin_user', JSON.stringify(data.user))
+          
+          const redirect = searchParams?.get('redirect') || '/dashboard'
+          router.push(redirect)
+        } else {
+          throw new Error('No access token received')
+        }
+      }
     } catch (err: any) {
-        setError(err.message || 'Login failed - please check your credentials')
+        setError(err.message || (formMode === 'signin' ? 'Login failed' : 'Registration failed'))
     } finally {
         setIsLoading(false)
     }
@@ -261,11 +318,57 @@ function LoginPageContent() {
           )}
 
           <div className={authStyle.logoPosition === 'top' ? 'text-center' : ''}>
-            <h4 className="text-2xl font-bold leading-tight" style={{ color: authStyle.textColor }}>{authStyle.welcomeTitle}</h4>
-            <p className="text-sm mt-1" style={{ color: authStyle.secondaryTextColor }}>{authStyle.welcomeSubtitle}</p>
+            <h4 className="text-2xl font-bold leading-tight" style={{ color: authStyle.textColor }}>
+              {formMode === 'signin' ? authStyle.welcomeTitle : (authStyle.signupTitle || 'Create your account')}
+            </h4>
+            <p className="text-sm mt-1" style={{ color: authStyle.secondaryTextColor }}>
+              {formMode === 'signin' ? authStyle.welcomeSubtitle : (authStyle.signupSubtitle || 'Get started in just a few steps')}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            {formMode === 'signup' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: authStyle.secondaryTextColor }}>First Name</label>
+                  <div className="relative group">
+                    <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 opacity-50 transition-colors" style={{ color: authStyle.secondaryTextColor }} />
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      placeholder="John"
+                      className="w-full px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-opacity-50"
+                      style={{ 
+                          backgroundColor: authStyle.inputBackgroundColor, 
+                          border: `1px solid ${authStyle.inputBorderColor}`, 
+                          borderRadius: getBorderRadiusValue(), 
+                          color: authStyle.textColor,
+                          paddingLeft: '2.5rem'
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1.5" style={{ color: authStyle.secondaryTextColor }}>Last Name</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    placeholder="Doe"
+                    className="w-full px-3 py-2.5 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-opacity-50"
+                    style={{ 
+                        backgroundColor: authStyle.inputBackgroundColor, 
+                        border: `1px solid ${authStyle.inputBorderColor}`, 
+                        borderRadius: getBorderRadiusValue(), 
+                        color: authStyle.textColor
+                    }}
+                  />
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-medium mb-1.5" style={{ color: authStyle.secondaryTextColor }}>Email</label>
               <div className="relative group">
@@ -291,7 +394,7 @@ function LoginPageContent() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium" style={{ color: authStyle.secondaryTextColor }}>Password</label>
-                {authStyle.showForgotPassword && (
+                {formMode === 'signin' && authStyle.showForgotPassword && (
                   <a href="#" className="text-xs font-medium hover:underline cursor-pointer" style={{ color: authStyle.linkColor }}>Forgot password?</a>
                 )}
               </div>
@@ -324,11 +427,29 @@ function LoginPageContent() {
               </div>
             </div>
 
-            {authStyle.showRememberMe && (
-              <label className="flex items-center gap-2 cursor-pointer mt-2">
-                <input type="checkbox" className="w-4 h-4 rounded border cursor-pointer" style={{ borderColor: authStyle.inputBorderColor, accentColor: authStyle.primaryButtonColor }} />
-                <span className="text-sm select-none" style={{ color: authStyle.secondaryTextColor }}>Remember me</span>
-              </label>
+            {formMode === 'signin' ? (
+              authStyle.showRememberMe && (
+                <label className="flex items-center gap-2 cursor-pointer mt-2">
+                  <input type="checkbox" className="w-4 h-4 rounded border cursor-pointer" style={{ borderColor: authStyle.inputBorderColor, accentColor: authStyle.primaryButtonColor }} />
+                  <span className="text-sm select-none" style={{ color: authStyle.secondaryTextColor }}>Remember me</span>
+                </label>
+              )
+            ) : (
+              authStyle.showTermsCheckbox && (
+                <label className="flex items-start gap-2 cursor-pointer mt-2">
+                  <input 
+                    type="checkbox" 
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    required
+                    className="w-4 h-4 rounded border cursor-pointer mt-0.5" 
+                    style={{ borderColor: authStyle.inputBorderColor, accentColor: authStyle.primaryButtonColor }} 
+                  />
+                  <span className="text-xs leading-normal" style={{ color: authStyle.secondaryTextColor }}>
+                    I agree to the <a href="#" className="hover:underline" style={{ color: authStyle.linkColor }}>Terms of Service</a> and <a href="#" className="hover:underline" style={{ color: authStyle.linkColor }}>Privacy Policy</a>
+                  </span>
+                </label>
+              )
             )}
 
             {error && (
@@ -348,7 +469,7 @@ function LoginPageContent() {
                 borderRadius: getBorderRadiusValue(),
               }}
             >
-              {isLoading ? 'Signing in...' : 'Sign In'}
+              {isLoading ? (formMode === 'signin' ? 'Signing in...' : 'Creating account...') : (formMode === 'signin' ? 'Sign In' : 'Create Account')}
             </button>
           </form>
 
@@ -419,9 +540,16 @@ function LoginPageContent() {
           )}
 
           <p className="text-center text-sm mt-8" style={{ color: authStyle.secondaryTextColor }}>
-            Don&apos;t have an account?{' '}
-            <span className="font-semibold cursor-pointer hover:underline" style={{ color: authStyle.linkColor }}>
-              Sign up
+            {formMode === 'signin' ? "Don't have an account? " : 'Already have an account? '}
+            <span 
+              className="font-semibold cursor-pointer hover:underline" 
+              style={{ color: authStyle.linkColor }}
+              onClick={() => {
+                setFormMode(formMode === 'signin' ? 'signup' : 'signin');
+                setError('');
+              }}
+            >
+              {formMode === 'signin' ? 'Sign up' : 'Sign in'}
             </span>
           </p>
         </div>
@@ -528,14 +656,40 @@ function LoginPageContent() {
         >
           <CardHeader className="space-y-1 pb-2 flex flex-col items-center">
             <CardTitle className="text-3xl font-bold tracking-tight text-center">
-              Sign in
+              {formMode === 'signin' ? 'Sign in' : 'Create account'}
             </CardTitle>
             <CardDescription className="text-center text-gray-500 text-lg">
-              Welcome back
+              {formMode === 'signin' ? 'Welcome back' : 'Join our community'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 px-8 md:px-12">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {formMode === 'signup' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                      className="bg-white/50 border-white/30"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                      className="bg-white/50 border-white/30"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="email" className="font-medium">Email</Label>
                 <div className="relative group">
@@ -592,10 +746,40 @@ function LoginPageContent() {
                 </Alert>
               )}
 
+              {formMode === 'signup' && (
+                <div className="flex items-start space-x-2 py-1">
+                  <input
+                    type="checkbox"
+                    id="acceptTerms"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    required
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                  />
+                  <Label htmlFor="acceptTerms" className="text-xs text-gray-500 leading-normal font-normal">
+                    I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
+                  </Label>
+                </div>
+              )}
+
               <Button type="submit" className="w-full shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? (formMode === 'signin' ? 'Signing in...' : 'Creating account...') : (formMode === 'signin' ? 'Sign in' : 'Create account')}
               </Button>
             </form>
+            
+            <div className="text-center text-sm text-gray-500 mt-4">
+              {formMode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+              <button 
+                type="button" 
+                onClick={() => {
+                  setFormMode(formMode === 'signin' ? 'signup' : 'signin');
+                  setError('');
+                }}
+                className="text-blue-600 font-semibold hover:underline"
+              >
+                {formMode === 'signin' ? 'Sign up' : 'Sign in'}
+              </button>
+            </div>
 
             {/* SSO Login Section */}
             {ssoProviders.length > 0 && (
