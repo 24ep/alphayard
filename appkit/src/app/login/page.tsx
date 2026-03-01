@@ -54,22 +54,40 @@ function LoginPageContent() {
     const loadSettings = async () => {
       let appConfig: any = null;
       try {
+        // 1. Try Next.js searchParams first
         let clientId = searchParams?.get('client_id');
-        const redirectUrl = searchParams?.get('redirect');
+        let redirectUrl = searchParams?.get('redirect');
         
+        // 2. Fallback to raw window location if Next.js hydration hasn't populated searchParams yet
+        if (typeof window !== 'undefined') {
+          const urlParams = new URLSearchParams(window.location.search);
+          if (!clientId) clientId = urlParams.get('client_id');
+          if (!redirectUrl) redirectUrl = urlParams.get('redirect');
+        }
+
+        // 3. Fallback to extracting from the nested redirect URL
         if (!clientId && redirectUrl) {
            try {
-              const url = new URL(redirectUrl, window.location.origin);
+              // Handle both relative and absolute redirect URLs
+              const url = redirectUrl.startsWith('http') 
+                ? new URL(redirectUrl) 
+                : new URL(redirectUrl, window.location.origin || 'http://localhost');
               clientId = url.searchParams.get('client_id');
-           } catch(e) {}
+           } catch(e) {
+              console.error('Failed to parse redirectUrl for client_id', e);
+           }
         }
 
         if (clientId) {
           try {
+            console.log('Fetching app config for clientId:', clientId);
             const res = await fetch(`/api/v1/auth/app-config?client_id=${clientId}`);
             if (res.ok) {
                appConfig = await res.json();
+               console.log('Fetched appConfig:', appConfig);
                if (!appConfig.branding) appConfig = null;
+            } else {
+               console.error('Failed to fetch app config, status:', res.status);
             }
           } catch(e) {
             console.error('Failed to load app config:', e);
@@ -78,23 +96,33 @@ function LoginPageContent() {
 
         // Check if there is a custom auth style
         let settingsObj = appConfig?.settings;
+        console.log('Extracted settingsObj before parse:', settingsObj);
         if (typeof settingsObj === 'string') {
           try {
             settingsObj = JSON.parse(settingsObj);
+            console.log('Parsed settingsObj from string:', settingsObj);
           } catch (e) {
             settingsObj = {};
+            console.error('Failed to parse settingsObj string', e);
           }
         }
 
+        console.log('Checking settingsObj?.authStyle:', settingsObj?.authStyle);
         if (settingsObj?.authStyle) {
           const styleConfig = settingsObj.authStyle;
+          console.log('Found styleConfig:', styleConfig);
           // Pick desktopWeb for now as simple fallback since this is a web wrapper
           if (styleConfig.devices?.desktopWeb) {
+            console.log('Setting authStyle to desktopWeb:', styleConfig.devices.desktopWeb);
             setAuthStyle(styleConfig.devices.desktopWeb);
+          } else {
+            console.warn('No desktopWeb device config found in authStyle');
           }
           if (styleConfig.providers) {
             setAuthStyleProviders(styleConfig.providers);
           }
+        } else {
+          console.log('No authStyle found in settingsObj');
         }
 
         const settings = appConfig?.branding || await settingsService.getBranding()
