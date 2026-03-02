@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/server/lib/prisma'
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -73,7 +74,7 @@ export async function POST(
           subject: defaultTemplate.subject,
           htmlContent: defaultTemplate.htmlContent,
           textContent: defaultTemplate.textContent,
-          variables: defaultTemplate.variables,
+          variables: (defaultTemplate.variables ?? []) as Prisma.InputJsonValue,
           isActive: defaultTemplate.isActive,
         },
       })
