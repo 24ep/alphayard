@@ -22,6 +22,7 @@ interface SystemStats {
   activeApplications: number
   totalUsers: number
   activeUsers: number
+  onlineUsers: number
   totalRevenue: number
   monthlyRevenue: number
   systemHealth: 'excellent' | 'good' | 'warning' | 'critical'
@@ -29,6 +30,8 @@ interface SystemStats {
   apiCalls: number
   storageUsed: number
   bandwidthUsed: number
+  infraUsage: number
+  networkUsage: number
 }
 
 interface RecentActivity {
@@ -51,9 +54,9 @@ interface TopApplication {
 
 const fallbackStats: SystemStats = {
   totalApplications: 12, activeApplications: 9, totalUsers: 24500,
-  activeUsers: 18200, totalRevenue: 125000, monthlyRevenue: 15800,
+  activeUsers: 18200, onlineUsers: 3400, totalRevenue: 125000, monthlyRevenue: 15800,
   systemHealth: 'excellent', uptime: 99.97, apiCalls: 2450000,
-  storageUsed: 45.2, bandwidthUsed: 78.5
+  storageUsed: 45.2, bandwidthUsed: 78.5, infraUsage: 62, networkUsage: 55
 }
 
 const fallbackActivities: RecentActivity[] = [
@@ -87,6 +90,7 @@ export default function DashboardPage() {
           activeApplications: (dashboardStats as any).activeApplications || fallbackStats.activeApplications,
           totalUsers: dashboardStats.totalUsers || fallbackStats.totalUsers,
           activeUsers: dashboardStats.activeUsers || fallbackStats.activeUsers,
+          onlineUsers: (dashboardStats as any).onlineUsers || fallbackStats.onlineUsers,
           totalRevenue: (dashboardStats as any).totalRevenue || fallbackStats.totalRevenue,
           monthlyRevenue: (dashboardStats as any).monthlyRevenue || fallbackStats.monthlyRevenue,
           systemHealth: 'excellent',
@@ -94,6 +98,8 @@ export default function DashboardPage() {
           apiCalls: (dashboardStats as any).apiCalls || fallbackStats.apiCalls,
           storageUsed: (dashboardStats as any).storageUsed || fallbackStats.storageUsed,
           bandwidthUsed: (dashboardStats as any).bandwidthUsed || fallbackStats.bandwidthUsed,
+          infraUsage: (dashboardStats as any).infraUsage || fallbackStats.infraUsage,
+          networkUsage: (dashboardStats as any).networkUsage || fallbackStats.networkUsage,
         })
         setActivities(fallbackActivities)
         setTopApps(fallbackTopApps)
@@ -172,10 +178,10 @@ export default function DashboardPage() {
       bgGlow: 'bg-emerald-500/5',
     },
     {
-      label: 'Monthly Revenue',
-      value: `$${stats.monthlyRevenue.toLocaleString()}`,
-      subValue: `$${stats.totalRevenue.toLocaleString()} total`,
-      icon: <ChartBarIcon className="w-5 h-5" />,
+      label: 'Total Online Users',
+      value: stats.onlineUsers.toLocaleString(),
+      subValue: `${Math.round((stats.onlineUsers / Math.max(1, stats.activeUsers)) * 100)}% of active users`,
+      icon: <ActivityIcon className="w-5 h-5" />,
       gradient: 'from-violet-500 to-purple-600',
       bgGlow: 'bg-violet-500/5',
     },
@@ -227,9 +233,10 @@ export default function DashboardPage() {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Resource Usage</h3>
           <div className="space-y-4">
             {[
-              { label: 'API Calls', value: `${(stats.apiCalls / 1000000).toFixed(1)}M`, pct: 65, color: 'bg-blue-500' },
-              { label: 'Storage', value: `${stats.storageUsed} GB`, pct: stats.storageUsed, color: 'bg-emerald-500' },
-              { label: 'Bandwidth', value: `${stats.bandwidthUsed}%`, pct: stats.bandwidthUsed, color: 'bg-violet-500' },
+              { label: 'API Activity (24h)', value: `${stats.apiCalls.toLocaleString()}`, pct: Math.min(100, Math.round(stats.apiCalls / 100)), color: 'bg-blue-500' },
+              { label: 'Infrastructure Load', value: `${stats.infraUsage}%`, pct: stats.infraUsage, color: 'bg-emerald-500' },
+              { label: 'Network Load', value: `${stats.networkUsage}%`, pct: stats.networkUsage, color: 'bg-violet-500' },
+              { label: 'Storage', value: `${stats.storageUsed} GB`, pct: Math.min(100, stats.storageUsed), color: 'bg-amber-500' },
             ].map((item) => (
               <div key={item.label}>
                 <div className="flex justify-between text-xs mb-1.5">

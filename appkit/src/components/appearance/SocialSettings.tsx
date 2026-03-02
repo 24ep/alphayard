@@ -22,7 +22,10 @@ export function SocialSettings({ social, setBranding }: SocialSettingsProps) {
 
     const SocialItem = ({ label, field, placeholder, icon: Icon, colorClass = "text-gray-400" }: { label: string, field: keyof SocialLinksConfig, placeholder: string, icon: any, colorClass?: string }) => (
         <div className="grid grid-cols-1 md:grid-cols-[180px_minmax(0,1fr)] gap-2 items-center">
-            <label className="text-sm font-medium text-gray-700">{label}</label>
+            <label className="text-sm font-medium text-gray-700 inline-flex items-center gap-1.5">
+                <Icon className={`w-3.5 h-3.5 ${colorClass}`} />
+                {label}
+            </label>
             <div className="relative group">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2">
                     <Icon className={`w-4 h-4 ${colorClass}`} />

@@ -100,6 +100,7 @@ interface Application {
   oauthClientSecretConfigured?: boolean
   oauthRedirectUris?: string[]
   oauthPrimaryRedirectUri?: string | null
+  circleBillingMode?: 'perCircleLevel' | 'perAccount'
   authBehavior?: {
     signupEnabled: boolean
     emailVerificationRequired: boolean
@@ -146,6 +147,43 @@ interface WebhookEndpoint {
   events: string[]
   status: 'active' | 'inactive'
   lastTriggered: string
+}
+
+interface AppCircle {
+  id: string
+  name: string
+  description?: string | null
+  circleType: string
+  parentId?: string | null
+  members?: Array<{
+    id: string
+    userId: string
+    role: string
+    isInherited: boolean
+  }>
+  owners?: Array<{
+    id: string
+    userId: string
+    role: string
+    user?: { id: string; email: string; firstName: string; lastName: string }
+  }>
+  billingAssignees?: Array<{
+    id: string
+    userId: string
+    isPrimary: boolean
+    user?: { id: string; email: string; firstName: string; lastName: string }
+  }>
+}
+
+interface AppEmailTemplate {
+  id: string
+  name: string
+  slug: string
+  subject: string
+  htmlContent?: string | null
+  textContent?: string | null
+  isActive: boolean
+  updatedAt: string
 }
 
 const WEBHOOK_EVENTS = [
@@ -239,6 +277,32 @@ export default function ApplicationConfigPage() {
   const [editingWebhookUrl, setEditingWebhookUrl] = useState('')
   const [editingWebhookEvents, setEditingWebhookEvents] = useState<string[]>([])
   const [editingWebhookStatus, setEditingWebhookStatus] = useState<'active' | 'inactive'>('active')
+  // Circles
+  const [circles, setCircles] = useState<AppCircle[]>([])
+  const [circlesLoading, setCirclesLoading] = useState(false)
+  const [newCircleName, setNewCircleName] = useState('')
+  const [newCircleType, setNewCircleType] = useState('team')
+  const [newCircleParentId, setNewCircleParentId] = useState<string>('')
+  const [newCircleDescription, setNewCircleDescription] = useState('')
+  const [circleMsg, setCircleMsg] = useState('')
+  const [circleUserIdInput, setCircleUserIdInput] = useState('')
+  const [circleOwnerUserIdInput, setCircleOwnerUserIdInput] = useState('')
+  const [circleBillingUserIdInput, setCircleBillingUserIdInput] = useState('')
+  const [circleBillingModeSaving, setCircleBillingModeSaving] = useState(false)
+  // Email templates
+  const [emailTemplates, setEmailTemplates] = useState<AppEmailTemplate[]>([])
+  const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [templateEditor, setTemplateEditor] = useState({
+    name: '',
+    slug: '',
+    subject: '',
+    htmlContent: '',
+    textContent: '',
+    isActive: true,
+  })
+  const [templateMsg, setTemplateMsg] = useState('')
+  const faviconFileInputRef = useRef<HTMLInputElement | null>(null)
   // Activity Log
   const [activityLog, setActivityLog] = useState<{ id: string; action: string; user: string; timestamp: string; type: 'config' | 'user' | 'webhook' | 'security' }[]>([])
   const [activityLoading, setActivityLoading] = useState(false)
@@ -284,6 +348,221 @@ export default function ApplicationConfigPage() {
     const a = document.createElement('a')
     a.href = url; a.download = `activity-log-${appId}-${new Date().toISOString().split('T')[0]}.csv`; a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const loadCircles = useCallback(async () => {
+    if (!appId) return
+    setCirclesLoading(true)
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to load circles')
+      setCircles(Array.isArray(data?.circles) ? data.circles : [])
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to load circles')
+      setTimeout(() => setCircleMsg(''), 3000)
+    } finally {
+      setCirclesLoading(false)
+    }
+  }, [appId])
+
+  const createCircle = async () => {
+    if (!newCircleName.trim()) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCircleName.trim(),
+          circleType: newCircleType,
+          parentId: newCircleParentId || null,
+          description: newCircleDescription.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to create circle')
+      setNewCircleName('')
+      setNewCircleDescription('')
+      setNewCircleParentId('')
+      setNewCircleType('team')
+      await loadCircles()
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to create circle')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const assignCircleMember = async (circleId: string) => {
+    if (!circleUserIdInput.trim()) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${circleId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: circleUserIdInput.trim(), role: 'member' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to assign member')
+      setCircleUserIdInput('')
+      await loadCircles()
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to assign member')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const assignCircleOwner = async (circleId: string) => {
+    if (!circleOwnerUserIdInput.trim()) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${circleId}/owners`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: circleOwnerUserIdInput.trim(), role: 'owner' }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to assign owner')
+      setCircleOwnerUserIdInput('')
+      await loadCircles()
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to assign owner')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const assignCircleBilling = async (circleId: string) => {
+    if (!circleBillingUserIdInput.trim()) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${circleId}/billing-assignee`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: circleBillingUserIdInput.trim() }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to assign billing user')
+      setCircleBillingUserIdInput('')
+      await loadCircles()
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to assign billing user')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const saveCircleBillingMode = async (mode: 'perCircleLevel' | 'perAccount') => {
+    try {
+      setCircleBillingModeSaving(true)
+      const res = await fetch(`/api/v1/admin/applications/${appId}/billing-mode`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billingMode: mode }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to save billing mode')
+      setApplication(prev => prev ? { ...prev, circleBillingMode: mode } : prev)
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to save billing mode')
+      setTimeout(() => setCircleMsg(''), 3000)
+    } finally {
+      setCircleBillingModeSaving(false)
+    }
+  }
+
+  const loadEmailTemplates = useCallback(async () => {
+    if (!appId) return
+    setEmailTemplatesLoading(true)
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/email-templates`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to load templates')
+      const templates = Array.isArray(data?.templates) ? data.templates : []
+      setEmailTemplates(templates)
+      if (templates.length > 0 && !selectedTemplateId) {
+        const first = templates[0]
+        setSelectedTemplateId(first.id)
+        setTemplateEditor({
+          name: first.name || '',
+          slug: first.slug || '',
+          subject: first.subject || '',
+          htmlContent: first.htmlContent || '',
+          textContent: first.textContent || '',
+          isActive: first.isActive !== false,
+        })
+      }
+    } catch (error: any) {
+      setTemplateMsg(error?.message || 'Failed to load templates')
+      setTimeout(() => setTemplateMsg(''), 3000)
+    } finally {
+      setEmailTemplatesLoading(false)
+    }
+  }, [appId, selectedTemplateId])
+
+  const selectTemplate = (template: AppEmailTemplate) => {
+    setSelectedTemplateId(template.id)
+    setTemplateEditor({
+      name: template.name || '',
+      slug: template.slug || '',
+      subject: template.subject || '',
+      htmlContent: template.htmlContent || '',
+      textContent: template.textContent || '',
+      isActive: template.isActive !== false,
+    })
+  }
+
+  const saveTemplate = async () => {
+    try {
+      const endpoint = selectedTemplateId
+        ? `/api/v1/admin/applications/${appId}/email-templates/${selectedTemplateId}`
+        : `/api/v1/admin/applications/${appId}/email-templates`
+      const method = selectedTemplateId ? 'PATCH' : 'POST'
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(templateEditor),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to save template')
+      setTemplateMsg('Saved!')
+      setTimeout(() => setTemplateMsg(''), 3000)
+      await loadEmailTemplates()
+    } catch (error: any) {
+      setTemplateMsg(error?.message || 'Failed to save template')
+      setTimeout(() => setTemplateMsg(''), 3000)
+    }
+  }
+
+  const deleteTemplate = async (templateId: string) => {
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/email-templates/${templateId}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete template')
+      if (selectedTemplateId === templateId) {
+        setSelectedTemplateId(null)
+        setTemplateEditor({ name: '', slug: '', subject: '', htmlContent: '', textContent: '', isActive: true })
+      }
+      await loadEmailTemplates()
+    } catch (error: any) {
+      setTemplateMsg(error?.message || 'Failed to delete template')
+      setTimeout(() => setTemplateMsg(''), 3000)
+    }
+  }
+
+  const handleFaviconUpload = async (file: File) => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`/api/v1/admin/applications/${appId}/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to upload icon')
+      setApplication(prev => prev ? { ...prev, faviconUrl: data?.url || prev.faviconUrl } : prev)
+      setGeneralMsg('Icon uploaded')
+      setTimeout(() => setGeneralMsg(''), 2000)
+    } catch (error: any) {
+      setGeneralMsg(error?.message || 'Icon upload failed')
+      setTimeout(() => setGeneralMsg(''), 3000)
+    }
   }
   // Dev Guide Drawers
   const [activeDevGuide, setActiveDevGuide] = useState<string | null>(null)
@@ -536,6 +815,11 @@ export default function ApplicationConfigPage() {
       setNewRedirectUri(application.oauthPrimaryRedirectUri)
     }
   }, [application?.oauthPrimaryRedirectUri])
+
+  useEffect(() => {
+    loadCircles()
+    loadEmailTemplates()
+  }, [loadCircles, loadEmailTemplates])
 
   const handleUserClick = (userId: string) => {
     setSelectedUserId(userId)
@@ -975,6 +1259,7 @@ export default function ApplicationConfigPage() {
       items: [
         { value: 'general', icon: <SettingsIcon className="w-4 h-4" />, label: 'General' },
         { value: 'users', icon: <UsersIcon className="w-4 h-4" />, label: 'Users' },
+        { value: 'circles', icon: <GlobeIcon className="w-4 h-4" />, label: 'Circles' },
         { value: 'surveys', icon: <ClipboardListIcon className="w-4 h-4" />, label: 'Surveys' },
       ],
     },
@@ -1001,11 +1286,11 @@ export default function ApplicationConfigPage() {
       title: 'Operations',
       items: [
         { value: 'communication', icon: <MessageSquareIcon className="w-4 h-4" />, label: 'Communication' },
+        { value: 'email-templates', icon: <MailIcon className="w-4 h-4" />, label: 'Email Templates' },
         { value: 'webhooks', icon: <WebhookIcon className="w-4 h-4" />, label: 'Webhooks' },
         { value: 'legal', icon: <ScaleIcon className="w-4 h-4" />, label: 'Legal & Compliance' },
         { value: 'billing', icon: <CreditCardIcon className="w-4 h-4" />, label: 'Billing & Subscriptions' },
         { value: 'activity', icon: <ActivityIcon className="w-4 h-4" />, label: 'Activity Log' },
-        { value: 'sandbox', icon: <MonitorIcon className="w-4 h-4" />, label: 'Login Sandbox' },
       ],
     },
   ]
@@ -1408,7 +1693,26 @@ export default function ApplicationConfigPage() {
                     </div>
                     <div>
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Favicon URL</label>
-                      <input type="url" value={application.faviconUrl || ''} onChange={e => setApplication(prev => prev ? { ...prev, faviconUrl: e.target.value } : prev)} placeholder="https://your-app.com/favicon.ico" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                      <div className="space-y-2">
+                        <input type="url" value={application.faviconUrl || ''} onChange={e => setApplication(prev => prev ? { ...prev, faviconUrl: e.target.value } : prev)} placeholder="https://your-app.com/favicon.ico" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                        <div className="flex items-center gap-2">
+                          <Button type="button" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => faviconFileInputRef.current?.click()}>
+                            Upload Icon
+                          </Button>
+                          <input
+                            ref={faviconFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            title="Upload favicon icon"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleFaviconUpload(file)
+                              e.currentTarget.value = ''
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1725,7 +2029,7 @@ export default function ApplicationConfigPage() {
                           <span className="text-sm text-gray-700 dark:text-zinc-300">{user.role || 'User'}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="text-sm text-gray-500 dark:text-zinc-400">{user.lastActive}</span>
+                          <span className="text-sm text-gray-500 dark:text-zinc-400">{new Date(user.lastActive).toLocaleString()}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <Button
@@ -1753,6 +2057,196 @@ export default function ApplicationConfigPage() {
                 <p className="text-sm text-gray-500 dark:text-zinc-400">No users found</p>
               </div>
             )}
+          </div>
+        </TabsContent>
+
+        {/* ==================== TAB: Circles ==================== */}
+        <TabsContent value="circles" className="space-y-4">
+          {renderTabHeader('Circles', 'identity')}
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Circle Name</label>
+                <input
+                  type="text"
+                  value={newCircleName}
+                  onChange={(e) => setNewCircleName(e.target.value)}
+                  placeholder="Engineering Team"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Circle Type</label>
+                <select
+                  title="Circle type"
+                  value={newCircleType}
+                  onChange={(e) => setNewCircleType(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                >
+                  <option value="organization">Organization</option>
+                  <option value="department">Department</option>
+                  <option value="team">Team</option>
+                  <option value="family">Family</option>
+                  <option value="household">Household</option>
+                  <option value="friend-group">Friend Group</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Parent Circle</label>
+                <select
+                  title="Parent circle"
+                  value={newCircleParentId}
+                  onChange={(e) => setNewCircleParentId(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                >
+                  <option value="">None (root)</option>
+                  {circles.map((circle) => (
+                    <option key={circle.id} value={circle.id}>{circle.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Description</label>
+                <input
+                  type="text"
+                  value={newCircleDescription}
+                  onChange={(e) => setNewCircleDescription(e.target.value)}
+                  placeholder="Optional description"
+                  className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {circleMsg && <span className="text-xs text-red-500">{circleMsg}</span>}
+              <Button onClick={createCircle} variant="outline" className="text-xs">
+                <PlusIcon className="w-3.5 h-3.5 mr-1" />
+                Create Circle
+              </Button>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800">
+              <div className="px-4 py-2 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Billing Mode</h4>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={application.circleBillingMode === 'perAccount' ? 'primary' : 'outline'}
+                    onClick={() => saveCircleBillingMode('perAccount')}
+                    disabled={circleBillingModeSaving}
+                  >
+                    Per Account
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={application.circleBillingMode === 'perCircleLevel' ? 'primary' : 'outline'}
+                    onClick={() => saveCircleBillingMode('perCircleLevel')}
+                    disabled={circleBillingModeSaving}
+                  >
+                    Per Circle Level
+                  </Button>
+                </div>
+              </div>
+              <div className="p-4 text-xs text-gray-500 dark:text-zinc-400">
+                {application.circleBillingMode === 'perCircleLevel'
+                  ? 'Billing is configured by circle-level assignee.'
+                  : 'Billing is configured per user account.'}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {circlesLoading ? (
+                <p className="text-sm text-gray-500">Loading circles...</p>
+              ) : circles.length === 0 ? (
+                <p className="text-sm text-gray-500">No circles created yet.</p>
+              ) : circles.map((circle) => (
+                <div key={circle.id} className="p-4 rounded-lg border border-gray-200 dark:border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{circle.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-zinc-400">
+                        {circle.circleType} {circle.parentId ? '• child circle' : '• root circle'}
+                      </p>
+                    </div>
+                    <span className="text-xs text-gray-400">{circle.id}</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Member (User ID)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={circleUserIdInput}
+                          onChange={(e) => setCircleUserIdInput(e.target.value)}
+                          placeholder="uuid"
+                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                        />
+                        <Button size="sm" variant="outline" onClick={() => assignCircleMember(circle.id)}>Assign</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Owner (User ID)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={circleOwnerUserIdInput}
+                          onChange={(e) => setCircleOwnerUserIdInput(e.target.value)}
+                          placeholder="uuid"
+                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                        />
+                        <Button size="sm" variant="outline" onClick={() => assignCircleOwner(circle.id)}>Assign</Button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Billing User (User ID)</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={circleBillingUserIdInput}
+                          onChange={(e) => setCircleBillingUserIdInput(e.target.value)}
+                          placeholder="uuid"
+                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                        />
+                        <Button size="sm" variant="outline" onClick={() => assignCircleBilling(circle.id)}>Assign</Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                    <div>
+                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Owners</p>
+                      {(circle.owners || []).length === 0 ? (
+                        <p className="text-gray-500">No owners</p>
+                      ) : (circle.owners || []).map((owner) => (
+                        <p key={owner.id} className="text-gray-600 dark:text-zinc-300">{owner.user?.email || owner.userId}</p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Billing</p>
+                      {(circle.billingAssignees || []).length === 0 ? (
+                        <p className="text-gray-500">No billing assignee</p>
+                      ) : (circle.billingAssignees || []).map((assignee) => (
+                        <p key={assignee.id} className="text-gray-600 dark:text-zinc-300">
+                          {assignee.user?.email || assignee.userId}
+                          {assignee.isPrimary ? ' (primary)' : ''}
+                        </p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Members</p>
+                      {(circle.members || []).length === 0 ? (
+                        <p className="text-gray-500">No members</p>
+                      ) : (circle.members || []).map((member) => (
+                        <p key={member.id} className="text-gray-600 dark:text-zinc-300">
+                          {member.userId}{member.isInherited ? ' (inherited)' : ''}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </TabsContent>
 
@@ -2100,6 +2594,126 @@ export default function ApplicationConfigPage() {
                       {t} (Draft)
                     </span>
                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ==================== TAB: Email Templates ==================== */}
+        <TabsContent value="email-templates" className="space-y-4">
+          {renderTabHeader('Email Templates', 'communication')}
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500 dark:text-zinc-400">Configure per-application email templates.</p>
+              {templateMsg && <span className={`text-xs font-medium ${templateMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{templateMsg}</span>}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-4">
+              <div className="space-y-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedTemplateId(null)
+                    setTemplateEditor({ name: '', slug: '', subject: '', htmlContent: '', textContent: '', isActive: true })
+                  }}
+                  className="w-full"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1.5" />
+                  New Template
+                </Button>
+                <div className="space-y-1 max-h-[420px] overflow-y-auto">
+                  {emailTemplatesLoading ? (
+                    <p className="text-xs text-gray-500">Loading templates...</p>
+                  ) : emailTemplates.length === 0 ? (
+                    <p className="text-xs text-gray-500">No templates yet.</p>
+                  ) : emailTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => selectTemplate(template)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border text-sm ${
+                        selectedTemplateId === template.id
+                          ? 'border-blue-300 bg-blue-50/40 dark:border-blue-500/30 dark:bg-blue-500/10'
+                          : 'border-gray-200 dark:border-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-800/50'
+                      }`}
+                    >
+                      <p className="font-medium text-gray-900 dark:text-white truncate">{template.name}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-zinc-400 truncate">{template.slug}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    title="Template name"
+                    value={templateEditor.name}
+                    onChange={(e) => setTemplateEditor(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="Welcome Email"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                  />
+                  <input
+                    type="text"
+                    title="Template slug"
+                    value={templateEditor.slug}
+                    onChange={(e) => setTemplateEditor(prev => ({ ...prev, slug: e.target.value }))}
+                    placeholder="welcome-email"
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono"
+                  />
+                  <input
+                    type="text"
+                    title="Template subject"
+                    value={templateEditor.subject}
+                    onChange={(e) => setTemplateEditor(prev => ({ ...prev, subject: e.target.value }))}
+                    placeholder="Welcome to {{appName}}"
+                    className="md:col-span-2 w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">HTML Content</label>
+                  <textarea
+                    title="HTML template content"
+                    value={templateEditor.htmlContent}
+                    onChange={(e) => setTemplateEditor(prev => ({ ...prev, htmlContent: e.target.value }))}
+                    rows={8}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Text Content</label>
+                  <textarea
+                    title="Text template content"
+                    value={templateEditor.textContent}
+                    onChange={(e) => setTemplateEditor(prev => ({ ...prev, textContent: e.target.value }))}
+                    rows={5}
+                    className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono"
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-zinc-300">
+                    <input
+                      type="checkbox"
+                      title="Template active status"
+                      checked={templateEditor.isActive}
+                      onChange={(e) => setTemplateEditor(prev => ({ ...prev, isActive: e.target.checked }))}
+                    />
+                    Active
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {selectedTemplateId && (
+                      <Button
+                        variant="outline"
+                        className="text-red-600 border-red-200 hover:bg-red-50"
+                        onClick={() => deleteTemplate(selectedTemplateId)}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                    <Button onClick={saveTemplate} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+                      Save Template
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -2528,7 +3142,7 @@ export default function ApplicationConfigPage() {
                         <input type="password" placeholder={'••••••••'} className="w-full px-3 py-2.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm" />
                       </div>
                       <label className="flex items-start gap-2 cursor-pointer">
-                        <input type="checkbox" className="w-3.5 h-3.5 mt-0.5 text-blue-500 border-gray-300 dark:border-zinc-600 rounded" />
+                        <input type="checkbox" title="Agree to terms and privacy policy" className="w-3.5 h-3.5 mt-0.5 text-blue-500 border-gray-300 dark:border-zinc-600 rounded" />
                         <span className="text-[11px] text-gray-500 dark:text-zinc-400">I agree to the Terms of Service and Privacy Policy</span>
                       </label>
                     </>
@@ -2561,11 +3175,11 @@ export default function ApplicationConfigPage() {
                   <div className="space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Test User Email</label>
-                      <input type="email" defaultValue="test@sandbox.example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                      <input title="Sandbox test user email" type="email" defaultValue="test@sandbox.example.com" className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">Redirect URL</label>
-                      <input type="url" defaultValue={canonicalRedirectUri} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
+                      <input title="Sandbox redirect URL" type="url" defaultValue={canonicalRedirectUri} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
                     </div>
                   </div>
                 </div>
@@ -2689,6 +3303,51 @@ export default function ApplicationConfigPage() {
         {/* ==================== TAB: Auth Page Style ==================== */}
         <TabsContent value="auth-style" className="space-y-4">
           <AuthStyleConfig appId={appId} appName={application.name} />
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Integrated Login Sandbox</h4>
+                <p className="text-xs text-gray-500 dark:text-zinc-400">Test login/signup outcomes inside the same auth style workspace.</p>
+              </div>
+              <div className="flex items-center rounded-lg bg-gray-100 dark:bg-zinc-800 p-1">
+                {(['login', 'signup'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => { setSandboxMode(mode); setSandboxResult(null) }}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                      sandboxMode === mode
+                        ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-zinc-400 hover:text-gray-700'
+                    }`}
+                  >
+                    {mode === 'login' ? 'Sign In' : 'Sign Up'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(sandboxMode === 'login' ? [
+                { label: 'Simulate Login Success', icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" /> },
+                { label: 'Simulate Login Failure', icon: <XCircleIcon className="w-4 h-4 text-red-500" /> },
+                { label: 'Simulate MFA Challenge', icon: <ShieldCheckIcon className="w-4 h-4 text-violet-500" /> },
+              ] : [
+                { label: 'Simulate Signup Success', icon: <CheckCircleIcon className="w-4 h-4 text-emerald-500" /> },
+                { label: 'Simulate Signup Failure', icon: <XCircleIcon className="w-4 h-4 text-red-500" /> },
+                { label: 'Simulate Email Verification', icon: <MailIcon className="w-4 h-4 text-blue-500" /> },
+              ]).map((scenario) => (
+                <button
+                  key={scenario.label}
+                  onClick={() => handleSandboxSimulate(scenario.label)}
+                  disabled={sandboxRunning}
+                  className="w-full flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/30 hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all text-left disabled:opacity-50"
+                >
+                  {scenario.icon}
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{scenario.label}</span>
+                  {sandboxRunning && <Loader2Icon className="w-4 h-4 animate-spin text-blue-500 ml-auto" />}
+                </button>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         </Tabs>

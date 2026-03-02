@@ -217,7 +217,11 @@ function formatApplication(application: any) {
         : [],
       postLoginRedirect: typeof rawAuthBehavior.postLoginRedirect === 'string' ? rawAuthBehavior.postLoginRedirect : '',
       postSignupRedirect: typeof rawAuthBehavior.postSignupRedirect === 'string' ? rawAuthBehavior.postSignupRedirect : ''
-    }
+    },
+    circleBillingMode:
+      settings.circleBillingMode === 'perCircleLevel'
+        ? 'perCircleLevel'
+        : 'perAccount'
   }
 }
 

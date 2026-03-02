@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
       ...oauthAudit.map((row) => ({
         id: `oauth-${row.id}`,
         timestamp: row.createdAt.toISOString(),
-        level: row.success ? 'info' : 'error',
+        level: (row.success ? 'info' : 'error') as LogLevel,
         source: 'auth' as LogSource,
         message: row.eventType,
         userId: row.userId || undefined,

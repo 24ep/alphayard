@@ -65,6 +65,8 @@ model Application {
   oauthClients          OAuthClient[]
   userGroups            UserGroup[]
   circles               Circle[]
+  userComments          UserComment[]
+  userReminders         UserReminder[]
   unifiedEntities       UnifiedEntity[]
   entityTypes           EntityType[]
   supportTickets        SupportTicket[]
@@ -114,6 +116,10 @@ model User {
   supportTickets   SupportTicket[]
   unifiedEntities  UnifiedEntity[]
   circleMembers    CircleMember[]
+  circleOwnerships CircleOwner[]
+  circleBillingAssignments CircleBillingAssignment[]
+  userComments     UserComment[]
+  userReminders    UserReminder[]
 
   @@index([email])
   @@index([isActive])
@@ -763,6 +769,8 @@ model AdminUser {
   adminActivityLogs     AdminActivityLog[]
   oauthClients          OAuthClient[]
   assignedTickets       SupportTicket[]
+  authoredUserComments  UserComment[]
+  authoredUserReminders UserReminder[]
 
   @@index([email])
   @@map("admin_users")
@@ -1375,15 +1383,24 @@ model Payment {
 model Circle {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name          String   @db.VarChar(100)
+  circleType    String   @default("team") @map("circle_type") @db.VarChar(50)
   description   String?  @db.Text
   applicationId String?  @map("application_id") @db.Uuid
+  parentId      String?  @map("parent_id") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   application    Application?    @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  parent         Circle?         @relation("CircleHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Circle[]        @relation("CircleHierarchy")
   supportTickets SupportTicket[]
   members        CircleMember[]
+  sourcedMemberships CircleMember[] @relation("CircleMembershipSource")
+  owners         CircleOwner[]
+  billingAssignees CircleBillingAssignment[]
 
+  @@index([applicationId])
+  @@index([parentId])
   @@map("circles")
   }
 
@@ -1392,14 +1409,50 @@ model CircleMember {
   circleId String   @map("circle_id") @db.Uuid
   userId   String   @map("user_id") @db.Uuid
   role     String   @default("member") @db.VarChar(50) // owner, admin, member
+  isInherited  Boolean  @default(false) @map("is_inherited")
+  sourceCircleId String? @map("source_circle_id") @db.Uuid
   joinedAt DateTime @default(now()) @map("joined_at") @db.Timestamptz
+
+  circle Circle  @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceCircle Circle? @relation("CircleMembershipSource", fields: [sourceCircleId], references: [id], onDelete: SetNull)
+
+  @@unique([circleId, userId])
+  @@index([userId])
+  @@index([sourceCircleId])
+  @@map("circle_members")
+  }
+
+model CircleOwner {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId  String   @map("circle_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      String   @default("owner") @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([circleId, userId])
-  @@map("circle_members")
-  }
+  @@index([userId])
+  @@map("circle_owners")
+}
+
+model CircleBillingAssignment {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  circleId   String   @map("circle_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  isPrimary  Boolean  @default(true) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  circle Circle @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, userId])
+  @@index([userId])
+  @@map("circle_billing_assignments")
+}
 
 model SupportTicket {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -1440,6 +1493,49 @@ model TicketComment {
 
   @@map("ticket_comments")
   }
+
+model UserComment {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String   @map("application_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  authorAdminId  String?  @map("author_admin_id") @db.Uuid
+  content        String   @db.Text
+  tags           Json     @default("[]")
+  attachments    Json     @default("[]")
+  remindAt       DateTime? @map("remind_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author      AdminUser?  @relation(fields: [authorAdminId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, userId])
+  @@index([createdAt])
+  @@map("user_comments")
+}
+
+model UserReminder {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  applicationId  String   @map("application_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  authorAdminId  String?  @map("author_admin_id") @db.Uuid
+  title          String   @db.VarChar(255)
+  note           String?  @db.Text
+  remindAt       DateTime @map("remind_at") @db.Timestamptz
+  status         String   @default("scheduled") @db.VarChar(20)
+  attachments    Json     @default("[]")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  author      AdminUser?  @relation(fields: [authorAdminId], references: [id], onDelete: SetNull)
+
+  @@index([applicationId, userId])
+  @@index([remindAt])
+  @@map("user_reminders")
+}
 
 model UnifiedEntity {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

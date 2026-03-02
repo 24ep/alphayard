@@ -198,16 +198,8 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-            {isAppMode ? 'Application User Attributes' : 'Default User Attributes'}
-          </h4>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
-            {isAppMode ? 'Enable default attributes or create custom ones for this app.' : 'Define the base user attributes shared across all applications.'}
-          </p>
-        </div>
+      {/* Actions */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowAddForm(!showAddForm)}>
             <PlusIcon className="w-4 h-4 mr-1" />
@@ -248,6 +240,7 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
             <div>
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Type</label>
               <select
+                title="Attribute type"
                 value={newAttr.type || 'text'}
                 onChange={e => setNewAttr(p => ({ ...p, type: e.target.value as UserAttribute['type'] }))}
                 className="w-full px-3 py-1.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -297,12 +290,12 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
               <div className="flex items-center gap-2">
                 {isAppMode && (
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" checked={appOverrides[attr.id] !== false} onChange={() => toggleOverride(attr.id)} />
+                    <input type="checkbox" title={`Toggle ${attr.label} for this app`} className="sr-only peer" checked={appOverrides[attr.id] !== false} onChange={() => toggleOverride(attr.id)} />
                     <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
                   </label>
                 )}
                 {!attr.isSystem && (
-                  <button onClick={() => removeAttribute(attr.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400">
+                  <button title={`Remove ${attr.label}`} onClick={() => removeAttribute(attr.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400">
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -334,7 +327,7 @@ export default function UserAttributesConfig({ appId, mode }: UserAttributesConf
                       <p className="text-[10px] text-gray-400 font-mono">{attr.name} · {meta?.label}</p>
                     </div>
                   </div>
-                  <button onClick={() => removeAttribute(attr.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400">
+                  <button title={`Remove ${attr.label}`} onClick={() => removeAttribute(attr.id)} className="p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 text-red-400">
                     <TrashIcon className="w-3.5 h-3.5" />
                   </button>
                 </div>

@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -18,7 +17,10 @@ import {
   ShieldCheckIcon,
   CogIcon,
   XIcon,
-  CheckIcon
+  CheckIcon,
+  MessageSquareIcon,
+  BellIcon,
+  UploadIcon
 } from 'lucide-react'
 
 interface UserDetail {
@@ -71,6 +73,33 @@ interface UserDetailDrawerProps {
   applicationId: string
 }
 
+interface UserActivityEvent {
+  id: string
+  type: string
+  message: string
+  timestamp: string
+  source: string
+  metadata?: Record<string, unknown>
+}
+
+interface UserComment {
+  id: string
+  content: string
+  tags: string[]
+  attachments: string[]
+  remindAt?: string | null
+  createdAt: string
+}
+
+interface UserReminder {
+  id: string
+  title: string
+  note?: string | null
+  remindAt: string
+  status: string
+  attachments: string[]
+}
+
 export default function UserDetailDrawer({ isOpen, onClose, userId, applicationId }: UserDetailDrawerProps) {
   const [user, setUser] = useState<UserDetail | null>(null)
   const [billing, setBilling] = useState<BillingInfo | null>(null)
@@ -78,6 +107,22 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
   const [isSaving, setIsSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('info')
+  const [activityEvents, setActivityEvents] = useState<UserActivityEvent[]>([])
+  const [commentFeed, setCommentFeed] = useState<UserComment[]>([])
+  const [reminders, setReminders] = useState<UserReminder[]>([])
+  const [commentForm, setCommentForm] = useState({
+    content: '',
+    tags: '',
+    remindAt: '',
+    attachments: [] as string[],
+  })
+  const [reminderForm, setReminderForm] = useState({
+    title: '',
+    note: '',
+    remindAt: '',
+    attachments: [] as string[],
+  })
+  const [notesSaving, setNotesSaving] = useState(false)
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
@@ -120,6 +165,33 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
       }
       const billingData = await billingResponse.json()
       setBilling(billingData.billing)
+
+      const [activityRes, commentsRes, remindersRes] = await Promise.all([
+        fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/activity`),
+        fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/comments`),
+        fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/reminders`),
+      ])
+
+      if (activityRes.ok) {
+        const data = await activityRes.json().catch(() => ({}))
+        setActivityEvents(Array.isArray(data?.events) ? data.events : [])
+      } else {
+        setActivityEvents([])
+      }
+
+      if (commentsRes.ok) {
+        const data = await commentsRes.json().catch(() => ({}))
+        setCommentFeed(Array.isArray(data?.comments) ? data.comments : [])
+      } else {
+        setCommentFeed([])
+      }
+
+      if (remindersRes.ok) {
+        const data = await remindersRes.json().catch(() => ({}))
+        setReminders(Array.isArray(data?.reminders) ? data.reminders : [])
+      } else {
+        setReminders([])
+      }
       
     } catch (err: any) {
       console.error('Failed to fetch user details:', err)
@@ -241,10 +313,98 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
 
   if (!isOpen) return null
 
+  const handleUploadAttachment = async (file: File, target: 'comment' | 'reminder') => {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(`/api/v1/admin/applications/${applicationId}/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Upload failed')
+      const url = data?.url
+      if (!url) throw new Error('Upload URL missing')
+      if (target === 'comment') {
+        setCommentForm(prev => ({ ...prev, attachments: [...prev.attachments, url] }))
+      } else {
+        setReminderForm(prev => ({ ...prev, attachments: [...prev.attachments, url] }))
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Upload failed',
+        description: err?.message || 'Could not upload attachment',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const postComment = async () => {
+    if (!commentForm.content.trim()) return
+    try {
+      setNotesSaving(true)
+      const res = await fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: commentForm.content.trim(),
+          tags: commentForm.tags.split(',').map(v => v.trim()).filter(Boolean),
+          remindAt: commentForm.remindAt || null,
+          attachments: commentForm.attachments,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to post comment')
+      setCommentForm({ content: '', tags: '', remindAt: '', attachments: [] })
+      const refreshed = await fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/comments`)
+      const refreshedData = await refreshed.json().catch(() => ({}))
+      setCommentFeed(Array.isArray(refreshedData?.comments) ? refreshedData.comments : [])
+    } catch (err: any) {
+      toast({
+        title: 'Failed to post comment',
+        description: err?.message || 'Please try again',
+        variant: 'destructive',
+      })
+    } finally {
+      setNotesSaving(false)
+    }
+  }
+
+  const createReminder = async () => {
+    if (!reminderForm.title.trim() || !reminderForm.remindAt) return
+    try {
+      setNotesSaving(true)
+      const res = await fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/reminders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: reminderForm.title.trim(),
+          note: reminderForm.note.trim(),
+          remindAt: reminderForm.remindAt,
+          attachments: reminderForm.attachments,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to create reminder')
+      setReminderForm({ title: '', note: '', remindAt: '', attachments: [] })
+      const refreshed = await fetch(`/api/v1/admin/applications/${applicationId}/users/${userId}/reminders`)
+      const refreshedData = await refreshed.json().catch(() => ({}))
+      setReminders(Array.isArray(refreshedData?.reminders) ? refreshedData.reminders : [])
+    } catch (err: any) {
+      toast({
+        title: 'Failed to create reminder',
+        description: err?.message || 'Please try again',
+        variant: 'destructive',
+      })
+    } finally {
+      setNotesSaving(false)
+    }
+  }
+
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="absolute right-4 top-4 bottom-4 w-full max-w-2xl bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border border-gray-200/80 dark:border-zinc-800/80">
+    <div className="fixed inset-0 z-[120] overflow-hidden">
+      <div className="absolute inset-0 z-10 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute right-4 top-4 bottom-4 z-20 w-full max-w-2xl bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border border-gray-200/80 dark:border-zinc-800/80">
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b">
@@ -301,6 +461,16 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
                     }`}
                   >
                     Billing & Plan
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('activity')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                      activeTab === 'activity'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Activity & Notes
                   </button>
                 </div>
 
@@ -439,17 +609,168 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
                             <label className="block text-sm font-medium text-gray-700 mb-1">Joined Date</label>
                             <div className="flex items-center space-x-2">
                               <CalendarIcon className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-900">{new Date(user.joinedAt).toLocaleDateString()}</span>
+                              <span className="text-gray-900">{new Date(user.joinedAt).toLocaleString()}</span>
                             </div>
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Last Active</label>
                             <div className="flex items-center space-x-2">
                               <CalendarIcon className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-900">{new Date(user.lastActive).toLocaleDateString()}</span>
+                              <span className="text-gray-900">{new Date(user.lastActive).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {activeTab === 'activity' && (
+                  <div className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">User Activity Timeline</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {activityEvents.length === 0 ? (
+                          <p className="text-sm text-gray-500">No activity logs yet.</p>
+                        ) : activityEvents.map((event) => (
+                          <div key={event.id} className="rounded-lg border border-gray-200 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-medium text-gray-900 capitalize">{event.type.replace(/_/g, ' ')}</p>
+                              <span className="text-xs text-gray-500">{new Date(event.timestamp).toLocaleString()}</span>
+                            </div>
+                            <p className="text-sm text-gray-700 mt-1">{event.message}</p>
+                            <p className="text-xs text-gray-500 mt-1">Source: {event.source}</p>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <MessageSquareIcon className="w-5 h-5" />
+                          Comments
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <textarea
+                          title="Comment"
+                          value={commentForm.content}
+                          onChange={(e) => setCommentForm(prev => ({ ...prev, content: e.target.value }))}
+                          rows={3}
+                          placeholder="Add comment..."
+                          className="w-full px-3 py-2 border rounded-md text-sm"
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            value={commentForm.tags}
+                            onChange={(e) => setCommentForm(prev => ({ ...prev, tags: e.target.value }))}
+                            placeholder="tags (comma separated)"
+                          />
+                          <Input
+                            type="datetime-local"
+                            value={commentForm.remindAt}
+                            onChange={(e) => setCommentForm(prev => ({ ...prev, remindAt: e.target.value }))}
+                            placeholder="optional reminder datetime"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <label className="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <UploadIcon className="w-4 h-4" />
+                            Upload Attachment
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleUploadAttachment(file, 'comment')
+                                e.currentTarget.value = ''
+                              }}
+                            />
+                          </label>
+                          <Button onClick={postComment} disabled={notesSaving}>
+                            {notesSaving ? 'Saving...' : 'Post Comment'}
+                          </Button>
+                        </div>
+                        {commentForm.attachments.length > 0 && (
+                          <div className="space-y-1">
+                            {commentForm.attachments.map((url) => (
+                              <p key={url} className="text-xs text-blue-600 truncate">{url}</p>
+                            ))}
+                          </div>
+                        )}
+                        <div className="space-y-2">
+                          {commentFeed.length === 0 ? (
+                            <p className="text-sm text-gray-500">No comments yet.</p>
+                          ) : commentFeed.map((comment) => (
+                            <div key={comment.id} className="rounded-lg border border-gray-200 p-3">
+                              <p className="text-sm text-gray-900">{comment.content}</p>
+                              <p className="text-xs text-gray-500 mt-1">{new Date(comment.createdAt).toLocaleString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <BellIcon className="w-5 h-5" />
+                          Reminders
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <Input
+                            value={reminderForm.title}
+                            onChange={(e) => setReminderForm(prev => ({ ...prev, title: e.target.value }))}
+                            placeholder="Reminder title"
+                          />
+                          <Input
+                            type="datetime-local"
+                            value={reminderForm.remindAt}
+                            onChange={(e) => setReminderForm(prev => ({ ...prev, remindAt: e.target.value }))}
+                            placeholder="Reminder datetime"
+                          />
+                          <Input
+                            value={reminderForm.note}
+                            onChange={(e) => setReminderForm(prev => ({ ...prev, note: e.target.value }))}
+                            placeholder="Optional note"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <label className="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <UploadIcon className="w-4 h-4" />
+                            Upload Reminder Attachment
+                            <input
+                              type="file"
+                              className="hidden"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleUploadAttachment(file, 'reminder')
+                                e.currentTarget.value = ''
+                              }}
+                            />
+                          </label>
+                          <Button onClick={createReminder} disabled={notesSaving}>
+                            {notesSaving ? 'Saving...' : 'Create Reminder'}
+                          </Button>
+                        </div>
+                        {reminders.length === 0 ? (
+                          <p className="text-sm text-gray-500">No reminders yet.</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {reminders.map((reminder) => (
+                              <div key={reminder.id} className="rounded-lg border border-gray-200 p-3">
+                                <p className="text-sm font-medium text-gray-900">{reminder.title}</p>
+                                {reminder.note && <p className="text-sm text-gray-700 mt-1">{reminder.note}</p>}
+                                <p className="text-xs text-gray-500 mt-1">{new Date(reminder.remindAt).toLocaleString()}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </div>

@@ -29,8 +29,8 @@ export const ToggleSwitch = ({
   variant = "primary",
 }: ToggleSwitchProps) => {
   const activeColors = {
-    primary: "bg-blue-600",
-    success: "bg-green-500",
+    primary: "bg-emerald-500",
+    success: "bg-emerald-500",
     danger: "bg-red-500",
     indigo: "bg-indigo-600",
   };

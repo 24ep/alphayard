@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import {
   PaintbrushIcon,
   LayoutTemplateIcon,
@@ -183,6 +183,7 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
   const [showConfigPanel, setShowConfigPanel] = useState(true)
   const [showDevGuide, setShowDevGuide] = useState(false)
   const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null)
+  const providerFileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const settings = deviceSettings[activeDevice]
 
@@ -343,6 +344,25 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
 
   const updateProvider = (providerName: string, field: keyof AuthProviderStyle, value: any) => {
     setProviders(prev => prev.map(p => p.providerName === providerName ? { ...p, [field]: value } : p))
+  }
+
+  const handleProviderLogoUpload = async (providerName: string, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/upload`, {
+        method: 'POST',
+        body: formData,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Upload failed')
+      if (typeof data?.url === 'string' && data.url.trim()) {
+        updateProvider(providerName, 'logoUrl', data.url)
+      }
+    } catch {
+      setSaveMsg('Failed to upload logo/icon')
+      setTimeout(() => setSaveMsg(''), 2500)
+    }
   }
 
   const configSections = [
@@ -604,6 +624,36 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
     </div>
   )
 
+  const extractSolidColor = (value: ColorValue, fallback: string) => {
+    if (value.mode === 'solid') return value.solid || fallback
+    if (value.mode === 'gradient') return value.gradient?.stops?.[0]?.color || fallback
+    return fallback
+  }
+
+  const ColorInput = ({
+    value,
+    onChange,
+    fallback,
+  }: {
+    value: string
+    onChange: (next: string) => void
+    fallback: string
+  }) => (
+    <div className="flex items-center gap-1.5">
+      <ColorPickerPopover
+        value={toColorValue(value || fallback)}
+        onChange={(next) => onChange(extractSolidColor(next, fallback))}
+      />
+      <input
+        type="text"
+        title="Color hex value"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] font-mono text-center focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+      />
+    </div>
+  )
+
   // ======================== CONFIG PANELS ========================
   const renderLayoutSection = () => (
     <div>
@@ -690,10 +740,11 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
         { key: 'linkColor', label: 'Link / Accent' },
       ] as const).map(item => (
         <ConfigRow key={item.key} label={item.label}>
-          <div className="flex items-center gap-1.5">
-            <input type="color" title={`${item.label} color picker`} value={settings[item.key]} onChange={e => update(item.key, e.target.value)} className="w-6 h-6 rounded border border-gray-200 dark:border-zinc-700 cursor-pointer p-0.5" />
-            <input type="text" title={`${item.label} hex value`} value={settings[item.key]} onChange={e => update(item.key, e.target.value)} className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] font-mono text-center focus:outline-none focus:ring-1 focus:ring-blue-500/30" />
-          </div>
+          <ColorInput
+            value={settings[item.key]}
+            onChange={(next) => update(item.key, next)}
+            fallback="#3B82F6"
+          />
         </ConfigRow>
       ))}
 
@@ -711,10 +762,11 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
             />
           </ConfigRow>
           <ConfigRow label="Overlay Color" desc="Split panel overlay">
-            <div className="flex items-center gap-1.5">
-              <input type="color" title="Overlay color picker" value={settings.splitPanelOverlayColor} onChange={e => update('splitPanelOverlayColor', e.target.value)} className="w-6 h-6 rounded border border-gray-200 dark:border-zinc-700 cursor-pointer p-0.5" />
-              <input type="text" title="Overlay color hex value" value={settings.splitPanelOverlayColor} onChange={e => update('splitPanelOverlayColor', e.target.value)} className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] font-mono text-center focus:outline-none focus:ring-1 focus:ring-blue-500/30" />
-            </div>
+            <ColorInput
+              value={settings.splitPanelOverlayColor}
+              onChange={(next) => update('splitPanelOverlayColor', next)}
+              fallback="#1E40AF"
+            />
           </ConfigRow>
           <ConfigRow label="Overlay Opacity" desc={`${settings.splitPanelOverlayOpacity}%`}>
             <input type="range" title="Overlay opacity" min="0" max="100" value={settings.splitPanelOverlayOpacity} onChange={e => update('splitPanelOverlayOpacity', parseInt(e.target.value))} className="w-full accent-blue-500" />
@@ -872,6 +924,27 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
                           placeholder="https://cdn.example.com/logo.svg"
                           className="flex-1 px-2.5 py-1.5 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-[10px]"
+                          onClick={() => providerFileRefs.current[provider.providerName]?.click()}
+                        >
+                          Upload
+                        </Button>
+                        <input
+                          ref={(el) => { providerFileRefs.current[provider.providerName] = el }}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          title={`${provider.displayName} logo upload`}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleProviderLogoUpload(provider.providerName, file)
+                            e.currentTarget.value = ''
+                          }}
+                        />
                         {provider.logoUrl && (
                           <div className="w-7 h-7 rounded-md border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 flex items-center justify-center overflow-hidden">
                             <img src={provider.logoUrl} alt="" className="w-4 h-4 object-contain" />
@@ -886,41 +959,19 @@ export default function AuthStyleConfig({ appId, appName }: AuthStyleConfigProps
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-tight block mb-1">Button Background</label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="color"
-                            title={`${provider.providerName} button background color`}
-                            value={provider.bgColor || '#F3F4F6'}
-                            onChange={e => updateProvider(provider.providerName, 'bgColor', e.target.value)}
-                            className="w-6 h-6 rounded border border-gray-200 dark:border-zinc-700 cursor-pointer p-0.5"
-                          />
-                          <input
-                            type="text"
-                            title={`${provider.providerName} button background hex`}
-                            value={provider.bgColor}
-                            onChange={e => updateProvider(provider.providerName, 'bgColor', e.target.value)}
-                            className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-                          />
-                        </div>
+                        <ColorInput
+                          value={provider.bgColor || '#F3F4F6'}
+                          onChange={(next) => updateProvider(provider.providerName, 'bgColor', next)}
+                          fallback="#F3F4F6"
+                        />
                       </div>
                       <div>
                         <label className="text-[9px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-tight block mb-1">Button Text</label>
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="color"
-                            title={`${provider.providerName} button text color`}
-                            value={provider.textColor || '#374151'}
-                            onChange={e => updateProvider(provider.providerName, 'textColor', e.target.value)}
-                            className="w-6 h-6 rounded border border-gray-200 dark:border-zinc-700 cursor-pointer p-0.5"
-                          />
-                          <input
-                            type="text"
-                            title={`${provider.providerName} button text hex`}
-                            value={provider.textColor}
-                            onChange={e => updateProvider(provider.providerName, 'textColor', e.target.value)}
-                            className="flex-1 px-2 py-1 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] font-mono focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-                          />
-                        </div>
+                        <ColorInput
+                          value={provider.textColor || '#374151'}
+                          onChange={(next) => updateProvider(provider.providerName, 'textColor', next)}
+                          fallback="#374151"
+                        />
                       </div>
                     </div>
                   )}
