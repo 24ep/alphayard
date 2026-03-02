@@ -89,3 +89,46 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to assign circle membership' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string; circleId: string } }
+) {
+  try {
+    const appId = params.id
+    const circleId = params.circleId
+    if (!UUID_REGEX.test(appId) || !UUID_REGEX.test(circleId)) {
+      return NextResponse.json({ error: 'Invalid application or circle ID format' }, { status: 400 })
+    }
+
+    const body = await request.json().catch(() => ({}))
+    const userId = typeof body.userId === 'string' ? body.userId.trim() : ''
+    if (!UUID_REGEX.test(userId)) {
+      return NextResponse.json({ error: 'Invalid user ID format' }, { status: 400 })
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.circleMember.deleteMany({
+        where: {
+          circleId,
+          userId,
+        },
+      })
+
+      // Remove inherited parent memberships that came from this circle assignment.
+      await tx.circleMember.deleteMany({
+        where: {
+          userId,
+          isInherited: true,
+          sourceCircleId: circleId,
+          circle: { applicationId: appId },
+        },
+      })
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Failed to remove circle membership:', error)
+    return NextResponse.json({ error: 'Failed to remove circle membership' }, { status: 500 })
+  }
+}

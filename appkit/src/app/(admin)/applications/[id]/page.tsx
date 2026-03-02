@@ -160,6 +160,7 @@ interface AppCircle {
     userId: string
     role: string
     isInherited: boolean
+    user?: { id: string; email: string; firstName: string; lastName: string }
   }>
   owners?: Array<{
     id: string
@@ -289,6 +290,16 @@ export default function ApplicationConfigPage() {
   const [circleOwnerUserIdInput, setCircleOwnerUserIdInput] = useState('')
   const [circleBillingUserIdInput, setCircleBillingUserIdInput] = useState('')
   const [circleBillingModeSaving, setCircleBillingModeSaving] = useState(false)
+  const [selectedCircleId, setSelectedCircleId] = useState<string | null>(null)
+  const [selectedCircle, setSelectedCircle] = useState<AppCircle | null>(null)
+  const [circleDrawerOpen, setCircleDrawerOpen] = useState(false)
+  const [circleDrawerLoading, setCircleDrawerLoading] = useState(false)
+  const [circleDetailDraft, setCircleDetailDraft] = useState({
+    name: '',
+    description: '',
+    circleType: 'team',
+    parentId: '',
+  })
   // Email templates
   const [emailTemplates, setEmailTemplates] = useState<AppEmailTemplate[]>([])
   const [emailTemplatesLoading, setEmailTemplatesLoading] = useState(false)
@@ -404,6 +415,9 @@ export default function ApplicationConfigPage() {
       if (!res.ok) throw new Error(data?.error || 'Failed to assign member')
       setCircleUserIdInput('')
       await loadCircles()
+      if (selectedCircleId === circleId) {
+        await refreshSelectedCircle()
+      }
     } catch (error: any) {
       setCircleMsg(error?.message || 'Failed to assign member')
       setTimeout(() => setCircleMsg(''), 3000)
@@ -422,6 +436,9 @@ export default function ApplicationConfigPage() {
       if (!res.ok) throw new Error(data?.error || 'Failed to assign owner')
       setCircleOwnerUserIdInput('')
       await loadCircles()
+      if (selectedCircleId === circleId) {
+        await refreshSelectedCircle()
+      }
     } catch (error: any) {
       setCircleMsg(error?.message || 'Failed to assign owner')
       setTimeout(() => setCircleMsg(''), 3000)
@@ -440,6 +457,9 @@ export default function ApplicationConfigPage() {
       if (!res.ok) throw new Error(data?.error || 'Failed to assign billing user')
       setCircleBillingUserIdInput('')
       await loadCircles()
+      if (selectedCircleId === circleId) {
+        await refreshSelectedCircle()
+      }
     } catch (error: any) {
       setCircleMsg(error?.message || 'Failed to assign billing user')
       setTimeout(() => setCircleMsg(''), 3000)
@@ -462,6 +482,115 @@ export default function ApplicationConfigPage() {
       setTimeout(() => setCircleMsg(''), 3000)
     } finally {
       setCircleBillingModeSaving(false)
+    }
+  }
+
+  const openCircleDetail = async (circleId: string) => {
+    setSelectedCircleId(circleId)
+    setCircleDrawerOpen(true)
+    setCircleDrawerLoading(true)
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${circleId}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to load circle detail')
+      const detail = data?.circle as AppCircle
+      setSelectedCircle(detail)
+      setCircleDetailDraft({
+        name: detail?.name || '',
+        description: detail?.description || '',
+        circleType: detail?.circleType || 'team',
+        parentId: detail?.parentId || '',
+      })
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to load circle detail')
+      setTimeout(() => setCircleMsg(''), 3000)
+      setCircleDrawerOpen(false)
+    } finally {
+      setCircleDrawerLoading(false)
+    }
+  }
+
+  const refreshSelectedCircle = async () => {
+    if (!selectedCircleId) return
+    const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}`)
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data?.error || 'Failed to refresh circle detail')
+    const detail = data?.circle as AppCircle
+    setSelectedCircle(detail)
+  }
+
+  const saveCircleDetail = async () => {
+    if (!selectedCircleId) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: circleDetailDraft.name.trim(),
+          description: circleDetailDraft.description.trim(),
+          circleType: circleDetailDraft.circleType,
+          parentId: circleDetailDraft.parentId || null,
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to save circle detail')
+      await Promise.all([loadCircles(), refreshSelectedCircle()])
+      setCircleMsg('Circle updated')
+      setTimeout(() => setCircleMsg(''), 2000)
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to save circle detail')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const removeCircleMember = async (userId: string) => {
+    if (!selectedCircleId) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}/members`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to remove member')
+      await Promise.all([loadCircles(), refreshSelectedCircle()])
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to remove member')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const removeCircleOwner = async (userId: string) => {
+    if (!selectedCircleId) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}/owners`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to remove owner')
+      await Promise.all([loadCircles(), refreshSelectedCircle()])
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to remove owner')
+      setTimeout(() => setCircleMsg(''), 3000)
+    }
+  }
+
+  const removeCircleBillingAssignee = async (userId: string) => {
+    if (!selectedCircleId) return
+    try {
+      const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}/billing-assignee`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to remove billing assignee')
+      await Promise.all([loadCircles(), refreshSelectedCircle()])
+    } catch (error: any) {
+      setCircleMsg(error?.message || 'Failed to remove billing assignee')
+      setTimeout(() => setCircleMsg(''), 3000)
     }
   }
 
@@ -1337,7 +1466,7 @@ export default function ApplicationConfigPage() {
       <div className="flex gap-6">
         {/* Vertical Sidebar */}
         <aside className="w-56 shrink-0">
-          <div className="sticky top-4 rounded-xl border border-gray-200/80 dark:border-zinc-800/80 p-3 space-y-4">
+          <div className="sticky top-4 rounded-xl p-3 space-y-4">
             {sidebarSections.map((section) => (
               <div key={section.title}>
                 <h4 className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-widest px-3 mb-1.5">{section.title}</h4>
@@ -2156,96 +2285,48 @@ export default function ApplicationConfigPage() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800 overflow-hidden">
               {circlesLoading ? (
-                <p className="text-sm text-gray-500">Loading circles...</p>
+                <div className="p-6 text-sm text-gray-500">Loading circles...</div>
               ) : circles.length === 0 ? (
-                <p className="text-sm text-gray-500">No circles created yet.</p>
-              ) : circles.map((circle) => (
-                <div key={circle.id} className="p-4 rounded-lg border border-gray-200 dark:border-zinc-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{circle.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-zinc-400">
-                        {circle.circleType} {circle.parentId ? '• child circle' : '• root circle'}
-                      </p>
-                    </div>
-                    <span className="text-xs text-gray-400">{circle.id}</span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Member (User ID)</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={circleUserIdInput}
-                          onChange={(e) => setCircleUserIdInput(e.target.value)}
-                          placeholder="uuid"
-                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
-                        />
-                        <Button size="sm" variant="outline" onClick={() => assignCircleMember(circle.id)}>Assign</Button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Owner (User ID)</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={circleOwnerUserIdInput}
-                          onChange={(e) => setCircleOwnerUserIdInput(e.target.value)}
-                          placeholder="uuid"
-                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
-                        />
-                        <Button size="sm" variant="outline" onClick={() => assignCircleOwner(circle.id)}>Assign</Button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Assign Billing User (User ID)</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={circleBillingUserIdInput}
-                          onChange={(e) => setCircleBillingUserIdInput(e.target.value)}
-                          placeholder="uuid"
-                          className="w-full px-2.5 py-1.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
-                        />
-                        <Button size="sm" variant="outline" onClick={() => assignCircleBilling(circle.id)}>Assign</Button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                    <div>
-                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Owners</p>
-                      {(circle.owners || []).length === 0 ? (
-                        <p className="text-gray-500">No owners</p>
-                      ) : (circle.owners || []).map((owner) => (
-                        <p key={owner.id} className="text-gray-600 dark:text-zinc-300">{owner.user?.email || owner.userId}</p>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Billing</p>
-                      {(circle.billingAssignees || []).length === 0 ? (
-                        <p className="text-gray-500">No billing assignee</p>
-                      ) : (circle.billingAssignees || []).map((assignee) => (
-                        <p key={assignee.id} className="text-gray-600 dark:text-zinc-300">
-                          {assignee.user?.email || assignee.userId}
-                          {assignee.isPrimary ? ' (primary)' : ''}
-                        </p>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-700 dark:text-zinc-200 mb-1">Members</p>
-                      {(circle.members || []).length === 0 ? (
-                        <p className="text-gray-500">No members</p>
-                      ) : (circle.members || []).map((member) => (
-                        <p key={member.id} className="text-gray-600 dark:text-zinc-300">
-                          {member.userId}{member.isInherited ? ' (inherited)' : ''}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                <div className="p-6 text-sm text-gray-500">No circles created yet.</div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 dark:bg-zinc-800/60">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-500">Circle</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-500">Type</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-500">Members</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-500">Owners</th>
+                      <th className="text-left px-4 py-2.5 font-medium text-gray-500">Billing</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-gray-500">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-zinc-800/80">
+                    {circles.map((circle) => (
+                      <tr key={circle.id} className="hover:bg-gray-50/60 dark:hover:bg-zinc-800/30">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-900 dark:text-white">{circle.name}</div>
+                          <div className="text-xs text-gray-500">{circle.parentId ? 'Child circle' : 'Root circle'}</div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-300 capitalize">{circle.circleType}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-300">{(circle.members || []).length}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-300">{(circle.owners || []).length}</td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-zinc-300">
+                          {application.circleBillingMode === 'perCircleLevel'
+                            ? `${(circle.billingAssignees || []).length} assignee(s)`
+                            : 'Per account'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button size="sm" variant="outline" onClick={() => openCircleDetail(circle.id)}>
+                            View Details
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -3365,6 +3446,184 @@ export default function ApplicationConfigPage() {
           userId={selectedUserId}
           applicationId={appId}
         />
+      )}
+
+      {/* Circle Detail Drawer */}
+      {circleDrawerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setCircleDrawerOpen(false)} />
+          <div className="absolute right-4 top-4 bottom-4 w-full max-w-2xl bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl border border-gray-200/80 dark:border-zinc-800/80 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-zinc-800">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Circle Details</h3>
+                <p className="text-xs text-gray-500 dark:text-zinc-400">{selectedCircle?.id}</p>
+              </div>
+              <button title="Close circle drawer" onClick={() => setCircleDrawerOpen(false)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800">
+                <XIcon className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {circleDrawerLoading || !selectedCircle ? (
+                <div className="text-sm text-gray-500">Loading circle detail...</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Circle Name</label>
+                      <input
+                        type="text"
+                        title="Circle detail name"
+                        value={circleDetailDraft.name}
+                        onChange={(e) => setCircleDetailDraft(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Circle Type</label>
+                      <select
+                        title="Circle detail type"
+                        value={circleDetailDraft.circleType}
+                        onChange={(e) => setCircleDetailDraft(prev => ({ ...prev, circleType: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                      >
+                        <option value="organization">Organization</option>
+                        <option value="department">Department</option>
+                        <option value="team">Team</option>
+                        <option value="family">Family</option>
+                        <option value="household">Household</option>
+                        <option value="friend-group">Friend Group</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Parent Circle</label>
+                      <select
+                        title="Circle detail parent"
+                        value={circleDetailDraft.parentId}
+                        onChange={(e) => setCircleDetailDraft(prev => ({ ...prev, parentId: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                      >
+                        <option value="">None</option>
+                        {circles.filter((c) => c.id !== selectedCircle.id).map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Description</label>
+                      <input
+                        type="text"
+                        title="Circle detail description"
+                        value={circleDetailDraft.description}
+                        onChange={(e) => setCircleDetailDraft(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Manage Members / Owners / Billing</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={circleUserIdInput}
+                        onChange={(e) => setCircleUserIdInput(e.target.value)}
+                        placeholder="Member userId"
+                        className="px-2.5 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={circleOwnerUserIdInput}
+                        onChange={(e) => setCircleOwnerUserIdInput(e.target.value)}
+                        placeholder="Owner userId"
+                        className="px-2.5 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                      />
+                      <input
+                        type="text"
+                        value={circleBillingUserIdInput}
+                        onChange={(e) => setCircleBillingUserIdInput(e.target.value)}
+                        placeholder="Billing userId"
+                        className="px-2.5 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-xs"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button size="sm" variant="outline" onClick={() => assignCircleMember(selectedCircle.id)}>Add Member</Button>
+                      <Button size="sm" variant="outline" onClick={() => assignCircleOwner(selectedCircle.id)}>Add Owner</Button>
+                      {application.circleBillingMode === 'perCircleLevel' && (
+                        <Button size="sm" variant="outline" onClick={() => assignCircleBilling(selectedCircle.id)}>Set Billing Assignee</Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-3">
+                      <p className="text-xs font-semibold mb-2">Members</p>
+                      <div className="space-y-2">
+                        {(selectedCircle.members || []).map((m) => (
+                          <div key={m.id} className="text-xs flex items-center justify-between gap-2">
+                            <span className="truncate">{m.user?.email || m.userId}</span>
+                            <button title="Remove member" onClick={() => removeCircleMember(m.userId)} className="text-red-500 hover:text-red-600">Remove</button>
+                          </div>
+                        ))}
+                        {(selectedCircle.members || []).length === 0 && <p className="text-xs text-gray-500">No members</p>}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-3">
+                      <p className="text-xs font-semibold mb-2">Owners</p>
+                      <div className="space-y-2">
+                        {(selectedCircle.owners || []).map((o) => (
+                          <div key={o.id} className="text-xs flex items-center justify-between gap-2">
+                            <span className="truncate">{o.user?.email || o.userId}</span>
+                            <button title="Remove owner" onClick={() => removeCircleOwner(o.userId)} className="text-red-500 hover:text-red-600">Remove</button>
+                          </div>
+                        ))}
+                        {(selectedCircle.owners || []).length === 0 && <p className="text-xs text-gray-500">No owners</p>}
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-3">
+                      <p className="text-xs font-semibold mb-2">Billing</p>
+                      {application.circleBillingMode === 'perCircleLevel' ? (
+                        <div className="space-y-2">
+                          {(selectedCircle.billingAssignees || []).map((b) => (
+                            <div key={b.id} className="text-xs flex items-center justify-between gap-2">
+                              <span className="truncate">{b.user?.email || b.userId}{b.isPrimary ? ' (primary)' : ''}</span>
+                              <button title="Remove billing assignee" onClick={() => removeCircleBillingAssignee(b.userId)} className="text-red-500 hover:text-red-600">Remove</button>
+                            </div>
+                          ))}
+                          {(selectedCircle.billingAssignees || []).length === 0 && <p className="text-xs text-gray-500">No billing assignees</p>}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500">Billing mode is per account.</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+              <Button
+                variant="outline"
+                className="text-red-600 border-red-200 hover:bg-red-50"
+                onClick={async () => {
+                  if (!selectedCircleId) return
+                  const res = await fetch(`/api/v1/admin/applications/${appId}/circles/${selectedCircleId}`, { method: 'DELETE' })
+                  if (res.ok) {
+                    setCircleDrawerOpen(false)
+                    setSelectedCircleId(null)
+                    setSelectedCircle(null)
+                    await loadCircles()
+                  }
+                }}
+              >
+                Delete Circle
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setCircleDrawerOpen(false)}>Close</Button>
+                <Button onClick={saveCircleDetail} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">Save Circle</Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Config Drawers */}

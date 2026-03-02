@@ -12,6 +12,45 @@ const ALLOWED_CIRCLE_TYPES = new Set([
   'custom',
 ])
 
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: { id: string; circleId: string } }
+) {
+  try {
+    const appId = params.id
+    const circleId = params.circleId
+    if (!UUID_REGEX.test(appId) || !UUID_REGEX.test(circleId)) {
+      return NextResponse.json({ error: 'Invalid application or circle ID format' }, { status: 400 })
+    }
+
+    const circle = await prisma.circle.findFirst({
+      where: { id: circleId, applicationId: appId },
+      include: {
+        parent: { select: { id: true, name: true, circleType: true } },
+        children: { select: { id: true, name: true, circleType: true, parentId: true } },
+        members: {
+          orderBy: { joinedAt: 'desc' },
+          include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+        },
+        owners: {
+          orderBy: { createdAt: 'asc' },
+          include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+        },
+        billingAssignees: {
+          orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+          include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
+        },
+      },
+    })
+    if (!circle) return NextResponse.json({ error: 'Circle not found' }, { status: 404 })
+
+    return NextResponse.json({ circle })
+  } catch (error) {
+    console.error('Failed to fetch circle detail:', error)
+    return NextResponse.json({ error: 'Failed to fetch circle detail' }, { status: 500 })
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string; circleId: string } }

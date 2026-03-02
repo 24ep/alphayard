@@ -136,7 +136,7 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
   return (
     <>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={onClose} />
-      <div className="fixed top-4 right-4 bottom-4 w-full max-w-lg bg-white dark:bg-zinc-900 shadow-2xl z-50 flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 dark:border-zinc-800/80">
+      <div className="fixed top-4 right-4 bottom-4 w-[calc(100%-2rem)] max-w-5xl bg-white dark:bg-zinc-900 shadow-2xl z-50 flex flex-col overflow-hidden rounded-2xl border border-gray-200/80 dark:border-zinc-800/80">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-800">
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Legal & Compliance Config</h2>
@@ -299,20 +299,22 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
 
                               {/* Content Editor */}
                               <div className="space-y-2">
-                                <RichTextEditor
-                                  content={doc.content || ''}
-                                  onChange={(content) => {
-                                    setConfig(prev => prev ? {
-                                      ...prev,
-                                      documents: prev.documents.map(d => d.id === doc.id ? {
-                                        ...d,
-                                        content,
-                                        lastUpdated: new Date().toISOString().split('T')[0],
-                                      } : d),
-                                    } : prev)
-                                  }}
-                                  placeholder={`Write ${doc.title} content here...`}
-                                />
+                                <div className="min-h-[360px]">
+                                  <RichTextEditor
+                                    content={doc.content || ''}
+                                    onChange={(content) => {
+                                      setConfig(prev => prev ? {
+                                        ...prev,
+                                        documents: prev.documents.map(d => d.id === doc.id ? {
+                                          ...d,
+                                          content,
+                                          lastUpdated: new Date().toISOString().split('T')[0],
+                                        } : d),
+                                      } : prev)
+                                    }}
+                                    placeholder={`Write ${doc.title} content here...`}
+                                  />
+                                </div>
 
                                 {/* Version & Status */}
                                 <div className="flex items-center gap-3">

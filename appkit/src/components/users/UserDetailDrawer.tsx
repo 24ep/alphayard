@@ -470,7 +470,27 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >
-                    Activity & Notes
+                    Activity
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('comments')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                      activeTab === 'comments'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Comments
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('reminders')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 ${
+                      activeTab === 'reminders'
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Reminders
                   </button>
                 </div>
 
@@ -646,7 +666,11 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
                         ))}
                       </CardContent>
                     </Card>
+                  </div>
+                )}
 
+                {activeTab === 'comments' && (
+                  <div className="space-y-6">
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -713,7 +737,11 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
                         </div>
                       </CardContent>
                     </Card>
+                  </div>
+                )}
 
+                {activeTab === 'reminders' && (
+                  <div className="space-y-6">
                     <Card>
                       <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
