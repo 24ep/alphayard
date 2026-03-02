@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/cms/RichTextEditor'
 import { adminService } from '@/services/adminService'
 import {
   XIcon,
@@ -16,16 +17,6 @@ import {
   ClockIcon,
   PlusIcon,
   Trash2Icon,
-  LinkIcon,
-  PenLineIcon,
-  BoldIcon,
-  ItalicIcon,
-  ListIcon,
-  Heading2Icon,
-  EyeIcon,
-  CodeIcon,
-  MaximizeIcon,
-  MinimizeIcon,
 } from 'lucide-react'
 
 interface LegalConfigDrawerProps {
@@ -42,9 +33,7 @@ interface LegalDocument {
   version: string
   status: string
   lastUpdated: string
-  url?: string
   content?: string
-  contentMode?: 'url' | 'content'
 }
 
 interface LegalConfig {
@@ -69,8 +58,6 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
-  const [expandedDocId, setExpandedDocId] = useState<string | null>(null)
-  const [previewDocId, setPreviewDocId] = useState<string | null>(null)
 
   useEffect(() => {
     if (isOpen && appId) loadData()
@@ -251,12 +238,9 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
                             version: '1.0',
                             status: 'Draft',
                             lastUpdated: new Date().toISOString().split('T')[0],
-                            url: '',
                             content: '',
-                            contentMode: 'content',
                           }
                           setConfig(prev => prev ? { ...prev, documents: [...prev.documents, newDoc] } : prev)
-                          setExpandedDocId(newDoc.id)
                         }}
                         className="text-[10px] font-bold text-blue-500 hover:text-blue-600 flex items-center gap-1 transition-colors"
                       >
@@ -266,13 +250,9 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
                     <div className="space-y-4">
                       {(config.documents || []).map(doc => {
                         const defDoc = defaultConfig?.documents.find(d => d.id === doc.id)
-                        const isUrlOverridden = doc.url !== defDoc?.url
                         const isContentOverridden = !!(doc.content && doc.content !== defDoc?.content)
-                        const isOverridden = isUrlOverridden || isContentOverridden
+                        const isOverridden = isContentOverridden
                         const isCustom = !defDoc
-                        const mode = doc.contentMode || 'url'
-                        const isExpanded = expandedDocId === doc.id
-                        const isPreviewing = previewDocId === doc.id
 
                         return (
                           <div key={doc.id} className={`rounded-xl border transition-all ${isCustom ? 'border-emerald-500/20 bg-emerald-500/5' : isOverridden ? 'border-blue-500/20 bg-blue-500/5' : 'border-gray-200/80 dark:border-zinc-800/80'}`}>
@@ -298,8 +278,8 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
                                 </div>
                                 <div className="flex items-center gap-2">
                                   {!isCustom && isOverridden && (
-                                    <button 
-                                      onClick={() => setConfig({ ...config, documents: config.documents.map(d => d.id === doc.id ? { ...d, url: defDoc?.url, content: defDoc?.content, contentMode: defDoc?.contentMode } : d) })}
+                                    <button
+                                      onClick={() => setConfig({ ...config, documents: config.documents.map(d => d.id === doc.id ? { ...d, content: defDoc?.content } : d) })}
                                       className="text-[10px] font-bold text-blue-500 flex items-center gap-1"
                                     >
                                       <RotateCcwIcon className="w-2.5 h-2.5" /> Inherit
@@ -317,197 +297,50 @@ export default function LegalConfigDrawer({ isOpen, onClose, appId, appName }: L
                                 </div>
                               </div>
 
-                              {/* Content Mode Toggle */}
-                              <div className="flex items-center gap-1 mb-3 p-0.5 bg-gray-100 dark:bg-zinc-800 rounded-md w-fit">
-                                <button
-                                  onClick={() => setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, contentMode: 'url' } : d) } : prev)}
-                                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
-                                    mode === 'url'
-                                      ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white'
-                                      : 'text-gray-500 dark:text-zinc-400 hover:text-gray-700'
-                                  }`}
-                                >
-                                  <LinkIcon className="w-3 h-3" />
-                                  URL
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, contentMode: 'content' } : d) } : prev)
-                                    setExpandedDocId(doc.id)
-                                  }}
-                                  className={`flex items-center gap-1 px-2.5 py-1 rounded text-[10px] font-medium transition-all ${
-                                    mode === 'content'
-                                      ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white'
-                                      : 'text-gray-500 dark:text-zinc-400 hover:text-gray-700'
-                                  }`}
-                                >
-                                  <PenLineIcon className="w-3 h-3" />
-                                  Write Content
-                                </button>
-                              </div>
-
-                              {/* URL Input */}
-                              {mode === 'url' && (
-                                <>
-                                  <input
-                                    type="url"
-                                    placeholder={defDoc?.url || `https://your-domain.com/${doc.type}`}
-                                    value={doc.url || ''}
-                                    onChange={e => {
-                                      setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, url: e.target.value } : d) } : prev)
-                                    }}
-                                    className="w-full px-3 py-1.5 bg-white dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                  />
-                                  {!isCustom && !isUrlOverridden && defDoc?.url && (
-                                    <p className="text-[9px] text-gray-400 mt-1 italic">Using platform default URL</p>
-                                  )}
-                                </>
-                              )}
-
                               {/* Content Editor */}
-                              {mode === 'content' && (
-                                <div className="space-y-2">
-                                  {/* Toolbar */}
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 dark:bg-zinc-800 rounded-md">
-                                      <button
-                                        onClick={() => {
-                                          const ta = document.getElementById(`legal-editor-${doc.id}`) as HTMLTextAreaElement
-                                          if (!ta) return
-                                          const start = ta.selectionStart
-                                          const end = ta.selectionEnd
-                                          const selected = ta.value.substring(start, end)
-                                          const replacement = `**${selected || 'bold text'}**`
-                                          const newContent = ta.value.substring(0, start) + replacement + ta.value.substring(end)
-                                          setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, content: newContent } : d) } : prev)
-                                        }}
-                                        className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-700 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
-                                        title="Bold"
-                                      >
-                                        <BoldIcon className="w-3 h-3" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          const ta = document.getElementById(`legal-editor-${doc.id}`) as HTMLTextAreaElement
-                                          if (!ta) return
-                                          const start = ta.selectionStart
-                                          const end = ta.selectionEnd
-                                          const selected = ta.value.substring(start, end)
-                                          const replacement = `*${selected || 'italic text'}*`
-                                          const newContent = ta.value.substring(0, start) + replacement + ta.value.substring(end)
-                                          setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, content: newContent } : d) } : prev)
-                                        }}
-                                        className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-700 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
-                                        title="Italic"
-                                      >
-                                        <ItalicIcon className="w-3 h-3" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          const ta = document.getElementById(`legal-editor-${doc.id}`) as HTMLTextAreaElement
-                                          if (!ta) return
-                                          const start = ta.selectionStart
-                                          const newContent = ta.value.substring(0, start) + '\n## Heading\n' + ta.value.substring(start)
-                                          setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, content: newContent } : d) } : prev)
-                                        }}
-                                        className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-700 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
-                                        title="Heading"
-                                      >
-                                        <Heading2Icon className="w-3 h-3" />
-                                      </button>
-                                      <button
-                                        onClick={() => {
-                                          const ta = document.getElementById(`legal-editor-${doc.id}`) as HTMLTextAreaElement
-                                          if (!ta) return
-                                          const start = ta.selectionStart
-                                          const newContent = ta.value.substring(0, start) + '\n- List item\n' + ta.value.substring(start)
-                                          setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, content: newContent } : d) } : prev)
-                                        }}
-                                        className="p-1.5 rounded hover:bg-white dark:hover:bg-zinc-700 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
-                                        title="List"
-                                      >
-                                        <ListIcon className="w-3 h-3" />
-                                      </button>
-                                      <div className="w-px h-4 bg-gray-200 dark:bg-zinc-700 mx-0.5" />
-                                      <button
-                                        onClick={() => setPreviewDocId(isPreviewing ? null : doc.id)}
-                                        className={`p-1.5 rounded transition-colors ${isPreviewing ? 'bg-blue-100 dark:bg-blue-500/20 text-blue-600' : 'hover:bg-white dark:hover:bg-zinc-700 text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-white'}`}
-                                        title="Preview"
-                                      >
-                                        <EyeIcon className="w-3 h-3" />
-                                      </button>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <button
-                                        onClick={() => setExpandedDocId(isExpanded ? null : doc.id)}
-                                        className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400 hover:text-gray-600 transition-colors"
-                                        title={isExpanded ? 'Collapse' : 'Expand'}
-                                      >
-                                        {isExpanded ? <MinimizeIcon className="w-3 h-3" /> : <MaximizeIcon className="w-3 h-3" />}
-                                      </button>
-                                      <span className="text-[9px] text-gray-400 font-mono">{(doc.content || '').length} chars</span>
-                                    </div>
-                                  </div>
+                              <div className="space-y-2">
+                                <RichTextEditor
+                                  content={doc.content || ''}
+                                  onChange={(content) => {
+                                    setConfig(prev => prev ? {
+                                      ...prev,
+                                      documents: prev.documents.map(d => d.id === doc.id ? {
+                                        ...d,
+                                        content,
+                                        lastUpdated: new Date().toISOString().split('T')[0],
+                                      } : d),
+                                    } : prev)
+                                  }}
+                                  placeholder={`Write ${doc.title} content here...`}
+                                />
 
-                                  {/* Editor / Preview */}
-                                  {isPreviewing ? (
-                                    <div className={`bg-white dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg p-4 overflow-y-auto prose prose-sm dark:prose-invert max-w-none ${isExpanded ? 'min-h-[320px] max-h-[500px]' : 'min-h-[120px] max-h-[200px]'}`}>
-                                      {(doc.content || '').split('\n').map((line, i) => {
-                                        if (line.startsWith('## ')) return <h2 key={i} className="text-sm font-bold text-gray-900 dark:text-white mt-3 mb-1">{line.slice(3)}</h2>
-                                        if (line.startsWith('# ')) return <h1 key={i} className="text-base font-bold text-gray-900 dark:text-white mt-4 mb-1">{line.slice(2)}</h1>
-                                        if (line.startsWith('- ')) return <ul key={i}><li className="text-xs text-gray-700 dark:text-zinc-300 ml-4 list-disc">{line.slice(2)}</li></ul>
-                                        if (line.trim() === '') return <br key={i} />
-                                        return <p key={i} className="text-xs text-gray-700 dark:text-zinc-300 leading-relaxed">
-                                          {line.split(/\*\*(.*?)\*\*/g).map((part, j) =>
-                                            j % 2 === 1 ? <strong key={j}>{part}</strong> : 
-                                            part.split(/\*(.*?)\*/g).map((sub, k) =>
-                                              k % 2 === 1 ? <em key={k}>{sub}</em> : sub
-                                            )
-                                          )}
-                                        </p>
-                                      })}
-                                      {!(doc.content || '').trim() && <p className="text-xs text-gray-400 italic">No content yet. Switch to edit mode to start writing.</p>}
-                                    </div>
-                                  ) : (
-                                    <textarea
-                                      id={`legal-editor-${doc.id}`}
-                                      value={doc.content || ''}
-                                      onChange={e => {
-                                        setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, content: e.target.value } : d) } : prev)
-                                      }}
-                                      placeholder={`Write your ${doc.title.toLowerCase()} content here...\n\n# Title\n## Section Heading\n\nYour legal text goes here. Use **bold** and *italic* for emphasis.\n\n- List item 1\n- List item 2`}
-                                      className={`w-full px-3 py-2 bg-white dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${isExpanded ? 'min-h-[320px]' : 'min-h-[120px]'}`}
+                                {/* Version & Status */}
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase">Version</label>
+                                    <input
+                                      type="text"
+                                      title="Document version"
+                                      value={doc.version}
+                                      onChange={e => setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, version: e.target.value } : d) } : prev)}
+                                      className="w-14 px-1.5 py-0.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-blue-500/30"
                                     />
-                                  )}
-
-                                  {/* Version & Status */}
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1.5">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Version</label>
-                                      <input
-                                        type="text"
-                                        title="Document version"
-                                        value={doc.version}
-                                        onChange={e => setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, version: e.target.value } : d) } : prev)}
-                                        className="w-14 px-1.5 py-0.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-                                      />
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Status</label>
-                                      <select
-                                        title="Document status"
-                                        value={doc.status}
-                                        onChange={e => setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, status: e.target.value } : d) } : prev)}
-                                        className="px-1.5 py-0.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500/30"
-                                      >
-                                        <option value="Draft">Draft</option>
-                                        <option value="Published">Published</option>
-                                        <option value="Archived">Archived</option>
-                                      </select>
-                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <label className="text-[9px] font-bold text-gray-400 uppercase">Status</label>
+                                    <select
+                                      title="Document status"
+                                      value={doc.status}
+                                      onChange={e => setConfig(prev => prev ? { ...prev, documents: prev.documents.map(d => d.id === doc.id ? { ...d, status: e.target.value } : d) } : prev)}
+                                      className="px-1.5 py-0.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+                                    >
+                                      <option value="Draft">Draft</option>
+                                      <option value="Published">Published</option>
+                                      <option value="Archived">Archived</option>
+                                    </select>
                                   </div>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           </div>
                         )

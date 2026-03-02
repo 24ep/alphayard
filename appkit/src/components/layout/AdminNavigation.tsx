@@ -95,6 +95,7 @@ export const navigationHubs: NavHub[] = [
         href: '/system',
         permissions: [['system', 'view']],
         items: [
+            { id: 'system-user-management', label: 'User Management', href: '/system', icon: 'users', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-general', label: 'General', href: '/system/general', icon: 'settings', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-security', label: 'Security', href: '/system/security', icon: 'lock', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-api-keys', label: 'API Keys', href: '/system/api-keys', icon: 'key', group: 'Settings', permissions: [['system', 'manage']] },

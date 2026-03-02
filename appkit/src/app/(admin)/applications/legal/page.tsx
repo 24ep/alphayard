@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/Button'
+import { RichTextEditor } from '@/components/cms/RichTextEditor'
 import { adminService } from '@/services/adminService'
 import {
   ScaleIcon,
@@ -24,7 +25,7 @@ interface LegalDocument {
   version: string
   status: 'Published' | 'Draft'
   lastUpdated: string
-  url?: string
+  content?: string
 }
 
 interface LegalConfig {
@@ -35,11 +36,11 @@ interface LegalConfig {
 
 const FALLBACK_CONFIG: LegalConfig = {
   documents: [
-    { id: 'tos', title: 'Terms of Service', type: 'terms-of-service', version: 'v2.1', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0] },
-    { id: 'privacy', title: 'Privacy Policy', type: 'privacy-policy', version: 'v3.0', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0] },
-    { id: 'cookie', title: 'Cookie Policy', type: 'cookie-policy', version: 'v1.2', status: 'Draft', lastUpdated: new Date().toISOString().split('T')[0] },
-    { id: 'dpa', title: 'Data Processing Agreement', type: 'dpa', version: 'v1.0', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0] },
-    { id: 'aup', title: 'Acceptable Use Policy', type: 'aup', version: 'v1.0', status: 'Draft', lastUpdated: new Date().toISOString().split('T')[0] },
+    { id: 'tos', title: 'Terms of Service', type: 'terms-of-service', version: 'v2.1', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0], content: '' },
+    { id: 'privacy', title: 'Privacy Policy', type: 'privacy-policy', version: 'v3.0', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0], content: '' },
+    { id: 'cookie', title: 'Cookie Policy', type: 'cookie-policy', version: 'v1.2', status: 'Draft', lastUpdated: new Date().toISOString().split('T')[0], content: '' },
+    { id: 'dpa', title: 'Data Processing Agreement', type: 'dpa', version: 'v1.0', status: 'Published', lastUpdated: new Date().toISOString().split('T')[0], content: '' },
+    { id: 'aup', title: 'Acceptable Use Policy', type: 'aup', version: 'v1.0', status: 'Draft', lastUpdated: new Date().toISOString().split('T')[0], content: '' },
   ],
   compliance: {
     gdprMode: true,
@@ -108,7 +109,7 @@ export default function DefaultLegalPage() {
 
   const openAddModal = () => {
     setEditingDoc(null)
-    setFormDoc({ title: '', type: '', version: 'v1.0', status: 'Draft', url: '' })
+    setFormDoc({ title: '', type: '', version: 'v1.0', status: 'Draft', content: '' })
     setShowModal(true)
   }
 
@@ -128,7 +129,7 @@ export default function DefaultLegalPage() {
       version: formDoc.version || 'v1.0',
       status: formDoc.status as 'Published' | 'Draft',
       lastUpdated: new Date().toISOString().split('T')[0],
-      url: formDoc.url
+      content: typeof formDoc.content === 'string' ? formDoc.content : ''
     }
 
     if (editingDoc) {
@@ -199,7 +200,7 @@ export default function DefaultLegalPage() {
                   <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-500 flex items-center justify-center"><ScaleIcon className="w-5 h-5" /></div>
                   <div>
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{doc.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-zinc-400">{doc.type}{doc.url && <span className="ml-2 font-mono text-[10px] opacity-60">— {doc.url}</span>}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400">{doc.type}</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -235,7 +236,7 @@ export default function DefaultLegalPage() {
                 <p className="text-xs text-gray-500 dark:text-zinc-400">{item.desc}</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" className="sr-only peer" checked={config.compliance[item.key] ?? false} onChange={() => toggleCompliance(item.key)} />
+                <input type="checkbox" title={item.name} className="sr-only peer" checked={config.compliance[item.key] ?? false} onChange={() => toggleCompliance(item.key)} />
                 <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
               </label>
             </div>
@@ -257,6 +258,8 @@ export default function DefaultLegalPage() {
                 <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">{field.label}</label>
                 <input
                   type="number"
+                  title={field.label}
+                  placeholder="0"
                   value={config.retention[field.key]}
                   onChange={e => updateRetention(field.key, parseInt(e.target.value) || 0)}
                   className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -276,7 +279,7 @@ export default function DefaultLegalPage() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editingDoc ? 'Edit Document' : 'Add Legal Document'}
               </h3>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
+              <button title="Close modal" onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-400">
                 <XIcon className="w-5 h-5" />
               </button>
             </div>
@@ -317,6 +320,7 @@ export default function DefaultLegalPage() {
               <div>
                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Status</label>
                 <select
+                  title="Document status"
                   value={formDoc.status}
                   onChange={e => setFormDoc(p => ({ ...p, status: e.target.value as any }))}
                   className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -326,13 +330,14 @@ export default function DefaultLegalPage() {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Document URL (Optional)</label>
-                <input
-                  type="url"
-                  value={formDoc.url}
-                  onChange={e => setFormDoc(p => ({ ...p, url: e.target.value }))}
-                  placeholder="https://..."
-                  className="w-full px-3 py-2.5 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">Document Content</label>
+                <RichTextEditor
+                  content={typeof formDoc.content === 'string' ? formDoc.content : ''}
+                  onChange={(content) => setFormDoc((p) => ({ ...p, content }))}
+                  placeholder="Write legal document content..."
+                  showToolbar
+                  allowMedia={false}
+                  allowTables={false}
                 />
               </div>
             </div>
