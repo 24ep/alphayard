@@ -213,6 +213,30 @@ const BILLING_PROVIDERS = [
   { value: 'lemonsqueezy', label: 'Lemon Squeezy' },
 ] as const
 
+const BILLING_PROVIDER_FIELDS: Record<string, { key: string; label: string; placeholder: string }[]> = {
+  stripe: [
+    { key: 'publicKey', label: 'Publishable Key', placeholder: 'pk_live_...' },
+    { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_live_...' },
+    { key: 'webhookSecret', label: 'Webhook Secret', placeholder: 'whsec_...' },
+    { key: 'connectedAccountId', label: 'Connected Account ID (optional)', placeholder: 'acct_...' },
+  ],
+  paypal: [
+    { key: 'clientId', label: 'Client ID', placeholder: 'AV2e...' },
+    { key: 'clientSecret', label: 'Client Secret', placeholder: '....' },
+    { key: 'webhookId', label: 'Webhook ID', placeholder: 'WH-...' },
+  ],
+  paddle: [
+    { key: 'vendorId', label: 'Vendor ID', placeholder: '12345' },
+    { key: 'apiKey', label: 'API Key', placeholder: '....' },
+    { key: 'publicKey', label: 'Public Key', placeholder: '....' },
+  ],
+  lemonsqueezy: [
+    { key: 'apiKey', label: 'API Key', placeholder: '....' },
+    { key: 'storeId', label: 'Store ID', placeholder: '12345' },
+    { key: 'webhookSecret', label: 'Webhook Secret', placeholder: 'whsec_...' },
+  ],
+}
+
 export default function ApplicationConfigPage() {
   const params = useParams()
   const router = useRouter()
@@ -319,7 +343,6 @@ export default function ApplicationConfigPage() {
     parentId: '',
   })
   // Billing
-  const [billingUseDefault, setBillingUseDefault] = useState(true)
   const [billingConfig, setBillingConfig] = useState<AppBillingConfig>({
     enabled: false,
     provider: 'stripe',
@@ -669,16 +692,24 @@ export default function ApplicationConfigPage() {
   const loadBillingConfig = useCallback(async () => {
     try {
       const appRes = await adminService.getAppConfigOverride(appId, 'billing')
-      setBillingUseDefault(appRes.useDefault)
+      const defaultRes = await adminService.getDefaultBillingConfig().catch(() => ({ config: null }))
       const defaults: AppBillingConfig = {
         enabled: false,
         provider: 'stripe',
         mode: 'test',
         currency: 'USD',
         providerConfig: {},
+        ...(defaultRes?.config || {}),
       }
       setBillingDefaultConfig(defaults)
-      setBillingConfig(appRes.useDefault ? defaults : { ...defaults, ...(appRes.config || {}) })
+      setBillingConfig({
+        ...defaults,
+        ...(appRes.config || {}),
+        providerConfig: {
+          ...(defaults.providerConfig || {}),
+          ...((appRes.config?.providerConfig as Record<string, Record<string, string>>) || {}),
+        },
+      })
     } catch (error) {
       console.error('Failed to load billing config:', error)
       setBillingConfig({
@@ -690,14 +721,6 @@ export default function ApplicationConfigPage() {
       })
     }
   }, [appId])
-
-  const toggleBillingUseDefault = async (value: boolean) => {
-    setBillingUseDefault(value)
-    if (value) {
-      await adminService.deleteAppConfig(appId, 'billing')
-      setBillingConfig(billingDefaultConfig)
-    }
-  }
 
   const saveBillingConfig = async () => {
     try {
@@ -712,6 +735,19 @@ export default function ApplicationConfigPage() {
     } finally {
       setBillingSaving(false)
     }
+  }
+
+  const updateBillingProviderField = (provider: string, field: string, value: string) => {
+    setBillingConfig(prev => ({
+      ...prev,
+      providerConfig: {
+        ...(prev.providerConfig || {}),
+        [provider]: {
+          ...((prev.providerConfig || {})[provider] || {}),
+          [field]: value,
+        },
+      },
+    }))
   }
 
   const loadEmailTemplates = useCallback(async () => {
@@ -2766,19 +2802,11 @@ export default function ApplicationConfigPage() {
         <TabsContent value="billing" className="space-y-4">
           {renderTabHeader('Billing & Subscriptions', 'billing')}
           <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6 space-y-6">
-            <div className="flex p-1 bg-gray-100 dark:bg-zinc-800 rounded-lg max-w-md">
-              <button
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${billingUseDefault ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white' : 'text-gray-500 dark:text-zinc-400'}`}
-                onClick={() => toggleBillingUseDefault(true)}
-              >
-                Use Default
-              </button>
-              <button
-                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${!billingUseDefault ? 'bg-white dark:bg-zinc-700 shadow text-gray-900 dark:text-white' : 'text-gray-500 dark:text-zinc-400'}`}
-                onClick={() => toggleBillingUseDefault(false)}
-              >
-                Individual
-              </button>
+            <div className="rounded-lg border border-gray-200 dark:border-zinc-800 bg-gray-50/60 dark:bg-zinc-800/30 p-4">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white">Default methods with per-app override</p>
+              <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+                Billing methods inherit platform defaults. Update any field below to override for this application.
+              </p>
             </div>
 
             <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
@@ -2808,7 +2836,7 @@ export default function ApplicationConfigPage() {
               </div>
             </div>
 
-            <div className={`${billingUseDefault ? 'opacity-60 pointer-events-none' : ''} space-y-4`}>
+            <div className="space-y-4">
               <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
@@ -2852,12 +2880,41 @@ export default function ApplicationConfigPage() {
                   </div>
                 </div>
               </div>
+
+              <div className="rounded-lg border border-gray-200 dark:border-zinc-800 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Provider Credentials</h4>
+                  <span className="text-[11px] text-gray-500 dark:text-zinc-400">
+                    App-scoped registration for `{billingConfig.provider}`
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {(BILLING_PROVIDER_FIELDS[billingConfig.provider] || []).map((field) => (
+                    <div key={field.key}>
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-tight block mb-1">{field.label}</label>
+                      <input
+                        type="text"
+                        title={field.label}
+                        value={billingConfig.providerConfig?.[billingConfig.provider]?.[field.key] || ''}
+                        onChange={(e) => updateBillingProviderField(billingConfig.provider, field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm font-mono"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 rounded-lg border border-blue-200/60 dark:border-blue-500/20 bg-blue-50/40 dark:bg-blue-500/5 p-3">
+                  <p className="text-[11px] text-blue-800/90 dark:text-blue-300/90">
+                    Stripe metadata for this app is auto-attached server-side (`appId`, slug, name, webhook path) when saving billing override.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2">
               {billingMsg && <span className={`text-xs ${billingMsg === 'Saved!' ? 'text-emerald-600' : 'text-red-500'}`}>{billingMsg}</span>}
-              <Button variant="outline" onClick={() => setBillingConfig(billingDefaultConfig)} disabled={billingUseDefault || billingSaving}>Reset</Button>
-              <Button onClick={saveBillingConfig} disabled={billingUseDefault || billingSaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
+              <Button variant="outline" onClick={() => setBillingConfig(billingDefaultConfig)} disabled={billingSaving}>Reset</Button>
+              <Button onClick={saveBillingConfig} disabled={billingSaving} className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0">
                 {billingSaving ? <Loader2Icon className="w-4 h-4 mr-1.5 animate-spin" /> : <SaveIcon className="w-4 h-4 mr-1.5" />}
                 Save Billing
               </Button>
@@ -4076,11 +4133,11 @@ export default function ApplicationConfigPage() {
         open={activeDevGuide === 'billing'}
         onClose={() => setActiveDevGuide(null)}
         title="Billing Config Guide"
-        description="Configure default billing and per-app override modes."
+        description="Billing inherits platform defaults and supports inline per-app overrides."
         sharedContent={[
-          { description: 'Set provider mode and choose billing scope (per user or per circle):', code: `// Save app-level billing config override\nawait client.appConfig.save('billing', {\n  enabled: true,\n  provider: 'stripe',\n  mode: 'live',\n  currency: 'USD',\n});\n\n// Choose billing scope\nawait fetch('/api/v1/admin/applications/{appId}/billing-mode', {\n  method: 'PATCH',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ billingMode: 'perCircleLevel' }), // or 'perAccount'\n});` },
+          { description: 'Set provider mode and choose billing scope (per user or per circle):', code: `// Save app-level billing override (inherits defaults, then override fields)\nawait fetch('/api/v1/admin/applications/config', {\n  method: 'PUT',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({\n    appId: '{appId}',\n    configType: 'billing',\n    config: {\n      enabled: true,\n      provider: 'stripe',\n      mode: 'live',\n      currency: 'USD',\n      providerConfig: {\n        stripe: {\n          publicKey: 'pk_live_...',\n          secretKey: 'sk_live_...',\n          webhookSecret: 'whsec_...',\n        },\n      },\n    },\n  }),\n});\n\n// Choose billing scope\nawait fetch('/api/v1/admin/applications/{appId}/billing-mode', {\n  method: 'PATCH',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ billingMode: 'perCircleLevel' }), // or 'perAccount'\n});` },
         ]}
-        apiEndpoints={`GET    /api/v1/admin/applications/{appId}\nPATCH  /api/v1/admin/applications/{appId}/billing-mode\nGET    /api/v1/admin/app-config/{appId}/billing\nPOST   /api/v1/admin/app-config/{appId}/billing`}
+        apiEndpoints={`GET    /api/v1/admin/config/billing\nPUT    /api/v1/admin/config/billing\nGET    /api/v1/admin/applications/config?appId={appId}&configType=billing\nPUT    /api/v1/admin/applications/config\nPATCH  /api/v1/admin/applications/{appId}/billing-mode`}
       />
       <DevGuideDrawer
         open={activeDevGuide === 'circles'}

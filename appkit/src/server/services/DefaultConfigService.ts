@@ -79,13 +79,59 @@ export interface LegalConfig {
 
 export interface BillingConfig {
   enabled: boolean
-  provider: 'stripe'
+  provider: 'stripe' | 'paypal' | 'paddle' | 'lemonsqueezy'
   mode: 'test' | 'live'
   publicKey: string
   secretKey: string
   webhookSecret: string
   currency: string
   settings?: Record<string, any>
+  providerConfig?: Record<string, Record<string, string>>
+}
+
+const DEFAULT_BILLING_CONFIG: BillingConfig = {
+  enabled: false,
+  provider: 'stripe',
+  mode: 'test',
+  publicKey: '',
+  secretKey: '',
+  webhookSecret: '',
+  currency: 'USD',
+  settings: {},
+  providerConfig: {},
+}
+
+function normalizeBillingConfig(
+  incoming: any,
+  defaults: BillingConfig,
+  appMeta?: { id: string; slug: string; name: string }
+): BillingConfig {
+  const merged: BillingConfig = {
+    ...defaults,
+    ...(incoming || {}),
+    providerConfig: {
+      ...(defaults.providerConfig || {}),
+      ...((incoming && typeof incoming.providerConfig === 'object') ? incoming.providerConfig : {}),
+    },
+    settings: {
+      ...(defaults.settings || {}),
+      ...((incoming && typeof incoming.settings === 'object') ? incoming.settings : {}),
+    },
+  }
+
+  if (appMeta) {
+    const stripeCfg = { ...(merged.providerConfig?.stripe || {}) }
+    stripeCfg.appkitAppId = appMeta.id
+    stripeCfg.appkitAppSlug = appMeta.slug
+    stripeCfg.appkitAppName = appMeta.name
+    stripeCfg.webhookPath = `/api/v1/billing/webhooks/stripe/${appMeta.id}`
+    merged.providerConfig = {
+      ...(merged.providerConfig || {}),
+      stripe: stripeCfg,
+    }
+  }
+
+  return merged
 }
 
 /* ------------------------------------------------------------------ */
@@ -286,6 +332,36 @@ class DefaultConfigService {
     }
   }
 
+  /* ===================== BILLING (SystemConfig) ===================== */
+
+  async getDefaultBillingConfig(): Promise<BillingConfig | null> {
+    try {
+      const row = await prisma.systemConfig.findUnique({
+        where: { key: CONFIG_KEYS.BILLING },
+      })
+      if (!row?.value) return null
+      return normalizeBillingConfig(row.value, DEFAULT_BILLING_CONFIG)
+    } catch (error) {
+      console.error('getDefaultBillingConfig error:', error)
+      return null
+    }
+  }
+
+  async saveDefaultBillingConfig(data: BillingConfig): Promise<boolean> {
+    try {
+      const normalized = normalizeBillingConfig(data, DEFAULT_BILLING_CONFIG)
+      await prisma.systemConfig.upsert({
+        where: { key: CONFIG_KEYS.BILLING },
+        update: { value: normalized as any },
+        create: { key: CONFIG_KEYS.BILLING, value: normalized as any, description: 'Default billing configuration' },
+      })
+      return true
+    } catch (error) {
+      console.error('saveDefaultBillingConfig error:', error)
+      return false
+    }
+  }
+
   /* ===================== PER‑APP OVERRIDES ========================= */
 
   /** Get per‑app config override. Returns null if using defaults. */
@@ -306,6 +382,18 @@ class DefaultConfigService {
   async saveAppConfig(appId: string, configType: string, data: any): Promise<boolean> {
     try {
       const key = `config_override_${configType}`
+      let nextData = data
+      if (configType === 'billing') {
+        const app = await prisma.application.findUnique({
+          where: { id: appId },
+          select: { id: true, slug: true, name: true },
+        })
+        if (!app) {
+          return false
+        }
+        const defaults = (await this.getDefaultBillingConfig()) || DEFAULT_BILLING_CONFIG
+        nextData = normalizeBillingConfig(data, defaults, app)
+      }
       // Find existing to get id for upsert
       const existing = await prisma.appSetting.findFirst({
         where: { applicationId: appId, key },
@@ -314,14 +402,14 @@ class DefaultConfigService {
       if (existing) {
         await prisma.appSetting.update({
           where: { id: existing.id },
-          data: { value: data },
+          data: { value: nextData },
         })
       } else {
         await prisma.appSetting.create({
           data: {
             applicationId: appId,
             key,
-            value: data,
+            value: nextData,
             description: `Per-app override for ${configType}`,
           },
         })
@@ -354,6 +442,14 @@ class DefaultConfigService {
   async getEffectiveConfig(appId: string, configType: string): Promise<{ useDefault: boolean; config: any }> {
     const override = await this.getAppConfig(appId, configType)
     if (override) {
+      if (configType === 'billing') {
+        const defaults = (await this.getDefaultBillingConfig()) || DEFAULT_BILLING_CONFIG
+        const app = await prisma.application.findUnique({
+          where: { id: appId },
+          select: { id: true, slug: true, name: true },
+        })
+        return { useDefault: false, config: normalizeBillingConfig(override, defaults, app || undefined) }
+      }
       return { useDefault: false, config: override }
     }
     // Fall back to default
@@ -372,16 +468,18 @@ class DefaultConfigService {
         defaultConfig = await this.getDefaultUserAttributes()
         break
       case 'billing':
-        defaultConfig = {
-          enabled: false,
-          provider: 'stripe',
-          mode: 'test',
-          publicKey: '',
-          secretKey: '',
-          webhookSecret: '',
-          currency: 'USD'
-        }
+        defaultConfig = (await this.getDefaultBillingConfig()) || DEFAULT_BILLING_CONFIG
         break
+    }
+    if (configType === 'billing') {
+      const app = await prisma.application.findUnique({
+        where: { id: appId },
+        select: { id: true, slug: true, name: true },
+      })
+      return {
+        useDefault: true,
+        config: normalizeBillingConfig(defaultConfig, DEFAULT_BILLING_CONFIG, app || undefined),
+      }
     }
     return { useDefault: true, config: defaultConfig }
   }

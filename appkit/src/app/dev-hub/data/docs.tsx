@@ -723,17 +723,39 @@ await client.billing.subscribe(userId, planId);`}
 // { apiCalls: 1250, storage: '2.3GB', activeUsers: 45 }`}
         />
 
-        <h2 className="text-2xl font-bold mt-12 mb-4">Default vs App Override Billing</h2>
+        <h2 className="text-2xl font-bold mt-12 mb-4">Inherited Billing with Inline App Override</h2>
         <p className="text-slate-600 leading-relaxed">
-          Billing can inherit global defaults or be overridden per application, with scope set to per-user or per-circle.
+          Billing methods are inherited from platform defaults and can be overridden inline per application, with scope set to per-user or per-circle.
         </p>
         <CodeBlock
           id="billing-override"
           language="typescript"
-          code={`await client.admin.applications.updateBilling(appId, {
-  useDefault: false,
-  billingScope: 'perCircleLevel', // or 'perAccount'
-  provider: 'stripe',
+          code={`await fetch('/api/v1/admin/applications/config', {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    appId,
+    configType: 'billing',
+    config: {
+      provider: 'stripe',
+      mode: 'live',
+      currency: 'USD',
+      providerConfig: {
+        stripe: {
+          publicKey: 'pk_live_...',
+          secretKey: 'sk_live_...',
+          webhookSecret: 'whsec_...',
+        },
+      },
+    },
+  }),
+});
+
+// Billing scope
+await fetch('/api/v1/admin/applications/{appId}/billing-mode', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ billingMode: 'perCircleLevel' }), // or perAccount
 });`}
         />
       </div>

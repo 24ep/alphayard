@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { authenticate, hasPermission } from '@/lib/auth'
 import defaultConfigService from '@/server/services/DefaultConfigService'
 
-// GET /api/v1/admin/applications/config?appId=X&configType=auth|comm|legal
+// GET /api/v1/admin/applications/config?appId=X&configType=auth|comm|legal|billing
 export async function GET(request: NextRequest) {
   try {
     const auth = await authenticate(request)

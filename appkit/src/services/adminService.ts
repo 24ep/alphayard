@@ -783,6 +783,18 @@ class AdminService {
     });
   }
 
+  // Billing defaults
+  async getDefaultBillingConfig(): Promise<{ config: any }> {
+    return this.request<{ config: any }>('/v1/admin/config/billing');
+  }
+
+  async saveDefaultBillingConfig(config: any): Promise<any> {
+    return this.request<any>('/v1/admin/config/billing', {
+      method: 'PUT',
+      body: JSON.stringify({ config }),
+    });
+  }
+
   // Per-app config overrides
   async getAppConfigOverride(appId: string, configType: string): Promise<{ useDefault: boolean; config: any }> {
     return this.request<{ useDefault: boolean; config: any }>(`/v1/admin/applications/config?appId=${appId}&configType=${configType}`);
