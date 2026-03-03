@@ -29,6 +29,16 @@ import { Select } from '../ui/Select'
 import { Badge } from '../ui/Badge'
 import { LoadingSpinner } from '../ui/LoadingSpinner'
 import { EmptyState } from '../ui/EmptyState'
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+  DropdownMenuGroup
+} from '../ui/dropdown-menu'
+import { FunnelIcon } from '@heroicons/react/24/outline'
 
 export function AdminConsoleUsers() {
   return (
@@ -237,46 +247,76 @@ function AdminConsoleUsersContent() {
 
   const renderUsersTab = () => (
     <div className="space-y-6">
-      {/* Filters */}
-      <Card variant="frosted">
-        <CardBody>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="relative">
-              <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
-              <Input
-                type="text"
-                placeholder="Search admin users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+      {/* Filters & Search */}
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="relative flex-1 w-full">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" aria-hidden="true" />
+          <Input
+            type="text"
+            placeholder="Search admin users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-11"
+          />
+        </div>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-11 px-4 flex items-center gap-2 rounded-xl border-gray-300/50 bg-white/80 backdrop-blur-sm hover:bg-gray-50 transition-all">
+              <FunnelIcon className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Filters</span>
+              {(filterRole !== 'all' || filterStatus !== 'all') && (
+                <div className="ml-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  {(filterRole !== 'all' ? 1 : 0) + (filterStatus !== 'all' ? 1 : 0)}
+                </div>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-72 p-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Role</label>
+              <select
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                title="Filter by role"
+                className="macos-input w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm"
+              >
+                <option value="all">All Roles</option>
+                {roles.map(role => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
+              </select>
             </div>
-            <select
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              title="Filter by role"
-              className="macos-input w-full px-4 py-2.5 rounded-xl border border-gray-300/50 bg-white/80 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+            
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Status</label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                title="Filter by status"
+                className="macos-input w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/10 transition-all text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+
+            <DropdownMenuSeparator />
+            
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full text-xs text-gray-500 hover:text-gray-900 h-8 font-medium"
+              onClick={() => { setFilterRole('all'); setFilterStatus('all') }}
             >
-              <option value="all">All Roles</option>
-              {roles.map(role => (
-                <option key={role.id} value={role.id}>{role.name}</option>
-              ))}
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              title="Filter by status"
-              className="macos-input w-full px-4 py-2.5 rounded-xl border border-gray-300/50 bg-white/80 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="pending">Pending</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-        </CardBody>
-      </Card>
+              Reset all filters
+            </Button>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Users Table */}
       {filteredUsers.length === 0 ? (
@@ -573,72 +613,68 @@ function AdminConsoleUsersContent() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <Card variant="frosted">
-        <CardBody>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
+      <div className="pb-2 border-b border-transparent">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center gap-2">
               <LockClosedIcon className="w-8 h-8 text-gray-900" />
               Admin Console Users
             </h2>
-              <p className="text-sm text-gray-500">Manage admin console users, roles, and permissions</p>
-            </div>
-            {activeTab === 'users' && (
-              <Button variant="primary" onClick={handleCreate}>
-                <UserPlusIcon className="h-4 w-4 mr-2" aria-hidden="true" />
-                Add Admin User
-              </Button>
-            )}
+            <p className="text-sm text-gray-500">Manage admin console users, roles, and permissions</p>
           </div>
-        </CardBody>
-      </Card>
+          {activeTab === 'users' && (
+            <Button variant="primary" onClick={handleCreate} className="rounded-xl shadow-lg shadow-blue-500/20">
+              <UserPlusIcon className="h-4 w-4 mr-2" aria-hidden="true" />
+              Add Admin User
+            </Button>
+          )}
+        </div>
+      </div>
 
       {/* Tabs */}
-      <Card variant="frosted">
-        <CardBody className="p-0">
-          <nav className="flex space-x-1 p-2" role="tablist">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'users'
-                  ? 'bg-blue-50 text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              role="tab"
-              aria-selected={activeTab === 'users' ? 'true' : 'false'}
-            >
-              <UserIcon className="h-4 w-4" aria-hidden="true" />
-              Users
-            </button>
-            <button
-              onClick={() => setActiveTab('roles')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'roles'
-                  ? 'bg-blue-50 text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              role="tab"
-              aria-selected={activeTab === 'roles' ? 'true' : 'false'}
-            >
-              <KeyIcon className="h-4 w-4" aria-hidden="true" />
-              Roles & Permissions
-            </button>
-            <button
-              onClick={() => setActiveTab('groups')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                activeTab === 'groups'
-                  ? 'bg-blue-50 text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              role="tab"
-              aria-selected={activeTab === 'groups' ? 'true' : 'false'}
-            >
-              <UserGroupIcon className="h-4 w-4" aria-hidden="true" />
-              User Groups
-            </button>
-          </nav>
-        </CardBody>
-      </Card>
+      <div className="bg-white/40 backdrop-blur-sm rounded-xl p-1 inline-flex w-fit">
+        <nav className="flex space-x-1" role="tablist">
+          <button
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'users'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+            }`}
+            role="tab"
+            aria-selected={activeTab === 'users' ? 'true' : 'false'}
+          >
+            <UserIcon className="h-4 w-4" aria-hidden="true" />
+            Users
+          </button>
+          <button
+            onClick={() => setActiveTab('roles')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'roles'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+            }`}
+            role="tab"
+            aria-selected={activeTab === 'roles' ? 'true' : 'false'}
+          >
+            <KeyIcon className="h-4 w-4" aria-hidden="true" />
+            Roles & Permissions
+          </button>
+          <button
+            onClick={() => setActiveTab('groups')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'groups'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+            }`}
+            role="tab"
+            aria-selected={activeTab === 'groups' ? 'true' : 'false'}
+          >
+            <UserGroupIcon className="h-4 w-4" aria-hidden="true" />
+            User Groups
+          </button>
+        </nav>
+      </div>
 
       {/* Tab Content */}
       {activeTab === 'users' && renderUsersTab()}

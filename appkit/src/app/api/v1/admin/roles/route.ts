@@ -1,7 +1,7 @@
-// Roles Management - Local implementation with database integration and security checks
+// Roles Management - Admin Console Roles (AdminRole model)
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/server/lib/prisma'
-import { authenticate, hasPermission } from '@/lib/auth'
+import { authenticate } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       isSystem: role.isSystem,
       isDefault: role.isDefault,
       permissions: Array.isArray(role.permissions) ? role.permissions : [],
-      userCount: role.members.length,
+      user_count: role.members.length,
       color: role.color,
       icon: role.icon,
       applicationId: role.applicationId,

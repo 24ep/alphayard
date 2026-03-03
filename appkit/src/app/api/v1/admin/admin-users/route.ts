@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         name: true,
+        avatarUrl: true,
         isActive: true,
         isSuperAdmin: true,
         roleId: true,
@@ -40,10 +41,23 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Format for frontend
+    const formattedUsers = adminUsers.map(user => {
+      const nameParts = user.name ? user.name.split(' ') : ['', '']
+      return {
+        ...user,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        status: user.isActive ? 'active' : 'inactive',
+        role: user.roleId || (user.isSuperAdmin ? 'super-admin' : 'viewer'),
+        lastLogin: user.lastLoginAt
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      users: adminUsers,
-      total: adminUsers.length
+      users: formattedUsers,
+      total: formattedUsers.length
     })
 
   } catch (error: any) {

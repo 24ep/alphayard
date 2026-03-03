@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
       isDefault: group.isDefault,
       permissions: Array.isArray(group.permissions) ? group.permissions : [],
       userCount: group.members.length,
+      memberCount: group.members.length,
       color: group.color,
       icon: group.icon,
       applicationId: group.applicationId,

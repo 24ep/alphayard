@@ -59,7 +59,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    return NextResponse.json({ success: true, user })
+    // Format for frontend
+    const nameParts = user.name ? user.name.split(' ') : ['', '']
+    const formattedUser = {
+      ...user,
+      firstName: nameParts[0] || '',
+      lastName: nameParts.slice(1).join(' ') || '',
+      status: user.isActive ? 'active' : 'inactive',
+      role: user.roleId || (user.isSuperAdmin ? 'super-admin' : 'viewer'),
+      lastLogin: user.lastLoginAt
+    }
+
+    return NextResponse.json({ success: true, user: formattedUser })
 
   } catch (error: any) {
     console.error('Failed to get admin user:', error)
@@ -81,17 +92,33 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Try admin_users first
     const adminUser = await prisma.adminUser.findUnique({ where: { id } })
     if (adminUser) {
+      // Combine names if provided separately
+      const updatedName = name || (firstName || lastName ? `${firstName || ''} ${lastName || ''}`.trim() : undefined)
+
       const updated = await prisma.adminUser.update({
         where: { id },
         data: {
-          ...(name !== undefined && { name }),
+          ...(updatedName !== undefined && { name: updatedName }),
           ...(email !== undefined && { email }),
           ...(roleId !== undefined && { roleId }),
           ...(isActive !== undefined && { isActive }),
-          ...(isSuperAdmin !== undefined && { isSuperAdmin })
+          ...(isSuperAdmin !== undefined && { isSuperAdmin }),
+          updatedAt: new Date()
         }
       })
-      return NextResponse.json({ success: true, user: updated })
+
+      // Format for frontend
+      const nameParts = updated.name ? updated.name.split(' ') : ['', '']
+      const formattedUpdated = {
+        ...updated,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        status: updated.isActive ? 'active' : 'inactive',
+        role: updated.roleId || (updated.isSuperAdmin ? 'super-admin' : 'viewer'),
+        lastLogin: updated.lastLoginAt
+      }
+
+      return NextResponse.json({ success: true, user: formattedUpdated })
     }
 
     // Fallback to users table

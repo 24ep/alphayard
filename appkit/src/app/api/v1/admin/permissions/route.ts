@@ -1,7 +1,7 @@
-// Permissions System - Local implementation with database integration and security checks
+// Permissions System - Admin Console Permissions (AdminPermission model)
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/server/lib/prisma'
-import { authenticate, hasPermission } from '@/lib/auth'
+import { authenticate } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {

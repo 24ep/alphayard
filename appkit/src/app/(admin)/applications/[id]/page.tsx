@@ -27,6 +27,7 @@ import {
   GlobeIcon,
   ShieldIcon,
   ShieldCheckIcon,
+  BellIcon,
   LockIcon,
   MessageSquareIcon,
   CogIcon,
@@ -273,6 +274,10 @@ export default function ApplicationConfigPage() {
   const [legalConfig, setLegalConfig] = useState<any>(null)
   const [legalUseDefault, setLegalUseDefault] = useState(true)
   const [legalLoading, setLegalLoading] = useState(true)
+  // Communication configuration state
+  const [commConfig, setCommConfig] = useState<{ channels: Record<string, boolean> }>({ 
+    channels: { email: false, sms: false, push: false, inApp: false } 
+  })
   // Security & MFA state (controlled)
   const [securityConfig, setSecurityConfig] = useState({
     mfa: { totp: true, sms: false, email: true, fido2: false },
@@ -418,6 +423,22 @@ export default function ApplicationConfigPage() {
     a.href = url; a.download = `activity-log-${appId}-${new Date().toISOString().split('T')[0]}.csv`; a.click()
     URL.revokeObjectURL(url)
   }
+
+  const loadCommConfig = useCallback(async () => {
+    if (!appId) return
+    try {
+      const res = await adminService.getAppConfigOverride(appId, 'comm')
+      if (res && res.config) {
+        setCommConfig(res.config)
+      }
+    } catch (err) {
+      console.error('Failed to load comm config:', err)
+    }
+  }, [appId])
+
+  useEffect(() => {
+    loadCommConfig()
+  }, [loadCommConfig])
 
   const loadCircles = useCallback(async () => {
     if (!appId) return
@@ -2747,35 +2768,42 @@ export default function ApplicationConfigPage() {
           </div>
         </TabsContent>
 
-        {/* ==================== TAB 6: Communication ==================== */}
         <TabsContent value="communication" className="space-y-4">
           {renderTabHeader('Communication', 'communication')}
-          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 p-6">
-            <div className="mb-5">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Communication Channels</h3>
-              <p className="text-sm text-gray-500 dark:text-zinc-400">Click a channel to configure its settings and providers for this application.</p>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { key: 'email' as const, name: 'Email', icon: <MailIcon className="w-6 h-6" />, color: 'bg-blue-50 dark:bg-blue-500/10 text-blue-500', desc: 'SendGrid / SES / SMTP' },
-                { key: 'sms' as const, name: 'SMS', icon: <SmartphoneIcon className="w-6 h-6" />, color: 'bg-red-50 dark:bg-red-500/10 text-red-500', desc: 'Twilio / Vonage' },
-                { key: 'push' as const, name: 'Push', icon: <MonitorIcon className="w-6 h-6" />, color: 'bg-amber-50 dark:bg-amber-500/10 text-amber-500', desc: 'FCM / APNs' },
-                { key: 'inApp' as const, name: 'In-App', icon: <MessageSquareIcon className="w-6 h-6" />, color: 'bg-violet-50 dark:bg-violet-500/10 text-violet-500', desc: 'Built-in' },
-              ].map((method) => (
-                <button
-                  key={method.key}
-                  onClick={() => { setSelectedCommChannel(method.key); setIsCommDrawerOpen(true) }}
-                  className="flex flex-col items-center gap-2.5 p-4 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/40 hover:bg-blue-50/20 dark:hover:bg-blue-500/5 transition-all group"
-                >
-                  <div className={`w-12 h-12 rounded-xl ${method.color} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
-                    {method.icon}
+          <div className="rounded-xl border border-gray-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 overflow-hidden">
+            <div className="p-8 flex flex-col items-center text-center max-w-2xl mx-auto">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center text-blue-600 mb-6 shadow-sm border border-blue-100 dark:border-blue-500/20">
+                <BellIcon className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Communication Hub</h3>
+              <p className="text-gray-500 dark:text-zinc-400 mb-8">
+                Manage all outgoing notifications, including Email, SMS, Push, and In-App messaging. 
+                Configure providers like SendGrid, Twilio, and Firebase Messaging in one place.
+              </p>
+              
+              <div className="flex flex-wrap justify-center gap-3 mb-8">
+                {[
+                  { name: 'Email', icon: <MailIcon className="w-3.5 h-3.5" />, active: commConfig.channels.email },
+                  { name: 'SMS', icon: <SmartphoneIcon className="w-3.5 h-3.5" />, active: commConfig.channels.sms },
+                  { name: 'Push', icon: <BellIcon className="w-3.5 h-3.5" />, active: commConfig.channels.push },
+                  { name: 'In-App', icon: <MessageSquareIcon className="w-3.5 h-3.5" />, active: commConfig.channels.inApp },
+                ].map(item => (
+                  <div key={item.name} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${item.active ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-500/10 dark:border-blue-500/30 dark:text-blue-300' : 'bg-gray-50/50 border-gray-100 text-gray-400 dark:bg-zinc-800/50 dark:border-zinc-800 dark:text-zinc-500'}`}>
+                    {item.icon}
+                    {item.name}
+                    {item.active && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />}
                   </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-800 dark:text-zinc-200">{method.name}</p>
-                    <p className="text-[10px] text-gray-400 dark:text-zinc-500">{method.desc}</p>
-                  </div>
-                </button>
-              ))}
+                ))}
+              </div>
+
+              <Button 
+                onClick={() => { setSelectedCommChannel('email'); setIsCommDrawerOpen(true) }}
+                size="lg"
+                className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-xl shadow-blue-500/25 px-8 hover:scale-[1.02] transition-transform"
+              >
+                <SettingsIcon className="w-4 h-4 mr-2" />
+                Manage Communication Channels
+              </Button>
             </div>
           </div>
         </TabsContent>
