@@ -155,6 +155,7 @@ const applicationQuery = {
         clientId: true,
         clientType: true,
         clientSecretHash: true,
+        clientSecretLast4: true,
         redirectUris: true
       }
     },
@@ -206,6 +207,7 @@ function formatApplication(application: any) {
     oauthClientId: primaryOAuthClient?.clientId || null,
     oauthClientType: primaryOAuthClient?.clientType || null,
     oauthClientSecretConfigured: Boolean(primaryOAuthClient?.clientSecretHash),
+    oauthClientSecretLast4: primaryOAuthClient?.clientSecretLast4 || null,
     oauthRedirectUris,
     oauthPrimaryRedirectUri: oauthRedirectUris[0] || null,
     authBehavior: {
@@ -445,9 +447,11 @@ export async function PUT(
       }
 
       let clientSecretHashForCreate: string | null = null
+      let clientSecretLast4ForCreate: string | null = null
       if (rotateClientSecret === true) {
         generatedClientSecret = `acs_${randomBytes(24).toString('base64url')}`
         clientSecretHashForCreate = await bcrypt.hash(generatedClientSecret, 12)
+        clientSecretLast4ForCreate = generatedClientSecret.slice(-4)
       }
 
       primaryOAuthClient = await prisma.oAuthClient.create({
@@ -457,7 +461,8 @@ export async function PUT(
           name: `${app.name} OAuth Client`,
           applicationId: app.id,
           redirectUris: requestedRedirectUris,
-          ...(clientSecretHashForCreate ? { clientSecretHash: clientSecretHashForCreate } : {})
+          ...(clientSecretHashForCreate ? { clientSecretHash: clientSecretHashForCreate } : {}),
+          ...(clientSecretLast4ForCreate ? { clientSecretLast4: clientSecretLast4ForCreate } : {})
         },
         select: {
           id: true,
@@ -517,9 +522,10 @@ export async function PUT(
       // One-time reveal secret; only hash is stored in DB.
       generatedClientSecret = `acs_${randomBytes(24).toString('base64url')}`
       const clientSecretHash = await bcrypt.hash(generatedClientSecret, 12)
+      const clientSecretLast4 = generatedClientSecret.slice(-4)
       await prisma.oAuthClient.update({
         where: { id: primaryOAuthClient.id },
-        data: { clientSecretHash }
+        data: { clientSecretHash, clientSecretLast4 }
       })
     }
 

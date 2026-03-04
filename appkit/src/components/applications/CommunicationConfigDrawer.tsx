@@ -12,7 +12,7 @@ import {
   SaveIcon,
   Loader2Icon,
   RotateCcwIcon,
-  ChevronDownIcon,
+  PlusIcon,
 } from 'lucide-react'
 
 interface CommunicationConfigDrawerProps {
@@ -32,10 +32,10 @@ interface CommConfig {
 }
 
 const CHANNEL_META = [
-  { key: 'email' as const, name: 'Email', icon: <MailIcon className="w-4 h-4" /> },
-  { key: 'sms' as const, name: 'SMS', icon: <SmartphoneIcon className="w-4 h-4" /> },
-  { key: 'push' as const, name: 'Push Notifications', icon: <BellIcon className="w-4 h-4" /> },
-  { key: 'inApp' as const, name: 'In-App', icon: <MessageSquareIcon className="w-4 h-4" /> },
+  { key: 'email' as const, name: 'Email', icon: <MailIcon className="w-4 h-4" />, color: 'bg-blue-50 dark:bg-blue-500/10 text-blue-500' },
+  { key: 'sms' as const, name: 'SMS', icon: <SmartphoneIcon className="w-4 h-4" />, color: 'bg-amber-50 dark:bg-amber-500/10 text-amber-500' },
+  { key: 'push' as const, name: 'Push Notifications', icon: <BellIcon className="w-4 h-4" />, color: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500' },
+  { key: 'inApp' as const, name: 'In-App', icon: <MessageSquareIcon className="w-4 h-4" />, color: 'bg-violet-50 dark:bg-violet-500/10 text-violet-500' },
 ]
 
 const METHOD_OPTIONS: Record<string, { value: string; label: string; fields: { key: string; label: string; placeholder: string; type?: string }[] }[]> = {
@@ -70,7 +70,27 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  let initialExpandedChannel = initialChannel
+  // If it's single channel mode, try to use it directly. Otherwise use null.
+  useEffect(() => {
+    if (!isOpen) return
+    setExpandedChannel(initialChannel || null)
+  }, [isOpen, initialChannel])
+
   const [expandedChannel, setExpandedChannel] = useState<string | null>(null)
+  const [addPickerOpen, setAddPickerOpen] = useState(false)
+  const addPickerRef = React.useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!addPickerOpen) return
+    const handler = (e: MouseEvent) => {
+      if (addPickerRef.current && !addPickerRef.current.contains(e.target as Node)) {
+        setAddPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [addPickerOpen])
 
   const isSingleChannelMode = !!initialChannel
   const displayChannels = isSingleChannelMode
@@ -84,10 +104,7 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
     if (isOpen && appId) loadData()
   }, [isOpen, appId])
 
-  useEffect(() => {
-    if (!isOpen) return
-    setExpandedChannel(initialChannel || null)
-  }, [isOpen, initialChannel])
+  // We already handle initialChannel in the useState and useEffect.
 
   const loadData = async () => {
     try {
@@ -161,13 +178,47 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                   {isSingleChannelMode ? 'Channel Configuration' : 'Channels & Providers'}
                 </h3>
+                {!isSingleChannelMode && (
+                  <div className="relative" ref={addPickerRef}>
+                    <button
+                      onClick={() => setAddPickerOpen((v) => !v)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors"
+                    >
+                      <PlusIcon className="w-3.5 h-3.5" />
+                      Add channel
+                    </button>
+                    {addPickerOpen && (
+                      <div className="absolute right-0 mt-1 w-52 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-700 shadow-lg z-10 overflow-hidden">
+                        {displayChannels.filter((ch) => !config.channels[ch.key]).length === 0 ? (
+                          <p className="px-4 py-3 text-xs text-gray-400">All channels are enabled.</p>
+                        ) : (
+                          displayChannels
+                            .filter((ch) => !config.channels[ch.key])
+                            .map((ch) => (
+                              <button
+                                key={ch.key}
+                                onClick={() => {
+                                  toggleChannel(ch.key)
+                                  setAddPickerOpen(false)
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-zinc-800 text-left"
+                              >
+                                <span className={`w-7 h-7 rounded-lg ${ch.color || 'bg-gray-50 text-gray-500'} flex items-center justify-center`}>
+                                  {ch.icon}
+                                </span>
+                                <span className="text-xs text-gray-700 dark:text-zinc-300 font-medium">{ch.name}</span>
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3">
-                {displayChannels.map(ch => {
+                {displayChannels.filter((ch) => isSingleChannelMode || config.channels[ch.key]).map((ch) => {
                   const isEnabled = config.channels[ch.key]
-                  const isDefaultEnabled = defaultConfig.channels[ch.key]
-                  const isOverridden = isEnabled !== isDefaultEnabled
                   const methods = METHOD_OPTIONS[ch.key]
                   const selectedMethod = config.selectedMethods?.[ch.key as keyof typeof config.selectedMethods]
                   const isExpanded = expandedChannel === ch.key
@@ -175,38 +226,24 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
                   return (
                     <div
                       key={ch.key}
-                      className={`rounded-xl border transition-all ${
+                      className={`p-4 rounded-xl border transition-all ${
                         isExpanded
                           ? 'border-blue-400 dark:border-blue-500/60 ring-2 ring-blue-400/20 dark:ring-blue-500/20'
-                          : isOverridden
-                          ? 'border-orange-500/30 bg-orange-500/5'
-                          : 'border-blue-200/80 dark:border-blue-500/30 bg-blue-50/20 dark:bg-blue-500/5'
+                          : 'border-blue-200/80 dark:border-blue-500/30 bg-blue-50/20 dark:bg-blue-500/5 cursor-pointer hover:border-blue-300 dark:hover:border-blue-500/40'
                       }`}
                     >
                       <div
-                        className="flex items-center justify-between p-4 cursor-pointer"
+                        className="flex items-start justify-between"
                         onClick={() => setExpandedChannel(isExpanded ? null : ch.key)}
                       >
                         <div className="flex items-center space-x-3">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ${
-                            isOverridden
-                              ? 'bg-orange-100 text-orange-600'
-                              : 'bg-gray-100 dark:bg-zinc-800 text-gray-500'
-                          }`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm ${ch.color || 'bg-gray-50 text-gray-500'}`}>
                             {ch.icon}
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-gray-900 dark:text-white">{ch.name}</span>
-                              {isOverridden && (
-                                <span className="px-1.5 py-0.5 bg-orange-100 dark:bg-orange-500/20 text-[9px] font-bold text-orange-600 uppercase rounded">Custom</span>
-                              )}
-                            </div>
-                            <p className="text-[10px] mt-0.5">
-                              {isEnabled
-                                ? <span className="text-emerald-600 dark:text-emerald-400">Enabled</span>
-                                : <span className="text-gray-400">Disabled</span>
-                              }
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">{ch.name}</span>
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              Enabled
                               {methods && selectedMethod && isEnabled && (
                                 <span className="text-gray-400 ml-1">· {methods.find(m => m.value === selectedMethod)?.label || selectedMethod}</span>
                               )}
@@ -214,33 +251,18 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                          {isOverridden && (
-                            <button
-                              onClick={() => setConfig(prev => ({ ...prev, channels: { ...prev.channels, [ch.key]: !!isDefaultEnabled } }))}
-                              className="p-1.5 hover:bg-orange-100 rounded-md text-orange-500"
-                              title="Reset to Default"
-                            >
-                              <RotateCcwIcon className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              title={`${ch.name} enabled`}
-                              className="sr-only peer"
-                              checked={isEnabled}
-                              onChange={() => toggleChannel(ch.key)}
-                            />
-                            <div className="w-9 h-5 bg-gray-200 dark:bg-zinc-700 peer-checked:bg-blue-500 rounded-full transition-colors after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-all peer-checked:after:translate-x-full" />
-                          </label>
-                          <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleChannel(ch.key); }}
+                          title={`Remove ${ch.name}`}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
                       </div>
 
                       {/* Expanded config for this channel */}
                       {isExpanded && methods && (
-                        <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-zinc-800/50 space-y-3">
+                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-zinc-800/50 space-y-3">
                           <div>
                             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1.5">Provider</label>
                             <div className="flex flex-wrap gap-1.5">
@@ -298,7 +320,7 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
 
                       {/* Expanded — channel has no sub-providers (inApp) */}
                       {isExpanded && !methods && (
-                        <div className="px-4 pb-4 pt-1 border-t border-gray-100 dark:border-zinc-800/50">
+                        <div className="mt-4 px-1 pt-4 border-t border-gray-100 dark:border-zinc-800/50">
                           <p className="text-xs text-gray-400">No additional configuration required for this channel.</p>
                         </div>
                       )}

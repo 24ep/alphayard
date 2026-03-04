@@ -456,15 +456,6 @@ export default function AuthMethodsConfigDrawer({ isOpen, onClose, appId, appNam
                     )}
                   </div>}
                 </div>
-                {displayProviders.every((p) => !p.isEnabled) && (
-                  <div className="flex flex-col items-center justify-center py-10 text-center">
-                    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
-                      <ShieldCheckIcon className="w-5 h-5 text-gray-400" />
-                    </div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-zinc-400">No auth methods enabled</p>
-                    <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Use "Add method" to enable one.</p>
-                  </div>
-                )}
                 {(['general', 'social login', 'password less'] as const).map((group) => {
                   // Only show ENABLED providers (or all in single-method mode)
                   const groupProviders = displayProviders.filter(

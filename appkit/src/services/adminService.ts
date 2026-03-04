@@ -816,6 +816,105 @@ class AdminService {
     });
   }
 
+  // ===================== Application Specific APIs =====================
+
+  // Activity Log
+  async getApplicationActivity(appId: string): Promise<{ entries: any[] }> {
+    return this.request<{ entries: any[] }>(`/v1/admin/applications/${appId}/activity`);
+  }
+
+  // Circles
+  async getApplicationCircles(appId: string): Promise<{ circles: any[] }> {
+    return this.request<{ circles: any[] }>(`/v1/admin/applications/${appId}/circles`);
+  }
+
+  async createApplicationCircle(appId: string, data: any): Promise<{ circle: any }> {
+    return this.request<{ circle: any }>(`/v1/admin/applications/${appId}/circles`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getApplicationCircle(appId: string, circleId: string): Promise<{ circle: any }> {
+    return this.request<{ circle: any }>(`/v1/admin/applications/${appId}/circles/${circleId}`);
+  }
+
+  async updateApplicationCircle(appId: string, circleId: string, data: any): Promise<{ circle: any }> {
+    return this.request<{ circle: any }>(`/v1/admin/applications/${appId}/circles/${circleId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async assignCircleMember(appId: string, circleId: string, userId: string, role: string): Promise<any> {
+    const endpoint = role === 'owner' ? 'owners' : 'members';
+    return this.request<any>(`/v1/admin/applications/${appId}/circles/${circleId}/${endpoint}`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, role }),
+    });
+  }
+
+  async removeCircleMember(appId: string, circleId: string, userId: string, role: string): Promise<any> {
+    const endpoint = role === 'owner' ? 'owners' : 'members';
+    return this.request<any>(`/v1/admin/applications/${appId}/circles/${circleId}/${endpoint}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  async assignCircleBilling(appId: string, circleId: string, userId: string): Promise<any> {
+    return this.request<any>(`/v1/admin/applications/${appId}/circles/${circleId}/billing-assignee`, {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  async removeCircleBilling(appId: string, circleId: string, userId: string): Promise<any> {
+    return this.request<any>(`/v1/admin/applications/${appId}/circles/${circleId}/billing-assignee`, {
+      method: 'DELETE',
+      body: JSON.stringify({ userId }),
+    });
+  }
+
+  async updateApplicationBillingMode(appId: string, billingMode: string): Promise<any> {
+    return this.request<any>(`/v1/admin/applications/${appId}/billing-mode`, {
+      method: 'PATCH',
+      body: JSON.stringify({ billingMode }),
+    });
+  }
+
+  // Email Templates
+  async getApplicationEmailTemplates(appId: string): Promise<{ templates: any[]; defaultTemplates: any[] }> {
+    return this.request<{ templates: any[]; defaultTemplates: any[] }>(`/v1/admin/applications/${appId}/email-templates`);
+  }
+
+  async saveApplicationEmailTemplate(appId: string, templateId: string | null, data: any): Promise<{ template: any }> {
+    const method = templateId ? 'PATCH' : 'POST';
+    const url = templateId 
+      ? `/v1/admin/applications/${appId}/email-templates/${templateId}`
+      : `/v1/admin/applications/${appId}/email-templates`;
+    return this.request<{ template: any }>(url, {
+      method,
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteApplicationEmailTemplate(appId: string, templateId: string): Promise<any> {
+    return this.request<any>(`/v1/admin/applications/${appId}/email-templates/${templateId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // File Upload Specific to App
+  async uploadApplicationFile(appId: string, file: File): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<{ url: string }>(`/v1/admin/applications/${appId}/upload`, {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
   // ===================== Notifications =====================
 
   async getNotifications(params: { applicationId?: string; limit?: number; unreadOnly?: boolean } = {}): Promise<{ notifications: any[]; unreadCount: number }> {

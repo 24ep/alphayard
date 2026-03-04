@@ -905,6 +905,7 @@ model OAuthClient {
   id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   clientId             String   @unique @map("client_id") @db.VarChar(255)
   clientSecretHash     String?  @map("client_secret_hash") @db.VarChar(255)
+  clientSecretLast4    String?  @map("client_secret_last4") @db.VarChar(4)
   clientType           String   @default("public") @map("client_type") @db.VarChar(20)
   name                 String   @db.VarChar(255)
   description          String?  @db.Text
