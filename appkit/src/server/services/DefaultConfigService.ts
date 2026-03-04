@@ -311,7 +311,15 @@ class DefaultConfigService {
       const row = await prisma.systemConfig.findUnique({
         where: { key: CONFIG_KEYS.USER_ATTR },
       })
-      return (row?.value as unknown as any[]) ?? null
+      let val = row?.value as any
+      if (!val) return null
+      
+      // Auto-recover if accidentally saved as { attributes: [...] } previously
+      while (val && !Array.isArray(val) && val.attributes) {
+        val = val.attributes
+      }
+      
+      return Array.isArray(val) ? val : null
     } catch (error) {
       console.error('getDefaultUserAttributes error:', error)
       return null
@@ -320,10 +328,15 @@ class DefaultConfigService {
 
   async saveDefaultUserAttributes(data: any[]): Promise<boolean> {
     try {
+      let valToSave = data
+      while (valToSave && !Array.isArray(valToSave) && (valToSave as any).attributes) {
+        valToSave = (valToSave as any).attributes
+      }
+
       await prisma.systemConfig.upsert({
         where: { key: CONFIG_KEYS.USER_ATTR },
-        update: { value: data as any },
-        create: { key: CONFIG_KEYS.USER_ATTR, value: data as any, description: 'Default user attributes' },
+        update: { value: valToSave as any },
+        create: { key: CONFIG_KEYS.USER_ATTR, value: valToSave as any, description: 'Default user attributes' },
       })
       return true
     } catch (error) {

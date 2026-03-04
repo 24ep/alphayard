@@ -33,11 +33,12 @@ export async function POST(request: NextRequest) {
     // }
 
     const body = await request.json()
-    const ok = await defaultConfigService.saveDefaultUserAttributes(body)
+    const attributesToSave = Array.isArray(body) ? body : (body.attributes || [])
+    const ok = await defaultConfigService.saveDefaultUserAttributes(attributesToSave)
     if (!ok) {
       return NextResponse.json({ error: 'Failed to save' }, { status: 500 })
     }
-    return NextResponse.json({ message: 'Saved successfully', attributes: body })
+    return NextResponse.json({ message: 'Saved successfully', attributes: attributesToSave })
   } catch (error: any) {
     console.error('POST user-attributes error:', error)
     return NextResponse.json({ error: 'Failed to save user attributes' }, { status: 500 })
