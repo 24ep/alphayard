@@ -11,7 +11,6 @@ import {
   MessageSquareIcon,
   SaveIcon,
   Loader2Icon,
-  RotateCcwIcon,
   PlusIcon,
 } from 'lucide-react'
 
@@ -66,12 +65,9 @@ const DEFAULT_COMM_CONFIG: CommConfig = {
 
 export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appName, initialChannel }: CommunicationConfigDrawerProps) {
   const [config, setConfig] = useState<CommConfig>(DEFAULT_COMM_CONFIG)
-  const [defaultConfig, setDefaultConfig] = useState<CommConfig>(DEFAULT_COMM_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
-  let initialExpandedChannel = initialChannel
-  // If it's single channel mode, try to use it directly. Otherwise use null.
   useEffect(() => {
     if (!isOpen) return
     setExpandedChannel(initialChannel || null)
@@ -113,7 +109,6 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
 
       const defaults = await adminService.getDefaultCommConfig()
       const defCfg = { ...DEFAULT_COMM_CONFIG, ...(defaults.config || {}) }
-      setDefaultConfig(defCfg)
 
       if (!res.useDefault && res.config) {
         setConfig({ ...DEFAULT_COMM_CONFIG, ...res.config })
@@ -251,13 +246,6 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
                           </div>
                         </div>
 
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleChannel(ch.key); }}
-                          title={`Remove ${ch.name}`}
-                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
-                        >
-                          <XIcon className="w-4 h-4" />
-                        </button>
                       </div>
 
                       {/* Expanded config for this channel */}

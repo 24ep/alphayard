@@ -18,11 +18,13 @@ export async function GET(request: NextRequest) {
     const includeSystem = searchParams.get('includeSystem') !== 'false'
     const applicationId = searchParams.get('applicationId')
     
-    let whereClause: any = {}
+    let whereClause: any = {
+      NOT: { metadata: { path: ['type'], equals: 'group' } }
+    }
     if (applicationId) {
       whereClause.applicationId = applicationId
     }
-    
+
     let roles = await prisma.userGroup.findMany({
       where: whereClause,
       orderBy: [
@@ -132,6 +134,7 @@ export async function POST(request: NextRequest) {
         icon: icon || 'users',
         applicationId: applicationId || null,
         metadata: {
+          type: 'role',
           createdBy: auth.admin.email,
           createdAt: new Date().toISOString()
         }

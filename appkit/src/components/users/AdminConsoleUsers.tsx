@@ -125,8 +125,8 @@ function AdminConsoleUsersContent() {
       ])
 
       setUsers(usersData?.users || [])
-      setRoles(Array.isArray(rolesData) ? rolesData : [])
-      setPermissions(Array.isArray(permissionsData) ? permissionsData : [])
+      setRoles(Array.isArray(rolesData?.roles) ? rolesData.roles : [])
+      setPermissions(Array.isArray(permissionsData?.permissions) ? permissionsData.permissions : [])
       setUserGroups(userGroupsData?.groups || [])
     } catch (error) {
       console.error('Error loading admin console data:', error)
@@ -349,7 +349,7 @@ function AdminConsoleUsersContent() {
     setRoleEditData(role ? { ...role } : null)
     try {
       const perms = await adminService.getPermissions()
-      setAllPermissions(Array.isArray(perms) ? perms : [])
+      setAllPermissions(Array.isArray(perms?.permissions) ? perms.permissions : [])
     } catch { setAllPermissions([]) }
   }
 

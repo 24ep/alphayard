@@ -17,11 +17,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const applicationId = searchParams.get('applicationId')
     
-    let whereClause: any = {}
+    let whereClause: any = {
+      NOT: { metadata: { path: ['type'], equals: 'role' } }
+    }
     if (applicationId) {
       whereClause.applicationId = applicationId
     }
-    
+
     const groups = await prisma.userGroup.findMany({
       where: whereClause,
       orderBy: [
@@ -125,7 +127,11 @@ export async function POST(request: NextRequest) {
         isDefault: isDefault,
         color: color || '#64748b',
         icon: icon || 'users',
-        applicationId: applicationId || null
+        applicationId: applicationId || null,
+        metadata: {
+          type: 'group',
+          createdAt: new Date().toISOString()
+        }
       }
     })
     

@@ -8,6 +8,7 @@ type SystemSection = 'general' | 'security' | 'api-keys' | 'webhooks' | 'legal'
   | '2fa'
   | 'mfa'
   | 'logs'
+  | 'email-templates'
 
 const SECTION_KEYS: Record<SystemSection, string> = {
   general: 'system.general',
@@ -20,6 +21,7 @@ const SECTION_KEYS: Record<SystemSection, string> = {
   '2fa': 'system.mfa',
   mfa: 'system.mfa',
   logs: 'system.logs',
+  'email-templates': 'system.email-templates',
 }
 
 const DEFAULT_CONFIG: Record<SystemSection, any> = {
@@ -137,6 +139,9 @@ const DEFAULT_CONFIG: Record<SystemSection, any> = {
     },
     retentionDays: 90,
     livePollingIntervalSeconds: 5,
+  },
+  'email-templates': {
+    templates: [],
   },
 }
 
