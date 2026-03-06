@@ -1,188 +1,297 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { authService } from '@/services/authService'
 import { Card, CardHeader, CardTitle, CardDescription, CardBody } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
 import { Label } from '../ui/Label'
-import { 
-    BuildingOfficeIcon, 
-    GlobeAltIcon,
-    ShieldCheckIcon,
-    ArrowPathIcon
+import {
+  BuildingOfficeIcon,
+  GlobeAltIcon,
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline'
 
-interface OrganizationConfig {
-    name: string
-    domain: string
-    supportEmail: string
-    website: string
-    status: 'active' | 'suspended' | 'pending'
+interface OrgData {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+function toSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const token = authService.getToken()
+  const res = await fetch(`/api/v1/admin${path}`, {
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...options,
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Request failed')
+  return data
 }
 
 export function OrganizationManagement() {
-    const [config, setConfig] = useState<OrganizationConfig>({
-        name: 'AppKit',
-        domain: 'appkit.io',
-        supportEmail: 'support@appkit.io',
-        website: 'https://appkit.io',
-        status: 'active'
-    })
-    const [isSaving, setIsSaving] = useState(false)
+  const [org, setOrg] = useState<OrgData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-    const handleSave = async () => {
-        setIsSaving(true)
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        setIsSaving(false)
-        console.log('Saved organization config:', config)
+  // Form state
+  const [name, setName] = useState('')
+  const [slug, setSlug] = useState('')
+  const [description, setDescription] = useState('')
+  const [slugManual, setSlugManual] = useState(false)
+
+  const [saving, setSaving] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Load current user's primary org
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const meRes = await apiFetch<{ organizations: OrgData[] }>('/auth/me/organization')
+        const orgs = meRes.organizations ?? []
+        const primary = orgs.find((o: any) => o.isPrimary) ?? orgs[0]
+        if (!primary) {
+          setError('No organization found. Complete onboarding first.')
+          setLoading(false)
+          return
+        }
+        setOrg(primary)
+        setName(primary.name)
+        setSlug(primary.slug)
+        setDescription(primary.description ?? '')
+        setSlugManual(true) // existing — don't auto-derive
+      } catch (e: any) {
+        setError(e.message || 'Failed to load organization')
+      } finally {
+        setLoading(false)
+      }
     }
+    load()
+  }, [])
 
+  // Auto-derive slug from name when editing a new name (only if user hasn't manually edited slug)
+  useEffect(() => {
+    if (!slugManual && name) setSlug(toSlug(name))
+  }, [name, slugManual])
+
+  const handleSave = async () => {
+    if (!org) return
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const updated = await apiFetch<{ organization: OrgData }>(`/organizations/${org.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: name.trim(), slug, description: description.trim() || null }),
+      })
+      setOrg(updated.organization)
+      setSaveMsg({ type: 'success', text: 'Organization updated successfully.' })
+    } catch (e: any) {
+      setSaveMsg({ type: 'error', text: e.message || 'Failed to save changes.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
     return (
-        <div className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
-                <BuildingOfficeIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                <div>
-                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200">Organization Settings</h4>
-                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        Global settings for your organization. Changes here may affect billing, support, and default branding across all applications.
-                    </p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-6">
-                    <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 dark:ring-zinc-800">
-                        <CardHeader className="border-b border-gray-100/50 dark:border-zinc-800 pb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                    <BuildingOfficeIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-base text-gray-900 dark:text-gray-100">General Information</CardTitle>
-                                    <CardDescription className="text-gray-500 dark:text-zinc-400">Basic organizational details.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardBody className="p-5 space-y-6">
-                            <div className="flex flex-col md:flex-row md:items-start gap-4">
-                                <div className="w-full md:w-1/3 pt-1.5">
-                                    <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Organization Name</Label>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">Visible name of your entity.</p>
-                                </div>
-                                <div className="w-full md:w-2/3">
-                                    <Input 
-                                        value={config.name}
-                                        onChange={(e) => setConfig({...config, name: e.target.value})}
-                                        placeholder="Enter organization name"
-                                        className="bg-white dark:bg-zinc-900"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col md:flex-row md:items-start gap-4 border-t border-gray-100 dark:border-zinc-800 pt-6">
-                                <div className="w-full md:w-1/3 pt-1.5">
-                                    <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Primary Domain</Label>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">Used for SSO and discovery.</p>
-                                </div>
-                                <div className="w-full md:w-2/3">
-                                    <div className="relative">
-                                        <GlobeAltIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                        <Input 
-                                            value={config.domain}
-                                            onChange={(e) => setConfig({...config, domain: e.target.value})}
-                                            placeholder="domain.com"
-                                            className="pl-10 bg-white dark:bg-zinc-900"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </CardBody>
-                    </Card>
-
-                    <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 dark:ring-zinc-800">
-                        <CardHeader className="border-b border-gray-100/50 dark:border-zinc-800 pb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                                    <ShieldCheckIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-base text-gray-900 dark:text-gray-100">Contact & Support</CardTitle>
-                                    <CardDescription className="text-gray-500 dark:text-zinc-400">Where users reach out for help.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardBody className="p-5 space-y-6">
-                            <div className="flex flex-col md:flex-row md:items-start gap-4">
-                                <div className="w-full md:w-1/3 pt-1.5">
-                                    <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Support Email</Label>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">Main contact for technical help.</p>
-                                </div>
-                                <div className="w-full md:w-2/3">
-                                    <Input 
-                                        type="email"
-                                        value={config.supportEmail}
-                                        onChange={(e) => setConfig({...config, supportEmail: e.target.value})}
-                                        placeholder="support@org.com"
-                                        className="bg-white dark:bg-zinc-900"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex flex-col md:flex-row md:items-start gap-4 border-t border-gray-100 dark:border-zinc-800 pt-6">
-                                <div className="w-full md:w-1/3 pt-1.5">
-                                    <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Website URL</Label>
-                                    <p className="text-[10px] text-gray-400 mt-0.5">Official public website.</p>
-                                </div>
-                                <div className="w-full md:w-2/3">
-                                    <Input 
-                                        value={config.website}
-                                        onChange={(e) => setConfig({...config, website: e.target.value})}
-                                        placeholder="https://org.com"
-                                        className="bg-white dark:bg-zinc-900"
-                                    />
-                                </div>
-                            </div>
-                        </CardBody>
-                    </Card>
-                </div>
-
-                <div className="space-y-6">
-                    <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 dark:ring-zinc-800">
-                        <CardHeader className="border-b border-gray-100/50 dark:border-zinc-800 pb-3">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-lg">
-                                    <ArrowPathIcon className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-base text-gray-900 dark:text-gray-100">Status & Lifecycle</CardTitle>
-                                    <CardDescription className="text-gray-500 dark:text-zinc-400">Manage account standing.</CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardBody className="p-5">
-                            <div className="flex items-center justify-between p-4 rounded-xl border border-amber-100 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/10">
-                                <div>
-                                    <div className="text-sm font-bold text-amber-900 dark:text-amber-200 uppercase tracking-tight">Active Standing</div>
-                                    <div className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Your organization is in good health and all features are accessible.</div>
-                                </div>
-                                <span className="px-2.5 py-1 bg-amber-500 text-white text-[10px] font-bold rounded-full uppercase tracking-wider">Active</span>
-                            </div>
-                        </CardBody>
-                    </Card>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-4">
-                <Button variant="outline" className="dark:bg-zinc-800 dark:border-zinc-700">Cancel</Button>
-                <Button 
-                    className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                >
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-            </div>
-        </div>
+      <div className="flex items-center justify-center py-16">
+        <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
     )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 text-sm">
+        <ExclamationTriangleIcon className="w-5 h-5 shrink-0 mt-0.5" />
+        {error}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl p-4 flex items-start gap-3">
+        <BuildingOfficeIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+        <div>
+          <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200">Organization Settings</h4>
+          <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+            These are the details set when your organization was created. Changes here update your org profile across the platform.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          {/* General info */}
+          <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 dark:ring-zinc-800">
+            <CardHeader className="border-b border-gray-100/50 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                  <BuildingOfficeIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base text-gray-900 dark:text-gray-100">General Information</CardTitle>
+                  <CardDescription className="text-gray-500 dark:text-zinc-400">Basic organizational details.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-5 space-y-5">
+              {/* Name */}
+              <div className="flex flex-col md:flex-row md:items-start gap-4">
+                <div className="w-full md:w-1/3 pt-1.5">
+                  <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Organization Name</Label>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Display name of your organization.</p>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <Input
+                    value={name}
+                    onChange={e => { setName(e.target.value); setSlugManual(false) }}
+                    placeholder="My Organization"
+                    className="bg-white dark:bg-zinc-900"
+                  />
+                </div>
+              </div>
+
+              {/* Slug */}
+              <div className="flex flex-col md:flex-row md:items-start gap-4 border-t border-gray-100 dark:border-zinc-800 pt-5">
+                <div className="w-full md:w-1/3 pt-1.5">
+                  <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Slug</Label>
+                  <p className="text-[10px] text-gray-400 mt-0.5">URL-safe identifier. Must be unique.</p>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <div className="relative">
+                    <GlobeAltIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      value={slug}
+                      onChange={e => { setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setSlugManual(true) }}
+                      placeholder="my-organization"
+                      className="pl-10 bg-white dark:bg-zinc-900 font-mono text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="flex flex-col md:flex-row md:items-start gap-4 border-t border-gray-100 dark:border-zinc-800 pt-5">
+                <div className="w-full md:w-1/3 pt-1.5">
+                  <Label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Description</Label>
+                  <p className="text-[10px] text-gray-400 mt-0.5">Optional short description.</p>
+                </div>
+                <div className="w-full md:w-2/3">
+                  <textarea
+                    value={description}
+                    onChange={e => setDescription(e.target.value)}
+                    placeholder="What does your organization do?"
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  />
+                </div>
+              </div>
+            </CardBody>
+          </Card>
+        </div>
+
+        {/* Status + meta */}
+        <div className="space-y-6">
+          <Card className="border-0 shadow-sm ring-1 ring-gray-200/50 dark:ring-zinc-800">
+            <CardHeader className="border-b border-gray-100/50 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                  <ShieldCheckIcon className="w-5 h-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base text-gray-900 dark:text-gray-100">Status & Details</CardTitle>
+                  <CardDescription className="text-gray-500 dark:text-zinc-400">Account standing and metadata.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardBody className="p-5 space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-900/10">
+                <div>
+                  <div className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                    {org?.isActive ? 'Active' : 'Inactive'}
+                  </div>
+                  <div className="text-xs text-emerald-700 dark:text-emerald-400 mt-0.5">
+                    {org?.isActive ? 'Organization is active and accessible.' : 'Organization is currently inactive.'}
+                  </div>
+                </div>
+                <span className={`px-2.5 py-1 text-white text-[10px] font-bold rounded-full uppercase tracking-wider ${
+                  org?.isActive ? 'bg-emerald-500' : 'bg-gray-400'
+                }`}>
+                  {org?.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+
+              {org?.id && (
+                <div className="text-xs text-gray-400 dark:text-zinc-500 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span>Organization ID</span>
+                    <span className="font-mono text-gray-600 dark:text-zinc-300">{org.id.slice(0, 8)}…</span>
+                  </div>
+                  {org.createdAt && (
+                    <div className="flex items-center justify-between">
+                      <span>Created</span>
+                      <span className="text-gray-600 dark:text-zinc-300">
+                        {new Date(org.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardBody>
+          </Card>
+        </div>
+      </div>
+
+      {/* Save feedback */}
+      {saveMsg && (
+        <div className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+          saveMsg.type === 'success'
+            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
+            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+        }`}>
+          {saveMsg.type === 'success'
+            ? <CheckCircleIcon className="w-4 h-4 shrink-0" />
+            : <ExclamationTriangleIcon className="w-4 h-4 shrink-0" />}
+          {saveMsg.text}
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-3 pt-2">
+        <Button
+          variant="outline"
+          className="dark:bg-zinc-800 dark:border-zinc-700"
+          onClick={() => {
+            if (org) { setName(org.name); setSlug(org.slug); setDescription(org.description ?? ''); setSlugManual(true); setSaveMsg(null) }
+          }}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
+        <Button
+          className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20"
+          onClick={handleSave}
+          disabled={saving || !name.trim() || !slug.trim()}
+        >
+          {saving ? 'Saving…' : 'Save Changes'}
+        </Button>
+      </div>
+    </div>
+  )
 }

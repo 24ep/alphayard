@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       where: { adminUserId: adminId },
       include: {
         application: {
-          select: { id: true, name: true, slug: true, description: true, isActive: true },
+          select: { id: true, name: true, slug: true, description: true, isActive: true, createdAt: true },
         },
       },
       orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       slug: m.application.slug,
       description: m.application.description,
       isActive: m.application.isActive,
+      createdAt: m.application.createdAt,
       role: m.role,
       isPrimary: m.isPrimary,
     }))
