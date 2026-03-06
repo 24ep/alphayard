@@ -59,6 +59,51 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
+    // Look up matching User record by email for SSO info
+    const linkedUser = await prisma.user.findUnique({
+      where: { email: user.email },
+      select: {
+        id: true,
+        passwordHash: true,
+        isVerified: true,
+        createdAt: true,
+        loginHistory: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: {
+            id: true,
+            loginMethod: true,
+            socialProvider: true,
+            success: true,
+            ipAddress: true,
+            userAgent: true,
+            deviceType: true,
+            country: true,
+            city: true,
+            mfaRequired: true,
+            mfaSuccess: true,
+            createdAt: true,
+          },
+        },
+      },
+    })
+
+    const ssoProviders = linkedUser
+      ? [...new Set(
+          linkedUser.loginHistory
+            .filter(l => l.socialProvider)
+            .map(l => l.socialProvider as string)
+        )]
+      : []
+
+    const ssoInfo = {
+      linkedUserId: linkedUser?.id ?? null,
+      hasPassword: !!linkedUser?.passwordHash,
+      isVerified: linkedUser?.isVerified ?? false,
+      ssoProviders,
+      loginHistory: linkedUser?.loginHistory ?? [],
+    }
+
     // Format for frontend
     const nameParts = user.name ? user.name.split(' ') : ['', '']
     const formattedUser = {
@@ -67,7 +112,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       lastName: nameParts.slice(1).join(' ') || '',
       status: user.isActive ? 'active' : 'inactive',
       role: user.roleId || (user.isSuperAdmin ? 'super-admin' : 'viewer'),
-      lastLogin: user.lastLoginAt
+      lastLogin: user.lastLoginAt,
+      ssoInfo,
     }
 
     return NextResponse.json({ success: true, user: formattedUser })

@@ -40,6 +40,26 @@ export interface AdminUser {
   user_count?: number;
   points?: number;
   appPoints?: number;
+  ssoInfo?: {
+    linkedUserId: string | null;
+    hasPassword: boolean;
+    isVerified: boolean;
+    ssoProviders: string[];
+    loginHistory: {
+      id: string;
+      loginMethod: string | null;
+      socialProvider: string | null;
+      success: boolean;
+      ipAddress: string | null;
+      userAgent: string | null;
+      deviceType: string | null;
+      country: string | null;
+      city: string | null;
+      mfaRequired: boolean;
+      mfaSuccess: boolean | null;
+      createdAt: string;
+    }[];
+  };
 }
 
 export interface Role {
