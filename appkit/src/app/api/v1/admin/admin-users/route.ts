@@ -36,8 +36,12 @@ export async function GET(request: NextRequest) {
         isActive: true,
         isSuperAdmin: true,
         roleId: true,
+        groupId: true,
+        loginMethods: true,
+        mfaEnabled: true,
         lastLoginAt: true,
-        createdAt: true
+        createdAt: true,
+        group: true,
       }
     })
 
@@ -50,6 +54,10 @@ export async function GET(request: NextRequest) {
         lastName: nameParts.slice(1).join(' ') || '',
         status: user.isActive ? 'active' : 'inactive',
         role: user.roleId || (user.isSuperAdmin ? 'super-admin' : 'viewer'),
+        loginMethods: user.loginMethods,
+        mfaEnabled: user.mfaEnabled,
+        groupId: user.groupId,
+        group: user.group,
         lastLogin: user.lastLoginAt
       }
     })
@@ -78,7 +86,7 @@ export async function POST(request: NextRequest) {
     // }
 
     const body = await request.json()
-    const { email, name, firstName, lastName, roleId, isSuperAdmin = false } = body
+    const { email, name, firstName, lastName, roleId, groupId, loginMethods, mfaEnabled, isSuperAdmin = false } = body
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -100,6 +108,9 @@ export async function POST(request: NextRequest) {
         email,
         name: fullName,
         roleId,
+        groupId: groupId || null,
+        loginMethods: loginMethods || ['password'],
+        mfaEnabled: !!mfaEnabled,
         isSuperAdmin,
         isActive: true,
         // Password would be set by the user during invitation/setup

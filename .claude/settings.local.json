@@ -12,7 +12,10 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(\"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\services\\\\billingService.ts\":*)",
       "Bash(echo $?)",
-      "Bash(find \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\" -name \"page.tsx\")"
+      "Bash(find \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\" -name \"page.tsx\")",
+      "Bash(head -60 \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\\\\dashboard\\\\page.tsx\")",
+      "Bash(head -40 \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\\\\system\\\\page.tsx\")",
+      "Bash(head -30 \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\\\\system\\\\logs\\\\page.tsx\")"
     ]
   }
 }

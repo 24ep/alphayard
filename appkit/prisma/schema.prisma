@@ -758,6 +758,22 @@ model AppSetting {
 // ####################################################################################
 
 // ============================================================================
+// ADMIN: Admin Groups
+// ============================================================================
+
+model AdminGroup {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  adminUsers  AdminUser[]
+
+  @@map("admin_groups")
+  }
+
+// ============================================================================
 // ADMIN: Admin Users
 // ============================================================================
 
@@ -768,6 +784,9 @@ model AdminUser {
   name         String    @db.VarChar(255)
   avatarUrl    String?   @map("avatar_url") @db.Text
   roleId       String?   @map("role_id") @db.Uuid
+  groupId      String?   @map("group_id") @db.Uuid
+  loginMethods String[]  @default(["password"]) @map("login_methods")
+  mfaEnabled   Boolean   @default(false) @map("mfa_enabled")
   isSuperAdmin Boolean   @default(false) @map("is_super_admin")
   isActive     Boolean   @default(true) @map("is_active")
   lastLoginAt  DateTime? @map("last_login_at") @db.Timestamptz
@@ -775,6 +794,7 @@ model AdminUser {
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
 
   role                  AdminRole?             @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  group                 AdminGroup?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
   adminUserApplications AdminUserApplication[]
   adminActivityLogs     AdminActivityLog[]
   oauthClients          OAuthClient[]

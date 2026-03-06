@@ -21,6 +21,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         isActive: true,
         isSuperAdmin: true,
         roleId: true,
+        groupId: true,
+        loginMethods: true,
+        mfaEnabled: true,
+        group: true,
         lastLoginAt: true,
         createdAt: true
       }
@@ -49,6 +53,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           isActive: dbUser.isActive,
           isSuperAdmin: dbUser.userType === 'admin',
           roleId: null,
+          groupId: null,
+          loginMethods: ['password'],
+          mfaEnabled: false,
+          group: null,
           lastLoginAt: dbUser.lastLoginAt,
           createdAt: dbUser.createdAt
         }
@@ -112,6 +120,10 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       lastName: nameParts.slice(1).join(' ') || '',
       status: user.isActive ? 'active' : 'inactive',
       role: user.roleId || (user.isSuperAdmin ? 'super-admin' : 'viewer'),
+      groupId: user.groupId,
+      group: user.group,
+      loginMethods: user.loginMethods,
+      mfaEnabled: user.mfaEnabled,
       lastLogin: user.lastLoginAt,
       ssoInfo,
     }
@@ -133,7 +145,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const { id } = params
     const body = await request.json()
-    const { name, firstName, lastName, email, roleId, isActive, isSuperAdmin } = body
+    const { name, firstName, lastName, email, roleId, groupId, loginMethods, mfaEnabled, isActive, isSuperAdmin } = body
 
     // Try admin_users first
     const adminUser = await prisma.adminUser.findUnique({ where: { id } })
@@ -147,6 +159,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
           ...(updatedName !== undefined && { name: updatedName }),
           ...(email !== undefined && { email }),
           ...(roleId !== undefined && { roleId }),
+          ...(groupId !== undefined && { groupId }),
+          ...(loginMethods !== undefined && { loginMethods }),
+          ...(mfaEnabled !== undefined && { mfaEnabled }),
           ...(isActive !== undefined && { isActive }),
           ...(isSuperAdmin !== undefined && { isSuperAdmin }),
           updatedAt: new Date()
@@ -161,6 +176,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         lastName: nameParts.slice(1).join(' ') || '',
         status: updated.isActive ? 'active' : 'inactive',
         role: updated.roleId || (updated.isSuperAdmin ? 'super-admin' : 'viewer'),
+        groupId: updated.groupId,
+        loginMethods: updated.loginMethods,
+        mfaEnabled: updated.mfaEnabled,
         lastLogin: updated.lastLoginAt
       }
 

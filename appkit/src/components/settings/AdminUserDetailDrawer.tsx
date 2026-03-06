@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { adminService, AdminUser, Role } from '../../services/adminService'
+import { adminService, AdminUser, Role, AdminGroup } from '../../services/adminService'
 import { auditService, AuditLogItem } from '../../services/auditService'
 import { Drawer } from '../ui/Drawer'
 import { Button } from '../ui/Button'
@@ -96,17 +96,23 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
     const [activityLoading, setActivityLoading] = useState(false)
     const [activityTotal, setActivityTotal] = useState(0)
 
+    // Groups state
+    const [groups, setGroups] = useState<AdminGroup[]>([])
+
     // Form state
     const [editForm, setEditForm] = useState({
         firstName: '',
         lastName: '',
-        status: 'active' as string
+        status: 'active' as string,
+        loginMethods: ['password'] as string[],
+        mfaEnabled: false,
+        groupId: '' as string
     })
 
-    useEffect(() => {
         if (adminId) {
             loadAdmin(adminId)
             loadRoles()
+            loadGroups()
         } else {
             setAdmin(null)
             setActivityLogs([])
@@ -127,7 +133,10 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
             setEditForm({
                 firstName: data.firstName || '',
                 lastName: data.lastName || '',
-                status: data.status || 'active'
+                status: data.status || 'active',
+                loginMethods: data.loginMethods || ['password'],
+                mfaEnabled: !!data.mfaEnabled,
+                groupId: data.groupId || ''
             })
             // Set current role if exists
             const currentRole = roles.find(r => r.name === data.role)
@@ -161,6 +170,15 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
         }
     }
 
+    const loadGroups = async () => {
+        try {
+            const data = await adminService.getAdminGroups()
+            setGroups(data.groups || [])
+        } catch (e) {
+            console.error('Failed to load groups:', e)
+        }
+    }
+
     const loadActivityLogs = async () => {
         if (!adminId) return
         setActivityLoading(true)
@@ -186,7 +204,10 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
             await adminService.updateAdminUser(admin.id, {
                 firstName: editForm.firstName,
                 lastName: editForm.lastName,
-                status: editForm.status as any
+                status: editForm.status as any,
+                loginMethods: editForm.loginMethods,
+                mfaEnabled: editForm.mfaEnabled,
+                groupId: editForm.groupId || undefined
             })
             
             // If role changed, update role assignment
@@ -341,6 +362,26 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
                                 </section>
 
                                 <section>
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Organization</h3>
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Admin Group</label>
+                                            <select
+                                                value={editForm.groupId}
+                                                onChange={e => setEditForm({ ...editForm, groupId: e.target.value })}
+                                                className="w-full h-10 px-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-white"
+                                            >
+                                                <option value="">None</option>
+                                                {groups.map(g => (
+                                                    <option key={g.id} value={g.id}>{g.name}</option>
+                                                ))}
+                                            </select>
+                                            <p className="mt-1 text-xs text-gray-500">Group assignment for organizational purposes.</p>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
                                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Account Status</h3>
                                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden divide-y divide-gray-50">
                                         <div className="p-5">
@@ -376,7 +417,64 @@ export const AdminUserDetailDrawer: React.FC<AdminUserDetailDrawerProps> = ({
                                     </div>
                                 </section>
 
-                                {/* SSO & Security */}
+                                <section>
+                                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Security Settings</h3>
+                                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <span className="block text-sm font-bold text-slate-900">Two-Factor Auth (2FA/MFA)</span>
+                                                <span className="block text-xs text-slate-500">Require MFA verification on login</span>
+                                            </div>
+                                            <ToggleSwitch 
+                                                checked={editForm.mfaEnabled}
+                                                onChange={checked => setEditForm(prev => ({ ...prev, mfaEnabled: checked }))}
+                                            />
+                                        </div>
+                                        
+                                        <div className="pt-4 border-t border-gray-100">
+                                            <label className="block text-sm font-bold text-slate-900 mb-1">Allowed Login Methods</label>
+                                            <p className="text-xs text-slate-500 mb-3">Methods this admin can use to access the console</p>
+                                            <div className="space-y-2">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="rounded text-blue-600 focus:ring-blue-500"
+                                                        checked={editForm.loginMethods.includes('password')}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setEditForm(prev => ({
+                                                                ...prev,
+                                                                loginMethods: checked 
+                                                                    ? [...prev.loginMethods, 'password']
+                                                                    : prev.loginMethods.filter(m => m !== 'password')
+                                                            }))
+                                                        }}
+                                                    />
+                                                    <span className="text-sm text-gray-700">Password / Email</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        className="rounded text-blue-600 focus:ring-blue-500"
+                                                        checked={editForm.loginMethods.includes('google_sso')}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setEditForm(prev => ({
+                                                                ...prev,
+                                                                loginMethods: checked 
+                                                                    ? [...prev.loginMethods, 'google_sso']
+                                                                    : prev.loginMethods.filter(m => m !== 'google_sso')
+                                                            }))
+                                                        }}
+                                                    />
+                                                    <span className="text-sm text-gray-700">Google SSO</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* SSO & Security Overview */}
                                 {admin.ssoInfo && (
                                     <section>
                                         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Authentication & SSO</h3>

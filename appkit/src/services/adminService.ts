@@ -40,6 +40,10 @@ export interface AdminUser {
   user_count?: number;
   points?: number;
   appPoints?: number;
+  loginMethods?: string[];
+  mfaEnabled?: boolean;
+  groupId?: string;
+  group?: AdminGroup;
   ssoInfo?: {
     linkedUserId: string | null;
     hasPassword: boolean;
@@ -60,6 +64,15 @@ export interface AdminUser {
       createdAt: string;
     }[];
   };
+}
+
+export interface AdminGroup {
+  id: string;
+  name: string;
+  description?: string;
+  adminUsers?: AdminUser[];
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Role {
@@ -238,6 +251,31 @@ class AdminService {
     return this.request<void>(`/v1/admin/admin-users/${userId}/role`, {
       method: 'POST',
       body: JSON.stringify({ roleId }),
+    });
+  }
+
+  // Admin Groups
+  async getAdminGroups(): Promise<{ groups: AdminGroup[] }> {
+    return this.request<{ groups: AdminGroup[] }>('/v1/admin/admin-groups');
+  }
+
+  async createAdminGroup(data: any): Promise<AdminGroup> {
+    return this.request<AdminGroup>('/v1/admin/admin-groups', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAdminGroup(id: string, data: any): Promise<AdminGroup> {
+    return this.request<AdminGroup>(`/v1/admin/admin-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAdminGroup(id: string): Promise<void> {
+    return this.request<void>(`/v1/admin/admin-groups/${id}`, {
+      method: 'DELETE',
     });
   }
 
