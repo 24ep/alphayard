@@ -120,6 +120,16 @@ export const navigationHubs: NavHub[] = [
         ]
     },
     {
+        id: 'storage',
+        label: 'Storage',
+        icon: 'database',
+        href: '/storage',
+        permissions: [['system', 'view']],
+        items: [
+            { id: 'storage-files', label: 'File Manager', href: '/storage', icon: 'database', group: 'Files', permissions: [['system', 'view']] },
+        ]
+    },
+    {
         id: 'system',
         label: 'System',
         icon: 'cog',
@@ -135,11 +145,14 @@ export const navigationHubs: NavHub[] = [
             { id: 'system-smtp', label: 'SMTP', href: '/system/smtp', icon: 'mail', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-mfa', label: '2FA / MFA', href: '/system/2fa', icon: 'lock-closed', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-feature-flags', label: 'Feature Flags', href: '/system/feature-flags', icon: 'activity', group: 'Settings', permissions: [['system', 'view']] },
+            { id: 'system-alerts', label: 'Alerts', href: '/system/alerts', icon: 'bell', group: 'Settings', permissions: [['system', 'view']] },
             { id: 'system-api-keys', label: 'API Keys', href: '/system/api-keys', icon: 'key', group: 'Operations', permissions: [['system', 'manage']] },
             { id: 'system-webhooks', label: 'Webhooks', href: '/system/webhooks', icon: 'globe', group: 'Operations', permissions: [['system', 'view']] },
             { id: 'system-audit', label: 'Audit Trail', href: '/system/audit', icon: 'document-text', group: 'Operations', permissions: [['system', 'view']] },
+            { id: 'system-health', label: 'System Health', href: '/system/health', icon: 'activity', group: 'Operations', permissions: [['system', 'view']] },
+            { id: 'system-backups', label: 'Backups', href: '/system/backups', icon: 'server', group: 'Operations', permissions: [['system', 'view']] },
             { id: 'system-legal', label: 'Legal & Compliance', href: '/system/legal', icon: 'scale', group: 'Operations', permissions: [['system', 'view']] },
-            { id: 'system-logs', label: 'System Logs', href: '/settings/logs', icon: 'terminal', group: 'Operations', permissions: [['system', 'view']] },
+            { id: 'system-logs', label: 'System Logs', href: '/system/logs', icon: 'terminal', group: 'Operations', permissions: [['system', 'view']] },
         ]
     },
 ]

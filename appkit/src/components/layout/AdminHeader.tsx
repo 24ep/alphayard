@@ -22,6 +22,7 @@ import {
 import { useTheme } from 'next-themes'
 import { adminService } from '../../services/adminService'
 import { NotificationPopover } from './NotificationPopover'
+import { GlobalSearch } from '../search/GlobalSearch'
 
 interface AdminHeaderProps {
     user: any
@@ -40,7 +41,21 @@ export function AdminHeader({
 }: AdminHeaderProps) {
     const { theme, setTheme } = useTheme()
     const router = useRouter()
-    
+
+    const [showGlobalSearch, setShowGlobalSearch] = useState(false)
+
+    // Cmd/Ctrl+K opens global search
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault()
+                setShowGlobalSearch(true)
+            }
+        }
+        document.addEventListener('keydown', handler)
+        return () => document.removeEventListener('keydown', handler)
+    }, [])
+
     const [appLogoUrl, setAppLogoUrl] = useState<string | null>(null)
     const [appBrandName, setAppBrandName] = useState<string>('AppKit')
 
@@ -109,6 +124,7 @@ export function AdminHeader({
     }
 
     return (
+    <>
         <header className="h-16 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between px-4 lg:px-8 relative z-50 shrink-0 shadow-sm shadow-gray-200/20 dark:shadow-none">
             <div className="flex items-center space-x-6">
                 {/* Brand Logo */}
@@ -159,9 +175,9 @@ export function AdminHeader({
                             onFocus={() => searchQuery.length >= 2 && setIsSearchOpen(true)}
                             className="pl-10 pr-12 py-2 bg-gray-100/50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 focus:bg-white dark:focus:bg-zinc-800 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 rounded-xl text-sm w-48 lg:w-80 transition-all duration-200 placeholder-gray-400"
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 px-1.5 py-0.5 border border-gray-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-[10px] font-medium text-gray-400 pointer-events-none">
+                        <button onClick={() => setShowGlobalSearch(true)} className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-1 px-1.5 py-0.5 border border-gray-200 dark:border-zinc-700 rounded bg-white dark:bg-zinc-900 text-[10px] font-medium text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
                             <span className="text-xs">⌘</span>K
-                        </div>
+                        </button>
                     </form>
 
                     {/* Search Results Dropdown */}
@@ -344,5 +360,8 @@ export function AdminHeader({
                 </Menu>
             </div>
         </header>
+
+        {showGlobalSearch && <GlobalSearch onClose={() => setShowGlobalSearch(false)} />}
+    </>
     )
 }
