@@ -132,16 +132,28 @@ export async function GET(
     }
     const userinfo = await userinfoRes.json()
 
-    // Apply optional claims mapping
+    // Apply optional claims mapping — supports standard OIDC and provider-specific fields
     const claimsMap: Record<string, string> =
       (oauthProvider.claimsMapping as Record<string, string>) || {}
-    const email: string = userinfo[claimsMap.email || 'email']
-    const firstName: string =
-      userinfo[claimsMap.given_name || 'given_name'] ||
-      userinfo[claimsMap.name || 'name'] ||
-      ''
-    const lastName: string = userinfo[claimsMap.family_name || 'family_name'] || ''
-    const avatarUrl: string | undefined = userinfo[claimsMap.picture || 'picture']
+
+    const get = (key: string, ...fallbacks: string[]): string =>
+      [key, ...fallbacks].map(k => claimsMap[k] || k).reduce<string>(
+        (val, k) => val || (typeof userinfo[k] === 'string' ? userinfo[k] : ''),
+        ''
+      )
+
+    const email: string = get('email')
+    const firstName: string = get('given_name', 'first_name') || get('name', 'login').split(' ')[0] || ''
+    const lastName: string = get('family_name', 'last_name') || (get('name').includes(' ') ? get('name').split(' ').slice(1).join(' ') : '')
+    // picture (OIDC) or avatar_url (GitHub)
+    const avatarUrl: string | undefined = get('picture', 'avatar_url', 'photo') || undefined
+    const locale: string | undefined = get('locale', 'language') || undefined
+    const timezone: string | undefined = get('zoneinfo', 'timezone') || undefined
+    const phoneNumber: string | undefined = get('phone_number', 'phone') || undefined
+    const website: string | undefined = get('website', 'blog', 'html_url') || undefined
+    const bio: string | undefined = get('bio', 'description') || undefined
+    const location: string | undefined = get('location') || undefined
+    const username: string | undefined = get('preferred_username', 'login', 'username') || undefined
 
     if (!email) {
       console.error('[SSO Callback] No email in userinfo:', userinfo)
@@ -171,7 +183,6 @@ export async function GET(
     if (adminUser) {
       if (!adminUser.isActive) return errorRedirect(base, 'account_disabled')
       userId = adminUser.id
-      userName = adminUser.name || email
       roleName = adminUser.role?.name || 'admin'
       isSuperAdmin = adminUser.isSuperAdmin
       if (!isSuperAdmin && adminUser.roleId) {
@@ -181,7 +192,17 @@ export async function GET(
         })
         permissions = rolePerms.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`)
       }
-      await prisma.adminUser.update({ where: { id: adminUser.id }, data: { lastLoginAt: new Date() } })
+      // Sync profile from SSO on every login
+      const syncedName = [firstName, lastName].filter(Boolean).join(' ') || adminUser.name || email
+      await prisma.adminUser.update({
+        where: { id: adminUser.id },
+        data: {
+          lastLoginAt: new Date(),
+          name: syncedName,
+          ...(avatarUrl && { avatarUrl }),
+        },
+      })
+      userName = syncedName
     } else {
       let user = await prisma.user.findFirst({ where: { email: email.toLowerCase() } })
       if (!user) {
@@ -190,8 +211,11 @@ export async function GET(
           data: {
             email: email.toLowerCase(),
             firstName: firstName || email.split('@')[0],
-            lastName,
+            lastName: lastName || '',
             avatarUrl,
+            phoneNumber,
+            bio,
+            ...(locale && { preferences: { locale, timezone, website, location, username } }),
             userType: 'admin',
             isActive: true,
             isVerified: true,
@@ -200,19 +224,40 @@ export async function GET(
         })
       } else if (!user.isActive) {
         return errorRedirect(base, 'account_disabled')
+      } else {
+        // Sync profile from SSO on every login
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            lastLoginAt: new Date(),
+            ...(firstName && { firstName }),
+            ...(lastName && { lastName }),
+            ...(avatarUrl && { avatarUrl }),
+            ...(phoneNumber && { phoneNumber }),
+            ...(bio && { bio }),
+          },
+        })
       }
       userId = user.id
-      userName = `${user.firstName} ${user.lastName}`.trim() || email
+      userName = `${firstName || user.firstName} ${lastName || user.lastName}`.trim() || email
       isSuperAdmin = user.userType === 'admin'
-      await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+      if (!user.createdAt) {
+        // newly created, lastLoginAt already set
+      } else {
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+      }
     }
+
+    const resolvedAvatar = avatarUrl || undefined
 
     const userPayload = {
       id: userId,
       adminId: userId,
       email: email.toLowerCase(),
-      firstName: userName,
-      lastName: '',
+      firstName,
+      lastName,
+      name: userName,
+      avatarUrl: resolvedAvatar,
       role: roleName,
       permissions,
       type: 'admin' as const,
@@ -224,7 +269,10 @@ export async function GET(
     const userObj = {
       id: userId,
       email: email.toLowerCase(),
-      firstName: userName,
+      firstName,
+      lastName,
+      name: userName,
+      avatarUrl: resolvedAvatar,
       role: roleName,
       permissions,
       isSuperAdmin,

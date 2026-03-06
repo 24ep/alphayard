@@ -58,7 +58,9 @@ export async function POST(request: NextRequest) {
     // Try admin_users table first, then fall back to users table
     let userId: string
     let userEmail: string
-    let userName: string
+    let userFirstName: string
+    let userLastName: string
+    let userAvatarUrl: string | undefined
     let roleName = 'admin'
     let permissions: string[] = ['*']
     let isSuperAdmin = false
@@ -82,7 +84,10 @@ export async function POST(request: NextRequest) {
       }
       userId = adminUser.id
       userEmail = adminUser.email
-      userName = adminUser.name || ''
+      const nameParts = (adminUser.name || '').split(' ')
+      userFirstName = nameParts[0] || ''
+      userLastName = nameParts.slice(1).join(' ') || ''
+      userAvatarUrl = adminUser.avatarUrl || undefined
       roleName = adminUser.role?.name || 'admin'
       isSuperAdmin = adminUser.isSuperAdmin || adminUser.email === 'admin@appkit.com'
 
@@ -101,9 +106,9 @@ export async function POST(request: NextRequest) {
     } else {
       // Fallback: check users table (seed creates admin@appkit.com here)
       const user = await prisma.user.findFirst({
-        where: { 
+        where: {
           email: email.toLowerCase(),
-          isActive: true 
+          isActive: true
         }
       })
       console.log(`[login] users table lookup: ${user ? `FOUND (id=${user.id}, type=${user.userType}, active=${user.isActive})` : 'not found'}`)
@@ -120,7 +125,9 @@ export async function POST(request: NextRequest) {
       }
       userId = user.id
       userEmail = user.email
-      userName = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+      userFirstName = user.firstName || ''
+      userLastName = user.lastName || ''
+      userAvatarUrl = user.avatarUrl || undefined
       isSuperAdmin = user.userType === 'admin'
 
       if (behavior.emailVerificationRequired && !user.isVerified) {
@@ -139,8 +146,10 @@ export async function POST(request: NextRequest) {
         id: userId,
         adminId: userId,
         email: userEmail,
-        firstName: userName,
-        lastName: '',
+        firstName: userFirstName,
+        lastName: userLastName,
+        name: [userFirstName, userLastName].filter(Boolean).join(' '),
+        avatarUrl: userAvatarUrl,
         role: roleName,
         permissions,
         type: 'admin',
@@ -159,7 +168,10 @@ export async function POST(request: NextRequest) {
       user: {
         id: userId,
         email: userEmail,
-        firstName: userName,
+        firstName: userFirstName,
+        lastName: userLastName,
+        name: [userFirstName, userLastName].filter(Boolean).join(' '),
+        avatarUrl: userAvatarUrl,
         role: roleName,
         permissions,
         isSuperAdmin

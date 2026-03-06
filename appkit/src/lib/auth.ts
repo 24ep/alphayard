@@ -8,6 +8,10 @@ export interface AuthenticatedRequest extends NextRequest {
     id: string;
     adminId?: string;
     email: string;
+    firstName?: string;
+    lastName?: string;
+    name?: string;
+    avatarUrl?: string;
     role: string;
     permissions: string[];
     isSuperAdmin: boolean;
@@ -64,6 +68,10 @@ export async function authenticate(req: NextRequest) {
           id: decoded.id,
           adminId: decoded.adminId || decoded.id,
           email: decoded.email,
+          firstName: decoded.firstName,
+          lastName: decoded.lastName,
+          name: decoded.name,
+          avatarUrl: decoded.avatarUrl,
           role: decoded.role || 'admin',
           permissions: decoded.permissions || ['*'],
           isSuperAdmin: decoded.isSuperAdmin || decoded.role === 'super_admin' || true
@@ -76,6 +84,10 @@ export async function authenticate(req: NextRequest) {
         id: decoded.id,
         adminId: decoded.adminId,
         email: decoded.email,
+        firstName: decoded.firstName,
+        lastName: decoded.lastName,
+        name: decoded.name,
+        avatarUrl: decoded.avatarUrl,
         role: decoded.role,
         permissions: decoded.permissions || [],
         isSuperAdmin: adminUser.isSuperAdmin
