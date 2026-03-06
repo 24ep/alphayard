@@ -47,11 +47,14 @@ export interface PaymentMethodSummary {
 
 export interface InvoiceSummary {
   id: string
+  number?: string
   amount: number
   currency: string
   status: string
   date: string
   pdfUrl?: string
+  pdf?: string
+  hostedInvoiceUrl?: string
 }
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
