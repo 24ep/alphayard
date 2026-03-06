@@ -4,7 +4,15 @@
       "Bash(ls:*)",
       "Bash(grep:*)",
       "Bash(find:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma generate)",
+      "Bash(DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/placeholder\" npx prisma generate)",
+      "Bash(npm run type-check)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(\"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\services\\\\billingService.ts\":*)",
+      "Bash(echo $?)",
+      "Bash(find \"c:\\\\Users\\\\Zenbook\\\\Desktop\\\\Hobbie\\\\alphayard\\\\appkit\\\\src\\\\app\\\\\\(admin\\)\" -name \"page.tsx\")"
     ]
   }
 }
