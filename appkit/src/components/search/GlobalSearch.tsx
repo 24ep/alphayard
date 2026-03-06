@@ -32,8 +32,7 @@ const NAV_LINKS: SearchResult[] = [
   { type: 'nav', id: 'nav-api-keys', label: 'API Keys', sub: 'System settings', href: '/system/api-keys' },
   { type: 'nav', id: 'nav-health', label: 'System Health', sub: 'System', href: '/system/health' },
   { type: 'nav', id: 'nav-backups', label: 'Backups', sub: 'System', href: '/system/backups' },
-  { type: 'nav', id: 'nav-feature-flags', label: 'Feature Flags', sub: 'System', href: '/system/feature-flags' },
-  { type: 'nav', id: 'nav-alerts', label: 'Alerts', sub: 'System', href: '/system/alerts' },
+{ type: 'nav', id: 'nav-alerts', label: 'Alerts', sub: 'System', href: '/system/alerts' },
 ]
 
 function ResultIcon({ type }: { type: SearchResult['type'] }) {
