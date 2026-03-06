@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { Suspense, useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { authService } from '../../services/authService'
 import { organizationService } from '../../services/organizationService'
@@ -28,7 +28,7 @@ function toSlug(name: string): string {
     .replace(/(^-|-$)/g, '')
 }
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>('loading')
@@ -376,5 +376,13 @@ export default function OnboardingPage() {
         </button>
       )}
     </div>
+  )
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingInner />
+    </Suspense>
   )
 }
