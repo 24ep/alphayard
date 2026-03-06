@@ -1178,7 +1178,7 @@ export function UserManagement() {
                     <button
                       onClick={() => {
                         // Simple plan comparison modal via alert for now
-                        const lines = plans.map(p => `${p.name}: ${(p.price).toFixed(2)} ${p.currency.toUpperCase()}/${p.interval}`).join('\n')
+                        const lines = plans.map(p => `${p.name}: ${parseFloat(p.priceMonthly ?? '0').toFixed(2)} ${p.currency.toUpperCase()}/month`).join('\n')
                         alert(lines || 'No plans available')
                       }}
                       className="text-sm text-blue-600 hover:text-blue-700"
