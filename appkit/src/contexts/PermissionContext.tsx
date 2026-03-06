@@ -39,7 +39,7 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
 
     // Load user permissions
     const loadPermissions = useCallback(async () => {
-        const user = await authService.getUser()
+        const user = await authService.initSession()
         if (!user?.id) {
             setPermissions([])
             setIsSuperAdmin(false)
