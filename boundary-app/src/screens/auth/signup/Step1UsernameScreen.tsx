@@ -115,7 +115,12 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -141,13 +146,7 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
               </View>
 
               {/* Signup Options */}
-              <ScrollView 
-                style={styles.form}
-                contentContainerStyle={styles.formContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                bounces={false}
-              >
+              <View style={styles.form}>
                 <View style={styles.signupOptionsWrapper}>
                 {/* Social Signup Options */}
                 <View style={styles.socialOptionsContainer}>
@@ -212,9 +211,9 @@ const Step1UsernameScreen: React.FC<Step1UsernameScreenProps> = ({ navigation, r
                   <Text style={styles.emailSignupButtonText}>Sign up with Email</Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
             </View>
-          </View>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -243,7 +242,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   cardContainer: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -297,9 +296,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontStyle: 'italic',
   },
-  form: {
-    flex: 1,
-  },
+  form: {},
   formContent: {
     paddingBottom: 20,
   },

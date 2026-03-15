@@ -81,6 +81,15 @@ export default function DefaultAuthMethodsPage() {
     )
   }
 
+  const updateProviderField = (providerName: string, fieldLabel: string, value: string) => {
+    setProviders(prev =>
+      prev.map(p => {
+        if (p.providerName !== providerName) return p
+        return { ...p, settings: { ...(p.settings || {}), [fieldLabel]: value } }
+      })
+    )
+  }
+
   const handleSave = async () => {
     try {
       setSaving(true)
@@ -203,7 +212,13 @@ export default function DefaultAuthMethodsPage() {
                     {meta.fields.map(field => (
                       <div key={field.label}>
                         <label className="block text-xs font-medium text-gray-600 dark:text-zinc-400 mb-1.5">{field.label}</label>
-                        <input type={field.type || 'text'} placeholder={field.placeholder} className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                        <input
+                          type={field.type || 'text'}
+                          placeholder={field.placeholder}
+                          value={(provider.settings?.[field.label] as string) ?? ''}
+                          onChange={(e) => updateProviderField(provider.providerName, field.label, e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        />
                       </div>
                     ))}
                   </div>

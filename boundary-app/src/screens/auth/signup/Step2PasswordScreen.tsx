@@ -74,7 +74,12 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView
+            style={styles.content}
+            contentContainerStyle={{ flexGrow: 1 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -97,7 +102,7 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
               </View>
 
               {/* Form */}
-              <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              <View style={styles.form}>
               {/* Email or Phone Display (Readonly) */}
               {(email || phone) && (
                 <View style={styles.inputContainer}>
@@ -237,9 +242,9 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
                 <Text style={styles.nextButtonText}>Next</Text>
                 <Icon name="arrow-right" size={20} color="#FFFFFF" />
               </TouchableOpacity>
-            </ScrollView>
             </View>
-          </View>
+            </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -268,7 +273,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   cardContainer: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -315,9 +320,7 @@ const styles = StyleSheet.create({
     color: '#666666',
     fontFamily: FONT_STYLES.englishBody,
   },
-  form: {
-    flex: 1,
-  },
+  form: {},
   inputContainer: {
     marginBottom: 24,
   },

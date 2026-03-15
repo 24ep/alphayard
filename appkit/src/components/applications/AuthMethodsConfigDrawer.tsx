@@ -81,7 +81,16 @@ export const PROVIDER_META: Record<string, { icon: React.ReactNode; color: strin
 }
 
 export const FALLBACK_PROVIDERS: AuthProvider[] = [
-  { id: 'default-email', providerName: 'email-password', displayName: 'Email & Password', isEnabled: true, settings: {} },
+  {
+    id: 'default-email',
+    providerName: 'email-password',
+    displayName: 'Email & Password',
+    isEnabled: true,
+    settings: {
+      passwordPolicy: { minLength: 8, requireUppercase: false, requireLowercase: false, requireNumber: false, requireSpecial: false },
+      security: { requireEmailVerification: false, maxFailedAttempts: 5, lockoutMinutes: 15 },
+    },
+  },
   { id: 'default-saml', providerName: 'saml-sso', displayName: 'SAML / SSO', isEnabled: false, settings: {} },
   { id: 'default-magic', providerName: 'magic-link', displayName: 'Magic Link', isEnabled: false, settings: {} },
   { id: 'default-sms', providerName: 'sms-otp', displayName: 'SMS OTP', isEnabled: false, settings: {} },

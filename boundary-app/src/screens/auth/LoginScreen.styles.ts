@@ -75,7 +75,7 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingTop: Platform.OS === 'ios' ? 20 : 16,
     paddingBottom: 0,
     justifyContent: 'flex-end',

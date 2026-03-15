@@ -846,6 +846,18 @@ class AdminService {
     });
   }
 
+  async testCommProvider(params: {
+    channel: 'email' | 'sms' | 'push';
+    provider: string;
+    to: string;
+    config: Record<string, string>;
+  }): Promise<{ success: boolean; message?: string; error?: string; error_description?: string }> {
+    return this.request('/v1/admin/config/communication/test', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    });
+  }
+
   // Legal defaults
   async getDefaultLegalConfig(): Promise<{ config: any }> {
     return this.request<{ config: any }>('/v1/admin/config/legal');

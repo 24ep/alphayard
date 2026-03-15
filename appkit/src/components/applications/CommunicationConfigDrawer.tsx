@@ -12,6 +12,9 @@ import {
   SaveIcon,
   Loader2Icon,
   PlusIcon,
+  SendIcon,
+  CheckCircleIcon,
+  AlertCircleIcon,
 } from 'lucide-react'
 
 interface CommunicationConfigDrawerProps {
@@ -63,11 +66,24 @@ const DEFAULT_COMM_CONFIG: CommConfig = {
   methodConfig: {},
 }
 
+interface TestState {
+  to: string
+  loading: boolean
+  result: { ok: boolean; msg: string } | null
+}
+
+const TEST_TO_PLACEHOLDER: Record<string, string> = {
+  email: 'test@example.com',
+  sms: '+1234567890',
+  push: 'FCM device token or player ID',
+}
+
 export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appName, initialChannel }: CommunicationConfigDrawerProps) {
   const [config, setConfig] = useState<CommConfig>(DEFAULT_COMM_CONFIG)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [testState, setTestState] = useState<Record<string, TestState>>({})
   useEffect(() => {
     if (!isOpen) return
     setExpandedChannel(initialChannel || null)
@@ -124,6 +140,36 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
 
   const toggleChannel = (ch: keyof CommConfig['channels']) => {
     setConfig(prev => ({ ...prev, channels: { ...prev.channels, [ch]: !prev.channels[ch] } }))
+  }
+
+  const handleTest = async (channelKey: string) => {
+    const methods = METHOD_OPTIONS[channelKey]
+    const selectedMethod = config.selectedMethods?.[channelKey as keyof typeof config.selectedMethods]
+    if (!methods || !selectedMethod) return
+    const methodKey = `${channelKey}_${selectedMethod}`
+    const cfg = (config.methodConfig?.[methodKey] || {}) as Record<string, string>
+    const ts = testState[channelKey] || { to: '', loading: false, result: null }
+    if (!ts.to && channelKey !== 'push' || (channelKey === 'push' && selectedMethod === 'apns')) {
+      // APNs doesn't need a device token for config validation
+    }
+    setTestState(prev => ({ ...prev, [channelKey]: { ...ts, loading: true, result: null } }))
+    try {
+      const res = await adminService.testCommProvider({
+        channel: channelKey as 'email' | 'sms' | 'push',
+        provider: selectedMethod,
+        to: ts.to,
+        config: cfg,
+      })
+      setTestState(prev => ({
+        ...prev,
+        [channelKey]: { ...ts, loading: false, result: { ok: !!res.success, msg: res.message || res.error_description || (res.success ? 'Test sent successfully!' : 'Test failed') } },
+      }))
+    } catch (err: any) {
+      setTestState(prev => ({
+        ...prev,
+        [channelKey]: { ...ts, loading: false, result: { ok: false, msg: err?.message || 'Test failed' } },
+      }))
+    }
   }
 
   const handleSave = async () => {
@@ -275,32 +321,68 @@ export default function CommunicationConfigDrawer({ isOpen, onClose, appId, appN
                             const selectedProvider = methods.find(m => m.value === selectedMethod)
                             if (!selectedProvider) return null
                             const methodKey = `${ch.key}_${selectedMethod}`
+                            const ts = testState[ch.key] || { to: '', loading: false, result: null }
+                            const needsTo = !(ch.key === 'push' && selectedMethod === 'apns')
                             return (
-                              <div className="grid grid-cols-2 gap-2.5 pt-1">
-                                {selectedProvider.fields.map(field => (
-                                  <div key={field.key} className={selectedProvider.fields.length % 2 !== 0 && field === selectedProvider.fields[selectedProvider.fields.length - 1] ? 'col-span-2' : ''}>
-                                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">{field.label}</label>
-                                    <input
-                                      type={field.type || 'text'}
-                                      placeholder={field.placeholder}
-                                      value={config.methodConfig?.[methodKey]?.[field.key] || ''}
-                                      onChange={e => {
-                                        setConfig(prev => ({
-                                          ...prev,
-                                          methodConfig: {
-                                            ...prev.methodConfig,
-                                            [methodKey]: {
-                                              ...(prev.methodConfig?.[methodKey] || {}),
-                                              [field.key]: e.target.value,
+                              <>
+                                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                                  {selectedProvider.fields.map(field => (
+                                    <div key={field.key} className={selectedProvider.fields.length % 2 !== 0 && field === selectedProvider.fields[selectedProvider.fields.length - 1] ? 'col-span-2' : ''}>
+                                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-1">{field.label}</label>
+                                      <input
+                                        type={field.type || 'text'}
+                                        placeholder={field.placeholder}
+                                        value={config.methodConfig?.[methodKey]?.[field.key] || ''}
+                                        onChange={e => {
+                                          setConfig(prev => ({
+                                            ...prev,
+                                            methodConfig: {
+                                              ...prev.methodConfig,
+                                              [methodKey]: {
+                                                ...(prev.methodConfig?.[methodKey] || {}),
+                                                [field.key]: e.target.value,
+                                              },
                                             },
-                                          },
-                                        }))
-                                      }}
-                                      className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    />
+                                          }))
+                                        }}
+                                        className="w-full px-3 py-1.5 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {/* Test Send */}
+                                <div className="pt-3 border-t border-gray-100 dark:border-zinc-800/50">
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-2">Test Send</p>
+                                  <div className="flex gap-2">
+                                    {needsTo && (
+                                      <input
+                                        type="text"
+                                        placeholder={TEST_TO_PLACEHOLDER[ch.key] || 'Destination'}
+                                        value={ts.to}
+                                        onChange={e => setTestState(prev => ({ ...prev, [ch.key]: { ...ts, to: e.target.value, result: null } }))}
+                                        className="flex-1 px-3 py-1.5 bg-gray-50 dark:bg-zinc-800/50 border border-gray-200 dark:border-zinc-700 rounded-lg text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                      />
+                                    )}
+                                    <button
+                                      onClick={() => handleTest(ch.key)}
+                                      disabled={ts.loading || (needsTo && !ts.to.trim())}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      {ts.loading ? <Loader2Icon className="w-3.5 h-3.5 animate-spin" /> : <SendIcon className="w-3.5 h-3.5" />}
+                                      {ts.loading ? 'Sending…' : 'Send Test'}
+                                    </button>
                                   </div>
-                                ))}
-                              </div>
+                                  {ts.result && (
+                                    <div className={`mt-2 flex items-start gap-1.5 text-[11px] ${ts.result.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                                      {ts.result.ok
+                                        ? <CheckCircleIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                                        : <AlertCircleIcon className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />}
+                                      <span>{ts.result.msg}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </>
                             )
                           })()}
                         </div>

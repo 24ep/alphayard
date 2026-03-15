@@ -15,6 +15,7 @@ import {
   InfoIcon,
   SendIcon,
   Loader2Icon,
+  AlertCircleIcon,
 } from 'lucide-react'
 
 interface CommProvider {
@@ -59,12 +60,24 @@ const emailTemplates = [
   { name: 'Plan Upgrade', desc: 'Subscription upgrade confirmation', status: 'Draft' },
 ]
 
+// Maps provider type → { channel, toPlaceholder }
+const PROVIDER_CHANNEL: Record<string, { channel: 'email' | 'sms' | 'push'; toPlaceholder: string; needsTo: boolean }> = {
+  smtp:     { channel: 'email', toPlaceholder: 'test@example.com', needsTo: true },
+  twilio:   { channel: 'sms',   toPlaceholder: '+1234567890',     needsTo: true },
+  vonage:   { channel: 'sms',   toPlaceholder: '+1234567890',     needsTo: true },
+  firebase: { channel: 'push',  toPlaceholder: 'FCM device token', needsTo: true },
+  apns:     { channel: 'push',  toPlaceholder: '',                needsTo: false },
+}
+
+interface TestState { to: string; loading: boolean; result: { ok: boolean; msg: string } | null }
+
 export default function DefaultCommunicationPage() {
   const [config, setConfig] = useState<CommConfig>(FALLBACK_CONFIG)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [testState, setTestState] = useState<Record<string, TestState>>({})
 
   useEffect(() => { loadData() }, [])
 
@@ -94,6 +107,30 @@ export default function DefaultCommunicationPage() {
       ...prev,
       channels: { ...prev.channels, [ch]: !prev.channels[ch] },
     }))
+  }
+
+  const handleTest = async (provider: CommProvider) => {
+    const meta = PROVIDER_CHANNEL[provider.type]
+    if (!meta) return
+    const ts = testState[provider.id] || { to: '', loading: false, result: null }
+    setTestState(prev => ({ ...prev, [provider.id]: { ...ts, loading: true, result: null } }))
+    try {
+      const res = await adminService.testCommProvider({
+        channel: meta.channel,
+        provider: provider.type,
+        to: ts.to,
+        config: provider.settings as Record<string, string>,
+      })
+      setTestState(prev => ({
+        ...prev,
+        [provider.id]: { ...ts, loading: false, result: { ok: !!res.success, msg: res.message || res.error_description || (res.success ? 'Test sent successfully!' : 'Test failed') } },
+      }))
+    } catch (err: any) {
+      setTestState(prev => ({
+        ...prev,
+        [provider.id]: { ...ts, loading: false, result: { ok: false, msg: err?.message || 'Test failed' } },
+      }))
+    }
   }
 
   const handleSave = async () => {
@@ -176,7 +213,7 @@ export default function DefaultCommunicationPage() {
                   </div>
                 </div>
                 {expandedId === provider.id && (
-                  <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-zinc-800">
+                  <div className="px-4 pb-4 pt-2 border-t border-gray-100 dark:border-zinc-800 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {meta.fields.map(field => (
                         <div key={field.key}>
@@ -196,6 +233,44 @@ export default function DefaultCommunicationPage() {
                         </div>
                       ))}
                     </div>
+
+                    {/* Test Send */}
+                    {PROVIDER_CHANNEL[provider.type] && (() => {
+                      const provCfg = PROVIDER_CHANNEL[provider.type]
+                      const ts = testState[provider.id] || { to: '', loading: false, result: null }
+                      return (
+                        <div className="pt-2 border-t border-gray-100 dark:border-zinc-800">
+                          <p className="text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-2">Test Send</p>
+                          <div className="flex gap-2">
+                            {provCfg.needsTo && (
+                              <input
+                                type="text"
+                                placeholder={provCfg.toPlaceholder}
+                                value={ts.to}
+                                onChange={e => setTestState(prev => ({ ...prev, [provider.id]: { ...ts, to: e.target.value, result: null } }))}
+                                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                              />
+                            )}
+                            <button
+                              onClick={() => handleTest(provider)}
+                              disabled={ts.loading || (provCfg.needsTo && !ts.to.trim())}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {ts.loading ? <Loader2Icon className="w-4 h-4 animate-spin" /> : <SendIcon className="w-4 h-4" />}
+                              {ts.loading ? 'Sending…' : 'Send Test'}
+                            </button>
+                          </div>
+                          {ts.result && (
+                            <div className={`mt-2 flex items-start gap-1.5 text-sm ${ts.result.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
+                              {ts.result.ok
+                                ? <CheckCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                : <AlertCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />}
+                              <span>{ts.result.msg}</span>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
