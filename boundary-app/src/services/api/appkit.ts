@@ -6,7 +6,7 @@ import { API_CONFIG } from '../../constants/app';
 export const appkit = new AppKit({
   clientId: 'boundary-mobile-app',
   baseURL: '',
-  domain: 'https://appkits.up.railway.app',
+  domain: process.env.EXPO_PUBLIC_APPKIT_DOMAIN || 'https://appkits.up.railway.app',
   storage: 'localStorage',
 });
 

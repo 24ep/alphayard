@@ -41,64 +41,29 @@ class AuthService {
     }
   }
 
-  // Register — calls AppKit server (deployed on Railway, shares the same DB as admin panel)
+  // Register — uses AppKit SDK (domain driven by EXPO_PUBLIC_APPKIT_DOMAIN env var)
   async register(data: SignupData): Promise<AuthResponse> {
     try {
-      const appkitUrl = 'https://appkits.up.railway.app';
-      const res = await fetch(`${appkitUrl}/api/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-        }),
+      const response = await appkit.signup({
+        email: data.email,
+        password: data.password,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
       });
 
-      const json = await res.json();
-
-      if (!json.success) {
-        throw new Error(json.message || 'Registration failed');
+      if (!response.user) {
+        throw new Error(response.message || 'Registration failed');
       }
 
-      const rawUser = json.user;
-      const tokens = { accessToken: json.accessToken, refreshToken: json.refreshToken, expiresIn: 86400 };
-
-      // Inject the token into the AppKit SDK so subsequent SDK calls are authenticated
-      const tokenSet = {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-        expiresAt: Date.now() + (tokens.expiresIn || 86400) * 1000,
-      };
-      (appkit as any).tokenStorage?.setTokens?.(tokenSet);
-
-      const user: User = {
-        id: rawUser.id,
-        email: rawUser.email,
-        firstName: rawUser.firstName,
-        lastName: rawUser.lastName,
-        phoneNumber: rawUser.phoneNumber,
-        phone: rawUser.phoneNumber,
-        avatar: rawUser.avatarUrl || undefined,
-        dateOfBirth: undefined,
-        gender: undefined,
-        preferences: {},
-        emergencyContacts: [],
-        createdAt: rawUser.createdAt ? new Date(rawUser.createdAt) : new Date(),
-        updatedAt: rawUser.updatedAt ? new Date(rawUser.updatedAt) : new Date(),
-        lastActiveAt: rawUser.updatedAt || new Date().toISOString(),
+      const user = this.mapAppKitUser(response.user);
+      const tokens: AuthTokens = {
+        accessToken: response.accessToken || '',
+        refreshToken: response.refreshToken || '',
+        expiresIn: 86400,
       };
 
-      return {
-        user,
-        tokens: {
-          accessToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken,
-          expiresIn: tokens.expiresIn,
-        },
-      };
+      return { user, tokens };
     } catch (error: any) {
       console.error('Registration error:', error);
       throw error;
