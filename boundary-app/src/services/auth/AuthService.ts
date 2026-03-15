@@ -274,8 +274,8 @@ class AuthService {
     }
   }
 
-  // Request OTP
-  async requestOtp(identifier: string): Promise<void> {
+  // Request OTP — returns debug_otp when email/SMS is not configured
+  async requestOtp(identifier: string): Promise<string | undefined> {
     try {
       const isEmail = identifier.includes('@');
       const response = await appkit.requestOtp({
@@ -285,6 +285,7 @@ class AuthService {
       if (!response.success) {
         throw new Error(response.message || 'Failed to request OTP');
       }
+      return (response as any).debug_otp as string | undefined;
     } catch (error) {
       console.error('Request OTP error:', error);
       throw error;

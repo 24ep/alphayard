@@ -6,7 +6,8 @@ import {
     SafeAreaView,
     TouchableOpacity,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -79,11 +80,12 @@ export const TwoFactorMethodScreen: React.FC = () => {
                 });
             } else {
                 // Request OTP via selected channel (email or sms)
-                await requestOtp(identifier);
-                navigation.navigate('TwoFactorVerify', { 
-                    identifier, 
-                    mode, 
-                    channel
+                const debugCode = await requestOtp(identifier);
+                navigation.navigate('TwoFactorVerify', {
+                    identifier,
+                    mode,
+                    channel,
+                    debugCode,
                 });
             }
         } catch (error: any) {
@@ -96,8 +98,11 @@ export const TwoFactorMethodScreen: React.FC = () => {
     return (
         <SafeAreaView style={styles.container}>
             <ScreenBackground screenId="twofactor-method" style={styles.gradient}>
-                <View style={styles.content}>
-                    
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
                     {/* Header */}
                     <View style={styles.header}>
                         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -111,9 +116,8 @@ export const TwoFactorMethodScreen: React.FC = () => {
                         <Text style={styles.headerSubtitle}>Choose how you want to receive your verification code</Text>
                     </View>
 
-                    {/* Card Container */}
-                    <View style={styles.cardContainer}>
-                        <View style={styles.card}>
+                    {/* Card */}
+                    <View style={styles.card}>
                             <Text style={styles.cardTitle}>Select Verification Method</Text>
                             
                             {CHANNEL_OPTIONS.map((channel) => (
@@ -166,9 +170,8 @@ export const TwoFactorMethodScreen: React.FC = () => {
                                     <Text style={styles.continueButtonText}>Continue</Text>
                                 )}
                             </TouchableOpacity>
-                        </View>
                     </View>
-                </View>
+                </ScrollView>
             </ScreenBackground>
         </SafeAreaView>
     );
@@ -181,8 +184,8 @@ const styles = StyleSheet.create({
     gradient: { 
         flex: 1 
     },
-    content: { 
-        flex: 1, 
+    content: {
+        flexGrow: 1,
         justifyContent: 'space-between'
     },
     header: {
@@ -213,10 +216,6 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         textAlign: 'center',
         paddingHorizontal: 40
-    },
-    cardContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
     },
     card: {
         backgroundColor: '#FFFFFF',

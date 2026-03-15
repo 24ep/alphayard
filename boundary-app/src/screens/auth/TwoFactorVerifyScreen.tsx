@@ -6,7 +6,8 @@ import {
     SafeAreaView,
     TouchableOpacity,
     Alert,
-    ActivityIndicator
+    ActivityIndicator,
+    ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -19,8 +20,8 @@ export const TwoFactorVerifyScreen: React.FC = () => {
     const route = useRoute();
     const { loginWithOtp, requestOtp, verifyEmail } = useAuth();
 
-    // Route params: identifier (email/phone), mode ('login' | 'signup'), channel
-    const { identifier, mode, channel } = route.params as { identifier: string; mode: 'login' | 'signup'; channel?: string };
+    // Route params: identifier (email/phone), mode ('login' | 'signup'), channel, debugCode
+    const { identifier, mode, channel, debugCode } = route.params as { identifier: string; mode: 'login' | 'signup'; channel?: string; debugCode?: string };
 
     // Determine icon and subtitle based on channel
     const getChannelInfo = () => {
@@ -48,6 +49,13 @@ export const TwoFactorVerifyScreen: React.FC = () => {
         }, 1000);
         return () => clearInterval(interval);
     }, []);
+
+    // Auto-fill and submit when debugCode is provided (no email/SMS configured yet)
+    useEffect(() => {
+        if (debugCode && debugCode.length === 6) {
+            handleOtpChange(debugCode);
+        }
+    }, [debugCode]);
 
     const handleOtpChange = async (newOtp: string) => {
         setOtp(newOtp);
@@ -91,8 +99,11 @@ export const TwoFactorVerifyScreen: React.FC = () => {
     return (
         <SafeAreaView style={styles.container}>
             <ScreenBackground screenId="twofactor-verify" style={styles.gradient}>
-                <View style={styles.content}>
-                    
+                <ScrollView
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
                     {/* Header with back button */}
                     <View style={styles.header}>
                         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
@@ -106,9 +117,15 @@ export const TwoFactorVerifyScreen: React.FC = () => {
                         <Text style={styles.headerSubtitle}>{channelInfo.subtitle}</Text>
                     </View>
 
-                    {/* Card Container similar to Login */}
-                    <View style={styles.cardContainer}>
-                        <View style={styles.card}>
+                    {/* Dev: show code when email/SMS is not configured */}
+                    {!!debugCode && (
+                        <View style={styles.debugBanner}>
+                            <Text style={styles.debugText}>Test code: {debugCode}</Text>
+                        </View>
+                    )}
+
+                    {/* Card */}
+                    <View style={styles.card}>
                              <PinKeypad
                                 pin={otp}
                                 onPinChange={handleOtpChange}
@@ -132,9 +149,8 @@ export const TwoFactorVerifyScreen: React.FC = () => {
                              {isSubmitting && (
                                 <ActivityIndicator style={{ marginTop: 20 }} color="#FA7272" />
                             )}
-                        </View>
                     </View>
-                </View>
+                </ScrollView>
             </ScreenBackground>
         </SafeAreaView>
     );
@@ -148,8 +164,8 @@ const styles = StyleSheet.create({
     gradient: { 
         flex: 1 
     },
-    content: { 
-        flex: 1, 
+    content: {
+        flexGrow: 1,
         justifyContent: 'space-between'
     },
     header: {
@@ -180,9 +196,20 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingHorizontal: 40
     },
-    cardContainer: {
-        flex: 1,
-        justifyContent: 'flex-end',
+    debugBanner: {
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        marginHorizontal: 24,
+        marginBottom: 8,
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        alignItems: 'center',
+    },
+    debugText: {
+        color: '#FFE066',
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: 2,
     },
     card: {
         backgroundColor: '#FFFFFF',

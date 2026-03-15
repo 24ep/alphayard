@@ -41,14 +41,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // TODO: Send via email/SMS. Until then, always return the code so users can log in.
     console.log(`[OTP] Code for ${email || phone}: ${otp}`);
-
-    const isDev = process.env.NODE_ENV !== 'production';
 
     return NextResponse.json({
       success: true,
       message: 'Verification code sent',
-      ...(isDev && { debug_otp: otp }),
+      debug_otp: otp,
     });
   } catch (error: any) {
     console.error('OTP request error:', error);

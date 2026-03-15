@@ -71,7 +71,7 @@ interface AuthContextType {
   // Navigation reference for forced navigation
   setNavigationRef?: (ref: any) => void;
   checkUserExists: (identifier: string) => Promise<boolean>;
-  requestOtp: (identifier: string) => Promise<void>;
+  requestOtp: (identifier: string) => Promise<string | undefined>;
   loginWithOtp: (identifier: string, otp: string) => Promise<void>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   loginError: string | null;
@@ -638,7 +638,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authService.checkUserExists(identifier);
   };
 
-  const requestOtp = async (identifier: string): Promise<void> => {
+  const requestOtp = async (identifier: string): Promise<string | undefined> => {
     return authService.requestOtp(identifier);
   };
 
