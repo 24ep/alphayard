@@ -72,7 +72,7 @@ const Step5PersonalInfoScreen: React.FC<Step5PersonalInfoScreenProps> = ({ navig
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>

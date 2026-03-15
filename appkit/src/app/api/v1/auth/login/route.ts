@@ -14,9 +14,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    // Find admin user
+    const normalizedEmail = email.toLowerCase();
+
+    // Try admin user first
     const adminUser = await prisma.adminUser.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: {
         role: true,
         adminUserApplications: {
@@ -25,81 +27,134 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    if (!adminUser || !adminUser.isActive) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
+    if (adminUser && adminUser.isActive) {
+      // Verify admin password
+      const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash);
+      if (!isValidPassword) {
+        return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash);
-    if (!isValidPassword) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
+      // Create permissions array
+      let permissions: string[] = [];
+      if (adminUser.isSuperAdmin) {
+        permissions = ['*'];
+      } else if (adminUser.role) {
+        const rolePermissions = await prisma.adminRolePermission.findMany({
+          where: { roleId: adminUser.roleId! },
+          include: { permission: true }
+        });
+        permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`);
+      }
 
-    // Create permissions array
-    let permissions: string[] = [];
-    if (adminUser.isSuperAdmin) {
-      permissions = ['*'];
-    } else if (adminUser.role) {
-      // Fetch permissions for the role
-      const rolePermissions = await prisma.adminRolePermission.findMany({
-        where: { roleId: adminUser.roleId! },
-        include: { permission: true }
+      const token = jwt.sign(
+        {
+          id: adminUser.id,
+          adminId: adminUser.id,
+          email: adminUser.email,
+          firstName: adminUser.name.split(' ')[0] || '',
+          lastName: adminUser.name.split(' ').slice(1).join(' ') || '',
+          role: adminUser.role?.name || 'admin',
+          type: 'admin',
+          isSuperAdmin: adminUser.isSuperAdmin,
+          permissions
+        },
+        config.JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      await prisma.adminUser.update({
+        where: { id: adminUser.id },
+        data: { lastLoginAt: new Date() }
       });
-      permissions = rolePermissions.map((rp: any) => `${rp.permission.module}:${rp.permission.action}`);
+
+      try {
+        await auditService.logAuthEvent(
+          adminUser.id, AuditAction.LOGIN, 'AdminUser', {},
+          req.headers.get('x-forwarded-for') || '127.0.0.1',
+          req.headers.get('user-agent') || 'Unknown'
+        );
+      } catch (_) {}
+
+      const adminResponse = NextResponse.json({
+        token,
+        accessToken: token,
+        refreshToken: token,
+        user: {
+          id: adminUser.id,
+          email: adminUser.email,
+          name: adminUser.name,
+          role: adminUser.role?.name,
+          isSuperAdmin: adminUser.isSuperAdmin,
+          avatarUrl: adminUser.avatarUrl
+        }
+      });
+      adminResponse.cookies.set('appkit_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60
+      });
+      return adminResponse;
     }
 
-    // Generate JWT
-    const token = jwt.sign(
+    // Try mobile user
+    const mobileUser = await prisma.user.findUnique({
+      where: { email: normalizedEmail }
+    });
+
+    if (!mobileUser || !mobileUser.isActive) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    if (!mobileUser.passwordHash) {
+      return NextResponse.json({ error: 'No password set. Please use SSO to login.' }, { status: 401 });
+    }
+
+    const isValidUserPassword = await bcrypt.compare(password, mobileUser.passwordHash);
+    if (!isValidUserPassword) {
+      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Generate mobile user JWT
+    const accessToken = jwt.sign(
       {
-        id: adminUser.id,
-        adminId: adminUser.id,
-        email: adminUser.email,
-        firstName: adminUser.name.split(' ')[0] || '',
-        lastName: adminUser.name.split(' ').slice(1).join(' ') || '',
-        role: adminUser.role?.name || 'admin',
-        type: 'admin',
-        isSuperAdmin: adminUser.isSuperAdmin,
-        permissions
+        id: mobileUser.id,
+        email: mobileUser.email,
+        firstName: mobileUser.firstName,
+        lastName: mobileUser.lastName,
+        type: 'user',
       },
       config.JWT_SECRET,
       { expiresIn: '24h' }
     );
+    const refreshToken = jwt.sign(
+      { id: mobileUser.id, type: 'refresh' },
+      config.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-    // Update last login
-    await prisma.adminUser.update({
-      where: { id: adminUser.id },
+    await prisma.user.update({
+      where: { id: mobileUser.id },
       data: { lastLoginAt: new Date() }
     });
 
-    // Audit login
-    await auditService.logAuthEvent(
-      adminUser.id,
-      AuditAction.LOGIN,
-      'AdminUser',
-      {},
-      req.headers.get('x-forwarded-for') || '127.0.0.1',
-      req.headers.get('user-agent') || 'Unknown'
-    );
-
     const response = NextResponse.json({
-      token,
+      success: true,
+      accessToken,
+      refreshToken,
+      token: accessToken,
       user: {
-        id: adminUser.id,
-        email: adminUser.email,
-        name: adminUser.name,
-        role: adminUser.role?.name,
-        isSuperAdmin: adminUser.isSuperAdmin,
-        avatarUrl: adminUser.avatarUrl
+        id: mobileUser.id,
+        email: mobileUser.email,
+        firstName: mobileUser.firstName,
+        lastName: mobileUser.lastName,
+        phone: mobileUser.phoneNumber,
+        avatar: mobileUser.avatarUrl,
+        isActive: mobileUser.isActive,
+        createdAt: mobileUser.createdAt,
+        updatedAt: mobileUser.updatedAt,
       }
-    });
-
-    // Set a session cookie for OIDC/OAuth support
-    response.cookies.set('appkit_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
     return response;

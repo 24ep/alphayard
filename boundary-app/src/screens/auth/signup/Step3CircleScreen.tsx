@@ -82,7 +82,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Header */}
             <View style={styles.header}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -103,7 +103,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
             </View>
 
             {/* circle Options */}
-            <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <View style={styles.form}>
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
                   style={[styles.optionCard, CircleOption === 'create' && styles.optionCardSelected]}
@@ -159,7 +159,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
                 </View>
               )}
 
-            </ScrollView>
+            </View>
 
             {/* Next Button - Only show for Join circle option */}
             {CircleOption === 'join' && (
@@ -168,7 +168,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
                 <Icon name="arrow-right" size={20} color="#bf4342" />
               </TouchableOpacity>
             )}
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>

@@ -231,13 +231,13 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
                   </Text>
                 </View>
               </View>
-            </ScrollView>
 
               {/* Next Button */}
               <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
                 <Text style={styles.nextButtonText}>Next</Text>
                 <Icon name="arrow-right" size={20} color="#FFFFFF" />
               </TouchableOpacity>
+            </ScrollView>
             </View>
           </View>
         </KeyboardAvoidingView>

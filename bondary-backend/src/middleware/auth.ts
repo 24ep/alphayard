@@ -112,15 +112,30 @@ export const authenticateToken = async (
       return next();
     }
 
-    // Check if user still exists and is active using AppKit SDK
-    console.log('[AUTH] Looking up user by ID using AppKit:', decoded.id);
+    // Check if user still exists and is active via shared Prisma DB
+    console.log('[AUTH] Looking up user by ID:', decoded.id);
     let user: AppKitUser | null = null;
     try {
-      user = await appkit.identity.getUserById(decoded.id);
+      const dbUser = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, email: true, firstName: true, lastName: true, isActive: true, avatarUrl: true, phoneNumber: true }
+      });
+      if (dbUser) {
+        user = {
+          id: dbUser.id,
+          email: dbUser.email,
+          firstName: dbUser.firstName,
+          lastName: dbUser.lastName,
+          name: `${dbUser.firstName} ${dbUser.lastName}`,
+          isActive: dbUser.isActive,
+          avatar: dbUser.avatarUrl || undefined,
+          phone: dbUser.phoneNumber || undefined,
+        } as any;
+      }
     } catch (error) {
       log(`User lookup error: ${error}`);
     }
-    
+
     console.log('[AUTH] User found:', user ? { id: user.id, email: user.email, isActive: user.isActive } : 'NOT FOUND');
 
     if (!user) {

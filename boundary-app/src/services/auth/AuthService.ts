@@ -41,23 +41,63 @@ class AuthService {
     }
   }
 
-  // Register
+  // Register — calls bondary-backend directly to bypass CORS issues on deployed AppKit server
   async register(data: SignupData): Promise<AuthResponse> {
     try {
-      const response = await appkit.signup(data as any);
+      const backendUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+      const res = await fetch(`${backendUrl}/mobile-auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+        }),
+      });
 
-      if (!response.user) {
-        throw new Error(response.message || 'Registration failed');
+      const json = await res.json();
+
+      if (!json.success || !json.data) {
+        throw new Error(json.error || json.message || 'Registration failed');
       }
 
-      const user = this.mapAppKitUser(response.user);
-      const tokens = {
-        accessToken: response.accessToken || '',
-        refreshToken: response.refreshToken || '',
-        expiresIn: 3600 * 24
+      const { user: rawUser, tokens } = json.data;
+
+      // Inject the token into the AppKit SDK so subsequent SDK calls are authenticated
+      const tokenSet = {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresAt: Date.now() + (tokens.expiresIn || 86400) * 1000,
+      };
+      (appkit as any).tokenStorage?.setTokens?.(tokenSet);
+
+      const user: User = {
+        id: rawUser.id,
+        email: rawUser.email,
+        firstName: rawUser.firstName,
+        lastName: rawUser.lastName,
+        phoneNumber: rawUser.phoneNumber,
+        phone: rawUser.phoneNumber,
+        avatar: rawUser.avatarUrl || undefined,
+        dateOfBirth: undefined,
+        gender: undefined,
+        preferences: {},
+        emergencyContacts: [],
+        createdAt: rawUser.createdAt ? new Date(rawUser.createdAt) : new Date(),
+        updatedAt: rawUser.updatedAt ? new Date(rawUser.updatedAt) : new Date(),
+        lastActiveAt: rawUser.updatedAt || new Date().toISOString(),
       };
 
-      return { user, tokens };
+      return {
+        user,
+        tokens: {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          expiresIn: tokens.expiresIn || 86400,
+        },
+      };
     } catch (error: any) {
       console.error('Registration error:', error);
       throw error;
