@@ -107,7 +107,7 @@ class UserService {
             permissions: u.metadata?.permissions || [],
             tags: u.metadata?.tags || [],
             attributes: u.metadata?.attributes || {},
-            apps: (u.applications || []).map((ua: any) => ({
+            apps: (u.userApplications || []).map((ua: any) => ({
                 appId: ua.application?.id || ua.applicationId,
                 appName: ua.application?.name || ua.application?.slug || 'Unnamed',
             })).concat(u.apps || u.metadata?.apps || []),

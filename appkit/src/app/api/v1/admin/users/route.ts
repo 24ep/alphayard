@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
           lastLoginAt: true,
           avatarUrl: true,
           points: true,
-          applications: {
+          userApplications: {
             select: {
               applicationId: true,
               role: true,
