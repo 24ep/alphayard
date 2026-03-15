@@ -83,6 +83,7 @@ export const navigationHubs: NavHub[] = [
         permissions: [['applications', 'view']],
         items: [
             { id: 'applications-list', label: 'All Applications', href: '/applications', icon: 'server', group: 'General', permissions: [['applications', 'view']] },
+            { id: 'applications-all-users', label: 'All Users', href: '/users', icon: 'users', group: 'General', permissions: [['applications', 'view']] },
             { id: 'applications-user-attributes', label: 'User Attributes', href: '/applications/user-attributes', icon: 'users', group: 'Default Config', permissions: [['applications', 'view']] },
             { id: 'applications-communication', label: 'Communication', href: '/applications/communication', icon: 'mail', group: 'Default Config', permissions: [['applications', 'view']] },
             { id: 'applications-email-templates', label: 'Email Templates', href: '/applications/email-templates', icon: 'document-text', group: 'Default Config', permissions: [['applications', 'view']] },

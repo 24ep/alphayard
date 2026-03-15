@@ -111,8 +111,12 @@ interface AssociatedApplication {
   name: string
   slug?: string
   status: string
-  plan: string
   domain?: string
+  role?: string
+  appStatus?: string
+  appPoints?: number
+  joinedAt?: string
+  lastActiveAt?: string
   isCurrent: boolean
 }
 
@@ -216,16 +220,21 @@ export default function UserDetailDrawer({ isOpen, onClose, userId, applicationI
         setReminders([])
       }
 
-      // Load applications associated with the user
+      // Load applications associated with the user via UserApplication join table
       try {
-        const appsData = await adminService.getApplications()
-        const mapped: AssociatedApplication[] = (appsData || []).map((app: any) => ({
+        const appsRes = await fetch(`/api/v1/admin/users/${userId}/applications`)
+        const appsData = await appsRes.json().catch(() => ({}))
+        const mapped: AssociatedApplication[] = (appsData.applications || []).map((app: any) => ({
           id: app.id,
-          name: app.name || app.slug || 'Unnamed App',
+          name: app.name,
           slug: app.slug,
-          status: app.isActive === false ? 'inactive' : 'active',
-          plan: app.plan || 'free',
-          domain: app.slug ? `${app.slug}.appkit.com` : undefined,
+          status: app.status,
+          domain: app.domain,
+          role: app.role,
+          appStatus: app.appStatus,
+          appPoints: app.appPoints,
+          joinedAt: app.joinedAt,
+          lastActiveAt: app.lastActiveAt,
           isCurrent: app.id === applicationId,
         }))
         setAssociatedApps(mapped)
