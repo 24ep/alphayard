@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/server/lib/prisma';
-import { otpStore } from '@/server/lib/otpStore';
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -11,31 +10,38 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, phone } = body;
 
-    const identifier = email?.toLowerCase() || phone;
-    if (!identifier) {
+    if (!email && !phone) {
       return NextResponse.json({ success: false, message: 'Email or phone required' }, { status: 400 });
     }
 
-    // Verify user exists
+    // Look up user
     const user = await prisma.user.findFirst({
-      where: email
-        ? { email: email.toLowerCase() }
-        : { phoneNumber: phone },
-      select: { id: true, email: true, isActive: true },
+      where: email ? { email: email.toLowerCase() } : { phoneNumber: phone },
+      select: { id: true, isActive: true, preferences: true },
     });
 
     if (!user || !user.isActive) {
-      // Return success anyway to avoid user enumeration
+      // Return success to avoid user enumeration
       return NextResponse.json({ success: true, message: 'If an account exists, a code has been sent' });
     }
 
     const otp = generateOtp();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+    const otpExpiry = Date.now() + 5 * 60 * 1000; // 5 minutes
 
-    otpStore.set(identifier, { otp, expiresAt });
+    // Persist OTP in the user's preferences JSON field
+    const currentPrefs = (user.preferences as Record<string, any>) || {};
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        preferences: {
+          ...currentPrefs,
+          _otp: otp,
+          _otpExpiry: otpExpiry,
+        },
+      },
+    });
 
-    // Log OTP for development (replace with email/SMS sending in production)
-    console.log(`[OTP] Code for ${identifier}: ${otp}`);
+    console.log(`[OTP] Code for ${email || phone}: ${otp}`);
 
     const isDev = process.env.NODE_ENV !== 'production';
 

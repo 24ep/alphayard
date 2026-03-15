@@ -2,46 +2,53 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { prisma } from '@/server/lib/prisma';
 import { config } from '@/server/config/env';
-import { otpStore } from '@/server/lib/otpStore';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, phone, otp } = body;
 
-    const identifier = email?.toLowerCase() || phone;
-    if (!identifier || !otp) {
+    if ((!email && !phone) || !otp) {
       return NextResponse.json({ success: false, message: 'Identifier and OTP required' }, { status: 400 });
     }
 
-    // Look up stored OTP
-    const stored = otpStore.get(identifier);
-    if (!stored) {
+    // Look up user
+    const user = await prisma.user.findFirst({
+      where: email ? { email: email.toLowerCase() } : { phoneNumber: phone },
+    });
+
+    if (!user || !user.isActive) {
+      return NextResponse.json({ success: false, message: 'Invalid code' }, { status: 401 });
+    }
+
+    const prefs = (user.preferences as Record<string, any>) || {};
+    const storedOtp = prefs._otp as string | undefined;
+    const storedExpiry = prefs._otpExpiry as number | undefined;
+
+    if (!storedOtp || !storedExpiry) {
       return NextResponse.json({ success: false, message: 'Invalid or expired code' }, { status: 401 });
     }
 
-    if (Date.now() > stored.expiresAt) {
-      otpStore.delete(identifier);
+    if (Date.now() > storedExpiry) {
+      // Clean up expired OTP
+      const { _otp, _otpExpiry, ...rest } = prefs;
+      await prisma.user.update({ where: { id: user.id }, data: { preferences: rest } });
       return NextResponse.json({ success: false, message: 'Code has expired' }, { status: 401 });
     }
 
-    if (stored.otp !== otp) {
+    if (storedOtp !== String(otp)) {
       return NextResponse.json({ success: false, message: 'Invalid code' }, { status: 401 });
     }
 
     // OTP valid — consume it
-    otpStore.delete(identifier);
-
-    // Look up the user
-    const user = await prisma.user.findFirst({
-      where: email
-        ? { email: email.toLowerCase() }
-        : { phoneNumber: phone },
+    const { _otp, _otpExpiry, ...restPrefs } = prefs;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        preferences: restPrefs,
+        lastLoginAt: new Date(),
+      },
     });
-
-    if (!user || !user.isActive) {
-      return NextResponse.json({ success: false, message: 'User not found or inactive' }, { status: 401 });
-    }
 
     // Issue JWT
     const accessToken = jwt.sign(
@@ -61,11 +68,6 @@ export async function POST(req: NextRequest) {
       config.JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
 
     return NextResponse.json({
       success: true,
