@@ -7,6 +7,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -96,7 +97,7 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
               </View>
 
               {/* Form */}
-              <View style={styles.form}>
+              <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {/* Email or Phone Display (Readonly) */}
               {(email || phone) && (
                 <View style={styles.inputContainer}>
@@ -230,7 +231,7 @@ const Step2PasswordScreen: React.FC<Step2PasswordScreenProps> = ({ navigation, r
                   </Text>
                 </View>
               </View>
-            </View>
+            </ScrollView>
 
               {/* Next Button */}
               <TouchableOpacity style={styles.nextButton} onPress={handleNext}>

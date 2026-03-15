@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -76,7 +77,7 @@ const Step3CreateCircleScreen: React.FC<Step3CreateCircleScreenProps> = ({ navig
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoidingView}
         >
-          <View style={styles.content}>
+          <ScrollView style={styles.content} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             {/* Header */}
             <View style={styles.header}>
               <View style={styles.stepIndicator}>
@@ -166,7 +167,7 @@ const Step3CreateCircleScreen: React.FC<Step3CreateCircleScreenProps> = ({ navig
                 <Icon name="arrow-right" size={20} color="#bf4342" />
               </TouchableOpacity>
             </View>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
@@ -244,9 +245,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontFamily: FONT_STYLES.englishBody,
   },
-  form: {
-    flex: 1,
-  },
+  form: {},
   inputContainer: {
     marginBottom: 24,
   },

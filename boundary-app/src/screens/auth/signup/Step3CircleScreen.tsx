@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -102,7 +103,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
             </View>
 
             {/* circle Options */}
-            <View style={styles.form}>
+            <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <View style={styles.optionsContainer}>
                 <TouchableOpacity
                   style={[styles.optionCard, CircleOption === 'create' && styles.optionCardSelected]}
@@ -158,7 +159,7 @@ const Step3CircleScreen: React.FC<Step3CircleScreenProps> = ({ navigation, route
                 </View>
               )}
 
-            </View>
+            </ScrollView>
 
             {/* Next Button - Only show for Join circle option */}
             {CircleOption === 'join' && (
