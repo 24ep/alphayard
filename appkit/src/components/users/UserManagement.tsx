@@ -26,6 +26,7 @@ import { adminService } from '../../services/adminService'
 import { FilterSystem, FilterConfig, SortableHeader } from '../common/FilterSystem'
 import { billingService, BillingPlan, PaymentMethodSummary, InvoiceSummary } from '../../services/billingService'
 import { Modal } from '../../components/ui/Modal'
+import UserDetailDrawer from './UserDetailDrawer'
 
 
 
@@ -44,6 +45,7 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true)
   const [activeFilters, setActiveFilters] = useState<Record<string, any>>({})
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
+  const [drawerUserId, setDrawerUserId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [billingUser, setBillingUser] = useState<User | null>(null)
@@ -961,7 +963,7 @@ export function UserManagement() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {filteredAndSortedUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                  <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150 cursor-pointer" onClick={() => setDrawerUserId(user.id)}>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-12 w-12">
@@ -1044,6 +1046,7 @@ export function UserManagement() {
                         <select
                           value={user.status}
                           onChange={(e) => handleStatusChange(user.id, e.target.value)}
+                          onClick={e => e.stopPropagation()}
                           className="text-xs border border-gray-200 rounded-lg px-2 py-1 bg-white hover:border-gray-300 transition-colors duration-150"
                         >
                           <option value="active">Active</option>
@@ -1091,7 +1094,7 @@ export function UserManagement() {
                         <span className="mr-1">💎</span> {user.points ?? 0}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
@@ -1103,13 +1106,6 @@ export function UserManagement() {
                           title="Impersonate user"
                         >
                           <span className="text-xs">Imp</span>
-                        </button>
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors duration-150"
-                          title="Edit user"
-                        >
-                          <PencilIcon className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => openBilling(user)}
@@ -1635,6 +1631,14 @@ export function UserManagement() {
           </div>
         </form>
       </Modal>
+
+      {/* User Detail Drawer */}
+      <UserDetailDrawer
+        isOpen={!!drawerUserId}
+        onClose={() => setDrawerUserId(null)}
+        userId={drawerUserId || ''}
+        applicationId=""
+      />
 
     </div>
   )
